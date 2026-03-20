@@ -190,10 +190,19 @@ export default function PublicacionesPage() {
                   <React.Fragment key={product.id}>
                     <tr className={`border-b hover:bg-gray-50 cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`} onClick={() => setExpandedId(isExpanded ? null : product.id)}>
                       <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <svg className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
+                          {images.length > 0 ? (
+                            <img src={images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0">
+                              <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          )}
                           <div>
                             <span className="font-medium">{title}</span>
                             <span className="ml-2 text-xs text-gray-400">{PRODUCT_TYPES[product.product_type] || product.product_type}</span>
