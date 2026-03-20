@@ -10,7 +10,10 @@ interface ContactRow {
   model: string | null
   product_type: string
   price: number
+  sale_price: number | null
   status: string
+  contact_user_checked: boolean
+  contact_product_checked: boolean
   seller_name: string | null
   seller_email: string | null
   seller_phone: string | null
@@ -36,15 +39,13 @@ export default function ContactoPage() {
   const [rows, setRows] = useState<ContactRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [checkedUsers, setCheckedUsers] = useState<Set<string>>(new Set())
-  const [checkedProducts, setCheckedProducts] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data } = await supabase
         .from('products')
-        .select('id, brand, model, product_type, price, status, seller_id, users(name, email, phone)')
+        .select('id, brand, model, product_type, price, sale_price, status, contact_user_checked, contact_product_checked, seller_id, users(name, email, phone)')
         .order('created_at', { ascending: false })
 
       const mapped: ContactRow[] = (data || []).map((p: Record<string, unknown>) => {
@@ -55,7 +56,10 @@ export default function ContactoPage() {
           model: p.model as string | null,
           product_type: p.product_type as string,
           price: p.price as number,
+          sale_price: p.sale_price as number | null,
           status: p.status as string,
+          contact_user_checked: (p.contact_user_checked as boolean) || false,
+          contact_product_checked: (p.contact_product_checked as boolean) || false,
           seller_name: user?.name || null,
           seller_email: user?.email || null,
           seller_phone: user?.phone || null,
@@ -77,23 +81,13 @@ export default function ContactoPage() {
     })
   }, [rows, search])
 
-  function toggleUser(id: string) {
-    setCheckedUsers(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+  async function updateField(productId: string, field: string, value: unknown) {
+    const supabase = createClient()
+    await supabase.from('products').update({ [field]: value }).eq('id', productId)
+    setRows(prev => prev.map(r => r.product_id === productId ? { ...r, [field]: value } : r))
   }
 
-  function toggleProduct(id: string) {
-    setCheckedProducts(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  const checkedCount = filtered.filter(r => checkedUsers.has(r.product_id) && checkedProducts.has(r.product_id)).length
+  const checkedCount = filtered.filter(r => r.contact_user_checked && r.contact_product_checked).length
 
   if (loading) return (
     <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
@@ -110,7 +104,6 @@ export default function ContactoPage() {
         </div>
       </div>
 
-      {/* Search */}
       <div className="mb-4">
         <input
           type="text"
@@ -121,7 +114,6 @@ export default function ContactoPage() {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -149,7 +141,7 @@ export default function ContactoPage() {
                   </td>
                 </tr>
               ) : filtered.map(row => {
-                const bothChecked = checkedUsers.has(row.product_id) && checkedProducts.has(row.product_id)
+                const bothChecked = row.contact_user_checked && row.contact_product_checked
                 const title = [row.brand, row.model].filter(Boolean).join(' ')
 
                 return (
@@ -161,8 +153,8 @@ export default function ContactoPage() {
                     <td className="px-4 py-3 text-center">
                       <input
                         type="checkbox"
-                        checked={checkedUsers.has(row.product_id)}
-                        onChange={() => toggleUser(row.product_id)}
+                        checked={row.contact_user_checked}
+                        onChange={() => updateField(row.product_id, 'contact_user_checked', !row.contact_user_checked)}
                         className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 cursor-pointer"
                       />
                     </td>
@@ -170,8 +162,8 @@ export default function ContactoPage() {
                     <td className="px-4 py-3 text-center">
                       <input
                         type="checkbox"
-                        checked={checkedProducts.has(row.product_id)}
-                        onChange={() => toggleProduct(row.product_id)}
+                        checked={row.contact_product_checked}
+                        onChange={() => updateField(row.product_id, 'contact_product_checked', !row.contact_product_checked)}
                         className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 cursor-pointer"
                       />
                     </td>
@@ -227,27 +219,17 @@ export default function ContactoPage() {
                     </td>
                     {/* Sale Price */}
                     <td className="px-4 py-3 hidden sm:table-cell">
-                      <div className={`flex items-center gap-1 font-medium ${bothChecked ? 'text-green-200' : 'text-green-600'}`}>
-                        <span className="text-xs">$</span>
-                        <input
-                          type="text"
-                          placeholder="+"
-                          className={`w-20 text-sm font-medium border-0 border-b bg-transparent outline-none placeholder:opacity-50 ${bothChecked ? 'text-green-200 border-white/30 placeholder:text-green-200' : 'text-green-600 border-green-200 placeholder:text-green-400'}`}
-                          onClick={e => e.stopPropagation()}
-                        />
-                      </div>
+                      <SalePriceInput
+                        value={row.sale_price}
+                        bothChecked={bothChecked}
+                        onSave={(val) => updateField(row.product_id, 'sale_price', val)}
+                      />
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3">
                       <select
                         value={row.status}
-                        onChange={async (e) => {
-                          e.stopPropagation()
-                          const newStatus = e.target.value
-                          const supabase = createClient()
-                          await supabase.from('products').update({ status: newStatus }).eq('id', row.product_id)
-                          setRows(prev => prev.map(r => r.product_id === row.product_id ? { ...r, status: newStatus } : r))
-                        }}
+                        onChange={(e) => updateField(row.product_id, 'status', e.target.value)}
                         onClick={e => e.stopPropagation()}
                         className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${bothChecked ? 'bg-white/20 text-white' : (STATUS_COLORS[row.status] || 'bg-gray-100 text-gray-600')}`}
                       >
@@ -266,5 +248,64 @@ export default function ContactoPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function SalePriceInput({ value, bothChecked, onSave }: { value: number | null; bothChecked: boolean; onSave: (val: number | null) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ? String(value) : '')
+
+  function handleBlur() {
+    setEditing(false)
+    const num = parseInt(draft.replace(/\D/g, ''), 10)
+    if (!isNaN(num) && num > 0) {
+      onSave(num)
+    } else if (draft === '') {
+      onSave(null)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur()
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className={`flex items-center gap-1 font-medium ${bothChecked ? 'text-green-200' : 'text-green-600'}`}>
+        <span className="text-xs">$</span>
+        <input
+          type="text"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          autoFocus
+          className={`w-20 text-sm font-medium border-0 border-b bg-transparent outline-none ${bothChecked ? 'text-green-200 border-white/30' : 'text-green-600 border-green-200'}`}
+          onClick={e => e.stopPropagation()}
+        />
+      </div>
+    )
+  }
+
+  if (value) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); setDraft(String(value)); setEditing(true) }}
+        className={`font-medium text-sm ${bothChecked ? 'text-green-200' : 'text-green-600'} hover:underline`}
+      >
+        ${value.toLocaleString('es-CL')}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); setDraft(''); setEditing(true) }}
+      className={`text-xs ${bothChecked ? 'text-white/40' : 'text-gray-300'} hover:text-green-500`}
+    >
+      $+
+    </button>
   )
 }
