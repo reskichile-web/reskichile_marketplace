@@ -13,9 +13,10 @@ interface Props {
   count: number
   image: string
   imagePosition?: string
+  darkOverlay?: boolean
 }
 
-export default function CategoryCard({ type, label, image, imagePosition }: Props) {
+export default function CategoryCard({ type, label, image, imagePosition, darkOverlay }: Props) {
   const [active, setActive] = useState(false)
   const isGear = GEAR_CATEGORIES.has(type)
   const hasAI = AI_CATEGORIES.has(type)
@@ -44,7 +45,7 @@ export default function CategoryCard({ type, label, image, imagePosition }: Prop
       {/* Overlay — darker on active */}
       <motion.div
         className="absolute inset-0"
-        animate={{ backgroundColor: active ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.35)' }}
+        animate={{ backgroundColor: active ? 'rgba(0,0,0,0.75)' : darkOverlay ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.35)' }}
         transition={{ duration: 0.3 }}
       />
 

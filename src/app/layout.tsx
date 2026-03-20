@@ -5,6 +5,7 @@ import './globals.css'
 import Header from '@/components/Header'
 import StickyHeader from '@/components/StickyHeader'
 import Footer from '@/components/Footer'
+import ScreenLock from '@/components/ScreenLock'
 import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
@@ -47,12 +48,14 @@ export default function RootLayout({
   return (
     <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, dmSans.variable)}>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
-        <StickyHeader><Header /></StickyHeader>
-        <div className="h-[95px] md:h-[130px]" />
-        <main className="flex-1">
-          {children}
-        </main>
-        <Footer />
+        <ScreenLock>
+          <StickyHeader><Header /></StickyHeader>
+          <div className="h-[95px] md:h-[130px]" />
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </ScreenLock>
       </body>
     </html>
   )

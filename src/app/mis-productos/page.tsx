@@ -17,13 +17,14 @@ export default async function MyProductsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="max-w-4xl mx-auto mt-8 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="font-body text-3xl font-black">Mis productos</h1>
-        <Link href="/vender" className="bg-brand-500 text-white px-4 py-2 rounded hover:bg-brand-600 text-sm">
-          + Publicar nuevo
-        </Link>
-      </div>
+    <div className="max-w-4xl mx-auto px-4 min-h-screen pt-10 md:pt-14 pb-20">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-10">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="font-body text-3xl font-black">Mis productos</h1>
+          <Link href="/vender" className="bg-brand-500 text-white px-5 py-2.5 rounded-lg hover:bg-brand-600 text-sm font-medium">
+            + Publicar nuevo
+          </Link>
+        </div>
 
       {!products || products.length === 0 ? (
         <p className="text-gray-500">No tienes productos publicados aún.</p>
@@ -80,6 +81,7 @@ export default async function MyProductsPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   )
 }

@@ -101,6 +101,7 @@ export default async function HomePage() {
                 count={count}
                 image={categoryImages[type] || categoryImages.otros}
                 imagePosition={type === 'pantalones' ? 'object-[center_70%]' : undefined}
+                darkOverlay={type === 'pantalones'}
               />
             ))}
           </div>
