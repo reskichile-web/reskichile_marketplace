@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useSearchParams, usePathname } from 'next/navigation'
 
 const CATEGORIES = [
-  { key: '', label: 'Todo', href: '/catalogo' },
   { key: 'esquis', label: 'Esquís' },
   { key: 'snowboards', label: 'Snowboards' },
   { key: 'botas_esqui', label: 'Botas Esquí' },
@@ -19,12 +18,12 @@ const CATEGORIES = [
 export default function CategoryNav() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
-  const activeType = pathname === '/catalogo' ? (searchParams.get('product_type') || '') : ''
+  const activeType = pathname === '/catalogo' ? (searchParams.get('product_type') || null) : null
 
   return (
     <div className="flex items-center justify-center gap-2 h-14 overflow-x-auto">
       {CATEGORIES.map((cat) => {
-        const isActive = cat.key === activeType
+        const isActive = activeType !== null && cat.key === activeType
 
         return (
           <Link

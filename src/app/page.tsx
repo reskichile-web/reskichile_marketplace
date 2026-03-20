@@ -31,22 +31,10 @@ export default async function HomePage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
 
-  // Fetch preview products for each top category
-  const categoryPreviews: Record<string, { id: string; brand: string; model: string | null; price: number }[]> = {}
-  for (const [type] of topCategories) {
-    const { data } = await supabase
-      .from('products')
-      .select('id, brand, model, price')
-      .eq('status', 'approved')
-      .eq('product_type', type)
-      .order('created_at', { ascending: false })
-      .limit(4)
-    categoryPreviews[type] = data || []
-  }
 
   const categoryImages: Record<string, string> = {
     esquis: '/images/3.png',
-    snowboards: 'https://images.unsplash.com/photo-1478700845778-62c5f6ddf06f?w=600&q=80&fit=crop',
+    snowboards: '/images/hamish-duncan-XO6FSH3H5CE-unsplash.jpg',
     botas_esqui: '/images/How To Choose Your Ski Boots.jpeg',
     botas_snowboard: 'https://images.unsplash.com/photo-1522056615691-da7b8106c665?w=600&q=80&fit=crop',
     cascos: '/images/1.png',
@@ -63,17 +51,17 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-24">
-        <h1 className="font-body text-4xl md:text-7xl font-black leading-[1.1] max-w-4xl">
+      <section className="max-w-5xl mx-auto px-4 md:px-6 pt-12 pb-10 md:pt-28 md:pb-24">
+        <h1 className="font-body text-3xl md:text-7xl font-black leading-[1.1] max-w-4xl">
           Encuentra lo mejor en <RotatingWord />
         </h1>
         <p className="text-gray-500 text-lg md:text-xl mt-6 leading-relaxed">
           Mismo equipo, mejor precio. <span className="whitespace-nowrap">El <span className="underline decoration-brand-500 decoration-2 underline-offset-4">snowmarket</span> de Chile.</span>
         </p>
-        <div className="flex gap-4 mt-10">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8 md:mt-10">
           <Link
             href="/catalogo"
-            className="inline-flex items-center gap-2.5 bg-brand-500 text-white px-8 py-3.5 rounded-sm font-medium hover:bg-brand-600 transition-colors"
+            className="inline-flex items-center justify-center gap-2.5 bg-brand-500 text-white px-6 md:px-8 py-3 md:py-3.5 rounded-sm font-medium hover:bg-brand-600 transition-colors text-sm md:text-base"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
@@ -82,7 +70,7 @@ export default async function HomePage() {
           </Link>
           <Link
             href="/vender"
-            className="inline-flex items-center gap-2.5 border border-gray-300 px-8 py-3.5 rounded-sm font-medium hover:border-gray-400 transition-colors"
+            className="inline-flex items-center justify-center gap-2.5 border border-gray-300 px-6 md:px-8 py-3 md:py-3.5 rounded-sm font-medium hover:border-gray-400 transition-colors text-sm md:text-base"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
@@ -94,7 +82,7 @@ export default async function HomePage() {
 
       {/* Categories — Bauhaus grid */}
       {topCategories.length > 0 && (
-        <section className="max-w-5xl mx-auto px-6 pb-20">
+        <section className="max-w-5xl mx-auto px-4 md:px-6 pb-12 md:pb-20">
           <h2 className="font-body text-sm font-medium tracking-widest uppercase text-gray-400 mb-8">
             Categorías
           </h2>
@@ -106,41 +94,43 @@ export default async function HomePage() {
                 label={PRODUCT_TYPES[type] || type}
                 count={count}
                 image={categoryImages[type] || categoryImages.otros}
-                products={categoryPreviews[type] || []}
               />
             ))}
           </div>
         </section>
       )}
 
-      {/* Product browser — own sticky navbar + filters */}
-      {products && products.length > 0 && (
-        <ProductBrowser products={products} />
-      )}
-
       {/* CTA */}
-      <section className="relative overflow-hidden min-h-[400px] md:min-h-[500px] flex items-center">
+      <section className="relative overflow-hidden min-h-[350px] md:min-h-[500px] flex items-start">
         <img
-          src="/images/Tienda de Esquí Online_ Ropa, Material y Accesorios en un solo lugar.jpeg"
+          src="/images/clement-delhaye-cnluLIyhpBA-unsplash.jpg"
           alt=""
-          className="absolute inset-0 w-full h-full object-cover object-center"
+          className="absolute inset-0 w-full h-full object-cover object-[center_40%]"
         />
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="relative max-w-5xl mx-auto px-6 py-24 md:py-32 text-center w-full">
-          <h2 className="font-body text-3xl md:text-5xl font-black text-white">
+        <div className="absolute inset-0 bg-black/15" />
+        <div className="relative max-w-5xl mx-auto px-4 md:px-6 pt-12 md:pt-20 pb-16 md:pb-32 text-center w-full">
+          <h2 className="font-body text-2xl md:text-5xl font-black text-white">
             ¿Tienes equipo que ya no usas?
           </h2>
-          <p className="text-white/70 mt-4 text-lg">
+          <p className="text-white/80 mt-4 text-lg">
             Publícalo gratis y encuentra un nuevo dueño.
           </p>
           <Link
             href="/vender"
-            className="inline-block mt-8 bg-white text-gray-900 px-10 py-4 rounded-sm font-medium hover:bg-gray-100 transition-colors"
+            className="inline-block mt-8 bg-brand-500 text-white px-10 py-4 rounded-sm font-medium hover:bg-brand-600 transition-colors"
           >
             Publicar producto
           </Link>
         </div>
       </section>
+
+      {/* Spacer between CTA and products */}
+      <div className="h-16 md:h-24" />
+
+      {/* Product browser — own sticky navbar + filters */}
+      {products && products.length > 0 && (
+        <ProductBrowser products={products} />
+      )}
     </div>
   )
 }

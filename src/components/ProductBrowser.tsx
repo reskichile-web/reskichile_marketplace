@@ -83,6 +83,7 @@ export default function ProductBrowser({ products }: Props) {
   }, [products, sort, typeFilters, conditionFilters, brandFilters, regionFilters])
 
   const hasFilters = typeFilters.size > 0 || conditionFilters.size > 0 || brandFilters.size > 0 || regionFilters.size > 0
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   function clearFilters() {
     setTypeFilters(new Set())
@@ -91,18 +92,95 @@ export default function ProductBrowser({ products }: Props) {
     setRegionFilters(new Set())
   }
 
+  const filterContent = (
+    <>
+      <FilterSection title="Tipo">
+        {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
+          <CheckItem
+            key={v}
+            label={l}
+            checked={typeFilters.has(v)}
+            onChange={() => setTypeFilters(toggleSet(typeFilters, v))}
+          />
+        ))}
+      </FilterSection>
+      <FilterSection title="Marca">
+        {brands.map(b => (
+          <CheckItem
+            key={b}
+            label={b}
+            checked={brandFilters.has(b)}
+            onChange={() => setBrandFilters(toggleSet(brandFilters, b))}
+          />
+        ))}
+      </FilterSection>
+      <FilterSection title="Condición">
+        {Object.entries(CONDITIONS).map(([v, l]) => (
+          <CheckItem
+            key={v}
+            label={l}
+            checked={conditionFilters.has(v)}
+            onChange={() => setConditionFilters(toggleSet(conditionFilters, v))}
+          />
+        ))}
+      </FilterSection>
+      <FilterSection title="Región">
+        {REGIONS.map(r => (
+          <CheckItem
+            key={r}
+            label={r}
+            checked={regionFilters.has(r)}
+            onChange={() => setRegionFilters(toggleSet(regionFilters, r))}
+          />
+        ))}
+      </FilterSection>
+      {hasFilters && (
+        <button
+          onClick={clearFilters}
+          className="text-sm text-red-500 hover:text-red-600 font-medium w-full text-left"
+        >
+          Limpiar filtros
+        </button>
+      )}
+    </>
+  )
+
   return (
-    <section className="max-w-7xl mx-auto px-4">
+    <section className="max-w-7xl mx-auto px-4 overflow-hidden">
       {/* Sticky sorting navbar */}
-      <div className="sticky top-0 z-30 bg-white py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h2 className="font-body text-xl font-black">Productos</h2>
-            <span className="text-sm text-gray-400">{filtered.length} resultados</span>
+      <div className="sticky top-0 z-30 bg-white py-3 md:py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="font-body text-lg md:text-xl font-black">Productos</h2>
+            <span className="text-sm text-gray-400">{filtered.length}</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 hidden sm:inline">Ordenar:</span>
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Mobile filter button */}
+            <button
+              onClick={() => setMobileFiltersOpen(true)}
+              className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filtros
+              {hasFilters && <span className="w-2 h-2 bg-brand-500 rounded-full" />}
+            </button>
+
+            {/* Sort — dropdown on mobile, pills on desktop */}
+            <select
+              value={sort}
+              onChange={e => setSort(e.target.value as SortKey)}
+              className="md:hidden appearance-none bg-gray-100 text-gray-700 text-xs font-medium pl-2.5 pr-6 py-1.5 rounded-full border-0"
+            >
+              <option value="recent">Recientes</option>
+              <option value="price_asc">Menor precio</option>
+              <option value="price_desc">Mayor precio</option>
+              <option value="name_asc">Marca A-Z</option>
+            </select>
+
+            <span className="text-xs text-gray-400 hidden md:inline">Ordenar:</span>
             {([
               ['recent', 'Más recientes'],
               ['price_asc', 'Menor precio'],
@@ -112,75 +190,44 @@ export default function ProductBrowser({ products }: Props) {
               <button
                 key={key}
                 onClick={() => setSort(key)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${sort === key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className={`hidden md:block px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${sort === key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >
                 {label}
               </button>
             ))}
-            <Link href="/vender" className="ml-8 px-8 py-2 rounded-lg text-sm font-bold bg-brand-500 text-white hover:bg-brand-600 transition-colors">
+            <Link href="/vender" className="hidden md:block ml-8 px-8 py-2 rounded-lg text-sm font-bold bg-brand-500 text-white hover:bg-brand-600 transition-colors">
               Vender
             </Link>
           </div>
         </div>
       </div>
 
+      {/* Mobile filter drawer */}
+      {mobileFiltersOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFiltersOpen(false)} />
+          <div className="absolute right-0 top-0 bottom-0 w-72 bg-white shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-bold text-lg">Filtros</h3>
+              <button onClick={() => setMobileFiltersOpen(false)} className="p-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-5">
+              {filterContent}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main layout: filters sidebar + products */}
       <div className="flex gap-5 pt-6 pb-16">
-        {/* Filters sidebar — left, sticky */}
+        {/* Filters sidebar — left, sticky, desktop only */}
         <aside className="hidden md:block w-48 shrink-0">
           <div className="sticky top-16 space-y-4 max-h-[calc(100vh-100px)] overflow-y-auto pr-1 pt-2">
-            <FilterSection title="Tipo">
-              {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
-                <CheckItem
-                  key={v}
-                  label={l}
-                  checked={typeFilters.has(v)}
-                  onChange={() => setTypeFilters(toggleSet(typeFilters, v))}
-                />
-              ))}
-            </FilterSection>
-
-            <FilterSection title="Marca">
-              {brands.map(b => (
-                <CheckItem
-                  key={b}
-                  label={b}
-                  checked={brandFilters.has(b)}
-                  onChange={() => setBrandFilters(toggleSet(brandFilters, b))}
-                />
-              ))}
-            </FilterSection>
-
-            <FilterSection title="Condición">
-              {Object.entries(CONDITIONS).map(([v, l]) => (
-                <CheckItem
-                  key={v}
-                  label={l}
-                  checked={conditionFilters.has(v)}
-                  onChange={() => setConditionFilters(toggleSet(conditionFilters, v))}
-                />
-              ))}
-            </FilterSection>
-
-            <FilterSection title="Región">
-              {REGIONS.map(r => (
-                <CheckItem
-                  key={r}
-                  label={r}
-                  checked={regionFilters.has(r)}
-                  onChange={() => setRegionFilters(toggleSet(regionFilters, r))}
-                />
-              ))}
-            </FilterSection>
-
-            {hasFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-sm text-red-500 hover:text-red-600 font-medium w-full text-left"
-              >
-                Limpiar filtros
-              </button>
-            )}
+            {filterContent}
           </div>
         </aside>
 

@@ -48,7 +48,7 @@ export default function RootLayout({
     <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, dmSans.variable)}>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
         <StickyHeader><Header /></StickyHeader>
-        <div className="h-[140px]" />
+        <div className="h-[110px] md:h-[140px]" />
         <main className="flex-1">
           {children}
         </main>

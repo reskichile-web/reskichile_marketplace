@@ -297,7 +297,7 @@ export default function SellPage() {
         </div>
 
         {/* Brand & Model */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Marca *</label>
             <input
@@ -323,7 +323,7 @@ export default function SellPage() {
         </div>
 
         {/* Condition & Seasons Used */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Condición *</label>
             <select
@@ -366,7 +366,7 @@ export default function SellPage() {
         </div>
 
         {/* Region & Comuna */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Región *</label>
             <select

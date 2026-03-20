@@ -66,7 +66,7 @@ export default async function CatalogPage({ searchParams }: Props) {
     .sort((a, b) => a.localeCompare(b, 'es'))
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pt-8 pb-24">
+    <div className="max-w-7xl mx-auto px-4 pt-6 md:pt-8 pb-24">
       {/* Sorting navbar */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
         <div className="flex items-center gap-6">
