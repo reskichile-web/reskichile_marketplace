@@ -5,17 +5,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
-const PASSWORD_MIN = 6
-
 export default function AccesoPage() {
   const router = useRouter()
   const [step, setStep] = useState<'email' | 'password'>('email')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
