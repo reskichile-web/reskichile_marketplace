@@ -6,6 +6,7 @@ import { PRODUCT_TYPES } from '@/lib/constants'
 
 interface ContactRow {
   product_id: string
+  seller_id: string | null
   brand: string
   model: string | null
   product_type: string
@@ -17,6 +18,7 @@ interface ContactRow {
   seller_name: string | null
   seller_email: string | null
   seller_phone: string | null
+  seller_keep: boolean | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -47,13 +49,14 @@ export default function ContactoPage() {
       const supabase = createClient()
       const { data } = await supabase
         .from('products')
-        .select('id, brand, model, product_type, price, sale_price, status, contact_user_checked, contact_product_checked, seller_id, users(name, email, phone)')
+        .select('id, brand, model, product_type, price, sale_price, status, contact_user_checked, contact_product_checked, seller_id, users(name, email, phone, keep)')
         .order('created_at', { ascending: false })
 
       const mapped: ContactRow[] = (data || []).map((p: Record<string, unknown>) => {
-        const user = p.users as { name: string | null; email: string | null; phone: string | null } | null
+        const user = p.users as { name: string | null; email: string | null; phone: string | null; keep: boolean | null } | null
         return {
           product_id: p.id as string,
+          seller_id: p.seller_id as string | null,
           brand: p.brand as string,
           model: p.model as string | null,
           product_type: p.product_type as string,
@@ -65,6 +68,7 @@ export default function ContactoPage() {
           seller_name: user?.name || null,
           seller_email: user?.email || null,
           seller_phone: user?.phone || null,
+          seller_keep: user?.keep ?? null,
         }
       })
 
@@ -128,6 +132,9 @@ export default function ContactoPage() {
                   <span className="text-[10px] uppercase tracking-wider">Prod</span>
                 </th>
                 <th className="px-4 py-3 font-medium">Vendedor</th>
+                <th className="px-4 py-3 font-medium w-10">
+                  <span className="text-[10px] uppercase tracking-wider">Keep</span>
+                </th>
                 <th className="px-4 py-3 font-medium hidden md:table-cell">Contacto</th>
                 <th className="px-4 py-3 font-medium">Producto</th>
                 <th className="px-4 py-3 font-medium hidden sm:table-cell">Precio</th>
@@ -138,7 +145,7 @@ export default function ContactoPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                     No hay resultados
                   </td>
                 </tr>
@@ -180,6 +187,32 @@ export default function ContactoPage() {
                         </div>
                       ) : (
                         <span className={`text-xs ${bothChecked ? 'text-white/50' : 'text-gray-300'}`}>Sin usuario</span>
+                      )}
+                    </td>
+                    {/* Keep/Delete toggle */}
+                    <td className="px-4 py-3 text-center">
+                      {row.seller_id ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const next = row.seller_keep === true ? false : row.seller_keep === false ? null : true
+                            const supabase = createClient()
+                            supabase.from('users').update({ keep: next }).eq('id', row.seller_id!).then(() => {
+                              setRows(prev => prev.map(r => r.seller_id === row.seller_id ? { ...r, seller_keep: next } : r))
+                            })
+                          }}
+                          className={`text-xs px-2 py-1 rounded-full font-bold transition-colors ${
+                            row.seller_keep === true
+                              ? 'bg-green-100 text-green-700'
+                              : row.seller_keep === false
+                                ? 'bg-red-100 text-red-600'
+                                : bothChecked ? 'bg-white/20 text-white/60' : 'bg-gray-100 text-gray-400'
+                          }`}
+                        >
+                          {row.seller_keep === true ? '✓' : row.seller_keep === false ? '✗' : '—'}
+                        </button>
+                      ) : (
+                        <span className={`text-xs ${bothChecked ? 'text-white/30' : 'text-gray-200'}`}>—</span>
                       )}
                     </td>
                     {/* Contact */}
