@@ -69,7 +69,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 mb-[120px]">
+    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 mb-[60px]">
       <h1 className="font-body text-3xl font-black mb-6">Iniciar sesión</h1>
 
       {error && (
