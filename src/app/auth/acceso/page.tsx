@@ -5,10 +5,14 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
+const PASSWORD_MIN = 6
+
 export default function AccesoPage() {
   const router = useRouter()
-  const [step, setStep] = useState<'email' | 'password'>('email')
+  const [step, setStep] = useState<'email' | 'password' | 'done'>('email')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -21,43 +25,77 @@ export default function AccesoPage() {
 
     setLoading(true)
 
-    const supabase = createClient()
-
-    // Check if user exists and needs password change
-    // We use signInWithPassword with a dummy password to check if the user exists
-    // Better approach: check the users table directly via an edge function or RPC
-    // For now, we'll try to sign in and check the error
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password: '___check_exists___',
+    // Check if email exists via API
+    const res = await fetch('/api/auth/check-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: trimmedEmail }),
     })
+    const data = await res.json()
 
-    if (signInError) {
-      // "Invalid login credentials" means user exists but wrong password
-      if (signInError.message.includes('Invalid login credentials')) {
-        // User exists — send reset password email
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-          redirectTo: `${window.location.origin}/auth/reset-password`,
-        })
-
-        if (resetError) {
-          setError('Error al enviar el email. Intenta de nuevo.')
-          setLoading(false)
-          return
-        }
-
-        setStep('password')
-        setLoading(false)
-        return
-      }
-
-      // User doesn't exist
+    if (data.exists) {
+      // User exists → show password form
+      setStep('password')
+      setLoading(false)
+    } else {
+      // User doesn't exist → redirect to register
       router.push(`/auth/registro?email=${encodeURIComponent(trimmedEmail)}`)
+    }
+  }
+
+  function validatePassword(): string | null {
+    if (!password) return 'Ingresa una contraseña'
+    if (password.length < PASSWORD_MIN) return `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`
+    if (!/[A-Z]/.test(password)) return 'La contraseña debe tener al menos una mayúscula'
+    if (!/[0-9]/.test(password)) return 'La contraseña debe tener al menos un número'
+    if (password !== confirmPassword) return 'Las contraseñas no coinciden'
+    return null
+  }
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    const validationError = validatePassword()
+    if (validationError) { setError(validationError); return }
+
+    setLoading(true)
+
+    // Change password via API (uses service role)
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      setError(data.error || 'Error al cambiar la contraseña')
+      setLoading(false)
       return
     }
 
-    // If somehow login worked (shouldn't with dummy password)
+    // Now sign in with the new password
+    const supabase = createClient()
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+
+    if (signInError) {
+      setError('Contraseña actualizada pero hubo un error al iniciar sesión. Intenta desde el login.')
+      setLoading(false)
+      return
+    }
+
+    setStep('done')
     setLoading(false)
+
+    // Redirect after brief delay
+    setTimeout(() => {
+      router.push('/')
+      router.refresh()
+    }, 2000)
   }
 
   return (
@@ -65,7 +103,7 @@ export default function AccesoPage() {
       <div className="w-full max-w-md">
         <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
 
-          {step === 'email' ? (
+          {step === 'email' && (
             <>
               <div className="mb-6">
                 <h1 className="font-body text-2xl font-black text-gray-900">Acceder a tu cuenta</h1>
@@ -109,33 +147,81 @@ export default function AccesoPage() {
                 </Link>
               </p>
             </>
-          ) : (
+          )}
+
+          {step === 'password' && (
             <>
-              <div className="text-center py-4">
-                <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <svg className="w-7 h-7 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                  </svg>
-                </div>
-                <h2 className="font-body text-xl font-black mb-2">Revisa tu email</h2>
-                <p className="text-sm text-gray-500">
-                  Enviamos un link a <span className="font-medium text-gray-700">{email}</span> para que puedas crear tu contraseña y acceder a tu cuenta.
+              <div className="mb-6">
+                <h1 className="font-body text-2xl font-black text-gray-900">Crea tu contraseña</h1>
+                <p className="text-sm text-gray-500 mt-2">
+                  Configura una contraseña para <span className="font-medium text-gray-700">{email}</span>
                 </p>
               </div>
 
-              <div className="mt-6 bg-gray-50 rounded-lg p-4">
-                <p className="text-xs text-gray-500">
-                  <span className="font-medium text-gray-700">¿No recibes el email?</span> Revisa tu carpeta de spam. Si aún no llega,
-                  <button
-                    onClick={() => { setStep('email'); setError('') }}
-                    className="text-brand-500 hover:underline ml-1"
-                  >
-                    intenta de nuevo
-                  </button>.
-                </p>
-              </div>
+              {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+              )}
+
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Nueva contraseña</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    autoComplete="new-password"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Mínimo {PASSWORD_MIN} caracteres, una mayúscula y un número
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Confirmar contraseña</label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-brand-500 text-white py-2.5 rounded-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
+                >
+                  {loading ? 'Guardando...' : 'Guardar contraseña'}
+                </button>
+              </form>
+
+              <p className="mt-5 text-sm text-center text-gray-500">
+                <button onClick={() => { setStep('email'); setError('') }} className="text-brand-500 hover:underline font-medium">
+                  Usar otro email
+                </button>
+              </p>
             </>
           )}
+
+          {step === 'done' && (
+            <div className="text-center py-6">
+              <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
+                <svg className="w-7 h-7 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="font-body text-xl font-black mb-2">Listo</h2>
+              <p className="text-sm text-gray-500">
+                Tu contraseña ha sido configurada. Redirigiendo...
+              </p>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
