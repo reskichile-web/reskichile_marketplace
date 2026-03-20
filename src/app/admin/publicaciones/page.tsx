@@ -102,6 +102,16 @@ export default function PublicacionesPage() {
     loadProducts()
   }
 
+  async function handleDelete(productId: string) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.')) return
+    const supabase = createClient()
+    // Delete images first, then product
+    await supabase.from('product_images').delete().eq('product_id', productId)
+    await supabase.from('products').delete().eq('id', productId)
+    setExpandedId(null)
+    loadProducts()
+  }
+
 
   if (loading) return (
     <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
@@ -231,6 +241,9 @@ export default function PublicacionesPage() {
                           <Link href={`/producto/${product.id}/editar`} className="text-xs border px-2.5 py-1 rounded hover:bg-gray-100">
                             Editar
                           </Link>
+                          <button onClick={() => handleDelete(product.id)} className="text-xs border border-red-200 text-red-500 px-2.5 py-1 rounded hover:bg-red-50">
+                            Eliminar
+                          </button>
                         </div>
                       </td>
                     </tr>
