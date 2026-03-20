@@ -12,9 +12,10 @@ interface Props {
   label: string
   count: number
   image: string
+  imagePosition?: string
 }
 
-export default function CategoryCard({ type, label, image }: Props) {
+export default function CategoryCard({ type, label, image, imagePosition }: Props) {
   const [active, setActive] = useState(false)
   const isGear = GEAR_CATEGORIES.has(type)
   const hasAI = AI_CATEGORIES.has(type)
@@ -25,13 +26,16 @@ export default function CategoryCard({ type, label, image }: Props) {
       className="relative block aspect-square overflow-hidden rounded-xl cursor-pointer"
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
-      onClick={() => setActive(prev => !prev)}
+      onTouchEnd={(e) => {
+        e.stopPropagation()
+        setActive(prev => !prev)
+      }}
     >
       {/* Image with zoom */}
       <motion.img
         src={image}
         alt={label}
-        className="absolute inset-0 w-full h-full object-cover"
+        className={`absolute inset-0 w-full h-full object-cover ${imagePosition || 'object-center'}`}
         animate={{ scale: active ? 1.1 : 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         loading="lazy"
@@ -46,12 +50,24 @@ export default function CategoryCard({ type, label, image }: Props) {
 
       {/* Content */}
       <div className="relative h-full flex flex-col justify-end p-4 md:p-6">
-        {/* Title — slides up on active */}
+        {/* Title — slides up on active, more on desktop */}
+        {/* Mobile */}
         <motion.div
           animate={{ y: active ? -(linkCount * 24 + 12) : 0 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="md:hidden"
         >
-          <span className="font-body text-xl md:text-3xl font-black text-white block">
+          <span className="font-body text-xl font-black text-white block">
+            {label}
+          </span>
+        </motion.div>
+        {/* Desktop */}
+        <motion.div
+          animate={{ y: active ? -(linkCount * 34 + 30) : 0 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="hidden md:block"
+        >
+          <span className="font-body text-3xl font-black text-white block">
             {label}
           </span>
         </motion.div>

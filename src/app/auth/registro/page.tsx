@@ -80,7 +80,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-16 px-4">
+    <div className="max-w-md mx-auto px-4 min-h-[80vh] flex flex-col justify-center">
       <h1 className="font-body text-3xl font-black mb-6">Crear cuenta</h1>
 
       {error && (

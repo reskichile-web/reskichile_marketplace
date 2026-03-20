@@ -8,7 +8,7 @@ export default function Footer() {
         <img
           src="/images/clement-delhaye-cnluLIyhpBA-unsplash.jpg"
           alt=""
-          className="absolute inset-0 w-full h-full object-cover object-[center_45%]"
+          className="absolute inset-0 w-full h-full object-cover object-[center_70%]"
         />
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent" />
       </div>

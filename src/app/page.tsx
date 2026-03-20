@@ -40,7 +40,7 @@ export default async function HomePage() {
     cascos: '/images/1.png',
     antiparras: 'https://images.unsplash.com/photo-1515876305430-f06edab8282a?w=600&q=80&fit=crop',
     parkas: '/images/2.png',
-    pantalones: '/images/pantalones.svg',
+    pantalones: '/images/boxer.JPG',
     fijaciones: 'https://images.unsplash.com/photo-1486495939893-f3b5e43adf29?w=600&q=80&fit=crop',
     guantes: 'https://images.unsplash.com/photo-1517483000871-1dbf64a6e1c6?w=600&q=80&fit=crop',
     mochilas: 'https://images.unsplash.com/photo-1501554728187-ce583db33af7?w=600&q=80&fit=crop',
@@ -52,9 +52,9 @@ export default async function HomePage() {
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden -mt-[96px] md:-mt-[131px]">
-        <img src="/images/_ (24).jpeg" alt="" className="absolute -top-[10%] left-0 right-0 h-[160%] w-full object-cover object-top md:hidden" />
+        <img src="/images/_ (24).jpeg" alt="" className="absolute -top-[5%] left-0 right-0 h-[160%] w-full object-cover object-top md:hidden" />
         <img src="https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=3840&q=90&fit=crop" alt="" className="absolute inset-0 w-full h-full object-cover object-top hidden md:block" />
-        <div className="absolute inset-0 bg-white/80" />
+        <div className="absolute inset-0 bg-white/65 md:bg-white/80" />
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
         <div className="relative max-w-5xl mx-auto px-4 md:px-6 pt-[140px] md:pt-[220px] pb-16 md:pb-32">
         <h1 className="font-body text-3xl md:text-7xl font-black leading-[1.1] max-w-4xl">
@@ -100,6 +100,7 @@ export default async function HomePage() {
                 label={PRODUCT_TYPES[type] || type}
                 count={count}
                 image={categoryImages[type] || categoryImages.otros}
+                imagePosition={type === 'pantalones' ? 'object-[center_70%]' : undefined}
               />
             ))}
           </div>
@@ -108,19 +109,23 @@ export default async function HomePage() {
 
       {/* CTA — simple card */}
       <section className="max-w-[1000px] mx-auto px-4 md:px-6">
-        <div className="bg-white rounded-2xl border border-gray-200 p-10 md:p-16 text-center">
-          <h2 className="font-body text-2xl md:text-4xl font-black text-gray-900">
-            ¿Tienes equipo que ya no usas?
-          </h2>
-          <p className="text-gray-500 mt-4 text-lg hidden md:block">
-            Publícalo gratis y encuentra un nuevo dueño.
-          </p>
-          <Link
-            href="/vender"
-            className="inline-block mt-8 bg-brand-500 text-white px-10 py-4 rounded-lg font-medium hover:bg-brand-600 transition-colors"
-          >
-            Publicar producto
-          </Link>
+        <div className="relative rounded-2xl overflow-hidden p-10 md:p-16 text-center">
+          <img src="/images/pantalones.svg" alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-white/80" />
+          <div className="relative">
+            <h2 className="font-body text-2xl md:text-4xl font-black text-gray-900">
+              ¿Tienes equipo que ya no usas?
+            </h2>
+            <p className="text-gray-500 mt-4 text-lg hidden md:block">
+              Publícalo gratis y encuentra un nuevo dueño.
+            </p>
+            <Link
+              href="/vender"
+              className="inline-block mt-8 bg-brand-500 text-white px-10 py-4 rounded-lg font-medium hover:bg-brand-600 transition-colors"
+            >
+              Publicar producto
+            </Link>
+          </div>
         </div>
       </section>
 

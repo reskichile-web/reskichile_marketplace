@@ -135,7 +135,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
                           key={cat.key}
                           href={`/catalogo?product_type=${cat.key}`}
                           onClick={() => setOpen(false)}
-                          className="block py-2 text-sm text-gray-600 hover:text-brand-500"
+                          className="block py-2 text-sm text-gray-600 font-bold hover:text-brand-500"
                         >
                           {cat.label}
                         </Link>
@@ -154,13 +154,41 @@ export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
   return (
     <div className="md:hidden">
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen(!open)}
         className="p-1"
         aria-label="Menú"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
+        <AnimatePresence mode="wait">
+          {open ? (
+            <motion.svg
+              key="arrow"
+              initial={{ opacity: 0, rotate: -90 }}
+              animate={{ opacity: 1, rotate: 0 }}
+              exit={{ opacity: 0, rotate: 90 }}
+              transition={{ duration: 0.2 }}
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </motion.svg>
+          ) : (
+            <motion.svg
+              key="burger"
+              initial={{ opacity: 0, rotate: 90 }}
+              animate={{ opacity: 1, rotate: 0 }}
+              exit={{ opacity: 0, rotate: -90 }}
+              transition={{ duration: 0.2 }}
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </motion.svg>
+          )}
+        </AnimatePresence>
       </button>
 
       {mounted && createPortal(sidebar, document.body)}

@@ -29,7 +29,7 @@ export default async function Header() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">
           {/* Logo */}
           <Link href="/" className="shrink-0">
-            <img src="/logo.svg" alt="ReskiChile" className="h-8 md:h-14" />
+            <img src="/logo.svg" alt="ReskiChile" className="h-10 md:h-14" />
           </Link>
 
           {/* Search — full bar on desktop, icon on mobile */}
