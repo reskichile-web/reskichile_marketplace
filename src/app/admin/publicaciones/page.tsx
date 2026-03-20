@@ -79,10 +79,19 @@ export default function PublicacionesPage() {
     })
   }, [products, statusFilter, brandFilter, search])
 
-  async function handleApprove(productId: string) {
+  async function handleStatusChange(productId: string, status: string, extra?: Record<string, unknown>) {
     const supabase = createClient()
-    await supabase.from('products').update({ status: 'approved', rejection_reason: null }).eq('id', productId)
-    loadProducts()
+    const { error } = await supabase.from('products').update({ status, ...extra }).eq('id', productId)
+    if (error) {
+      console.error('Status update error:', error.message)
+      alert('Error al cambiar estado: ' + error.message)
+      return
+    }
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, status, ...extra } as AdminProduct : p))
+  }
+
+  async function handleApprove(productId: string) {
+    await handleStatusChange(productId, 'approved', { rejection_reason: null })
   }
 
   async function handleReject(productId: string) {
@@ -90,17 +99,13 @@ export default function PublicacionesPage() {
       alert('Ingresa un motivo de rechazo')
       return
     }
-    const supabase = createClient()
-    await supabase.from('products').update({ status: 'rejected', rejection_reason: rejectionReason }).eq('id', productId)
+    await handleStatusChange(productId, 'rejected', { rejection_reason: rejectionReason })
     setRejectingId(null)
     setRejectionReason('')
-    loadProducts()
   }
 
   async function handleMarkSold(productId: string) {
-    const supabase = createClient()
-    await supabase.from('products').update({ status: 'sold' }).eq('id', productId)
-    loadProducts()
+    await handleStatusChange(productId, 'sold')
   }
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
