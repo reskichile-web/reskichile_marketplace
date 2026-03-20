@@ -103,14 +103,17 @@ export default function PublicacionesPage() {
     loadProducts()
   }
 
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
   async function handleDelete(productId: string) {
     if (!confirm('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.')) return
+    setDeletingId(productId)
     const supabase = createClient()
-    // Delete images first, then product
     await supabase.from('product_images').delete().eq('product_id', productId)
     await supabase.from('products').delete().eq('id', productId)
     setExpandedId(null)
-    loadProducts()
+    await loadProducts()
+    setDeletingId(null)
   }
 
 
@@ -252,8 +255,16 @@ export default function PublicacionesPage() {
                           <Link href={`/producto/${product.id}/editar`} className="text-xs border px-2.5 py-1 rounded hover:bg-gray-100">
                             Editar
                           </Link>
-                          <button onClick={() => handleDelete(product.id)} className="text-xs border border-red-200 text-red-500 px-2.5 py-1 rounded hover:bg-red-50">
-                            Eliminar
+                          <button onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="text-xs border border-red-200 text-red-500 px-2.5 py-1 rounded hover:bg-red-50 disabled:opacity-50 flex items-center gap-1">
+                            {deletingId === product.id ? (
+                              <>
+                                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Eliminando
+                              </>
+                            ) : 'Eliminar'}
                           </button>
                         </div>
                       </td>
