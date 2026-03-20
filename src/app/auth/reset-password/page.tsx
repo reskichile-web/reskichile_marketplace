@@ -12,17 +12,20 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [ready, setReady] = useState(false)
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    // Supabase handles the token exchange automatically via the URL hash
-    const supabase = createClient()
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setReady(true)
+    async function check() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/auth/login?error=expired_link')
+        return
       }
-    })
-  }, [])
+      setChecking(false)
+    }
+    check()
+  }, [router])
 
   function validate(): string | null {
     if (!password) return 'Ingresa una contraseña'
@@ -51,7 +54,7 @@ export default function ResetPasswordPage() {
       return
     }
 
-    // Also clear must_change_password if it was set
+    // Clear must_change_password flag
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase
@@ -64,11 +67,11 @@ export default function ResetPasswordPage() {
     router.refresh()
   }
 
-  if (!ready) return (
+  if (checking) return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="text-center">
         <div className="animate-spin w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full mx-auto mb-4" />
-        <p className="text-sm text-gray-500">Verificando link...</p>
+        <p className="text-sm text-gray-500">Verificando...</p>
       </div>
     </div>
   )

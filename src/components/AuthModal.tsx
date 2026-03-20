@@ -367,7 +367,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
 
     const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: '/auth/reset-password',
     })
 
     if (error) {
