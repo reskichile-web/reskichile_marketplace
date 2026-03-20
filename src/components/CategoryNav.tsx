@@ -28,7 +28,7 @@ export default function CategoryNav() {
         return (
           <Link
             key={cat.key}
-            href={cat.href || `/catalogo?product_type=${cat.key}`}
+            href={`/catalogo?product_type=${cat.key}`}
             className="relative px-5 py-2.5 text-base font-nav font-bold whitespace-nowrap overflow-hidden group"
           >
             {/* Underline for active, full block on hover */}
