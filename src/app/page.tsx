@@ -27,14 +27,15 @@ export default async function HomePage() {
     categoryCounts[p.product_type] = (categoryCounts[p.product_type] || 0) + 1
   })
 
-  const topCategories = Object.entries(categoryCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
+  const categoryOrder = ['esquis', 'botas_esqui', 'pantalones', 'snowboards', 'cascos', 'parkas']
+  const topCategories = categoryOrder
+    .filter(type => categoryCounts[type])
+    .map(type => [type, categoryCounts[type]] as [string, number])
 
 
   const categoryImages: Record<string, string> = {
     esquis: '/images/3.png',
-    snowboards: '/images/hamish-duncan-XO6FSH3H5CE-unsplash.jpg',
+    snowboards: '/images/snowboard.jpg',
     botas_esqui: '/images/How To Choose Your Ski Boots.jpeg',
     botas_snowboard: 'https://images.unsplash.com/photo-1522056615691-da7b8106c665?w=600&q=80&fit=crop',
     cascos: '/images/1.png',
