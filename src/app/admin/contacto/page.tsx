@@ -38,10 +38,12 @@ export default function ContactoPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select('id, brand, model, product_type, price, sale_price, status, contact_user_checked, contact_product_checked, seller_id, users(name, email, phone, keep)')
         .order('created_at', { ascending: false })
+
+      if (error) console.error('Fetch error:', error.message)
 
       const mapped: ContactRow[] = (data || []).map((p: Record<string, unknown>) => {
         const user = p.users as { name: string | null; email: string | null; phone: string | null; keep: boolean | null } | null
@@ -80,7 +82,11 @@ export default function ContactoPage() {
 
   async function updateField(productId: string, field: string, value: unknown) {
     const supabase = createClient()
-    await supabase.from('products').update({ [field]: value }).eq('id', productId)
+    const { error } = await supabase.from('products').update({ [field]: value }).eq('id', productId)
+    if (error) {
+      console.error('Update error:', field, error.message)
+      return
+    }
     setRows(prev => prev.map(r => r.product_id === productId ? { ...r, [field]: value } : r))
   }
 
