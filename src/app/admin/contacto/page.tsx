@@ -34,6 +34,7 @@ export default function ContactoPage() {
   const [rows, setRows] = useState<ContactRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'default' | 'user' | 'product' | 'both'>('default')
 
   useEffect(() => {
     async function load() {
@@ -72,13 +73,25 @@ export default function ContactoPage() {
   }, [])
 
   const filtered = useMemo(() => {
-    if (!search) return rows
-    const q = search.toLowerCase()
-    return rows.filter(r => {
-      const text = [r.seller_name, r.seller_email, r.brand, r.model].filter(Boolean).join(' ').toLowerCase()
-      return text.includes(q)
-    })
-  }, [rows, search])
+    let result = rows
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(r => {
+        const text = [r.seller_name, r.seller_email, r.brand, r.model].filter(Boolean).join(' ').toLowerCase()
+        return text.includes(q)
+      })
+    }
+    if (sortBy !== 'default') {
+      result = [...result].sort((a, b) => {
+        if (sortBy === 'user') return (b.contact_user_checked ? 1 : 0) - (a.contact_user_checked ? 1 : 0)
+        if (sortBy === 'product') return (b.contact_product_checked ? 1 : 0) - (a.contact_product_checked ? 1 : 0)
+        const aBoth = a.contact_user_checked && a.contact_product_checked ? 1 : 0
+        const bBoth = b.contact_user_checked && b.contact_product_checked ? 1 : 0
+        return bBoth - aBoth
+      })
+    }
+    return result
+  }, [rows, search, sortBy])
 
   async function updateField(productId: string, field: string, value: unknown) {
     const supabase = createClient()
@@ -105,6 +118,12 @@ export default function ContactoPage() {
             {filtered.length} publicaciones · {checkedCount} completadas
           </p>
         </div>
+        <button
+          onClick={() => setSortBy(sortBy === 'both' ? 'default' : 'both')}
+          className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${sortBy === 'both' ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+        >
+          Completadas primero
+        </button>
       </div>
 
       <div className="mb-4">
@@ -123,10 +142,14 @@ export default function ContactoPage() {
             <thead>
               <tr className="border-b bg-gray-50/50 text-left text-gray-500">
                 <th className="px-4 py-3 font-medium w-10">
-                  <span className="text-[10px] uppercase tracking-wider">User</span>
+                  <button onClick={() => setSortBy(sortBy === 'user' ? 'default' : 'user')} className={`text-[10px] uppercase tracking-wider ${sortBy === 'user' ? 'text-brand-500' : ''}`}>
+                    User {sortBy === 'user' ? '↓' : ''}
+                  </button>
                 </th>
                 <th className="px-4 py-3 font-medium w-10">
-                  <span className="text-[10px] uppercase tracking-wider">Prod</span>
+                  <button onClick={() => setSortBy(sortBy === 'product' ? 'default' : 'product')} className={`text-[10px] uppercase tracking-wider ${sortBy === 'product' ? 'text-brand-500' : ''}`}>
+                    Prod {sortBy === 'product' ? '↓' : ''}
+                  </button>
                 </th>
                 <th className="px-4 py-3 font-medium">Vendedor</th>
                 <th className="px-4 py-3 font-medium w-10">
