@@ -34,12 +34,12 @@ export default function PaymentResultPage() {
 
   return (
     <div className="max-w-md mx-auto mt-16 px-4 text-center">
-      <h1 className={`text-2xl font-bold mb-4 ${msg.color}`}>{msg.title}</h1>
+      <h1 className={`font-body text-3xl font-black mb-4 ${msg.color}`}>{msg.title}</h1>
       <p className="text-gray-600 mb-8">{msg.desc}</p>
       <div className="flex gap-4 justify-center">
         <Link
           href="/mis-productos"
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          className="bg-brand-500 text-white px-6 py-2 rounded hover:bg-brand-600"
         >
           Mis productos
         </Link>

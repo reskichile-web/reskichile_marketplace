@@ -1,17 +1,42 @@
 import type { Metadata } from 'next'
-import { Inter, Geist } from 'next/font/google'
+import { Montserrat, DM_Sans } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 import Header from '@/components/Header'
+import StickyHeader from '@/components/StickyHeader'
 import Footer from '@/components/Footer'
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils'
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-body',
+})
 
-const inter = Inter({ subsets: ['latin'] })
+const norwester = localFont({
+  src: '../fonts/norwester.woff',
+  variable: '--font-display',
+  display: 'swap',
+})
+
+const kollektif = localFont({
+  src: '../fonts/Kollektif.ttf',
+  variable: '--font-sub',
+  display: 'swap',
+})
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-nav',
+})
 
 export const metadata: Metadata = {
   title: 'ReskiChile - Equipamiento de montaña usado',
   description: 'Marketplace de equipamiento usado de ski, snowboard y escalada en Chile',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
@@ -20,9 +45,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={cn("font-sans", geist.variable)}>
-      <body className={`${inter.className} min-h-screen flex flex-col`}>
-        <Header />
+    <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, dmSans.variable)}>
+      <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
+        <StickyHeader><Header /></StickyHeader>
+        <div className="h-[140px]" />
         <main className="flex-1">
           {children}
         </main>

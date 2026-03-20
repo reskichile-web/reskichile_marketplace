@@ -1,74 +1,146 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { PRODUCT_TYPES, CONDITIONS } from '@/lib/constants'
+import { PRODUCT_TYPES } from '@/lib/constants'
+import RotatingWord from '@/components/RotatingWord'
+import CategoryCard from '@/components/CategoryCard'
+import ProductBrowser from '@/components/ProductBrowser'
 
 export default async function HomePage() {
   const supabase = createServerSupabaseClient()
 
   const { data: products } = await supabase
     .from('products')
-    .select('*, product_images(*)')
+    .select('id, product_type, brand, model, price, condition, region, product_images(url, order)')
     .eq('status', 'approved')
     .order('created_at', { ascending: false })
-    .limit(8)
+
+  // Get category counts for the grid
+  const { data: allProducts } = await supabase
+    .from('products')
+    .select('product_type')
+    .eq('status', 'approved')
+
+  const categoryCounts: Record<string, number> = {}
+  allProducts?.forEach(p => {
+    categoryCounts[p.product_type] = (categoryCounts[p.product_type] || 0) + 1
+  })
+
+  const topCategories = Object.entries(categoryCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+
+  // Fetch preview products for each top category
+  const categoryPreviews: Record<string, { id: string; brand: string; model: string | null; price: number }[]> = {}
+  for (const [type] of topCategories) {
+    const { data } = await supabase
+      .from('products')
+      .select('id, brand, model, price')
+      .eq('status', 'approved')
+      .eq('product_type', type)
+      .order('created_at', { ascending: false })
+      .limit(4)
+    categoryPreviews[type] = data || []
+  }
+
+  const categoryImages: Record<string, string> = {
+    esquis: '/images/3.png',
+    snowboards: 'https://images.unsplash.com/photo-1478700845778-62c5f6ddf06f?w=600&q=80&fit=crop',
+    botas_esqui: '/images/How To Choose Your Ski Boots.jpeg',
+    botas_snowboard: 'https://images.unsplash.com/photo-1522056615691-da7b8106c665?w=600&q=80&fit=crop',
+    cascos: '/images/1.png',
+    antiparras: 'https://images.unsplash.com/photo-1515876305430-f06edab8282a?w=600&q=80&fit=crop',
+    parkas: '/images/2.png',
+    pantalones: '/images/pantalones.svg',
+    fijaciones: 'https://images.unsplash.com/photo-1486495939893-f3b5e43adf29?w=600&q=80&fit=crop',
+    guantes: 'https://images.unsplash.com/photo-1517483000871-1dbf64a6e1c6?w=600&q=80&fit=crop',
+    mochilas: 'https://images.unsplash.com/photo-1501554728187-ce583db33af7?w=600&q=80&fit=crop',
+    bolsos: 'https://images.unsplash.com/photo-1501554728187-ce583db33af7?w=600&q=80&fit=crop',
+    otros: 'https://images.unsplash.com/photo-1551524559-8af4e6624178?w=600&q=80&fit=crop',
+  }
 
   return (
     <div>
-      <section className="bg-blue-600 text-white py-10 md:py-16">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-2xl md:text-4xl font-bold mb-3 md:mb-4">
-            Compra y vende equipamiento de montaña usado
-          </h1>
-          <p className="text-sm md:text-lg text-blue-100 mb-6 md:mb-8">
-            Ski, snowboard y más. El marketplace especializado de Chile.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <Link href="/catalogo" className="bg-white text-blue-600 px-6 py-3 rounded font-medium hover:bg-blue-50">
-              Ver catálogo
-            </Link>
-            <Link href="/vender" className="border border-white px-6 py-3 rounded font-medium hover:bg-blue-700">
-              Publicar producto
-            </Link>
-          </div>
+      {/* Hero */}
+      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-24">
+        <h1 className="font-body text-4xl md:text-7xl font-black leading-[1.1] max-w-4xl">
+          Encuentra lo mejor en <RotatingWord />
+        </h1>
+        <p className="text-gray-500 text-lg md:text-xl mt-6 leading-relaxed">
+          Mismo equipo, mejor precio. <span className="whitespace-nowrap">El <span className="underline decoration-brand-500 decoration-2 underline-offset-4">snowmarket</span> de Chile.</span>
+        </p>
+        <div className="flex gap-4 mt-10">
+          <Link
+            href="/catalogo"
+            className="inline-flex items-center gap-2.5 bg-brand-500 text-white px-8 py-3.5 rounded-sm font-medium hover:bg-brand-600 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+            </svg>
+            Explorar ofertas
+          </Link>
+          <Link
+            href="/vender"
+            className="inline-flex items-center gap-2.5 border border-gray-300 px-8 py-3.5 rounded-sm font-medium hover:border-gray-400 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Publicar equipo
+          </Link>
         </div>
       </section>
 
-      {products && products.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 py-12">
-          <h2 className="text-2xl font-bold mb-6">Publicaciones recientes</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {products.map((product) => {
-              const mainImage = product.product_images?.sort(
-                (a: { order: number }, b: { order: number }) => a.order - b.order
-              )[0]
-              const title = [product.brand, product.model].filter(Boolean).join(' ')
-
-              return (
-                <Link key={product.id} href={`/producto/${product.id}`} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="aspect-square bg-gray-100">
-                    {mainImage ? (
-                      <img src={mainImage.url} alt={title} className="w-full h-full object-cover" loading="lazy" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">Sin foto</div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <p className="text-xs text-blue-600 font-medium">{PRODUCT_TYPES[product.product_type]}</p>
-                    <h3 className="font-medium text-sm truncate">{title}</h3>
-                    <p className="text-lg font-bold text-blue-600">${product.price.toLocaleString('es-CL')}</p>
-                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                      {CONDITIONS[product.condition] || product.condition}
-                    </span>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-          <div className="text-center mt-8">
-            <Link href="/catalogo" className="text-blue-600 hover:underline font-medium">Ver todo el catálogo</Link>
+      {/* Categories — Bauhaus grid */}
+      {topCategories.length > 0 && (
+        <section className="max-w-5xl mx-auto px-6 pb-20">
+          <h2 className="font-body text-sm font-medium tracking-widest uppercase text-gray-400 mb-8">
+            Categorías
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {topCategories.map(([type, count]) => (
+              <CategoryCard
+                key={type}
+                type={type}
+                label={PRODUCT_TYPES[type] || type}
+                count={count}
+                image={categoryImages[type] || categoryImages.otros}
+                products={categoryPreviews[type] || []}
+              />
+            ))}
           </div>
         </section>
       )}
+
+      {/* Product browser — own sticky navbar + filters */}
+      {products && products.length > 0 && (
+        <ProductBrowser products={products} />
+      )}
+
+      {/* CTA */}
+      <section className="relative overflow-hidden min-h-[400px] md:min-h-[500px] flex items-center">
+        <img
+          src="/images/Tienda de Esquí Online_ Ropa, Material y Accesorios en un solo lugar.jpeg"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-black/55" />
+        <div className="relative max-w-5xl mx-auto px-6 py-24 md:py-32 text-center w-full">
+          <h2 className="font-body text-3xl md:text-5xl font-black text-white">
+            ¿Tienes equipo que ya no usas?
+          </h2>
+          <p className="text-white/70 mt-4 text-lg">
+            Publícalo gratis y encuentra un nuevo dueño.
+          </p>
+          <Link
+            href="/vender"
+            className="inline-block mt-8 bg-white text-gray-900 px-10 py-4 rounded-sm font-medium hover:bg-gray-100 transition-colors"
+          >
+            Publicar producto
+          </Link>
+        </div>
+      </section>
     </div>
   )
 }

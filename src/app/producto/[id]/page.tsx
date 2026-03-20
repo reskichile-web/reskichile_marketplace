@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, CONDITIONS, PRODUCT_ATTRIBUTES } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
@@ -13,6 +14,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [currentImage, setCurrentImage] = useState(0)
   const [user, setUser] = useState<{ id: string } | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [contacting, setContacting] = useState(false)
 
   useEffect(() => {
@@ -20,6 +22,15 @@ export default function ProductDetailPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single()
+        setIsAdmin(profile?.is_admin ?? false)
+      }
 
       const { data } = await supabase
         .from('products')
@@ -58,6 +69,7 @@ export default function ProductDetailPage() {
 
   const images = (product.product_images || []).sort((a, b) => a.order - b.order)
   const isOwner = user?.id === product.seller_id
+  const canEdit = isOwner || isAdmin
   const title = [product.brand, product.model].filter(Boolean).join(' ')
   const attrFields = PRODUCT_ATTRIBUTES[product.product_type] || []
   const attrs = (product.attributes || {}) as Record<string, unknown>
@@ -80,7 +92,7 @@ export default function ProductDetailPage() {
                 <button
                   key={img.id}
                   onClick={() => setCurrentImage(i)}
-                  className={`aspect-square rounded overflow-hidden border-2 ${i === currentImage ? 'border-blue-600' : 'border-transparent'}`}
+                  className={`aspect-square rounded overflow-hidden border-2 ${i === currentImage ? 'border-brand-500' : 'border-transparent'}`}
                 >
                   <img src={img.url} alt="" className="w-full h-full object-cover" />
                 </button>
@@ -91,9 +103,9 @@ export default function ProductDetailPage() {
 
         {/* Product info */}
         <div>
-          <p className="text-sm text-blue-600 font-medium">{PRODUCT_TYPES[product.product_type]}</p>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="text-3xl font-bold text-blue-600 mt-2">${product.price.toLocaleString('es-CL')}</p>
+          <p className="text-sm text-brand-500 font-medium">{PRODUCT_TYPES[product.product_type]}</p>
+          <h1 className="font-body text-3xl font-black">{title}</h1>
+          <p className="font-body text-3xl font-semibold text-brand-500 mt-2">${product.price.toLocaleString('es-CL')}</p>
 
           <div className="mt-6 space-y-3">
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -138,7 +150,7 @@ export default function ProductDetailPage() {
 
           {product.description && (
             <div className="mt-6">
-              <h2 className="font-medium mb-2">Descripción</h2>
+              <h2 className="font-body font-medium tracking-sub mb-2">Descripción</h2>
               <p className="text-gray-700 whitespace-pre-wrap">{product.description}</p>
             </div>
           )}
@@ -151,6 +163,15 @@ export default function ProductDetailPage() {
             >
               {contacting ? 'Conectando...' : 'Contactar vendedor por WhatsApp'}
             </button>
+          )}
+
+          {canEdit && (
+            <Link
+              href={`/producto/${params.id}/editar`}
+              className="block w-full mt-3 text-center border border-brand-500 text-brand-500 py-2.5 rounded-lg hover:bg-brand-50 font-medium text-sm"
+            >
+              Editar producto
+            </Link>
           )}
         </div>
       </div>

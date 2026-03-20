@@ -273,7 +273,7 @@ export default function SellPage() {
 
   return (
     <div className="max-w-2xl mx-auto mt-8 px-4 pb-16">
-      <h1 className="text-2xl font-bold mb-6">Publicar producto</h1>
+      <h1 className="font-body text-3xl font-black mb-6">Publicar producto</h1>
 
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
@@ -408,7 +408,7 @@ export default function SellPage() {
         {/* Dynamic Attributes */}
         {currentAttributes.length > 0 && (
           <div className="border-t pt-4">
-            <h2 className="text-lg font-semibold mb-3">
+            <h2 className="font-body text-lg font-medium tracking-sub mb-3">
               Atributos de {PRODUCT_TYPES[form.product_type]}
             </h2>
             <div className="space-y-4">
@@ -464,7 +464,7 @@ export default function SellPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
+          className="w-full bg-brand-500 text-white py-3 rounded hover:bg-brand-600 disabled:opacity-50 font-medium"
         >
           {loading ? 'Publicando...' : 'Publicar producto'}
         </button>

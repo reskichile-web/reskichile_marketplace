@@ -6,11 +6,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PHONE_REGEX = /^\+?[\d\s\-()]{8,15}$/
 const PASSWORD_MIN = 6
 
 export default function RegisterPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -18,9 +20,12 @@ export default function RegisterPage() {
 
   function validate(): string | null {
     const trimmedEmail = email.trim().toLowerCase()
+    const trimmedPhone = phone.trim()
 
     if (!trimmedEmail) return 'Ingresa tu email'
     if (!EMAIL_REGEX.test(trimmedEmail)) return 'Ingresa un email válido'
+    if (!trimmedPhone) return 'Ingresa tu número de teléfono'
+    if (!PHONE_REGEX.test(trimmedPhone)) return 'Ingresa un número de teléfono válido'
     if (!password) return 'Ingresa una contraseña'
     if (password.length < PASSWORD_MIN) return `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`
     if (!/[A-Z]/.test(password)) return 'La contraseña debe tener al menos una mayúscula'
@@ -61,13 +66,21 @@ export default function RegisterPage() {
       return
     }
 
+    if (data.user) {
+      await supabase.from('users').upsert({
+        id: data.user.id,
+        email: data.user.email,
+        phone: phone.trim(),
+      }, { onConflict: 'id' })
+    }
+
     router.push('/perfil')
     router.refresh()
   }
 
   return (
     <div className="max-w-md mx-auto mt-16 px-4">
-      <h1 className="text-2xl font-bold mb-6">Crear cuenta</h1>
+      <h1 className="font-body text-3xl font-black mb-6">Crear cuenta</h1>
 
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
@@ -87,6 +100,22 @@ export default function RegisterPage() {
             placeholder="tu@email.com"
             autoComplete="email"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
+          <input
+            type="tel"
+            required
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="+56 9 1234 5678"
+            autoComplete="tel"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Los compradores te contactarán por WhatsApp
+          </p>
         </div>
 
         <div>
@@ -119,7 +148,7 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-brand-500 text-white py-2 rounded hover:bg-brand-600 disabled:opacity-50"
         >
           {loading ? 'Creando cuenta...' : 'Crear cuenta'}
         </button>
@@ -127,7 +156,7 @@ export default function RegisterPage() {
 
       <p className="mt-4 text-sm text-center text-gray-600">
         ¿Ya tienes cuenta?{' '}
-        <Link href="/auth/login" className="text-blue-600 hover:underline">
+        <Link href="/auth/login" className="text-brand-500 hover:underline">
           Inicia sesión
         </Link>
       </p>

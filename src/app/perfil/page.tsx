@@ -79,7 +79,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md mx-auto mt-16 px-4">
-      <h1 className="text-2xl font-bold mb-6">Mi perfil</h1>
+      <h1 className="font-body text-3xl font-black mb-6">Mi perfil</h1>
 
       {message && (
         <div className={`p-3 rounded mb-4 text-sm ${message.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
@@ -140,7 +140,7 @@ export default function ProfilePage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-brand-500 text-white py-2 rounded hover:bg-brand-600 disabled:opacity-50"
         >
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>

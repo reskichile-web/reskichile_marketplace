@@ -1,53 +1,82 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_TYPES, CONDITIONS } from '@/lib/constants'
+import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS } from '@/lib/constants'
 
 interface AdminProduct {
   id: string
   product_type: string
   brand: string
   model: string | null
-  condition: string
   price: number
   status: string
   created_at: string
-  description: string | null
+  seller_id: string
+  condition: string
   region: string
   comuna: string
   seasons_used: string | null
-  seller_id: string
-  users: { name: string | null; email: string } | null
+  description: string | null
+  rejection_reason: string | null
+  attributes: Record<string, unknown> | null
+  users: { name: string | null; email: string; phone: string | null } | null
   product_images: { url: string; order: number }[]
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+  sold: 'bg-brand-100 text-brand-700',
+  archived: 'bg-gray-100 text-gray-500',
 }
 
 export default function AdminPage() {
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [search, setSearch] = useState('')
+  const [brandFilter, setBrandFilter] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const loadProducts = useCallback(async () => {
     const supabase = createClient()
-    let query = supabase
+    const { data } = await supabase
       .from('products')
-      .select('*, users(name, email), product_images(*)')
+      .select('id, product_type, brand, model, price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, users(name, email, phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
-    if (filter !== 'all') {
-      query = query.eq('status', filter)
-    }
-
-    const { data } = await query
-    setProducts((data as AdminProduct[]) || [])
+    setProducts((data as unknown as AdminProduct[]) || [])
     setLoading(false)
-  }, [filter])
+  }, [])
 
   useEffect(() => {
     loadProducts()
   }, [loadProducts])
+
+  const brands = useMemo(() => {
+    const set = new Set(products.map(p => p.brand))
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))
+  }, [products])
+
+  const filtered = useMemo(() => {
+    return products.filter(p => {
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false
+      if (brandFilter && p.brand !== brandFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        const title = [p.brand, p.model].filter(Boolean).join(' ').toLowerCase()
+        const seller = (p.users?.name || p.users?.email || '').toLowerCase()
+        if (!title.includes(q) && !seller.includes(q)) return false
+      }
+      return true
+    })
+  }, [products, statusFilter, brandFilter, search])
 
   async function handleApprove(productId: string) {
     const supabase = createClient()
@@ -67,112 +96,271 @@ export default function AdminPage() {
     loadProducts()
   }
 
+  async function handleMarkSold(productId: string) {
+    const supabase = createClient()
+    await supabase.from('products').update({ status: 'sold' }).eq('id', productId)
+    loadProducts()
+  }
+
   if (loading) return <div className="max-w-6xl mx-auto mt-16 px-4">Cargando...</div>
 
   return (
     <div className="max-w-6xl mx-auto mt-8 px-4 pb-16">
-      <h1 className="text-2xl font-bold mb-6">Panel de administración</h1>
+      <h1 className="font-body text-3xl font-black mb-6">Panel de administración</h1>
 
-      <div className="flex gap-2 mb-6 overflow-x-auto">
-        {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded text-sm whitespace-nowrap ${filter === f ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+      {/* Filters */}
+      <div className="space-y-3 mb-6">
+        {/* Status tabs */}
+        <div className="flex gap-2 overflow-x-auto">
+          {(['all', 'pending', 'approved', 'rejected', 'sold'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setStatusFilter(f)}
+              className={`px-4 py-2 rounded text-sm whitespace-nowrap ${statusFilter === f ? 'bg-brand-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+            >
+              {f === 'all' ? 'Todos' : PRODUCT_STATUSES[f] || f}
+              <span className="ml-1 opacity-70">
+                ({f === 'all' ? products.length : products.filter(p => p.status === f).length})
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search + brand filter */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar marca, modelo o vendedor..."
+            className="flex-1 border rounded px-3 py-2 text-sm"
+          />
+          <select
+            value={brandFilter}
+            onChange={e => setBrandFilter(e.target.value)}
+            className="border rounded px-3 py-2 text-sm sm:w-48"
           >
-            {f === 'pending' && 'Pendientes'}
-            {f === 'approved' && 'Aprobados'}
-            {f === 'rejected' && 'Rechazados'}
-            {f === 'all' && 'Todos'}
-          </button>
-        ))}
+            <option value="">Todas las marcas</option>
+            {brands.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {products.length === 0 ? (
-        <p className="text-gray-500">No hay productos en esta categoría</p>
+      {/* Results count */}
+      <p className="text-sm text-gray-500 mb-3">{filtered.length} productos</p>
+
+      {filtered.length === 0 ? (
+        <p className="text-gray-500">No hay productos que coincidan</p>
       ) : (
-        <div className="space-y-4">
-          {products.map(product => {
-            const images = product.product_images?.sort((a, b) => a.order - b.order) || []
-            const title = [product.brand, product.model].filter(Boolean).join(' ')
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-gray-500">
+                <th className="pb-2 pr-4 font-medium">Producto</th>
+                <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Precio</th>
+                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Vendedor</th>
+                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Fecha</th>
+                <th className="pb-2 pr-4 font-medium">Estado</th>
+                <th className="pb-2 font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(product => {
+                const title = [product.brand, product.model].filter(Boolean).join(' ')
+                const seller = product.users?.name || product.users?.email || 'Desconocido'
+                const isExpanded = expandedId === product.id
+                const images = (product.product_images || []).sort((a, b) => a.order - b.order)
+                const attrs = product.attributes as Record<string, unknown> | null
 
-            return (
-              <div key={product.id} className="border rounded-lg p-4">
-                {/* Images - horizontal scroll on mobile */}
-                <div className="flex gap-2 overflow-x-auto mb-3">
-                  {images.slice(0, 4).map((img, i) => (
-                    <img key={i} src={img.url} alt="" className="w-20 h-20 shrink-0 object-cover rounded" />
-                  ))}
-                  {images.length > 4 && (
-                    <div className="w-20 h-20 shrink-0 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                      +{images.length - 4}
-                    </div>
-                  )}
+                return (
+                  <React.Fragment key={product.id}>
+                    <tr className={`border-b hover:bg-gray-50 cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`} onClick={() => setExpandedId(isExpanded ? null : product.id)}>
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-2">
+                          <svg className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                          <div>
+                            <span className="font-medium">{title}</span>
+                            <span className="block sm:hidden text-xs text-gray-500 mt-0.5">
+                              ${product.price.toLocaleString('es-CL')} · {seller}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 pr-4 hidden sm:table-cell font-medium text-brand-500">
+                        ${product.price.toLocaleString('es-CL')}
+                      </td>
+                      <td className="py-3 pr-4 hidden md:table-cell text-gray-600">
+                        {seller}
+                      </td>
+                      <td className="py-3 pr-4 hidden md:table-cell text-gray-500">
+                        {new Date(product.created_at).toLocaleDateString('es-CL')}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span className={`text-xs px-2 py-1 rounded ${STATUS_COLORS[product.status] || ''}`}>
+                          {PRODUCT_STATUSES[product.status] || product.status}
+                        </span>
+                      </td>
+                      <td className="py-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-1.5">
+                          {product.status === 'pending' && (
+                            <>
+                              <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-2.5 py-1 rounded hover:bg-green-700">
+                                Aprobar
+                              </button>
+                              <button onClick={() => setRejectingId(product.id)} className="text-xs bg-red-600 text-white px-2.5 py-1 rounded hover:bg-red-700">
+                                Rechazar
+                              </button>
+                            </>
+                          )}
+                          {product.status === 'rejected' && (
+                            <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-2.5 py-1 rounded hover:bg-green-700">
+                              Aprobar
+                            </button>
+                          )}
+                          {product.status === 'approved' && (
+                            <button onClick={() => handleMarkSold(product.id)} className="text-xs border border-brand-500 text-brand-500 px-2.5 py-1 rounded hover:bg-brand-50">
+                              Vendido
+                            </button>
+                          )}
+                          <Link href={`/producto/${product.id}/editar`} className="text-xs border px-2.5 py-1 rounded hover:bg-gray-100">
+                            Editar
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Expanded detail row */}
+                    {isExpanded && (
+                      <tr className="border-b bg-gray-50/50">
+                        <td colSpan={6} className="px-4 py-4">
+                          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
+                            {/* Images */}
+                            {images.length > 0 && (
+                              <div className="flex gap-2 overflow-x-auto md:flex-col md:w-24">
+                                {images.map((img, i) => (
+                                  <img key={i} src={img.url} alt="" className="w-20 h-20 shrink-0 object-cover rounded" />
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Details */}
+                            <div className="space-y-3">
+                              {/* Basic info */}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                                <div>
+                                  <span className="text-gray-500">Tipo</span>
+                                  <p className="font-medium">{PRODUCT_TYPES[product.product_type] || product.product_type}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Condición</span>
+                                  <p className="font-medium">{CONDITIONS[product.condition] || product.condition}</p>
+                                </div>
+                                {product.seasons_used && (
+                                  <div>
+                                    <span className="text-gray-500">Temporadas</span>
+                                    <p className="font-medium">{product.seasons_used}</p>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-gray-500">Ubicación</span>
+                                  <p className="font-medium">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Precio</span>
+                                  <p className="font-medium text-brand-500">${product.price.toLocaleString('es-CL')}</p>
+                                </div>
+                              </div>
+
+                              {/* Seller info */}
+                              <div className="border-t pt-2">
+                                <span className="text-xs text-gray-500 uppercase tracking-wide">Vendedor</span>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm mt-1">
+                                  <div>
+                                    <span className="text-gray-500">Nombre</span>
+                                    <p className="font-medium">{product.users?.name || 'Sin nombre'}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Email</span>
+                                    <p className="font-medium">{product.users?.email}</p>
+                                  </div>
+                                  {product.users?.phone && (
+                                    <div>
+                                      <span className="text-gray-500">Teléfono</span>
+                                      <p className="font-medium">{product.users.phone}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Dynamic attributes */}
+                              {attrs && Object.keys(attrs).length > 0 && (
+                                <div className="border-t pt-2">
+                                  <span className="text-xs text-gray-500 uppercase tracking-wide">Atributos</span>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm mt-1">
+                                    {Object.entries(attrs).map(([key, value]) => (
+                                      <div key={key}>
+                                        <span className="text-gray-500">{key.replace(/_/g, ' ')}</span>
+                                        <p className="font-medium">{String(value)}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Description */}
+                              {product.description && (
+                                <div className="border-t pt-2">
+                                  <span className="text-xs text-gray-500 uppercase tracking-wide">Descripción</span>
+                                  <p className="text-sm mt-1">{product.description}</p>
+                                </div>
+                              )}
+
+                              {/* Rejection reason */}
+                              {product.rejection_reason && (
+                                <div className="border-t pt-2">
+                                  <span className="text-xs text-red-500 uppercase tracking-wide">Motivo de rechazo</span>
+                                  <p className="text-sm text-red-600 mt-1">{product.rejection_reason}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+
+          {/* Rejection modal inline */}
+          {rejectingId && (
+            <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 className="font-medium mb-3">Motivo de rechazo</h3>
+                <input
+                  type="text"
+                  value={rejectionReason}
+                  onChange={e => setRejectionReason(e.target.value)}
+                  placeholder="Escribe el motivo..."
+                  className="w-full border rounded px-3 py-2 text-sm mb-3"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => { setRejectingId(null); setRejectionReason('') }} className="border px-4 py-2 rounded text-sm">
+                    Cancelar
+                  </button>
+                  <button onClick={() => handleReject(rejectingId)} className="bg-red-600 text-white px-4 py-2 rounded text-sm">
+                    Rechazar
+                  </button>
                 </div>
-
-                {/* Info */}
-                <div className="min-w-0">
-                  <p className="text-xs text-blue-600 font-medium">{PRODUCT_TYPES[product.product_type]}</p>
-                  <h2 className="font-medium text-lg">{title}</h2>
-                  <p className="text-sm text-gray-500">
-                    {product.users?.name || product.users?.email || 'Desconocido'} · {new Date(product.created_at).toLocaleDateString('es-CL')}
-                  </p>
-                  <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1 text-sm">
-                    <span>{CONDITIONS[product.condition]}</span>
-                    <span>·</span>
-                    <span>{product.region}, {product.comuna}</span>
-                    {product.seasons_used && <><span>·</span><span>{product.seasons_used} temp.</span></>}
-                  </div>
-                  <p className="text-lg font-bold text-blue-600 mt-1">${product.price.toLocaleString('es-CL')}</p>
-                  {product.description && (
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{product.description}</p>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 mt-3">
-                  {product.status === 'pending' && (
-                    <>
-                      <button onClick={() => handleApprove(product.id)} className="flex-1 sm:flex-none bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
-                        Aprobar
-                      </button>
-                      <button onClick={() => setRejectingId(product.id)} className="flex-1 sm:flex-none bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">
-                        Rechazar
-                      </button>
-                    </>
-                  )}
-                  {product.status === 'rejected' && (
-                    <button onClick={() => handleApprove(product.id)} className="flex-1 sm:flex-none bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
-                      Aprobar
-                    </button>
-                  )}
-                  {product.status === 'approved' && (
-                    <span className="text-green-600 text-sm font-medium">Aprobado</span>
-                  )}
-                </div>
-
-                {rejectingId === product.id && (
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={rejectionReason}
-                      onChange={e => setRejectionReason(e.target.value)}
-                      placeholder="Motivo de rechazo"
-                      className="flex-1 border rounded px-3 py-2 text-sm"
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={() => handleReject(product.id)} className="flex-1 sm:flex-none bg-red-600 text-white px-4 py-2 rounded text-sm">
-                        Confirmar
-                      </button>
-                      <button onClick={() => { setRejectingId(null); setRejectionReason('') }} className="flex-1 sm:flex-none border px-4 py-2 rounded text-sm">
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
-            )
-          })}
+            </div>
+          )}
         </div>
       )}
     </div>

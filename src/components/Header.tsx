@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import MobileMenu from './MobileMenu'
+import SearchBar from './SearchBar'
+import CategoryNav from './CategoryNav'
+import AuthModal from './AuthModal'
 
 export default async function Header() {
   const supabase = createServerSupabaseClient()
@@ -17,58 +20,83 @@ export default async function Header() {
   }
 
   return (
-    <header className="border-b bg-white sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold text-blue-600">
-          ReskiChile
-        </Link>
-
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-4 text-sm">
-          <Link href="/catalogo" className="hover:text-blue-600">
-            Catálogo
+    <header className="bg-white shadow-sm">
+      {/* Main row: logo + search + user actions */}
+      <div>
+        <div className="max-w-7xl mx-auto px-8 h-[72px] flex items-center gap-12">
+          {/* Logo */}
+          <Link href="/" className="shrink-0">
+            <img src="/logo.svg" alt="ReskiChile" className="h-14" />
           </Link>
 
-          {user ? (
-            <>
-              <Link href="/vender" className="hover:text-blue-600">
-                Vender
-              </Link>
-              <Link href="/mis-productos" className="hover:text-blue-600">
-                Mis productos
-              </Link>
-              <Link href="/perfil" className="hover:text-blue-600">
-                Perfil
-              </Link>
-              {isAdmin && (
-                <Link href="/admin" className="hover:text-blue-600 font-medium">
+          {/* Search — center, takes remaining space */}
+          {!isAdmin && (
+            <div className="hidden md:block flex-1">
+              <SearchBar />
+            </div>
+          )}
+
+          {/* Right actions */}
+          <div className="hidden md:flex items-center gap-6 shrink-0 font-nav">
+            {isAdmin ? (
+              <>
+                <Link href="/admin" className="text-sm text-gray-900 hover:text-brand-500 transition-colors">
                   Admin
                 </Link>
-              )}
-              <form action="/auth/logout" method="POST">
-                <button type="submit" className="hover:text-blue-600">
-                  Salir
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <Link href="/auth/login" className="hover:text-blue-600">
-                Ingresar
-              </Link>
-              <Link
-                href="/auth/registro"
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              >
-                Registrarse
-              </Link>
-            </>
-          )}
-        </nav>
+                <form action="/auth/logout" method="POST">
+                  <button type="submit" className="text-sm text-gray-900 hover:text-brand-500 transition-colors">
+                    Salir
+                  </button>
+                </form>
+              </>
+            ) : user ? (
+              <>
+                <Link href="/mis-productos" className="text-gray-900 hover:text-brand-500 transition-colors" title="Mis productos">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </Link>
+                <Link href="/perfil" className="text-gray-900 hover:text-brand-500 transition-colors" title="Perfil">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </Link>
+                <form action="/auth/logout" method="POST">
+                  <button type="submit" className="text-gray-900 hover:text-brand-500 transition-colors" title="Salir">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </button>
+                </form>
+              </>
+            ) : (
+              <AuthModal />
+            )}
+            <Link href="/vender" className="bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors">
+              Vender
+            </Link>
+          </div>
 
-        {/* Mobile menu */}
-        <MobileMenu isLoggedIn={!!user} isAdmin={isAdmin} />
+          {/* Mobile menu */}
+          <MobileMenu isLoggedIn={!!user} isAdmin={isAdmin} />
+        </div>
       </div>
+
+      {/* Category nav — second row, desktop only, not for admin */}
+      {!isAdmin && (
+        <div className="hidden md:block">
+          <div className="max-w-7xl mx-auto px-8">
+            <CategoryNav />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile search — below nav */}
+      {!isAdmin && (
+        <div className="md:hidden px-4 py-3">
+          <SearchBar />
+        </div>
+      )}
     </header>
   )
 }
