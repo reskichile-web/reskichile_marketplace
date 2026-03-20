@@ -102,6 +102,7 @@ export default function PublicacionesPage() {
     loadProducts()
   }
 
+
   if (loading) return (
     <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
   )

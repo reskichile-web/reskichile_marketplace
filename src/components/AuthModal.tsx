@@ -9,7 +9,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_REGEX = /^\+?[\d\s\-()]{8,15}$/
 const PASSWORD_MIN = 6
 
-type View = 'login' | 'register'
+type View = 'login' | 'register' | 'forgot'
 
 export default function AuthModal({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' }) {
   const [open, setOpen] = useState(false)
@@ -70,9 +70,11 @@ export default function AuthModal({ variant = 'desktop' }: { variant?: 'desktop'
               {/* Form content — scrollable */}
               <div className="px-8 pb-8 -mt-4 relative overflow-y-auto">
                 {view === 'login' ? (
-                  <LoginForm onSuccess={close} onSwitch={() => setView('register')} />
-                ) : (
+                  <LoginForm onSuccess={close} onSwitch={() => setView('register')} onForgot={() => setView('forgot')} />
+                ) : view === 'register' ? (
                   <RegisterForm onSuccess={close} onSwitch={() => setView('login')} />
+                ) : (
+                  <ForgotPasswordForm onBack={() => setView('login')} />
                 )}
               </div>
             </div>
@@ -84,7 +86,7 @@ export default function AuthModal({ variant = 'desktop' }: { variant?: 'desktop'
   )
 }
 
-function LoginForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch: () => void }) {
+function LoginForm({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void; onSwitch: () => void; onForgot: () => void }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -173,6 +175,12 @@ function LoginForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch: (
             className="w-full border rounded px-3 py-2"
             autoComplete="current-password"
           />
+        </div>
+
+        <div className="flex justify-end">
+          <button type="button" onClick={onForgot} className="text-xs text-gray-400 hover:text-brand-500 transition-colors">
+            ¿Olvidaste tu contraseña?
+          </button>
         </div>
 
         <button
@@ -336,6 +344,101 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
         ¿Ya tienes cuenta?{' '}
         <button onClick={onSwitch} className="text-brand-500 hover:underline font-medium">
           Inicia sesión
+        </button>
+      </p>
+    </>
+  )
+}
+
+function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail) { setError('Ingresa tu email'); return }
+
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    setSent(true)
+    setLoading(false)
+  }
+
+  if (sent) {
+    return (
+      <>
+        <div className="text-center py-4">
+          <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="font-body text-xl font-black mb-2">Revisa tu email</h2>
+          <p className="text-sm text-gray-500">
+            Enviamos un link a <span className="font-medium text-gray-700">{email}</span> para restablecer tu contraseña.
+          </p>
+        </div>
+        <button onClick={onBack} className="w-full mt-4 text-sm text-brand-500 hover:underline font-medium">
+          Volver al inicio de sesión
+        </button>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <h2 className="font-body text-2xl font-black mb-2">Recuperar contraseña</h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Ingresa tu email y te enviaremos un link para restablecer tu contraseña.
+      </p>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Email</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="tu@email.com"
+            autoComplete="email"
+            autoFocus
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-brand-500 text-white py-2.5 rounded-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
+        >
+          {loading ? 'Enviando...' : 'Enviar link'}
+        </button>
+      </form>
+
+      <p className="mt-5 text-sm text-center text-gray-500">
+        <button onClick={onBack} className="text-brand-500 hover:underline font-medium">
+          Volver al inicio de sesión
         </button>
       </p>
     </>

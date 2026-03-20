@@ -102,11 +102,12 @@ export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
                         </form>
                       </div>
                     ) : (
-                      <div className="space-y-0.5">
-                        <Link href="/auth/login" onClick={() => setOpen(false)} className="block py-2 text-sm text-gray-600 hover:text-brand-500">
+                      <div className="flex items-center gap-3">
+                        <Link href="/auth/login" onClick={() => setOpen(false)} className="text-sm text-gray-600 hover:text-brand-500">
                           Iniciar sesión
                         </Link>
-                        <Link href="/auth/registro" onClick={() => setOpen(false)} className="block py-2 text-sm text-gray-600 hover:text-brand-500">
+                        <span className="text-gray-300">|</span>
+                        <Link href="/auth/registro" onClick={() => setOpen(false)} className="text-sm text-gray-600 hover:text-brand-500">
                           Registrarse
                         </Link>
                       </div>

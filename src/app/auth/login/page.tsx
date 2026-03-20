@@ -104,6 +104,12 @@ export default function LoginPage() {
           />
         </div>
 
+        <div className="flex justify-end">
+          <Link href="/auth/olvide-contrasena" className="text-xs text-gray-400 hover:text-brand-500 transition-colors">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+
         <button
           type="submit"
           disabled={loading}

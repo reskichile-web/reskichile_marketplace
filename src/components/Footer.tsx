@@ -4,14 +4,13 @@ export default function Footer() {
   return (
     <footer className="mt-auto">
       {/* Image banner */}
-      <div className="relative overflow-hidden h-[450px] md:h-[650px]">
+      <div className="relative overflow-hidden h-[250px] md:h-[380px]">
         <img
           src="/images/clement-delhaye-cnluLIyhpBA-unsplash.jpg"
           alt=""
-          className="absolute inset-0 w-full h-full object-cover object-[center_50%]"
+          className="absolute inset-0 w-full h-full object-cover object-[center_45%]"
         />
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-gray-900 to-transparent" />
       </div>
 
       {/* Footer content */}
