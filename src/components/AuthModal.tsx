@@ -113,6 +113,30 @@ function LoginForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch: (
       return
     }
 
+    // Check profile flags
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('is_admin, must_change_password')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.must_change_password) {
+        onSuccess()
+        router.push('/auth/cambiar-contrasena')
+        router.refresh()
+        return
+      }
+
+      if (profile?.is_admin) {
+        onSuccess()
+        router.push('/admin')
+        router.refresh()
+        return
+      }
+    }
+
     onSuccess()
     router.refresh()
   }

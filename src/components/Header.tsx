@@ -4,6 +4,7 @@ import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
 import AuthModal from './AuthModal'
+import AdminNav from './AdminNav'
 
 export default async function Header() {
   const supabase = createServerSupabaseClient()
@@ -19,40 +20,28 @@ export default async function Header() {
     isAdmin = profile?.is_admin ?? false
   }
 
+  if (isAdmin) return <AdminNav />
+
   return (
     <header className="bg-white shadow-sm">
-      {/* Main row: logo + search + user actions */}
+      {/* Main row */}
       <div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">
-          {/* Mobile: burger menu (categories) — left */}
-          <MobileMenu isLoggedIn={!!user} isAdmin={isAdmin} />
-
           {/* Logo */}
           <Link href="/" className="shrink-0">
             <img src="/logo.svg" alt="ReskiChile" className="h-8 md:h-14" />
           </Link>
 
-          {/* Search — center, takes remaining space */}
+          {/* Search — full bar on desktop, icon on mobile */}
           {!isAdmin && (
-            <div className="hidden md:block flex-1">
+            <div className="flex-1 md:flex-1 flex justify-end md:justify-start">
               <SearchBar />
             </div>
           )}
 
           {/* Right actions — desktop */}
           <div className="hidden md:flex items-center gap-6 shrink-0 font-nav">
-            {isAdmin ? (
-              <>
-                <Link href="/admin" className="text-sm text-gray-900 hover:text-brand-500 transition-colors">
-                  Admin
-                </Link>
-                <form action="/auth/logout" method="POST">
-                  <button type="submit" className="text-sm text-gray-900 hover:text-brand-500 transition-colors">
-                    Salir
-                  </button>
-                </form>
-              </>
-            ) : user ? (
+            {user ? (
               <>
                 <Link href="/mis-productos" className="text-gray-900 hover:text-brand-500 transition-colors" title="Mis productos">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,40 +69,17 @@ export default async function Header() {
             </Link>
           </div>
 
-          {/* Right actions — mobile */}
-          <div className="flex md:hidden items-center gap-2 ml-auto">
-            {!isAdmin && !user && (
-              <AuthModal variant="mobile" />
-            )}
-            {user && !isAdmin && (
-              <>
-                <Link href="/perfil" className="text-gray-700 p-1">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </Link>
-              </>
-            )}
-            <Link href="/vender" className="bg-brand-500 text-white text-xs px-3 py-1.5 rounded-sm font-medium">
-              Vender
-            </Link>
-          </div>
+          {/* Mobile: sidebar toggle */}
+          <MobileMenu isLoggedIn={!!user} isAdmin={isAdmin} />
         </div>
       </div>
 
-      {/* Category nav — second row, desktop only, not for admin */}
+      {/* Category nav — desktop only */}
       {!isAdmin && (
         <div className="hidden md:block">
           <div className="max-w-7xl mx-auto px-4 md:px-8">
             <CategoryNav />
           </div>
-        </div>
-      )}
-
-      {/* Mobile search — below nav */}
-      {!isAdmin && (
-        <div className="md:hidden px-4 py-2">
-          <SearchBar />
         </div>
       )}
     </header>

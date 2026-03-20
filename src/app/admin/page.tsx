@@ -1,368 +1,182 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS } from '@/lib/constants'
 
-interface AdminProduct {
+interface Stats {
+  total: number
+  pending: number
+  approved: number
+  rejected: number
+  sold: number
+}
+
+interface RecentProduct {
   id: string
-  product_type: string
   brand: string
   model: string | null
   price: number
   status: string
   created_at: string
-  seller_id: string
-  condition: string
-  region: string
-  comuna: string
-  seasons_used: string | null
-  description: string | null
-  rejection_reason: string | null
-  attributes: Record<string, unknown> | null
-  users: { name: string | null; email: string; phone: string | null } | null
-  product_images: { url: string; order: number }[]
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700',
   pending: 'bg-yellow-100 text-yellow-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
   sold: 'bg-brand-100 text-brand-700',
-  archived: 'bg-gray-100 text-gray-500',
 }
 
-export default function AdminPage() {
-  const [products, setProducts] = useState<AdminProduct[]>([])
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pendiente',
+  approved: 'Aprobado',
+  rejected: 'Rechazado',
+  sold: 'Vendido',
+}
+
+export default function AdminHomePage() {
+  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0, rejected: 0, sold: 0 })
+  const [recent, setRecent] = useState<RecentProduct[]>([])
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [search, setSearch] = useState('')
-  const [brandFilter, setBrandFilter] = useState('')
-  const [rejectionReason, setRejectionReason] = useState('')
-  const [rejectingId, setRejectingId] = useState<string | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-
-  const loadProducts = useCallback(async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('products')
-      .select('id, product_type, brand, model, price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, users(name, email, phone), product_images(url, order)')
-      .order('created_at', { ascending: false })
-
-    setProducts((data as unknown as AdminProduct[]) || [])
-    setLoading(false)
-  }, [])
 
   useEffect(() => {
-    loadProducts()
-  }, [loadProducts])
+    async function load() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('products')
+        .select('id, brand, model, price, status, created_at')
+        .order('created_at', { ascending: false })
 
-  const brands = useMemo(() => {
-    const set = new Set(products.map(p => p.brand))
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))
-  }, [products])
-
-  const filtered = useMemo(() => {
-    return products.filter(p => {
-      if (statusFilter !== 'all' && p.status !== statusFilter) return false
-      if (brandFilter && p.brand !== brandFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        const title = [p.brand, p.model].filter(Boolean).join(' ').toLowerCase()
-        const seller = (p.users?.name || p.users?.email || '').toLowerCase()
-        if (!title.includes(q) && !seller.includes(q)) return false
+      if (data) {
+        setStats({
+          total: data.length,
+          pending: data.filter(p => p.status === 'pending').length,
+          approved: data.filter(p => p.status === 'approved').length,
+          rejected: data.filter(p => p.status === 'rejected').length,
+          sold: data.filter(p => p.status === 'sold').length,
+        })
+        setRecent(data.slice(0, 5))
       }
-      return true
-    })
-  }, [products, statusFilter, brandFilter, search])
-
-  async function handleApprove(productId: string) {
-    const supabase = createClient()
-    await supabase.from('products').update({ status: 'approved', rejection_reason: null }).eq('id', productId)
-    loadProducts()
-  }
-
-  async function handleReject(productId: string) {
-    if (!rejectionReason.trim()) {
-      alert('Ingresa un motivo de rechazo')
-      return
+      setLoading(false)
     }
-    const supabase = createClient()
-    await supabase.from('products').update({ status: 'rejected', rejection_reason: rejectionReason }).eq('id', productId)
-    setRejectingId(null)
-    setRejectionReason('')
-    loadProducts()
-  }
+    load()
+  }, [])
 
-  async function handleMarkSold(productId: string) {
-    const supabase = createClient()
-    await supabase.from('products').update({ status: 'sold' }).eq('id', productId)
-    loadProducts()
-  }
+  if (loading) return (
+    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
+  )
 
-  if (loading) return <div className="max-w-6xl mx-auto mt-16 px-4">Cargando...</div>
+  const cards = [
+    { label: 'Total publicaciones', value: stats.total, color: 'text-gray-900', bg: 'bg-gray-50' },
+    { label: 'Pendientes', value: stats.pending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { label: 'Aprobados', value: stats.approved, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Vendidos', value: stats.sold, color: 'text-brand-600', bg: 'bg-brand-50' },
+  ]
 
   return (
-    <div className="max-w-6xl mx-auto mt-8 px-4 pb-16">
-      <h1 className="font-body text-3xl font-black mb-6">Panel de administración</h1>
-
-      {/* Filters */}
-      <div className="space-y-3 mb-6">
-        {/* Status tabs */}
-        <div className="flex gap-2 overflow-x-auto">
-          {(['all', 'pending', 'approved', 'rejected', 'sold'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              className={`px-4 py-2 rounded text-sm whitespace-nowrap ${statusFilter === f ? 'bg-brand-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
-            >
-              {f === 'all' ? 'Todos' : PRODUCT_STATUSES[f] || f}
-              <span className="ml-1 opacity-70">
-                ({f === 'all' ? products.length : products.filter(p => p.status === f).length})
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Search + brand filter */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar marca, modelo o vendedor..."
-            className="flex-1 border rounded px-3 py-2 text-sm"
-          />
-          <select
-            value={brandFilter}
-            onChange={e => setBrandFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm sm:w-48"
-          >
-            <option value="">Todas las marcas</option>
-            {brands.map(b => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-        </div>
+    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 pb-16">
+      {/* Welcome */}
+      <div className="mb-8">
+        <h1 className="font-body text-2xl font-black text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-1">Resumen general de ReskiChile</p>
       </div>
 
-      {/* Results count */}
-      <p className="text-sm text-gray-500 mb-3">{filtered.length} productos</p>
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        {cards.map((card) => (
+          <div key={card.label} className={`${card.bg} rounded-xl p-5`}>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{card.label}</p>
+            <p className={`text-3xl font-black mt-2 ${card.color}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
 
-      {filtered.length === 0 ? (
-        <p className="text-gray-500">No hay productos que coincidan</p>
-      ) : (
-        <div className="overflow-x-auto">
+      {/* Quick actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+        <Link href="/admin/publicaciones" className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all group">
+          <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand-500 group-hover:bg-brand-100 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold text-sm text-gray-900">Gestionar publicaciones</p>
+            <p className="text-xs text-gray-500">{stats.pending} pendientes de revisión</p>
+          </div>
+        </Link>
+
+        <Link href="/vender" className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all group">
+          <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center text-green-500 group-hover:bg-green-100 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold text-sm text-gray-900">Publicar producto</p>
+            <p className="text-xs text-gray-500">Crear nueva publicación</p>
+          </div>
+        </Link>
+
+        <Link href="/admin/finanzas" className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all group">
+          <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-purple-500 group-hover:bg-purple-100 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold text-sm text-gray-900">Finanzas</p>
+            <p className="text-xs text-gray-500">Ver métricas y reportes</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Recent products */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-body text-lg font-bold text-gray-900">Últimas publicaciones</h2>
+          <Link href="/admin/publicaciones" className="text-sm text-brand-500 hover:underline">
+            Ver todas
+          </Link>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-gray-500">
-                <th className="pb-2 pr-4 font-medium">Producto</th>
-                <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Precio</th>
-                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Vendedor</th>
-                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Fecha</th>
-                <th className="pb-2 pr-4 font-medium">Estado</th>
-                <th className="pb-2 font-medium">Acciones</th>
+              <tr className="border-b bg-gray-50/50 text-left text-gray-500">
+                <th className="px-5 py-3 font-medium">Producto</th>
+                <th className="px-5 py-3 font-medium hidden sm:table-cell">Precio</th>
+                <th className="px-5 py-3 font-medium hidden md:table-cell">Fecha</th>
+                <th className="px-5 py-3 font-medium">Estado</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(product => {
+              {recent.map((product) => {
                 const title = [product.brand, product.model].filter(Boolean).join(' ')
-                const seller = product.users?.name || product.users?.email || 'Desconocido'
-                const isExpanded = expandedId === product.id
-                const images = (product.product_images || []).sort((a, b) => a.order - b.order)
-                const attrs = product.attributes as Record<string, unknown> | null
-
                 return (
-                  <React.Fragment key={product.id}>
-                    <tr className={`border-b hover:bg-gray-50 cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`} onClick={() => setExpandedId(isExpanded ? null : product.id)}>
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2">
-                          <svg className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                          <div>
-                            <span className="font-medium">{title}</span>
-                            <span className="block sm:hidden text-xs text-gray-500 mt-0.5">
-                              ${product.price.toLocaleString('es-CL')} · {seller}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4 hidden sm:table-cell font-medium text-brand-500">
-                        ${product.price.toLocaleString('es-CL')}
-                      </td>
-                      <td className="py-3 pr-4 hidden md:table-cell text-gray-600">
-                        {seller}
-                      </td>
-                      <td className="py-3 pr-4 hidden md:table-cell text-gray-500">
-                        {new Date(product.created_at).toLocaleDateString('es-CL')}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <span className={`text-xs px-2 py-1 rounded ${STATUS_COLORS[product.status] || ''}`}>
-                          {PRODUCT_STATUSES[product.status] || product.status}
-                        </span>
-                      </td>
-                      <td className="py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex gap-1.5">
-                          {product.status === 'pending' && (
-                            <>
-                              <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-2.5 py-1 rounded hover:bg-green-700">
-                                Aprobar
-                              </button>
-                              <button onClick={() => setRejectingId(product.id)} className="text-xs bg-red-600 text-white px-2.5 py-1 rounded hover:bg-red-700">
-                                Rechazar
-                              </button>
-                            </>
-                          )}
-                          {product.status === 'rejected' && (
-                            <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-2.5 py-1 rounded hover:bg-green-700">
-                              Aprobar
-                            </button>
-                          )}
-                          {product.status === 'approved' && (
-                            <button onClick={() => handleMarkSold(product.id)} className="text-xs border border-brand-500 text-brand-500 px-2.5 py-1 rounded hover:bg-brand-50">
-                              Vendido
-                            </button>
-                          )}
-                          <Link href={`/producto/${product.id}/editar`} className="text-xs border px-2.5 py-1 rounded hover:bg-gray-100">
-                            Editar
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Expanded detail row */}
-                    {isExpanded && (
-                      <tr className="border-b bg-gray-50/50">
-                        <td colSpan={6} className="px-4 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
-                            {/* Images */}
-                            {images.length > 0 && (
-                              <div className="flex gap-2 overflow-x-auto md:flex-col md:w-24">
-                                {images.map((img, i) => (
-                                  <img key={i} src={img.url} alt="" className="w-20 h-20 shrink-0 object-cover rounded" />
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Details */}
-                            <div className="space-y-3">
-                              {/* Basic info */}
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-                                <div>
-                                  <span className="text-gray-500">Tipo</span>
-                                  <p className="font-medium">{PRODUCT_TYPES[product.product_type] || product.product_type}</p>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Condición</span>
-                                  <p className="font-medium">{CONDITIONS[product.condition] || product.condition}</p>
-                                </div>
-                                {product.seasons_used && (
-                                  <div>
-                                    <span className="text-gray-500">Temporadas</span>
-                                    <p className="font-medium">{product.seasons_used}</p>
-                                  </div>
-                                )}
-                                <div>
-                                  <span className="text-gray-500">Ubicación</span>
-                                  <p className="font-medium">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Precio</span>
-                                  <p className="font-medium text-brand-500">${product.price.toLocaleString('es-CL')}</p>
-                                </div>
-                              </div>
-
-                              {/* Seller info */}
-                              <div className="border-t pt-2">
-                                <span className="text-xs text-gray-500 uppercase tracking-wide">Vendedor</span>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm mt-1">
-                                  <div>
-                                    <span className="text-gray-500">Nombre</span>
-                                    <p className="font-medium">{product.users?.name || 'Sin nombre'}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500">Email</span>
-                                    <p className="font-medium">{product.users?.email}</p>
-                                  </div>
-                                  {product.users?.phone && (
-                                    <div>
-                                      <span className="text-gray-500">Teléfono</span>
-                                      <p className="font-medium">{product.users.phone}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Dynamic attributes */}
-                              {attrs && Object.keys(attrs).length > 0 && (
-                                <div className="border-t pt-2">
-                                  <span className="text-xs text-gray-500 uppercase tracking-wide">Atributos</span>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm mt-1">
-                                    {Object.entries(attrs).map(([key, value]) => (
-                                      <div key={key}>
-                                        <span className="text-gray-500">{key.replace(/_/g, ' ')}</span>
-                                        <p className="font-medium">{String(value)}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Description */}
-                              {product.description && (
-                                <div className="border-t pt-2">
-                                  <span className="text-xs text-gray-500 uppercase tracking-wide">Descripción</span>
-                                  <p className="text-sm mt-1">{product.description}</p>
-                                </div>
-                              )}
-
-                              {/* Rejection reason */}
-                              {product.rejection_reason && (
-                                <div className="border-t pt-2">
-                                  <span className="text-xs text-red-500 uppercase tracking-wide">Motivo de rechazo</span>
-                                  <p className="text-sm text-red-600 mt-1">{product.rejection_reason}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+                  <tr key={product.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="px-5 py-3">
+                      <Link href={`/producto/${product.id}`} className="font-medium text-gray-900 hover:text-brand-500">
+                        {title}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3 hidden sm:table-cell font-medium text-brand-500">
+                      ${product.price.toLocaleString('es-CL')}
+                    </td>
+                    <td className="px-5 py-3 hidden md:table-cell text-gray-500">
+                      {new Date(product.created_at).toLocaleDateString('es-CL')}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[product.status] || 'bg-gray-100 text-gray-600'}`}>
+                        {STATUS_LABELS[product.status] || product.status}
+                      </span>
+                    </td>
+                  </tr>
                 )
               })}
             </tbody>
           </table>
-
-          {/* Rejection modal inline */}
-          {rejectingId && (
-            <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                <h3 className="font-medium mb-3">Motivo de rechazo</h3>
-                <input
-                  type="text"
-                  value={rejectionReason}
-                  onChange={e => setRejectionReason(e.target.value)}
-                  placeholder="Escribe el motivo..."
-                  className="w-full border rounded px-3 py-2 text-sm mb-3"
-                  autoFocus
-                />
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => { setRejectingId(null); setRejectionReason('') }} className="border px-4 py-2 rounded text-sm">
-                    Cancelar
-                  </button>
-                  <button onClick={() => handleReject(rejectingId)} className="bg-red-600 text-white px-4 py-2 rounded text-sm">
-                    Rechazar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

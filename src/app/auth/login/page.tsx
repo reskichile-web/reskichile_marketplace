@@ -42,6 +42,28 @@ export default function LoginPage() {
       return
     }
 
+    // Check profile flags
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('is_admin, must_change_password')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.must_change_password) {
+        router.push('/auth/cambiar-contrasena')
+        router.refresh()
+        return
+      }
+
+      if (profile?.is_admin) {
+        router.push('/admin')
+        router.refresh()
+        return
+      }
+    }
+
     router.push(redirect)
     router.refresh()
   }
