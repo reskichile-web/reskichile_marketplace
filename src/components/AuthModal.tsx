@@ -11,7 +11,7 @@ const PASSWORD_MIN = 6
 
 type View = 'login' | 'register'
 
-export default function AuthModal() {
+export default function AuthModal({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' }) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<View>('login')
 
@@ -31,12 +31,12 @@ export default function AuthModal() {
 
   return (
     <>
-      <button onClick={openLogin} className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-normal">
-        Iniciar sesión
+      <button onClick={openLogin} className={variant === 'mobile' ? 'text-[10px] text-gray-400 hover:text-gray-700 transition-colors' : 'text-xs text-gray-400 hover:text-gray-700 transition-colors font-normal'}>
+        {variant === 'mobile' ? 'Ingresar' : 'Iniciar sesión'}
       </button>
-      <span className="text-gray-200">|</span>
-      <button onClick={openRegister} className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-normal">
-        Registrarse
+      <span className={variant === 'mobile' ? 'text-gray-300 text-[10px]' : 'text-gray-200'}>|</span>
+      <button onClick={openRegister} className={variant === 'mobile' ? 'text-[10px] text-gray-400 hover:text-gray-700 transition-colors' : 'text-xs text-gray-400 hover:text-gray-700 transition-colors font-normal'}>
+        {variant === 'mobile' ? 'Registro' : 'Registrarse'}
       </button>
 
       {open && typeof document !== 'undefined' && createPortal(

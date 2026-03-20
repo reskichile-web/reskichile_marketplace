@@ -83,15 +83,7 @@ export default async function Header() {
           {/* Right actions — mobile */}
           <div className="flex md:hidden items-center gap-2 ml-auto">
             {!isAdmin && !user && (
-              <>
-                <Link href="/auth/login" className="text-[10px] text-gray-400 hover:text-gray-700">
-                  Ingresar
-                </Link>
-                <span className="text-gray-300 text-[10px]">|</span>
-                <Link href="/auth/registro" className="text-[10px] text-gray-400 hover:text-gray-700">
-                  Registro
-                </Link>
-              </>
+              <AuthModal variant="mobile" />
             )}
             {user && !isAdmin && (
               <>

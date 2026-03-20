@@ -78,7 +78,7 @@ export default function CategoryCard({ type, label, image }: Props) {
                 Vender
               </Link>
               {hasAI && (
-                <Link href={`/descubre?type=${type}`} className="flex items-center justify-center gap-2 w-full bg-white text-gray-900 font-bold text-xs md:text-sm py-2 md:py-2.5 rounded-lg hover:bg-gray-100 transition-colors mt-1">
+                <Link href={`/descubre?type=${type}`} className="flex items-center justify-center gap-2 w-full bg-white text-gray-900 font-bold text-xs md:text-sm py-2 md:py-2.5 rounded-lg hover:bg-brand-500 hover:text-white transition-colors mt-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 00.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-2.47 2.47a2.25 2.25 0 00-.659 1.59v1.19a.75.75 0 01-.75.75h-6.24a.75.75 0 01-.75-.75v-1.19a2.25 2.25 0 00-.659-1.59L5 14.5m14 0V17a2 2 0 01-2 2H7a2 2 0 01-2-2v-2.5" />
                   </svg>

@@ -84,7 +84,7 @@ export default async function HomePage() {
 
       {/* Categories — Bauhaus grid */}
       {topCategories.length > 0 && (
-        <section className="max-w-5xl mx-auto px-4 md:px-6 pb-12 md:pb-20">
+        <section className="max-w-[1000px] mx-auto px-4 md:px-6 pb-12 md:pb-20">
           <h2 className="font-body text-sm font-medium tracking-widest uppercase text-gray-400 mb-8">
             Categorías
           </h2>
@@ -103,7 +103,7 @@ export default async function HomePage() {
       )}
 
       {/* CTA */}
-      <section className="relative overflow-hidden min-h-[350px] md:min-h-[500px] flex items-start">
+      <section className="relative overflow-hidden min-h-[380px] md:min-h-[550px] flex items-start max-w-[1000px] rounded-2xl mx-4 md:mx-auto">
         <img
           src="/images/clement-delhaye-cnluLIyhpBA-unsplash.jpg"
           alt=""
@@ -114,7 +114,7 @@ export default async function HomePage() {
           <h2 className="font-body text-2xl md:text-5xl font-black text-white">
             ¿Tienes equipo que ya no usas?
           </h2>
-          <p className="text-white/80 mt-4 text-lg">
+          <p className="text-white/80 mt-4 text-lg hidden md:block">
             Publícalo gratis y encuentra un nuevo dueño.
           </p>
           <Link
