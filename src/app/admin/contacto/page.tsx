@@ -137,13 +137,14 @@ export default function ContactoPage() {
                 <th className="px-4 py-3 font-medium hidden md:table-cell">Contacto</th>
                 <th className="px-4 py-3 font-medium">Producto</th>
                 <th className="px-4 py-3 font-medium hidden sm:table-cell">Precio</th>
+                <th className="px-4 py-3 font-medium hidden sm:table-cell">P. Venta</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                     No hay resultados
                   </td>
                 </tr>
@@ -154,7 +155,7 @@ export default function ContactoPage() {
                 return (
                   <tr
                     key={row.product_id}
-                    className={`border-b last:border-0 transition-colors ${bothChecked ? 'bg-brand-50/60' : 'hover:bg-gray-50'}`}
+                    className={`border-b last:border-0 transition-colors ${bothChecked ? 'bg-brand-500 text-white' : 'hover:bg-gray-50'}`}
                   >
                     {/* User check */}
                     <td className="px-4 py-3 text-center">
@@ -178,57 +179,84 @@ export default function ContactoPage() {
                     <td className="px-4 py-3">
                       {row.seller_name ? (
                         <div>
-                          <span className="font-medium text-gray-900">{row.seller_name}</span>
-                          <span className="block md:hidden text-xs text-gray-500 mt-0.5">
+                          <span className={`font-medium ${bothChecked ? 'text-white' : 'text-gray-900'}`}>{row.seller_name}</span>
+                          <span className={`block md:hidden text-xs mt-0.5 ${bothChecked ? 'text-white/70' : 'text-gray-500'}`}>
                             {row.seller_email || '—'}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-gray-300 text-xs">Sin usuario</span>
+                        <span className={`text-xs ${bothChecked ? 'text-white/50' : 'text-gray-300'}`}>Sin usuario</span>
                       )}
                     </td>
                     {/* Contact */}
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="space-y-0.5">
                         {row.seller_email && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          <div className={`flex items-center gap-1.5 text-xs ${bothChecked ? 'text-white/80' : 'text-gray-600'}`}>
+                            <svg className={`w-3.5 h-3.5 shrink-0 ${bothChecked ? 'text-white/60' : 'text-gray-400'}`} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0l-9.75 6.093-9.75-6.093" />
                             </svg>
                             {row.seller_email}
                           </div>
                         )}
                         {row.seller_phone && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                            <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          <div className={`flex items-center gap-1.5 text-xs ${bothChecked ? 'text-white/80' : 'text-gray-600'}`}>
+                            <svg className={`w-3.5 h-3.5 shrink-0 ${bothChecked ? 'text-white/60' : 'text-gray-400'}`} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
                             </svg>
                             {row.seller_phone}
                           </div>
                         )}
                         {!row.seller_email && !row.seller_phone && (
-                          <span className="text-xs text-gray-300">—</span>
+                          <span className={`text-xs ${bothChecked ? 'text-white/40' : 'text-gray-300'}`}>—</span>
                         )}
                       </div>
                     </td>
                     {/* Product */}
                     <td className="px-4 py-3">
                       <div>
-                        <span className="font-medium text-gray-900">{title}</span>
-                        <span className="block text-xs text-gray-400">
+                        <span className={`font-medium ${bothChecked ? 'text-white' : 'text-gray-900'}`}>{title}</span>
+                        <span className={`block text-xs ${bothChecked ? 'text-white/60' : 'text-gray-400'}`}>
                           {PRODUCT_TYPES[row.product_type] || row.product_type}
                         </span>
                       </div>
                     </td>
                     {/* Price */}
-                    <td className="px-4 py-3 hidden sm:table-cell font-medium text-brand-500">
+                    <td className={`px-4 py-3 hidden sm:table-cell font-medium ${bothChecked ? 'text-white' : 'text-brand-500'}`}>
                       ${row.price.toLocaleString('es-CL')}
+                    </td>
+                    {/* Sale Price */}
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <div className={`flex items-center gap-1 font-medium ${bothChecked ? 'text-green-200' : 'text-green-600'}`}>
+                        <span className="text-xs">$</span>
+                        <input
+                          type="text"
+                          placeholder="+"
+                          className={`w-20 text-sm font-medium border-0 border-b bg-transparent outline-none placeholder:opacity-50 ${bothChecked ? 'text-green-200 border-white/30 placeholder:text-green-200' : 'text-green-600 border-green-200 placeholder:text-green-400'}`}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </div>
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[row.status] || 'bg-gray-100 text-gray-600'}`}>
-                        {STATUS_LABELS[row.status] || row.status}
-                      </span>
+                      <select
+                        value={row.status}
+                        onChange={async (e) => {
+                          e.stopPropagation()
+                          const newStatus = e.target.value
+                          const supabase = createClient()
+                          await supabase.from('products').update({ status: newStatus }).eq('id', row.product_id)
+                          setRows(prev => prev.map(r => r.product_id === row.product_id ? { ...r, status: newStatus } : r))
+                        }}
+                        onClick={e => e.stopPropagation()}
+                        className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${bothChecked ? 'bg-white/20 text-white' : (STATUS_COLORS[row.status] || 'bg-gray-100 text-gray-600')}`}
+                      >
+                        <option value="pending">Pendiente</option>
+                        <option value="approved">Aprobado</option>
+                        <option value="rejected">Rechazado</option>
+                        <option value="sold">Vendido</option>
+                        <option value="archived">Archivado</option>
+                      </select>
                     </td>
                   </tr>
                 )
