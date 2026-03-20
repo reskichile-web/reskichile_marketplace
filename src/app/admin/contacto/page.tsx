@@ -35,6 +35,7 @@ export default function ContactoPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'default' | 'user' | 'product' | 'both'>('default')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   useEffect(() => {
     async function load() {
@@ -72,8 +73,17 @@ export default function ContactoPage() {
     load()
   }, [])
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: rows.length }
+    rows.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1 })
+    return counts
+  }, [rows])
+
   const filtered = useMemo(() => {
     let result = rows
+    if (statusFilter !== 'all') {
+      result = result.filter(r => r.status === statusFilter)
+    }
     if (search) {
       const q = search.toLowerCase()
       result = result.filter(r => {
@@ -124,6 +134,27 @@ export default function ContactoPage() {
         >
           Completadas primero
         </button>
+      </div>
+
+      {/* Status filter */}
+      <div className="flex gap-1.5 mb-4 overflow-x-auto">
+        {([
+          ['all', 'Todos'],
+          ['pending', 'Pendiente'],
+          ['approved', 'Aprobado'],
+          ['missing_photos', 'Faltan fotos'],
+          ['rejected', 'Rechazado'],
+          ['sold', 'Vendido'],
+          ['archived', 'Archivado'],
+        ] as [string, string][]).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setStatusFilter(key)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            {label} <span className="opacity-60">{statusCounts[key] || 0}</span>
+          </button>
+        ))}
       </div>
 
       <div className="mb-4">
