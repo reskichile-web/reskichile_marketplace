@@ -23,6 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
+  missing_photos: 'bg-orange-100 text-orange-700',
   sold: 'bg-blue-100 text-blue-700',
   archived: 'bg-gray-100 text-gray-500',
 }
@@ -31,6 +32,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente',
   approved: 'Aprobado',
   rejected: 'Rechazado',
+  missing_photos: 'Faltan fotos',
   sold: 'Vendido',
   archived: 'Archivado',
 }
@@ -236,6 +238,7 @@ export default function ContactoPage() {
                         <option value="pending">Pendiente</option>
                         <option value="approved">Aprobado</option>
                         <option value="rejected">Rechazado</option>
+                        <option value="missing_photos">Faltan fotos</option>
                         <option value="sold">Vendido</option>
                         <option value="archived">Archivado</option>
                       </select>

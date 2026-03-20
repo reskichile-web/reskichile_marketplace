@@ -30,6 +30,7 @@ export const PRODUCT_STATUSES: Record<string, string> = {
   pending: 'Pendiente',
   approved: 'Aprobado',
   rejected: 'Rechazado',
+  missing_photos: 'Faltan fotos',
   sold: 'Vendido',
   archived: 'Archivado',
 }

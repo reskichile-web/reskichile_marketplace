@@ -25,6 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
+  missing_photos: 'bg-orange-100 text-orange-700',
   sold: 'bg-brand-100 text-brand-700',
 }
 
@@ -32,6 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente',
   approved: 'Aprobado',
   rejected: 'Rechazado',
+  missing_photos: 'Faltan fotos',
   sold: 'Vendido',
 }
 
