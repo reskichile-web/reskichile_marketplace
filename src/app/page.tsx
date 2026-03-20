@@ -51,7 +51,8 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-4 md:px-6 pt-12 pb-10 md:pt-28 md:pb-24">
+      <section className="relative overflow-hidden">
+        <div className="relative max-w-5xl mx-auto px-4 md:px-6 pt-12 pb-10 md:pt-28 md:pb-24">
         <h1 className="font-body text-3xl md:text-7xl font-black leading-[1.1] max-w-4xl">
           Encuentra lo mejor en <RotatingWord />
         </h1>
@@ -77,6 +78,7 @@ export default async function HomePage() {
             </svg>
             Publicar equipo
           </Link>
+        </div>
         </div>
       </section>
 
