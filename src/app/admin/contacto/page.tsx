@@ -30,15 +30,6 @@ const STATUS_COLORS: Record<string, string> = {
   archived: 'bg-gray-100 text-gray-500',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-  missing_photos: 'Faltan fotos',
-  sold: 'Vendido',
-  archived: 'Archivado',
-}
-
 export default function ContactoPage() {
   const [rows, setRows] = useState<ContactRow[]>([])
   const [loading, setLoading] = useState(true)
