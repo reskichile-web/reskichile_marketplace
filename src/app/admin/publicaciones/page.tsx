@@ -196,6 +196,7 @@ export default function PublicacionesPage() {
                           </svg>
                           <div>
                             <span className="font-medium">{title}</span>
+                            <span className="ml-2 text-xs text-gray-400">{PRODUCT_TYPES[product.product_type] || product.product_type}</span>
                             <span className="block sm:hidden text-xs text-gray-500 mt-0.5">
                               ${product.price.toLocaleString('es-CL')} · {seller}
                             </span>
