@@ -34,29 +34,18 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Just refresh the session — no extra DB queries in middleware
+  await supabase.auth.getUser()
 
-  // Protected routes
+  // Protected routes — check session only (fast, no DB call)
+  const { data: { session } } = await supabase.auth.getSession()
   const protectedPaths = ['/vender', '/mis-productos', '/perfil', '/admin']
   const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
-  if (isProtected && !user) {
+  if (isProtected && !session) {
     const redirectUrl = new URL('/auth/login', request.url)
     redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
-  }
-
-  // Admin route protection
-  if (request.nextUrl.pathname.startsWith('/admin') && user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile?.is_admin) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
   }
 
   return response
