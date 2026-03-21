@@ -38,13 +38,6 @@ export default async function Header() {
             <img src="/logo.svg" alt="ReskiChile" className="h-12 md:h-14" />
           </Link>
 
-          {/* Mobile: search right */}
-          {!isAdmin && (
-            <div className="md:hidden ml-auto">
-              <SearchBar />
-            </div>
-          )}
-
           {/* Desktop: search bar */}
           {!isAdmin && (
             <div className="hidden md:block flex-1">
@@ -52,7 +45,13 @@ export default async function Header() {
             </div>
           )}
 
-          {/* Right actions — desktop: full links */}
+          {/* Right actions — mobile */}
+          <div className="md:hidden flex items-center gap-3 ml-auto">
+            {!isAdmin && <SearchBar />}
+            {user && <ProfileDropdown />}
+          </div>
+
+          {/* Right actions — desktop */}
           <div className="hidden md:flex items-center gap-5 shrink-0 font-nav">
             {user ? (
               <>
@@ -75,13 +74,6 @@ export default async function Header() {
               Vender
             </Link>
           </div>
-
-          {/* Right actions — mobile: profile dropdown */}
-          {user && (
-            <div className="md:hidden ml-auto">
-              <ProfileDropdown />
-            </div>
-          )}
 
         </div>
       </div>
