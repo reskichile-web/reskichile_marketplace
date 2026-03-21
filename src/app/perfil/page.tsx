@@ -127,16 +127,16 @@ export default function ProfilePage() {
   const initial = name ? name.charAt(0).toUpperCase() : email.charAt(0).toUpperCase()
 
   return (
-    <div className="max-w-md mx-auto px-4 pb-16">
+    <div className="max-w-md mx-auto px-4 min-h-screen pb-16">
       {/* Mobile header — flush with navbar, compensate layout spacer */}
       <div className="md:hidden -mx-4 -mt-[95px] mb-6">
-        <div className="relative h-40 overflow-hidden">
+        <div className="relative h-44 overflow-hidden">
           <img
-            src="/images/profile-background.jpg"
+            src="https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=800&q=80&fit=crop&crop=center"
             alt=""
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/0 to-transparent" />
         </div>
         <div className="relative -mt-12 flex flex-col items-center">
           {/* Avatar with upload */}
