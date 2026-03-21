@@ -86,6 +86,23 @@ export default function ProfilePage() {
     setUploadingAvatar(false)
   }
 
+  async function handleAvatarDelete() {
+    if (!userId) return
+    setUploadingAvatar(true)
+
+    const supabase = createClient()
+
+    // List and delete files in user's avatar folder
+    const { data: files } = await supabase.storage.from('avatars').list(userId)
+    if (files && files.length > 0) {
+      await supabase.storage.from('avatars').remove(files.map(f => `${userId}/${f.name}`))
+    }
+
+    await supabase.from('users').update({ avatar_url: null }).eq('id', userId)
+    setAvatarUrl(null)
+    setUploadingAvatar(false)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -130,35 +147,38 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md mx-auto px-4 min-h-screen pb-16">
-      {/* Mobile header — flush with navbar, compensate layout spacer */}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarUpload}
+        className="hidden"
+      />
+
+      {/* Mobile header — flush with navbar */}
       <div className="md:hidden -mx-4 -mt-[95px] mb-6">
         <div className="relative h-44 overflow-hidden">
           <img
-            src="https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=800&q=80&fit=crop&crop=bottom"
+            src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=800&q=80&fit=crop&crop=center"
             alt=""
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/0 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
         </div>
         <div className="relative -mt-12 flex flex-col items-center">
-          {/* Avatar with upload */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingAvatar}
             className="relative group"
           >
             {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt=""
-                className="w-24 h-24 rounded-full object-cover shadow-lg border-4 border-white"
-              />
+              <img src={avatarUrl} alt="" className="w-24 h-24 rounded-full object-cover shadow-lg border-4 border-white" />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-3xl font-black shadow-lg border-4 border-white">
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-3xl font-black shadow-lg border-4 border-white">
                 {initial}
               </div>
             )}
-            {/* Camera overlay */}
             <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
               <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
@@ -171,64 +191,71 @@ export default function ProfilePage() {
               </div>
             )}
           </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarUpload}
-            className="hidden"
-          />
-          <p className="text-[10px] text-gray-400 mt-1">Toca para cambiar foto</p>
+          <div className="flex items-center gap-2 mt-1">
+            <button onClick={() => fileInputRef.current?.click()} className="text-[10px] text-gray-400 hover:text-brand-500">Cambiar foto</button>
+            {avatarUrl && (
+              <>
+                <span className="text-gray-300 text-[10px]">·</span>
+                <button onClick={handleAvatarDelete} className="text-[10px] text-gray-400 hover:text-red-500">Eliminar</button>
+              </>
+            )}
+          </div>
           <h1 className="font-body text-xl font-black mt-1">{name || 'Mi perfil'}</h1>
           <p className="text-sm text-gray-500">{email}</p>
         </div>
       </div>
 
-      {/* Desktop header */}
-      <div className="hidden md:flex items-center gap-6 mt-16 mb-8">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploadingAvatar}
-          className="relative group shrink-0"
-        >
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt=""
-              className="w-20 h-20 rounded-full object-cover shadow-sm"
-            />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-2xl font-black shadow-sm">
-              {initial}
+      {/* Desktop/Tablet header with 16:9 background */}
+      <div className="hidden md:block -mx-4 -mt-[130px] mb-8">
+        <div className="relative aspect-[16/5] max-h-[220px] overflow-hidden">
+          <img
+            src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=1400&q=80&fit=crop&crop=center"
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+        </div>
+        <div className="relative -mt-10 flex items-end gap-6 max-w-md mx-auto">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="relative group shrink-0"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="w-20 h-20 rounded-full object-cover shadow-sm border-4 border-white" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-black shadow-sm border-4 border-white">
+                {initial}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+              </svg>
             </div>
-          )}
-          <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-            <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-            </svg>
+            {uploadingAvatar && (
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </button>
+          <div className="pb-1">
+            <h1 className="font-body text-2xl font-black">{name || 'Mi perfil'}</h1>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-500">{email}</p>
+              {avatarUrl && (
+                <button onClick={handleAvatarDelete} className="text-[10px] text-gray-400 hover:text-red-500">Eliminar foto</button>
+              )}
+            </div>
           </div>
-          {uploadingAvatar && (
-            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-        </button>
-        <div>
-          <h1 className="font-body text-3xl font-black">{name || 'Mi perfil'}</h1>
-          <p className="text-sm text-gray-500">{email}</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Email</label>
-          <input
-            type="email"
-            value={email}
-            disabled
-            className="w-full border rounded px-3 py-2 bg-gray-50"
-          />
+          <p className="text-sm text-gray-400 py-2">{email}</p>
         </div>
 
         <div>
