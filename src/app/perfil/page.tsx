@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import PopupMessage from '@/components/PopupMessage'
 
@@ -16,7 +15,6 @@ function useHideFooterImage() {
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
   useHideFooterImage()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -29,7 +27,6 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [message, setMessage] = useState('')
   const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' | 'info' } | null>(null)
-  const [sendingReset, setSendingReset] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -308,32 +305,7 @@ export default function ProfilePage() {
       </form>
 
       {/* Change password section */}
-      <div className="mt-8 pt-6 border-t border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-900">Contraseña</p>
-            <p className="text-xs text-gray-400 mt-0.5">Cambia tu contraseña de acceso</p>
-          </div>
-          <button
-            onClick={async () => {
-              setSendingReset(true)
-              const supabase = createClient()
-              const { error } = await supabase.auth.resetPasswordForEmail(email)
-              if (error) {
-                setPopup({ message: 'Error al enviar código. Intenta de nuevo.', type: 'error' })
-                setSendingReset(false)
-                return
-              }
-              setSendingReset(false)
-              router.push(`/auth/olvide-contrasena?email=${encodeURIComponent(email)}&sent=1`)
-            }}
-            disabled={sendingReset}
-            className="text-sm text-brand-500 hover:text-brand-600 font-medium disabled:opacity-50 transition-colors"
-          >
-            {sendingReset ? 'Enviando...' : 'Cambiar'}
-          </button>
-        </div>
-      </div>
+      <ChangePasswordSection onPopup={setPopup} />
 
       {popup && (
         <PopupMessage
@@ -341,6 +313,93 @@ export default function ProfilePage() {
           type={popup.type}
           onClose={() => setPopup(null)}
         />
+      )}
+    </div>
+  )
+}
+
+const PASSWORD_MIN = 6
+
+function ChangePasswordSection({ onPopup }: { onPopup: (p: { message: string; type: 'error' | 'warning' | 'info' }) => void }) {
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    if (!password) { onPopup({ message: 'Ingresa una contraseña', type: 'error' }); return }
+    if (password.length < PASSWORD_MIN) { onPopup({ message: `Mínimo ${PASSWORD_MIN} caracteres`, type: 'error' }); return }
+    if (!/[A-Z]/.test(password)) { onPopup({ message: 'Debe tener al menos una mayúscula', type: 'error' }); return }
+    if (!/[0-9]/.test(password)) { onPopup({ message: 'Debe tener al menos un número', type: 'error' }); return }
+    if (password !== confirmPassword) { onPopup({ message: 'Las contraseñas no coinciden', type: 'error' }); return }
+
+    setSaving(true)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password })
+
+    if (error) {
+      onPopup({ message: 'Error al cambiar contraseña', type: 'error' })
+      setSaving(false)
+      return
+    }
+
+    onPopup({ message: 'Contraseña actualizada', type: 'info' })
+    setPassword('')
+    setConfirmPassword('')
+    setOpen(false)
+    setSaving(false)
+  }
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-900">Contraseña</p>
+          <p className="text-xs text-gray-400 mt-0.5">Cambia tu contraseña de acceso</p>
+        </div>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-sm text-brand-500 hover:text-brand-600 font-medium transition-colors"
+        >
+          {open ? 'Cancelar' : 'Cambiar'}
+        </button>
+      </div>
+
+      {open && (
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nueva contraseña</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              autoComplete="new-password"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500 mt-1">Mínimo {PASSWORD_MIN} caracteres, una mayúscula y un número</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Confirmar contraseña</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              autoComplete="new-password"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-gray-900 text-white py-2.5 rounded-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            {saving ? 'Guardando...' : 'Actualizar contraseña'}
+          </button>
+        </form>
       )}
     </div>
   )
