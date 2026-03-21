@@ -28,14 +28,26 @@ export default async function Header() {
       {/* Main row */}
       <div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">
-          {/* Logo */}
-          <Link href="/" className="shrink-0">
-            <img src="/logo.svg" alt="ReskiChile" className="h-10 md:h-14" />
+          {/* Mobile: menu left */}
+          <div className="md:hidden">
+            <MobileMenu isLoggedIn={!!user} isAdmin={isAdmin} />
+          </div>
+
+          {/* Logo — centered on mobile, left on desktop */}
+          <Link href="/" className="shrink-0 md:shrink-0 absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0">
+            <img src="/logo.svg" alt="ReskiChile" className="h-12 md:h-14" />
           </Link>
 
-          {/* Search — full bar on desktop, icon on mobile */}
+          {/* Mobile: search right */}
           {!isAdmin && (
-            <div className="flex-1 md:flex-1 flex justify-end md:justify-start">
+            <div className="md:hidden ml-auto">
+              <SearchBar />
+            </div>
+          )}
+
+          {/* Desktop: search bar */}
+          {!isAdmin && (
+            <div className="hidden md:block flex-1">
               <SearchBar />
             </div>
           )}
@@ -43,14 +55,7 @@ export default async function Header() {
           {/* Right actions — desktop */}
           <div className="hidden md:flex items-center gap-6 shrink-0 font-nav">
             {user ? (
-              <>
-                <Link href="/mis-productos" className="text-gray-900 hover:text-brand-500 transition-colors" title="Mis productos">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                </Link>
-                <ProfileDropdown />
-              </>
+              <ProfileDropdown />
             ) : (
               <AuthModal />
             )}
@@ -59,8 +64,6 @@ export default async function Header() {
             </Link>
           </div>
 
-          {/* Mobile: sidebar toggle */}
-          <MobileMenu isLoggedIn={!!user} isAdmin={isAdmin} />
         </div>
       </div>
 
