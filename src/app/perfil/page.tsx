@@ -159,12 +159,13 @@ export default function ProfilePage() {
 
       {/* Mobile header — flush with navbar */}
       <div className="md:hidden -mx-4 -mt-[95px] mb-6">
-        <div className="relative h-56 overflow-hidden">
+        <div className="relative h-48 overflow-hidden">
           <img
             src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=800&q=80&fit=crop&crop=center"
             alt=""
             className="w-full h-full object-cover object-center"
           />
+          <div className="absolute inset-0 bg-white/20" />
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent" />
         </div>
         <div className="relative -mt-12 flex flex-col items-center">
@@ -208,12 +209,13 @@ export default function ProfilePage() {
 
       {/* Desktop/Tablet header with 16:9 background */}
       <div className="hidden md:block -mx-4 -mt-[130px] mb-8">
-        <div className="relative aspect-[16/5] max-h-[260px] overflow-hidden">
+        <div className="relative aspect-[16/5] max-h-[230px] overflow-hidden">
           <img
             src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=1400&q=80&fit=crop&crop=center"
             alt=""
             className="w-full h-full object-cover object-center"
           />
+          <div className="absolute inset-0 bg-white/20" />
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent" />
         </div>
         <div className="relative -mt-10 flex items-end gap-6 max-w-md mx-auto">
