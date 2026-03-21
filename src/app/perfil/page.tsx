@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import PopupMessage from '@/components/PopupMessage'
 
@@ -15,6 +16,7 @@ function useHideFooterImage() {
 }
 
 export default function ProfilePage() {
+  const router = useRouter()
   useHideFooterImage()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -27,6 +29,7 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [message, setMessage] = useState('')
   const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' | 'info' } | null>(null)
+  const [sendingReset, setSendingReset] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -303,6 +306,34 @@ export default function ProfilePage() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </form>
+
+      {/* Change password section */}
+      <div className="mt-8 pt-6 border-t border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Contraseña</p>
+            <p className="text-xs text-gray-400 mt-0.5">Cambia tu contraseña de acceso</p>
+          </div>
+          <button
+            onClick={async () => {
+              setSendingReset(true)
+              const supabase = createClient()
+              const { error } = await supabase.auth.resetPasswordForEmail(email)
+              if (error) {
+                setPopup({ message: 'Error al enviar código. Intenta de nuevo.', type: 'error' })
+                setSendingReset(false)
+                return
+              }
+              setSendingReset(false)
+              router.push(`/auth/olvide-contrasena?email=${encodeURIComponent(email)}&sent=1`)
+            }}
+            disabled={sendingReset}
+            className="text-sm text-brand-500 hover:text-brand-600 font-medium disabled:opacity-50 transition-colors"
+          >
+            {sendingReset ? 'Enviando...' : 'Cambiar'}
+          </button>
+        </div>
+      </div>
 
       {popup && (
         <PopupMessage
