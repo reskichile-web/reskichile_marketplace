@@ -3,7 +3,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+function useHideFooterImage() {
+  useEffect(() => {
+    const footer = document.querySelector('footer > div:first-child') as HTMLElement
+    if (footer && window.innerWidth < 768) {
+      footer.style.display = 'none'
+      return () => { footer.style.display = '' }
+    }
+  }, [])
+}
+
 export default function ProfilePage() {
+  useHideFooterImage()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [instagram, setInstagram] = useState('')
@@ -117,8 +128,8 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md mx-auto px-4 pb-16">
-      {/* Mobile header — flush with navbar */}
-      <div className="md:hidden -mx-4 -mt-[1px] mb-6">
+      {/* Mobile header — flush with navbar, compensate layout spacer */}
+      <div className="md:hidden -mx-4 -mt-[95px] mb-6">
         <div className="relative h-40 overflow-hidden">
           <img
             src="/images/profile-background.jpg"
