@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
+import PopupMessage from '@/components/PopupMessage'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_REGEX = /^\+?[\d\s\-()]{8,15}$/
@@ -16,8 +17,6 @@ export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState<Step>('form')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState(searchParams.get('email') || '')
   const [countryCode, setCountryCode] = useState('+56')
   const [phone, setPhone] = useState('')
@@ -25,7 +24,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [toast, setToast] = useState('')
+  const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' } | null>(null)
   const [loading, setLoading] = useState(false)
   const [otpError, setOtpError] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -60,15 +59,9 @@ export default function RegisterPage() {
   const pwStrength = Object.values(pwChecks).filter(Boolean).length
   const pwColors = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500']
 
-  function showToast(msg: string) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 4000)
-  }
 
   function validate(): boolean {
     const errors: Record<string, string> = {}
-    if (!firstName.trim()) errors.firstName = 'Este campo es obligatorio'
-    if (!lastName.trim()) errors.lastName = 'Este campo es obligatorio'
     const trimmedEmail = email.trim().toLowerCase()
     if (!trimmedEmail) errors.email = 'Este campo es obligatorio'
     else if (!EMAIL_REGEX.test(trimmedEmail)) errors.email = 'Ingresa un email válido'
@@ -98,10 +91,11 @@ export default function RegisterPage() {
     })
 
     if (error) {
-      if (error.message.includes('rate limit')) {
-        showToast('Demasiados intentos. Espera unos minutos.')
+      const msg = error.message.toLowerCase()
+      if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429') || error.status === 429) {
+        setPopup({ message: 'Has realizado demasiados intentos. Por seguridad, espera unos minutos antes de intentar nuevamente.', type: 'warning' })
       } else {
-        showToast('No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.')
+        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
       }
       setLoading(false)
       return
@@ -135,14 +129,15 @@ export default function RegisterPage() {
       return
     }
 
-    // Now we have a session — save user profile
+    // Now we have a session — save user profile with generic name
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`
+      const genericName = `user${Math.floor(Math.random() * 90000) + 10000}`
       await supabase.from('users').upsert({
         id: user.id,
         email: user.email,
-        name: `${firstName.trim()} ${lastName.trim()}`,
+        name: genericName,
         phone: fullPhone,
       }, { onConflict: 'id' })
     }
@@ -165,7 +160,7 @@ export default function RegisterPage() {
     })
 
     if (error) {
-      showToast('No pudimos reenviar el código. Intenta nuevamente.')
+      setPopup({ message: 'No pudimos reenviar el código. Intenta nuevamente.', type: 'error' })
       return
     }
 
@@ -178,42 +173,11 @@ export default function RegisterPage() {
       <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
         <h1 className="font-body text-3xl font-black mb-6 text-brand-500">Crear cuenta</h1>
 
-        {/* Toast popup */}
-        {toast && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium animate-fade-in">
-            {toast}
-          </div>
+        {popup && (
+          <PopupMessage message={popup.message} type={popup.type} onClose={() => setPopup(null)} autoClose={popup.type === 'warning' ? 0 : 5000} />
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Nombre *</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={e => { setFirstName(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.firstName; return n }) }}
-                className={`w-full border rounded px-3 py-2 ${fieldErrors.firstName ? 'border-red-400' : ''}`}
-                placeholder="Juan"
-                autoComplete="given-name"
-              />
-              {fieldErrors.firstName && <p className="text-xs text-red-500 mt-1">{fieldErrors.firstName}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Apellido *</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={e => { setLastName(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.lastName; return n }) }}
-                className={`w-full border rounded px-3 py-2 ${fieldErrors.lastName ? 'border-red-400' : ''}`}
-                placeholder="Pérez"
-                autoComplete="family-name"
-              />
-              {fieldErrors.lastName && <p className="text-xs text-red-500 mt-1">{fieldErrors.lastName}</p>}
-            </div>
-          </div>
-
           {/* Email */}
           <div>
             <label className="block text-sm font-medium mb-1">Email *</label>
@@ -393,10 +357,8 @@ export default function RegisterPage() {
           </p>
         )}
 
-        {toast && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium animate-fade-in">
-            {toast}
-          </div>
+        {popup && (
+          <PopupMessage message={popup.message} type={popup.type} onClose={() => setPopup(null)} autoClose={popup.type === 'warning' ? 0 : 5000} />
         )}
 
         {/* Resend */}
@@ -418,7 +380,7 @@ export default function RegisterPage() {
 
         <div className="mt-8 text-center">
           <button
-            onClick={() => { setStep('form'); setToast(''); setFieldErrors({}) }}
+            onClick={() => { setStep('form'); setPopup(null); setFieldErrors({}) }}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
             ← Volver al formulario
