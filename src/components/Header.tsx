@@ -3,7 +3,6 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
-import AuthModal from './AuthModal'
 import AdminNav from './AdminNav'
 import ProfileDropdown from './ProfileDropdown'
 
@@ -68,7 +67,15 @@ export default async function Header() {
                 </form>
               </>
             ) : (
-              <AuthModal />
+              <>
+                <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                  Iniciar sesión
+                </Link>
+                <span className="text-gray-200">|</span>
+                <Link href="/auth/registro" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                  Registrarse
+                </Link>
+              </>
             )}
             <Link href="/vender" className="bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors">
               Vender

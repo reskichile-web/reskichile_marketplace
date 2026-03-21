@@ -211,7 +211,7 @@ export default function ProfilePage() {
       <div className="hidden md:block -mx-4 -mt-[130px] mb-8">
         <div className="relative aspect-[16/5] max-h-[230px] overflow-hidden">
           <img
-            src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=1400&q=80&fit=crop&crop=center"
+            src="https://images.unsplash.com/photo-1551524559-8af4e6624178?w=1400&q=80&fit=crop&crop=center"
             alt=""
             className="w-full h-full object-cover object-center"
           />
