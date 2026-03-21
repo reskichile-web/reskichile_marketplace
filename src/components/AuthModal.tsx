@@ -351,10 +351,10 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
 }
 
 function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -366,9 +366,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
     setLoading(true)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-      redirectTo: '/auth/reset-password',
-    })
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
 
     if (error) {
       setError(error.message)
@@ -376,29 +374,8 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       return
     }
 
-    setSent(true)
-    setLoading(false)
-  }
-
-  if (sent) {
-    return (
-      <>
-        <div className="text-center py-4">
-          <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="font-body text-xl font-black mb-2">Revisa tu email</h2>
-          <p className="text-sm text-gray-500">
-            Enviamos un link a <span className="font-medium text-gray-700">{email}</span> para restablecer tu contraseña.
-          </p>
-        </div>
-        <button onClick={onBack} className="w-full mt-4 text-sm text-brand-500 hover:underline font-medium">
-          Volver al inicio de sesión
-        </button>
-      </>
-    )
+    // Redirect to standalone page with email pre-filled for OTP input
+    router.push(`/auth/olvide-contrasena?email=${encodeURIComponent(trimmedEmail)}&sent=1`)
   }
 
   return (
