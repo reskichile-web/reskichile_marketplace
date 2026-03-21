@@ -77,9 +77,31 @@ export default function ProfilePage() {
     return <div className="max-w-md mx-auto mt-16 px-4">Cargando...</div>
   }
 
+  const initial = name ? name.charAt(0).toUpperCase() : email.charAt(0).toUpperCase()
+
   return (
-    <div className="max-w-md mx-auto mt-16 px-4">
-      <h1 className="font-body text-3xl font-black mb-6">Mi perfil</h1>
+    <div className="max-w-md mx-auto px-4 pb-16">
+      {/* Mobile header with background image */}
+      <div className="md:hidden -mx-4 mb-6">
+        <div className="relative h-36 overflow-hidden">
+          <img
+            src="/images/profile-background.jpg"
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
+        </div>
+        <div className="relative -mt-10 flex flex-col items-center">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-2xl font-black shadow-lg border-4 border-white">
+            {initial}
+          </div>
+          <h1 className="font-body text-xl font-black mt-2">{name || 'Mi perfil'}</h1>
+          <p className="text-sm text-gray-500">{email}</p>
+        </div>
+      </div>
+
+      {/* Desktop header */}
+      <h1 className="hidden md:block font-body text-3xl font-black mb-6 mt-16">Mi perfil</h1>
 
       {message && (
         <div className={`p-3 rounded mb-4 text-sm ${message.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
