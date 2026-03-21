@@ -21,7 +21,7 @@ export default function ProfileDropdown() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="text-gray-900 hover:text-brand-500 transition-colors"
+        className="p-1 text-gray-900 hover:text-brand-500 transition-colors"
         title="Mi cuenta"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
