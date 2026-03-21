@@ -52,10 +52,10 @@ export default function SearchBar() {
       {/* Mobile: icon trigger */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="md:hidden p-1.5 text-gray-600"
+        className="md:hidden p-1 text-gray-900 hover:text-brand-500 transition-colors"
         aria-label="Buscar"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
       </button>
