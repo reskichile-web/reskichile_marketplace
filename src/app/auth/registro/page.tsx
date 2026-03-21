@@ -16,11 +16,16 @@ export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState<Step>('form')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState(searchParams.get('email') || '')
+  const [countryCode, setCountryCode] = useState('+56')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [toast, setToast] = useState('')
   const [loading, setLoading] = useState(false)
   const [otpError, setOtpError] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -33,28 +38,56 @@ export default function RegisterPage() {
     return () => clearTimeout(timer)
   }, [resendCooldown])
 
-  function validate(): string | null {
-    const trimmedEmail = email.trim().toLowerCase()
-    const trimmedPhone = phone.trim()
+  // Phone formatting: 9 1234 5678
+  function formatPhone(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 9)
+    if (digits.length <= 1) return digits
+    if (digits.length <= 5) return `${digits[0]} ${digits.slice(1)}`
+    return `${digits[0]} ${digits.slice(1, 5)} ${digits.slice(5)}`
+  }
 
-    if (!trimmedEmail) return 'Ingresa tu email'
-    if (!EMAIL_REGEX.test(trimmedEmail)) return 'Ingresa un email válido'
-    if (!trimmedPhone) return 'Ingresa tu número de teléfono'
-    if (!PHONE_REGEX.test(trimmedPhone)) return 'Ingresa un número de teléfono válido'
-    if (!password) return 'Ingresa una contraseña'
-    if (password.length < PASSWORD_MIN) return `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`
-    if (!/[A-Z]/.test(password)) return 'La contraseña debe tener al menos una mayúscula'
-    if (!/[0-9]/.test(password)) return 'La contraseña debe tener al menos un número'
-    if (password !== confirmPassword) return 'Las contraseñas no coinciden'
-    return null
+  function handlePhoneChange(value: string) {
+    const digits = value.replace(/\D/g, '').slice(0, 9)
+    setPhone(digits)
+  }
+
+  // Password strength
+  const pwChecks = {
+    length: password.length >= PASSWORD_MIN,
+    upper: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+  }
+  const pwStrength = Object.values(pwChecks).filter(Boolean).length
+  const pwColors = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500']
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(''), 4000)
+  }
+
+  function validate(): boolean {
+    const errors: Record<string, string> = {}
+    if (!firstName.trim()) errors.firstName = 'Este campo es obligatorio'
+    if (!lastName.trim()) errors.lastName = 'Este campo es obligatorio'
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail) errors.email = 'Este campo es obligatorio'
+    else if (!EMAIL_REGEX.test(trimmedEmail)) errors.email = 'Ingresa un email válido'
+    const digits = phone.replace(/\D/g, '')
+    if (!digits) errors.phone = 'Este campo es obligatorio'
+    else if (digits.length !== 9 || !digits.startsWith('9')) errors.phone = 'Formato: 9 XXXX XXXX (9 dígitos)'
+    if (!password) errors.password = 'Este campo es obligatorio'
+    else if (!pwChecks.length || !pwChecks.upper || !pwChecks.number) errors.password = 'La contraseña no cumple los requisitos'
+    if (!confirmPassword) errors.confirmPassword = 'Este campo es obligatorio'
+    else if (password !== confirmPassword) errors.confirmPassword = 'Las contraseñas no coinciden'
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError('')
+    setFieldErrors({})
 
-    const validationError = validate()
-    if (validationError) { setError(validationError); return }
+    if (!validate()) return
 
     setLoading(true)
 
@@ -65,23 +98,29 @@ export default function RegisterPage() {
     })
 
     if (error) {
-      setError(translateError(error.message))
+      if (error.message.includes('rate limit')) {
+        showToast('Demasiados intentos. Espera unos minutos.')
+      } else {
+        showToast('No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.')
+      }
       setLoading(false)
       return
     }
 
     if (data.user && data.user.identities && data.user.identities.length === 0) {
-      setError('Ya existe una cuenta con este email. Intenta iniciar sesión.')
+      setFieldErrors({ email: 'Ya existe una cuenta con este email' })
       setLoading(false)
       return
     }
 
-    // Save phone to users table
+    // Save user data
     if (data.user) {
+      const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`
       await supabase.from('users').upsert({
         id: data.user.id,
         email: data.user.email,
-        phone: phone.trim(),
+        name: `${firstName.trim()} ${lastName.trim()}`,
+        phone: fullPhone,
       }, { onConflict: 'id' })
     }
 
@@ -118,7 +157,6 @@ export default function RegisterPage() {
 
   async function handleResend() {
     if (resendCooldown > 0) return
-    setError('')
 
     const supabase = createClient()
     const { error } = await supabase.auth.resend({
@@ -127,7 +165,7 @@ export default function RegisterPage() {
     })
 
     if (error) {
-      setError(error.message)
+      showToast('No pudimos reenviar el código. Intenta nuevamente.')
       return
     }
 
@@ -137,68 +175,162 @@ export default function RegisterPage() {
   // ─── Step: Form ───
   if (step === 'form') {
     return (
-      <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6">
-        <h1 className="font-body text-3xl font-black mb-6">Crear cuenta</h1>
+      <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
+        <h1 className="font-body text-3xl font-black mb-6 text-brand-500">Crear cuenta</h1>
 
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+        {/* Toast popup */}
+        {toast && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium animate-fade-in">
+            {toast}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Nombre *</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={e => { setFirstName(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.firstName; return n }) }}
+                className={`w-full border rounded px-3 py-2 ${fieldErrors.firstName ? 'border-red-400' : ''}`}
+                placeholder="Juan"
+                autoComplete="given-name"
+              />
+              {fieldErrors.firstName && <p className="text-xs text-red-500 mt-1">{fieldErrors.firstName}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Apellido *</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={e => { setLastName(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.lastName; return n }) }}
+                className={`w-full border rounded px-3 py-2 ${fieldErrors.lastName ? 'border-red-400' : ''}`}
+                placeholder="Pérez"
+                autoComplete="family-name"
+              />
+              {fieldErrors.lastName && <p className="text-xs text-red-500 mt-1">{fieldErrors.lastName}</p>}
+            </div>
+          </div>
+
+          {/* Email */}
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1">Email *</label>
             <input
               type="email"
-              required
               value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              onChange={e => { setEmail(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.email; return n }) }}
+              className={`w-full border rounded px-3 py-2 ${fieldErrors.email ? 'border-red-400' : ''}`}
               placeholder="tu@email.com"
               autoComplete="email"
             />
+            {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
           </div>
 
+          {/* Phone with country code */}
           <div>
-            <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp)</label>
-            <input
-              type="tel"
-              required
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              placeholder="+56 9 1234 5678"
-              autoComplete="tel"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Los compradores te contactarán por WhatsApp
-            </p>
+            <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
+            <div className="flex gap-2">
+              <select
+                value={countryCode}
+                onChange={e => setCountryCode(e.target.value)}
+                className="border rounded px-2 py-2 text-sm w-24 shrink-0"
+              >
+                <option value="+56">🇨🇱 +56</option>
+                <option value="+54">🇦🇷 +54</option>
+                <option value="+55">🇧🇷 +55</option>
+                <option value="+51">🇵🇪 +51</option>
+                <option value="+57">🇨🇴 +57</option>
+                <option value="+52">🇲🇽 +52</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+34">🇪🇸 +34</option>
+              </select>
+              <input
+                type="tel"
+                value={formatPhone(phone)}
+                onChange={e => { handlePhoneChange(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.phone; return n }) }}
+                className={`w-full border rounded px-3 py-2 ${fieldErrors.phone ? 'border-red-400' : ''}`}
+                placeholder="9 1234 5678"
+                autoComplete="tel-national"
+              />
+            </div>
+            {fieldErrors.phone ? (
+              <p className="text-xs text-red-500 mt-1">{fieldErrors.phone}</p>
+            ) : (
+              <p className="text-xs text-gray-500 mt-1">Los compradores te contactarán por WhatsApp</p>
+            )}
           </div>
 
+          {/* Password with strength meter */}
           <div>
-            <label className="block text-sm font-medium mb-1">Contraseña</label>
+            <label className="block text-sm font-medium mb-1">Contraseña *</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => { setPassword(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.password; return n }) }}
+                className={`w-full border rounded px-3 py-2 pr-10 ${fieldErrors.password ? 'border-red-400' : ''}`}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
+            {/* Strength bars */}
+            {password.length > 0 && (
+              <div className="mt-2">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${i < pwStrength ? pwColors[pwStrength] : 'bg-gray-200'}`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-1.5 space-y-0.5">
+                  <p className={`text-xs flex items-center gap-1.5 ${pwChecks.length ? 'text-green-600' : 'text-gray-400'}`}>
+                    {pwChecks.length ? '✓' : '○'} Mínimo {PASSWORD_MIN} caracteres
+                  </p>
+                  <p className={`text-xs flex items-center gap-1.5 ${pwChecks.upper ? 'text-green-600' : 'text-gray-400'}`}>
+                    {pwChecks.upper ? '✓' : '○'} Una letra mayúscula
+                  </p>
+                  <p className={`text-xs flex items-center gap-1.5 ${pwChecks.number ? 'text-green-600' : 'text-gray-400'}`}>
+                    {pwChecks.number ? '✓' : '○'} Un número
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm password */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Confirmar contraseña *</label>
             <input
               type="password"
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              autoComplete="new-password"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Mínimo {PASSWORD_MIN} caracteres, una mayúscula y un número
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Confirmar contraseña</label>
-            <input
-              type="password"
-              required
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              onChange={e => { setConfirmPassword(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.confirmPassword; return n }) }}
+              className={`w-full border rounded px-3 py-2 ${fieldErrors.confirmPassword ? 'border-red-400' : ''}`}
               autoComplete="new-password"
             />
+            {fieldErrors.confirmPassword && <p className="text-xs text-red-500 mt-1">{fieldErrors.confirmPassword}</p>}
+            {!fieldErrors.confirmPassword && confirmPassword.length > 0 && password !== confirmPassword && (
+              <p className="text-xs text-red-500 mt-1">Las contraseñas no coinciden</p>
+            )}
           </div>
 
           <button
@@ -223,7 +355,7 @@ export default function RegisterPage() {
   // ─── Step: OTP Verification ───
   if (step === 'otp') {
     return (
-      <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6">
+      <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
         <div className="text-center mb-8">
           {/* Animated envelope icon */}
           <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-5 animate-bounce-slow">
@@ -261,8 +393,10 @@ export default function RegisterPage() {
           </p>
         )}
 
-        {error && (
-          <p className="text-center text-sm text-red-500 mb-4">{error}</p>
+        {toast && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium animate-fade-in">
+            {toast}
+          </div>
         )}
 
         {/* Resend */}
@@ -284,7 +418,7 @@ export default function RegisterPage() {
 
         <div className="mt-8 text-center">
           <button
-            onClick={() => { setStep('form'); setError('') }}
+            onClick={() => { setStep('form'); setToast(''); setFieldErrors({}) }}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
             ← Volver al formulario
@@ -296,7 +430,7 @@ export default function RegisterPage() {
 
   // ─── Step: Success ───
   return (
-    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6">
+    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
       <div className="text-center">
         <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
           <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -310,11 +444,3 @@ export default function RegisterPage() {
   )
 }
 
-function translateError(message: string): string {
-  if (message.includes('User already registered')) return 'Ya existe una cuenta con este email'
-  if (message.includes('Password should be at least')) return 'La contraseña es muy corta'
-  if (message.includes('Unable to validate email')) return 'El email ingresado no es válido'
-  if (message.includes('Signup requires a valid password')) return 'Ingresa una contraseña válida'
-  if (message.includes('rate limit')) return 'Demasiados intentos. Espera unos minutos.'
-  return message
-}
