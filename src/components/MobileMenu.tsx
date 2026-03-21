@@ -84,24 +84,9 @@ export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
                 </div>
               ) : (
                 <>
-                  {/* Account */}
-                  <div className="mb-5">
-                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Cuenta</p>
-                    {isLoggedIn ? (
-                      <div className="space-y-0.5">
-                        <Link href="/mis-productos" onClick={() => setOpen(false)} className="block py-2 text-sm text-gray-600 hover:text-brand-500">
-                          Mis productos
-                        </Link>
-                        <Link href="/perfil" onClick={() => setOpen(false)} className="block py-2 text-sm text-gray-600 hover:text-brand-500">
-                          Perfil
-                        </Link>
-                        <form action="/auth/logout" method="POST">
-                          <button type="submit" className="block py-2 text-sm text-gray-600 hover:text-brand-500 w-full text-left">
-                            Cerrar sesión
-                          </button>
-                        </form>
-                      </div>
-                    ) : (
+                  {/* Auth links for non-logged in */}
+                  {!isLoggedIn && (
+                    <div className="mb-5">
                       <div className="flex items-center gap-3">
                         <Link href="/auth/login" onClick={() => setOpen(false)} className="text-sm text-gray-600 hover:text-brand-500">
                           Iniciar sesión
@@ -111,8 +96,8 @@ export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
                           Registrarse
                         </Link>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Vender */}
                   <Link

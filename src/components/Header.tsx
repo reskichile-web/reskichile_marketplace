@@ -52,10 +52,22 @@ export default async function Header() {
             </div>
           )}
 
-          {/* Right actions — desktop */}
-          <div className="hidden md:flex items-center gap-6 shrink-0 font-nav">
+          {/* Right actions — desktop: full links */}
+          <div className="hidden md:flex items-center gap-5 shrink-0 font-nav">
             {user ? (
-              <ProfileDropdown />
+              <>
+                <Link href="/mis-productos" className="text-sm text-gray-600 hover:text-brand-500 transition-colors">
+                  Mis productos
+                </Link>
+                <Link href="/perfil" className="text-sm text-gray-600 hover:text-brand-500 transition-colors">
+                  Perfil
+                </Link>
+                <form action="/auth/logout" method="POST">
+                  <button type="submit" className="text-sm text-gray-400 hover:text-red-500 transition-colors">
+                    Salir
+                  </button>
+                </form>
+              </>
             ) : (
               <AuthModal />
             )}
@@ -63,6 +75,13 @@ export default async function Header() {
               Vender
             </Link>
           </div>
+
+          {/* Right actions — mobile: profile dropdown */}
+          {user && (
+            <div className="md:hidden ml-auto">
+              <ProfileDropdown />
+            </div>
+          )}
 
         </div>
       </div>
