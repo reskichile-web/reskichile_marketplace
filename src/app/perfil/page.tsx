@@ -163,9 +163,10 @@ export default function ProfilePage() {
           <img
             src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=800&q=80&fit=crop&crop=center"
             alt=""
-            className="w-full h-full object-cover object-bottom"
+            className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-4 bg-white" />
         </div>
         <div className="relative -mt-12 flex flex-col items-center">
           <button
@@ -212,9 +213,10 @@ export default function ProfilePage() {
           <img
             src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=1400&q=80&fit=crop&crop=center"
             alt=""
-            className="w-full h-full object-cover object-bottom"
+            className="w-full h-full object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-4 bg-white" />
         </div>
         <div className="relative -mt-10 flex items-end gap-6 max-w-md mx-auto">
           <button
