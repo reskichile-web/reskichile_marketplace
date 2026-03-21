@@ -113,17 +113,6 @@ export default function RegisterPage() {
       return
     }
 
-    // Save user data
-    if (data.user) {
-      const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`
-      await supabase.from('users').upsert({
-        id: data.user.id,
-        email: data.user.email,
-        name: `${firstName.trim()} ${lastName.trim()}`,
-        phone: fullPhone,
-      }, { onConflict: 'id' })
-    }
-
     setLoading(false)
     setStep('otp')
     setResendCooldown(60)
@@ -146,9 +135,20 @@ export default function RegisterPage() {
       return
     }
 
+    // Now we have a session — save user profile
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`
+      await supabase.from('users').upsert({
+        id: user.id,
+        email: user.email,
+        name: `${firstName.trim()} ${lastName.trim()}`,
+        phone: fullPhone,
+      }, { onConflict: 'id' })
+    }
+
     setStep('success')
 
-    // Brief delay to show success, then redirect
     setTimeout(() => {
       router.push('/')
       router.refresh()
