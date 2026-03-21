@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import PopupMessage from '@/components/PopupMessage'
 
 function useHideFooterImage() {
   useEffect(() => {
@@ -25,6 +26,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [message, setMessage] = useState('')
+  const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' | 'info' } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function ProfilePage() {
       .upload(path, file, { upsert: true })
 
     if (uploadError) {
-      setMessage('Error al subir imagen: ' + uploadError.message)
+      setPopup({ message: 'Error al subir imagen. Intenta de nuevo.', type: 'error' })
       setUploadingAvatar(false)
       return
     }
@@ -113,9 +115,9 @@ export default function ProfilePage() {
       .eq('id', user.id)
 
     if (error) {
-      setMessage('Error al guardar: ' + error.message)
+      setPopup({ message: 'Error al guardar. Intenta de nuevo.', type: 'error' })
     } else {
-      setMessage('Perfil actualizado correctamente')
+      setPopup({ message: 'Perfil actualizado', type: 'info' })
     }
     setSaving(false)
   }
@@ -218,12 +220,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {message && (
-        <div className={`p-3 rounded mb-4 text-sm ${message.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-          {message}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Email</label>
@@ -282,6 +278,14 @@ export default function ProfilePage() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </form>
+
+      {popup && (
+        <PopupMessage
+          message={popup.message}
+          type={popup.type}
+          onClose={() => setPopup(null)}
+        />
+      )}
     </div>
   )
 }
