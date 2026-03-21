@@ -63,13 +63,16 @@ export default function ProfilePage() {
     setUploadingAvatar(true)
 
     const supabase = createClient()
-    const ext = file.name.split('.').pop()
-    const path = `${userId}/avatar.${ext}`
+    // Always use same filename to avoid orphaned files
+    const path = `${userId}/avatar`
 
-    // Upload to storage
+    // Delete old file first
+    await supabase.storage.from('avatars').remove([path])
+
+    // Upload new
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true })
+      .upload(path, file, { upsert: true, contentType: file.type })
 
     if (uploadError) {
       setPopup({ message: 'Error al subir imagen. Intenta de nuevo.', type: 'error' })
@@ -77,13 +80,15 @@ export default function ProfilePage() {
       return
     }
 
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    const urlWithCache = publicUrl + '?t=' + Date.now()
 
-    // Save to profile
-    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', userId)
-    setAvatarUrl(publicUrl + '?t=' + Date.now())
+    await supabase.from('users').update({ avatar_url: urlWithCache }).eq('id', userId)
+    setAvatarUrl(urlWithCache)
     setUploadingAvatar(false)
+
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function handleAvatarDelete() {
@@ -91,16 +96,12 @@ export default function ProfilePage() {
     setUploadingAvatar(true)
 
     const supabase = createClient()
-
-    // List and delete files in user's avatar folder
-    const { data: files } = await supabase.storage.from('avatars').list(userId)
-    if (files && files.length > 0) {
-      await supabase.storage.from('avatars').remove(files.map(f => `${userId}/${f.name}`))
-    }
-
+    await supabase.storage.from('avatars').remove([`${userId}/avatar`])
     await supabase.from('users').update({ avatar_url: null }).eq('id', userId)
     setAvatarUrl(null)
     setUploadingAvatar(false)
+
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -162,7 +163,7 @@ export default function ProfilePage() {
           <img
             src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=800&q=80&fit=crop&crop=center"
             alt=""
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-bottom"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
         </div>
@@ -211,7 +212,7 @@ export default function ProfilePage() {
           <img
             src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=1400&q=80&fit=crop&crop=center"
             alt=""
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-bottom"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
         </div>
@@ -253,11 +254,6 @@ export default function ProfilePage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <p className="text-sm text-gray-400 py-2">{email}</p>
-        </div>
-
         <div>
           <label className="block text-sm font-medium mb-1">Nombre</label>
           <input
