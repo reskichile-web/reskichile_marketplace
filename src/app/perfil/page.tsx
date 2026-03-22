@@ -112,7 +112,7 @@ export default function ProfilePage() {
     const trimmedInstagram = instagram.trim().replace(/^@/, '')
 
     if (trimmedPhone && !/^569\d{8}$/.test(trimmedPhone)) {
-      setMessage('Error: El teléfono debe tener formato 569XXXXXXXX (11 dígitos)')
+      setPopup({ message: 'El teléfono debe tener formato 569XXXXXXXX (11 dígitos)', type: 'error' })
       setSaving(false)
       return
     }
