@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
+import { getBrandLogoUrl } from '@/lib/brand-logos'
 import {
   PRODUCT_TYPES,
   CONDITIONS,
@@ -10,6 +12,89 @@ import {
   PRODUCT_ATTRIBUTES,
   type AttributeField,
 } from '@/lib/constants'
+
+function InlineField({ label, value, onSave, type = 'text', options }: {
+  label: string
+  value: string
+  onSave: (v: string) => void
+  type?: 'text' | 'number' | 'select' | 'textarea'
+  options?: string[]
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  useEffect(() => { setDraft(value) }, [value])
+
+  function save() {
+    onSave(draft)
+    setEditing(false)
+  }
+
+  if (!editing) {
+    return (
+      <button type="button" onClick={() => setEditing(true)} className="w-full text-left group">
+        <span className="flex items-center gap-1 text-xs text-gray-400">
+          {label}
+          <svg className="w-2.5 h-2.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </span>
+        <p className="text-sm font-medium text-gray-900 group-hover:text-brand-500 transition-colors min-h-[20px]">
+          {value || <span className="text-gray-500">–</span>}
+        </p>
+      </button>
+    )
+  }
+
+  if (type === 'select' && options) {
+    return (
+      <div>
+        <span className="text-xs text-gray-400">{label}</span>
+        <select
+          value={draft}
+          onChange={e => { setDraft(e.target.value); onSave(e.target.value); setEditing(false) }}
+          onBlur={() => setEditing(false)}
+          autoFocus
+          className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+        >
+          <option value="">Seleccionar</option>
+          {options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+    )
+  }
+
+  if (type === 'textarea') {
+    return (
+      <div>
+        <span className="text-xs text-gray-400">{label}</span>
+        <textarea
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={e => e.key === 'Escape' && setEditing(false)}
+          autoFocus
+          className="w-full border rounded-lg px-3 py-2 text-sm mt-1 h-20 resize-none"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <span className="text-xs text-gray-400">{label}</span>
+      <input
+        type={type}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
+        autoFocus
+        className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+      />
+    </div>
+  )
+}
 
 export default function EditProductPage() {
   const params = useParams()
@@ -32,42 +117,30 @@ export default function EditProductPage() {
   })
 
   const [attributes, setAttributes] = useState<Record<string, string | boolean>>({})
+  const [existingImages, setExistingImages] = useState<{ id: string; url: string; order: number }[]>([])
+  const [newImages, setNewImages] = useState<File[]>([])
+  const [newPreviews, setNewPreviews] = useState<string[]>([])
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([])
+  const [sellerId, setSellerId] = useState<string>('')
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/auth/login'); return }
 
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-
-      // Check if admin or owner
       const { data: profile } = await supabase
-        .from('users')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single()
+        .from('users').select('is_admin').eq('id', user.id).single()
 
       const { data: product } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', params.id)
-        .single()
+        .from('products').select('*, product_images(id, url, order)')
+        .eq('id', params.id).single()
 
-      if (!product) {
-        router.push('/catalogo')
-        return
-      }
+      if (!product) { router.push('/catalogo'); return }
 
       const isOwner = product.seller_id === user.id
       const isAdmin = profile?.is_admin ?? false
-
-      if (!isOwner && !isAdmin) {
-        router.push(`/producto/${params.id}`)
-        return
-      }
+      if (!isOwner && !isAdmin) { router.push(`/producto/${params.id}`); return }
 
       setForm({
         product_type: product.product_type || '',
@@ -81,8 +154,10 @@ export default function EditProductPage() {
         description: product.description || '',
         status: product.status || '',
       })
-
       setAttributes((product.attributes as Record<string, string | boolean>) || {})
+      setSellerId(product.seller_id || '')
+      const imgs = (product.product_images || []) as { id: string; url: string; order: number }[]
+      setExistingImages(imgs.sort((a, b) => a.order - b.order))
       setLoading(false)
     }
     load()
@@ -104,30 +179,56 @@ export default function EditProductPage() {
     setAttributes(prev => ({ ...prev, [key]: value }))
   }
 
+  // Unified image list
+  const allImages: ImageItem[] = [
+    ...existingImages
+      .filter(img => !deletedImageIds.includes(img.id))
+      .map(img => ({ id: img.id, url: img.url })),
+    ...newImages.map((_, i) => ({ id: `new-${i}`, url: newPreviews[i], isNew: true })),
+  ]
+
+  function handleReorderImages(reordered: ImageItem[]) {
+    const reorderedExisting: typeof existingImages = []
+    const reorderedNewImages: File[] = []
+    const reorderedNewPreviews: string[] = []
+    reordered.forEach(item => {
+      if (item.id.startsWith('new-')) {
+        const idx = parseInt(item.id.replace('new-', ''))
+        reorderedNewImages.push(newImages[idx])
+        reorderedNewPreviews.push(newPreviews[idx])
+      } else {
+        const found = existingImages.find(img => img.id === item.id)
+        if (found) reorderedExisting.push(found)
+      }
+    })
+    setExistingImages(reorderedExisting)
+    setNewImages(reorderedNewImages)
+    setNewPreviews(reorderedNewPreviews)
+  }
+
+  function handleRemoveImage(id: string) {
+    if (id.startsWith('new-')) {
+      const idx = parseInt(id.replace('new-', ''))
+      setNewImages(prev => prev.filter((_, i) => i !== idx))
+      setNewPreviews(prev => { URL.revokeObjectURL(prev[idx]); return prev.filter((_, i) => i !== idx) })
+    } else {
+      setDeletedImageIds(prev => [...prev, id])
+    }
+  }
+
+  function handleAddImages(files: File[]) {
+    setNewImages(prev => [...prev, ...files])
+    setNewPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
     const price = parseInt(form.price)
-    if (isNaN(price) || price <= 0) {
-      setError('El precio debe ser un número positivo')
-      return
-    }
-
+    if (isNaN(price) || price <= 0) { setError('El precio debe ser un número positivo'); return }
     if (!form.product_type || !form.brand || !form.condition || !form.region) {
-      setError('Completa todos los campos obligatorios')
-      return
-    }
-
-    // Validate required attributes
-    for (const attr of currentAttributes) {
-      if (attr.required) {
-        const val = attributes[attr.key]
-        if (val === undefined || val === '') {
-          setError(`El campo "${attr.label}" es obligatorio`)
-          return
-        }
-      }
+      setError('Completa todos los campos obligatorios'); return
     }
 
     setSaving(true)
@@ -136,264 +237,188 @@ export default function EditProductPage() {
     const attributesJson: Record<string, string | boolean> = {}
     for (const attr of currentAttributes) {
       const val = attributes[attr.key]
-      if (val !== undefined && val !== '') {
-        attributesJson[attr.key] = val
-      }
+      if (val !== undefined && val !== '') attributesJson[attr.key] = val
     }
 
-    const { error: updateError } = await supabase
-      .from('products')
-      .update({
-        product_type: form.product_type,
-        brand: form.brand,
-        model: form.model || null,
-        condition: form.condition,
-        seasons_used: form.seasons_used || null,
-        description: form.description || null,
-        price,
-        region: form.region,
-        comuna: form.comuna || '',
-        attributes: Object.keys(attributesJson).length > 0 ? attributesJson : null,
-        status: form.status,
-      })
-      .eq('id', params.id)
+    const { error: updateError } = await supabase.from('products').update({
+      product_type: form.product_type,
+      brand: form.brand,
+      model: form.model || null,
+      condition: form.condition,
+      seasons_used: form.seasons_used || null,
+      description: form.description || null,
+      price,
+      region: form.region,
+      comuna: form.comuna || '',
+      attributes: Object.keys(attributesJson).length > 0 ? attributesJson : null,
+    }).eq('id', params.id)
 
-    if (updateError) {
-      setError('Error al guardar: ' + updateError.message)
-      setSaving(false)
-      return
+    if (updateError) { setError('Error al guardar: ' + updateError.message); setSaving(false); return }
+
+    // Delete removed images
+    if (deletedImageIds.length > 0) {
+      const toDelete = existingImages.filter(img => deletedImageIds.includes(img.id))
+      for (const img of toDelete) {
+        const urlParts = img.url.split('/product-images/')
+        if (urlParts[1]) await supabase.storage.from('product-images').remove([urlParts[1]])
+      }
+      await supabase.from('product_images').delete().in('id', deletedImageIds)
+    }
+
+    // Update order
+    const remainingExisting = existingImages.filter(img => !deletedImageIds.includes(img.id))
+    for (let i = 0; i < remainingExisting.length; i++) {
+      await supabase.from('product_images').update({ order: i }).eq('id', remainingExisting[i].id)
+    }
+
+    // Upload new images
+    if (newImages.length > 0) {
+      const nextOrder = remainingExisting.length
+      for (let i = 0; i < newImages.length; i++) {
+        const file = newImages[i]
+        const ext = file.name.split('.').pop()
+        const path = `${sellerId}/${params.id}/${Date.now()}_${i}.${ext}`
+        const { error: uploadError } = await supabase.storage.from('product-images').upload(path, file)
+        if (uploadError) continue
+        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
+        await supabase.from('product_images').insert({ product_id: params.id as string, url: publicUrl, order: nextOrder + i })
+      }
     }
 
     router.push(`/producto/${params.id}`)
   }
 
-  function renderAttributeField(attr: AttributeField) {
-    if (attr.type === 'boolean') {
-      const val = attributes[attr.key]
-      return (
-        <div key={attr.key}>
-          <label className="block text-sm font-medium mb-1">
-            {attr.label} {attr.required && '*'}
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-1">
-              <input type="radio" name={attr.key} checked={val === true} onChange={() => updateAttribute(attr.key, true)} />
-              Sí
-            </label>
-            <label className="flex items-center gap-1">
-              <input type="radio" name={attr.key} checked={val === false} onChange={() => updateAttribute(attr.key, false)} />
-              No
-            </label>
-          </div>
-        </div>
-      )
-    }
-
-    if (attr.type === 'select' && attr.options) {
-      return (
-        <div key={attr.key}>
-          <label className="block text-sm font-medium mb-1">
-            {attr.label} {attr.required && '*'}
-          </label>
-          <select
-            value={(attributes[attr.key] as string) || ''}
-            onChange={e => updateAttribute(attr.key, e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">Seleccionar</option>
-            {attr.options.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        </div>
-      )
-    }
-
-    return (
-      <div key={attr.key}>
-        <label className="block text-sm font-medium mb-1">
-          {attr.label} {attr.required && '*'}
-        </label>
-        <input
-          type={attr.type === 'number' ? 'number' : 'text'}
-          value={(attributes[attr.key] as string) || ''}
-          onChange={e => updateAttribute(attr.key, e.target.value)}
-          className="w-full border rounded px-3 py-2"
-          placeholder={attr.placeholder || ''}
-        />
-      </div>
-    )
-  }
-
   if (loading) return <div className="max-w-2xl mx-auto mt-16 px-4">Cargando...</div>
+
+  const logoUrl = getBrandLogoUrl(form.brand)
 
   return (
     <div className="max-w-2xl mx-auto mt-8 px-4 pb-16">
       <h1 className="font-body text-3xl font-black mb-6">Editar producto</h1>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-
-        {/* Status — solo visible para admin */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Estado de publicación</label>
-          <select
-            value={form.status}
-            onChange={e => updateForm('status', e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="draft">Borrador</option>
-            <option value="pending">Pendiente</option>
-            <option value="approved">Aprobado</option>
-            <option value="rejected">Rechazado</option>
-            <option value="sold">Vendido</option>
-            <option value="archived">Archivado</option>
-          </select>
-        </div>
-
-        {/* Product Type */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Tipo de producto *</label>
-          <select
-            required
-            value={form.product_type}
-            onChange={e => updateForm('product_type', e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">Seleccionar</option>
-            {Object.entries(PRODUCT_TYPES).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Brand & Model */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Marca *</label>
-            <input
-              type="text"
-              required
-              value={form.brand}
-              onChange={e => updateForm('brand', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Modelo</label>
-            <input
-              type="text"
-              value={form.model}
-              onChange={e => updateForm('model', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
+      <form onSubmit={handleSubmit}>
+        {/* Header — brand + model */}
+        <div className="flex items-center gap-3 mb-6">
+          {logoUrl && (
+            <img src={logoUrl} alt="" className="w-8 h-8 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
+          )}
+          <div className="flex-1">
+            <div className="flex items-baseline gap-2">
+              <InlineField label="Marca" value={form.brand} onSave={v => updateForm('brand', v)} />
+              <InlineField label="Modelo" value={form.model} onSave={v => updateForm('model', v)} />
+            </div>
           </div>
         </div>
 
-        {/* Condition & Seasons */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Condición *</label>
-            <select
-              required
-              value={form.condition}
-              onChange={e => updateForm('condition', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="">Seleccionar</option>
-              {Object.entries(CONDITIONS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Temporadas de uso</label>
-            <input
-              type="text"
-              value={form.seasons_used}
-              onChange={e => updateForm('seasons_used', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-        </div>
-
-        {/* Price */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Precio (CLP) *</label>
-          <input
-            type="number"
-            required
-            min="1"
-            value={form.price}
-            onChange={e => updateForm('price', e.target.value)}
-            className="w-full border rounded px-3 py-2"
+        {/* Properties grid — click to edit */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+          <InlineField
+            label="Tipo"
+            value={PRODUCT_TYPES[form.product_type] || form.product_type}
+            onSave={v => {
+              const key = Object.entries(PRODUCT_TYPES).find(([, label]) => label === v)?.[0] || v
+              updateForm('product_type', key)
+            }}
+            type="select"
+            options={Object.values(PRODUCT_TYPES)}
           />
-        </div>
-
-        {/* Region & Comuna */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Región *</label>
-            <select
-              required
-              value={form.region}
-              onChange={e => updateForm('region', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="">Seleccionar</option>
-              {REGIONS.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Comuna</label>
-            <input
-              type="text"
-              value={form.comuna}
-              onChange={e => updateForm('comuna', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
+          <InlineField
+            label="Condición"
+            value={CONDITIONS[form.condition] || form.condition}
+            onSave={v => {
+              const key = Object.entries(CONDITIONS).find(([, label]) => label === v)?.[0] || v
+              updateForm('condition', key)
+            }}
+            type="select"
+            options={Object.values(CONDITIONS)}
+          />
+          <InlineField label="Temporadas" value={form.seasons_used} onSave={v => updateForm('seasons_used', v)} />
+          <InlineField label="Precio (CLP)" value={form.price ? `$${Number(form.price).toLocaleString('es-CL')}` : ''} onSave={v => updateForm('price', v.replace(/\D/g, ''))} />
+          <InlineField
+            label="Región"
+            value={form.region}
+            onSave={v => updateForm('region', v)}
+            type="select"
+            options={REGIONS}
+          />
+          <InlineField label="Comuna" value={form.comuna} onSave={v => updateForm('comuna', v)} />
         </div>
 
         {/* Description */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Descripción</label>
-          <textarea
-            value={form.description}
-            onChange={e => updateForm('description', e.target.value)}
-            className="w-full border rounded px-3 py-2 h-28"
-          />
+        <div className="mb-6">
+          <InlineField label="Descripción" value={form.description} onSave={v => updateForm('description', v)} type="textarea" />
         </div>
 
         {/* Dynamic Attributes */}
         {currentAttributes.length > 0 && (
-          <div className="border-t pt-4">
-            <h2 className="font-body text-lg font-medium tracking-sub mb-3">
+          <div className="mb-6">
+            <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-3">
               Atributos de {PRODUCT_TYPES[form.product_type]}
-            </h2>
-            <div className="space-y-4">
-              {currentAttributes.map(attr => renderAttributeField(attr))}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {currentAttributes.map(attr => {
+                if (attr.type === 'boolean') {
+                  const val = attributes[attr.key]
+                  return (
+                    <button
+                      key={attr.key}
+                      type="button"
+                      onClick={() => updateAttribute(attr.key, val === true ? false : true)}
+                      className="text-left group"
+                    >
+                      <span className="flex items-center gap-1 text-xs text-gray-400">
+                        {attr.label}
+                        <svg className="w-2.5 h-2.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </span>
+                      <p className="text-sm font-medium group-hover:text-brand-500 transition-colors">{val === true ? 'Sí' : val === false ? 'No' : <span className="text-gray-500">–</span>}</p>
+                    </button>
+                  )
+                }
+                return (
+                  <InlineField
+                    key={attr.key}
+                    label={attr.label}
+                    value={(attributes[attr.key] as string) || ''}
+                    onSave={v => updateAttribute(attr.key, v)}
+                    type={attr.type === 'select' ? 'select' : attr.type === 'number' ? 'number' : 'text'}
+                    options={attr.options}
+                  />
+                )
+              })}
             </div>
           </div>
         )}
 
-        <div className="flex gap-3 pt-2">
+        {/* Photos */}
+        <div className="mb-6">
+          <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-3">Fotos</p>
+          <SortableImageGrid
+            images={allImages}
+            onReorder={handleReorderImages}
+            onRemove={handleRemoveImage}
+            onAdd={handleAddImages}
+          />
+        </div>
+
+        {/* Save */}
+        <div className="flex gap-3">
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 bg-brand-500 text-white py-3 rounded hover:bg-brand-600 disabled:opacity-50 font-medium"
+            className="flex-1 bg-brand-500 text-white py-3 rounded-lg hover:bg-brand-600 disabled:opacity-50 font-medium transition-colors"
           >
             {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="border px-6 py-3 rounded hover:bg-gray-50 text-sm"
+            className="border px-6 py-3 rounded-lg hover:bg-gray-50 text-sm"
           >
             Cancelar
           </button>

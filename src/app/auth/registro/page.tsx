@@ -8,7 +8,7 @@ import OtpInput from '@/components/OtpInput'
 import PopupMessage from '@/components/PopupMessage'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PHONE_REGEX = /^\+?[\d\s\-()]{8,15}$/
+
 const PASSWORD_MIN = 6
 
 type Step = 'form' | 'otp' | 'success'

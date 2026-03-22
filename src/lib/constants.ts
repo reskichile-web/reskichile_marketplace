@@ -80,10 +80,10 @@ export interface AttributeField {
 
 export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
   esquis: [
-    { key: 'largo_cm', label: 'Largo (cm)', type: 'number', required: true, placeholder: 'Ej: 170' },
-    { key: 'ancho_mm', label: 'Ancho (mm)', type: 'number', required: true, placeholder: 'Ej: 88' },
+    { key: 'largo_cm', label: 'Largo (cm)', type: 'number', required: false, placeholder: 'Ej: 170' },
+    { key: 'ancho_mm', label: 'Ancho (mm)', type: 'number', required: false, placeholder: 'Ej: 88' },
     { key: 'radio_giro_m', label: 'Radio de giro (m)', type: 'number', required: false, placeholder: 'Ej: 16' },
-    { key: 'incluye_fijaciones', label: 'Incluye fijaciones', type: 'boolean', required: true },
+    { key: 'incluye_fijaciones', label: 'Incluye fijaciones', type: 'boolean', required: false },
     { key: 'fijaciones_marca', label: 'Marca de las fijaciones', type: 'text', required: false },
     { key: 'fijaciones_modelo', label: 'Modelo de las fijaciones', type: 'text', required: false },
     { key: 'fijaciones_tipo_conexion', label: 'Tipo de conexión fijaciones', type: 'select', required: false, options: TIPO_CONEXION_SKI },

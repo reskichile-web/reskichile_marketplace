@@ -1,176 +1,256 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import {
-  PRODUCT_TYPES,
-  CONDITIONS,
-  REGIONS,
-  PRODUCT_ATTRIBUTES,
-  type AttributeField,
-} from '@/lib/constants'
+import { PRODUCT_TYPES, REGIONS } from '@/lib/constants'
+import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
+import PopupMessage from '@/components/PopupMessage'
+import { getBrandLogoUrl } from '@/lib/brand-logos'
+import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
 
 const MAX_IMAGES = 8
 const MIN_IMAGES = 3
 
+type Step = 'type' | 'details' | 'photos' | 'auth' | 'success'
+
+// Category icons as SVG paths
+const TYPE_ICONS: Record<string, string> = {
+  esquis: 'M12 2L8 22M16 2L12 22M4 8h16M4 16h12',
+  snowboards: 'M12 2v20M8 4c4 2 4 6 4 8s0 6-4 8M16 4c-4 2-4 6-4 8s0 6 4 8',
+  botas_esqui: 'M6 22V12a6 6 0 0112 0v10M9 2l3 5 3-5M8 12h8',
+  botas_snowboard: 'M7 22V10a5 5 0 0110 0v12M9 6h6M9 14h6',
+  bastones: 'M7 2l5 20M12 2l5 20M5 8h14',
+  cascos: 'M4 14a8 8 0 1116 0H4zM8 14v4h8v-4M12 2v4',
+  guantes: 'M6 14V8a2 2 0 014 0v6M10 8V4a2 2 0 014 0v10M14 6V4a2 2 0 014 0v10M6 14l-2 6h16l-2-6',
+  fijaciones: 'M4 8h16v8H4zM8 8V6a4 4 0 018 0v2M8 16v2M16 16v2',
+  parkas: 'M8 2h8l2 6v14H6V8zM6 8h12M10 2v4M14 2v4',
+  pantalones: 'M8 2h8v8l-2 12H10L8 10z',
+  antiparras: 'M2 10a4 4 0 014-4h12a4 4 0 014 4v0a4 4 0 01-4 4H6a4 4 0 01-4-4zM10 10a2 2 0 104 0M12 6v-2',
+  mochilas: 'M8 22V6a4 4 0 018 0v16M6 10h12M10 2h4M8 14h8',
+  bolsos: 'M4 8h16v12H4zM8 8V6a4 4 0 018 0v2M4 12h16',
+  equipo_avalanchas: 'M12 2l8 18H4zM12 8v6M12 16h0',
+  camaras_accion: 'M4 6h16v12H4zM9 6V4h6v2M12 10a2 2 0 100 4 2 2 0 000-4z',
+  otros: 'M12 2L2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CONDITION_ICONS: Record<string, any> = {
+  usado_aceptable: AlertTriangle,
+  usado_buen_estado: CheckCircle2,
+  usado_como_nuevo: Star,
+  nuevo: Sparkles,
+  nuevo_sellado: PackageCheck,
+}
+
+const CONDITION_ORDER = [
+  { key: 'usado_aceptable', label: 'Aceptable' },
+  { key: 'usado_buen_estado', label: 'Buen estado' },
+  { key: 'usado_como_nuevo', label: 'Como nuevo' },
+  { key: 'nuevo', label: 'Nuevo' },
+  { key: 'nuevo_sellado', label: 'Sellado' },
+]
+
+const BRAND_PLACEHOLDERS: Record<string, string> = {
+  esquis: 'Ej: Salomon, Atomic, Rossignol',
+  snowboards: 'Ej: Burton, Capita, Jones',
+  botas_esqui: 'Ej: Nordica, Lange, Head',
+  botas_snowboard: 'Ej: Burton, DC, Vans',
+  bastones: 'Ej: Leki, Black Diamond',
+  cascos: 'Ej: Smith, Giro, POC',
+  guantes: 'Ej: Reusch, Ziener, Dakine',
+  fijaciones: 'Ej: Marker, Look, Union',
+  parkas: 'Ej: The North Face, Arc\'teryx',
+  pantalones: 'Ej: 686, Helly Hansen',
+  antiparras: 'Ej: Oakley, Smith, Giro',
+  mochilas: 'Ej: Osprey, Deuter, Mammut',
+  bolsos: 'Ej: Burton, Dakine',
+  equipo_avalanchas: 'Ej: BCA, Ortovox',
+  camaras_accion: 'Ej: GoPro, DJI',
+  otros: 'Ej: Marca del producto',
+}
+
+const MODEL_PLACEHOLDERS: Record<string, string> = {
+  esquis: 'Ej: QST 106, Bent Chetler',
+  snowboards: 'Ej: Custom X, DOA',
+  botas_esqui: 'Ej: Speedmachine 120, Hawx',
+  botas_snowboard: 'Ej: Ion, Ruler',
+  bastones: 'Ej: Carbon 14 3D',
+  cascos: 'Ej: Vantage MIPS, Code',
+  guantes: 'Ej: Storm, Titan',
+  fijaciones: 'Ej: Griffon 13, Squire',
+  parkas: 'Ej: Purist, Perennia 3L',
+  pantalones: 'Ej: Dragline Bib',
+  antiparras: 'Ej: Flight Deck, MAG 4D',
+  mochilas: 'Ej: Surgence 20L',
+  bolsos: 'Ej: Gig Wheelie Bag',
+  equipo_avalanchas: 'Ej: Tracker S',
+  camaras_accion: 'Ej: Hero 12, Max 360',
+  otros: 'Ej: Modelo',
+}
+
 export default function SellPage() {
+  const router = useRouter()
+  const [step, setStep] = useState<Step>('type')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' } | null>(null)
+
+  // Form data
+  const [productType, setProductType] = useState('')
+  const [brand, setBrand] = useState('')
+  const [brandConfirmed, setBrandConfirmed] = useState(false)
+  const [model, setModel] = useState('')
+  const [modelConfirmed, setModelConfirmed] = useState(false)
+  const [condition, setCondition] = useState('usado_como_nuevo')
+  const [seasonsUsed, setSeasonsUsed] = useState('1')
+  const [price, setPrice] = useState('')
+  const [region, setRegion] = useState('')
+  const [comuna, setComuna] = useState('')
+  const [description, setDescription] = useState('')
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
-  const [termsAccepted, setTermsAccepted] = useState(false)
 
-  const [form, setForm] = useState({
-    product_type: '',
-    brand: '',
-    model: '',
-    condition: '',
-    seasons_used: '',
-    price: '',
-    region: '',
-    comuna: '',
-    description: '',
-  })
+  // Auth (for non-logged-in users)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [publishAnon, setPublishAnon] = useState(false)
+  const [anonContact, setAnonContact] = useState('')
+  const [authMode, setAuthMode] = useState<'register' | 'login'>('register')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPhone, setAuthPhone] = useState('')
+  const [authCountryCode, setAuthCountryCode] = useState('+56')
+  const [authPassword, setAuthPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [otpStep, setOtpStep] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  const [attributes, setAttributes] = useState<Record<string, string | boolean>>({})
+  // Existing brands for autocomplete
+  const [existingBrands, setExistingBrands] = useState<string[]>([])
+  const [showBrandSuggestions, setShowBrandSuggestions] = useState(false)
 
-  const currentAttributes: AttributeField[] = form.product_type
-    ? PRODUCT_ATTRIBUTES[form.product_type] || []
-    : []
+  useEffect(() => {
+    async function check() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsLoggedIn(!!user)
 
-  function updateForm(field: string, value: string) {
-    setForm(prev => {
-      const next = { ...prev, [field]: value }
-      if (field === 'product_type') {
-        setAttributes({})
-      }
-      return next
-    })
-  }
-
-  function updateAttribute(key: string, value: string | boolean) {
-    setAttributes(prev => ({ ...prev, [key]: value }))
-  }
-
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || [])
-    const total = images.length + files.length
-    if (total > MAX_IMAGES) {
-      setError(`Máximo ${MAX_IMAGES} fotos`)
-      return
-    }
-    setError('')
-    const newImages = [...images, ...files]
-    setImages(newImages)
-    setPreviews(newImages.map(f => URL.createObjectURL(f)))
-  }
-
-  function removeImage(index: number) {
-    const newImages = images.filter((_, i) => i !== index)
-    setImages(newImages)
-    setPreviews(newImages.map(f => URL.createObjectURL(f)))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-
-    if (images.length < MIN_IMAGES) {
-      setError(`Debes subir al menos ${MIN_IMAGES} fotos`)
-      return
-    }
-
-    if (!form.product_type || !form.brand || !form.condition || !form.price || !form.region) {
-      setError('Completa todos los campos obligatorios')
-      return
-    }
-
-    if (!termsAccepted) {
-      setError('Debes aceptar los términos y condiciones')
-      return
-    }
-
-    // Validate required attributes
-    for (const attr of currentAttributes) {
-      if (attr.required) {
-        const val = attributes[attr.key]
-        if (val === undefined || val === '') {
-          setError(`El campo "${attr.label}" es obligatorio`)
-          return
-        }
+      // Fetch existing brands
+      const { data } = await supabase.from('products').select('brand').eq('status', 'approved')
+      if (data) {
+        const brands = Array.from(new Set(data.map(p => p.brand))).sort()
+        setExistingBrands(brands)
       }
     }
+    check()
+  }, [])
 
-    const price = parseInt(form.price)
-    if (isNaN(price) || price <= 0) {
-      setError('El precio debe ser un número positivo')
-      return
+  const filteredBrands = useMemo(() => {
+    if (!brand.trim()) return []
+    const q = brand.toLowerCase()
+    return existingBrands.filter(b => b.toLowerCase().includes(q)).slice(0, 6)
+  }, [brand, existingBrands])
+
+  const imageItems: ImageItem[] = images.map((_, i) => ({
+    id: `img-${i}`,
+    url: previews[i],
+  }))
+
+  // Progress
+  const steps: Step[] = ['type', 'details', 'photos']
+  if (!isLoggedIn) steps.push('auth')
+  const currentStepIndex = steps.indexOf(step)
+  const progress = ((currentStepIndex + 1) / steps.length) * 100
+
+  function formatPhone(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 9)
+    if (digits.length <= 1) return digits
+    if (digits.length <= 5) return `${digits[0]} ${digits.slice(1)}`
+    return `${digits[0]} ${digits.slice(1, 5)} ${digits.slice(5)}`
+  }
+
+  function nextStep() {
+    if (step === 'type') {
+      if (!productType) return
+      setStep('details')
+    } else if (step === 'details') {
+      const errors: Record<string, string> = {}
+      if (!brand.trim()) errors.brand = 'Obligatorio'
+      if (!condition) errors.condition = 'Selecciona una condición'
+      if (!price || parseInt(price) <= 0) errors.price = 'Ingresa un precio válido'
+      if (!region) errors.region = 'Selecciona una región'
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors)
+        return
+      }
+      setFieldErrors({})
+      setStep('photos')
+    } else if (step === 'photos') {
+      if (images.length < MIN_IMAGES) {
+        setPopup({ message: `Debes subir al menos ${MIN_IMAGES} fotos`, type: 'error' })
+        return
+      }
+      if (isLoggedIn) {
+        handlePublish()
+      } else {
+        setStep('auth')
+      }
     }
+  }
 
+  function prevStep() {
+    if (step === 'details') setStep('type')
+    else if (step === 'photos') setStep('details')
+    else if (step === 'auth') setStep('photos')
+  }
+
+  async function handlePublish(userId?: string) {
     setLoading(true)
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setError('Debes iniciar sesión')
+
+    let uid = userId
+    if (!uid) {
+      const { data: { user } } = await supabase.auth.getUser()
+      uid = user?.id
+    }
+
+    if (!uid) {
+      setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
       setLoading(false)
       return
     }
 
-    // Check user has phone number
-    const { data: profile } = await supabase
-      .from('users')
-      .select('phone')
-      .eq('id', user.id)
-      .single()
+    const priceInt = parseInt(price)
 
-    if (!profile?.phone) {
-      setError('Debes agregar tu número de teléfono en tu perfil antes de publicar')
-      setLoading(false)
-      return
-    }
-
-    // Build attributes JSONB - only include fields that have values
-    const attributesJson: Record<string, string | boolean> = {}
-    for (const attr of currentAttributes) {
-      const val = attributes[attr.key]
-      if (val !== undefined && val !== '') {
-        attributesJson[attr.key] = val
-      }
-    }
-
-    // Create product
     const { data: product, error: productError } = await supabase
       .from('products')
       .insert({
-        seller_id: user.id,
-        product_type: form.product_type,
-        brand: form.brand,
-        model: form.model || null,
-        condition: form.condition,
-        seasons_used: form.seasons_used || null,
-        description: form.description || null,
-        price,
-        region: form.region,
-        comuna: form.comuna || null,
-        attributes: Object.keys(attributesJson).length > 0 ? attributesJson : null,
-        terms_accepted: termsAccepted,
+        seller_id: uid,
+        product_type: productType,
+        brand: brand.trim(),
+        model: model.trim() || null,
+        condition,
+        seasons_used: condition === 'nuevo_sellado' ? null : seasonsUsed || null,
+        description: description.trim() || null,
+        price: priceInt,
+        region,
+        comuna: comuna.trim() || '',
         status: 'pending',
+        terms_accepted: true,
       })
       .select()
       .single()
 
     if (productError || !product) {
-      setError('Error al crear producto: ' + (productError?.message ?? ''))
+      setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
       setLoading(false)
       return
     }
 
     // Upload images
-    const imageUrls: { url: string; order: number }[] = []
     for (let i = 0; i < images.length; i++) {
       const file = images[i]
       const ext = file.name.split('.').pop()
-      const path = `${user.id}/${product.id}/${i}.${ext}`
+      const path = `${uid}/${product.id}/${Date.now()}_${i}.${ext}`
 
       const { error: uploadError } = await supabase.storage
         .from('product-images')
@@ -185,290 +265,761 @@ export default function SellPage() {
         .from('product-images')
         .getPublicUrl(path)
 
-      imageUrls.push({ url: publicUrl, order: i })
+      await supabase.from('product_images').insert({
+        product_id: product.id,
+        url: publicUrl,
+        order: i,
+      })
     }
 
-    if (imageUrls.length > 0) {
-      await supabase.from('product_images').insert(
-        imageUrls.map(img => ({
-          product_id: product.id,
-          url: img.url,
-          order: img.order,
-        }))
-      )
-    }
-
-    // Redirect to my products page
-    window.location.href = '/mis-productos'
+    router.push(`/producto/${product.id}`)
   }
 
-  function renderAttributeField(attr: AttributeField) {
-    if (attr.type === 'boolean') {
-      const val = attributes[attr.key]
-      return (
-        <div key={attr.key}>
-          <label className="block text-sm font-medium mb-1">
-            {attr.label} {attr.required && '*'}
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-1">
-              <input
-                type="radio"
-                name={attr.key}
-                checked={val === true}
-                onChange={() => updateAttribute(attr.key, true)}
-              />
-              Sí
-            </label>
-            <label className="flex items-center gap-1">
-              <input
-                type="radio"
-                name={attr.key}
-                checked={val === false}
-                onChange={() => updateAttribute(attr.key, false)}
-              />
-              No
-            </label>
-          </div>
-        </div>
-      )
+  async function handleAuthSubmit() {
+    const errors: Record<string, string> = {}
+    if (!authEmail.trim()) errors.authEmail = 'Obligatorio'
+    const digits = authPhone.replace(/\D/g, '')
+    if (!digits || digits.length !== 9 || !digits.startsWith('9')) errors.authPhone = '9 XXXX XXXX'
+    if (!authPassword) errors.authPassword = 'Obligatorio'
+    else if (authPassword.length < 6 || !/[A-Z]/.test(authPassword) || !/[0-9]/.test(authPassword)) errors.authPassword = 'No cumple los requisitos'
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      return
+    }
+    setFieldErrors({})
+    setLoading(true)
+
+    const supabase = createClient()
+    const { data, error } = await supabase.auth.signUp({
+      email: authEmail.trim().toLowerCase(),
+      password: authPassword,
+    })
+
+    if (error) {
+      const msg = error.message.toLowerCase()
+      if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429')) {
+        setPopup({ message: 'Has realizado demasiados intentos. Espera unos minutos.', type: 'warning' })
+      } else {
+        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+      }
+      setLoading(false)
+      return
     }
 
-    if (attr.type === 'select' && attr.options) {
-      return (
-        <div key={attr.key}>
-          <label className="block text-sm font-medium mb-1">
-            {attr.label} {attr.required && '*'}
-          </label>
-          <select
-            value={(attributes[attr.key] as string) || ''}
-            onChange={e => updateAttribute(attr.key, e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">Seleccionar</option>
-            {attr.options.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        </div>
-      )
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setFieldErrors({ authEmail: 'Ya existe una cuenta con este email' })
+      setLoading(false)
+      return
     }
 
-    // text or number
-    return (
-      <div key={attr.key}>
-        <label className="block text-sm font-medium mb-1">
-          {attr.label} {attr.required && '*'}
-        </label>
-        <input
-          type={attr.type === 'number' ? 'number' : 'text'}
-          value={(attributes[attr.key] as string) || ''}
-          onChange={e => updateAttribute(attr.key, e.target.value)}
-          className="w-full border rounded px-3 py-2"
-          placeholder={attr.placeholder || ''}
-        />
-      </div>
-    )
+    if (data.user) {
+      const fullPhone = `${authCountryCode}${digits}`
+      await supabase.from('users').upsert({
+        id: data.user.id,
+        email: data.user.email,
+        phone: fullPhone,
+      }, { onConflict: 'id' })
+    }
+
+    setLoading(false)
+    setOtpStep(true)
   }
+
+  async function handleAnonPublish() {
+    if (!anonContact.trim()) {
+      setFieldErrors({ anonContact: 'Ingresa al menos un dato de contacto' })
+      return
+    }
+    setFieldErrors({})
+    setLoading(true)
+
+    const formData = new FormData()
+    formData.append('product_type', productType)
+    formData.append('brand', brand.trim())
+    formData.append('model', model.trim())
+    formData.append('condition', condition)
+    formData.append('seasons_used', condition === 'nuevo_sellado' ? '' : seasonsUsed)
+    formData.append('description', description.trim())
+    formData.append('price', price)
+    formData.append('region', region)
+    formData.append('comuna', comuna.trim())
+    formData.append('anon_contact', anonContact.trim())
+    images.forEach(file => formData.append('images', file))
+
+    try {
+      const res = await fetch('/api/publish-anon', { method: 'POST', body: formData })
+      await res.json()
+
+      if (!res.ok) {
+        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+        setLoading(false)
+        return
+      }
+
+      setLoading(false)
+      setStep('success')
+    } catch {
+      setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+      setLoading(false)
+    }
+  }
+
+  async function handleLoginSubmit() {
+    const errors: Record<string, string> = {}
+    if (!authEmail.trim()) errors.authEmail = 'Obligatorio'
+    if (!authPassword) errors.authPassword = 'Obligatorio'
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      return
+    }
+    setFieldErrors({})
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email: authEmail.trim().toLowerCase(),
+      password: authPassword,
+    })
+
+    if (error) {
+      const msg = error.message.toLowerCase()
+      if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429')) {
+        setPopup({ message: 'Has realizado demasiados intentos. Espera unos minutos.', type: 'warning' })
+      } else {
+        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+      }
+      setLoading(false)
+      return
+    }
+
+    await handlePublish()
+  }
+
+  async function handleOtpVerify() {
+    setLoading(true)
+    const supabase = createClient()
+    const { error, data } = await supabase.auth.verifyOtp({
+      email: authEmail.trim().toLowerCase(),
+      token: otpCode,
+      type: 'signup',
+    })
+
+    if (error) {
+      setFieldErrors({ otp: 'Código incorrecto' })
+      setLoading(false)
+      return
+    }
+
+    // Publish with the new user
+    await handlePublish(data.user?.id)
+  }
+
+  // ─── RENDER ───
 
   return (
-    <div className="max-w-2xl mx-auto mt-8 px-4 pb-16">
-      <h1 className="font-body text-3xl font-black mb-6">Publicar producto</h1>
-
-      {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+    <div className="max-w-2xl mx-auto px-4 pt-8 pb-24">
+      {/* Progress bar — hidden on success */}
+      {step !== 'success' && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="font-body text-2xl font-black text-brand-500">Publicar producto</h1>
+            <span className="text-xs text-gray-400">Paso {currentStepIndex + 1} de {steps.length}</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-500 rounded-full transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Product Type */}
+      {popup && (
+        <PopupMessage message={popup.message} type={popup.type} onClose={() => setPopup(null)} autoClose={popup.type === 'warning' ? 0 : 5000} />
+      )}
+
+      {/* ─── Step 1: Type ─── */}
+      {step === 'type' && (
         <div>
-          <label className="block text-sm font-medium mb-1">Tipo de producto *</label>
-          <select
-            required
-            value={form.product_type}
-            onChange={e => updateForm('product_type', e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          >
-            <option value="">Seleccionar</option>
-            {Object.entries(PRODUCT_TYPES).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+          <h2 className="font-body text-xl font-bold mb-6">¿Qué quieres vender?</h2>
+          <div className="grid grid-cols-4 gap-2">
+            {Object.entries(PRODUCT_TYPES).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { setProductType(key); setStep('details') }}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${productType === key ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
+              >
+                <svg className={`w-7 h-7 ${productType === key ? 'text-brand-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d={TYPE_ICONS[key] || TYPE_ICONS.otros} />
+                </svg>
+                <span className="text-[11px] font-medium leading-tight">{label}</span>
+              </button>
             ))}
-          </select>
-        </div>
-
-        {/* Brand & Model */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Marca *</label>
-            <input
-              type="text"
-              required
-              value={form.brand}
-              onChange={e => updateForm('brand', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              placeholder="Ej: Salomon"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Modelo</label>
-            <input
-              type="text"
-              value={form.model}
-              onChange={e => updateForm('model', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              placeholder="Ej: X Pro 100"
-            />
           </div>
         </div>
+      )}
 
-        {/* Condition & Seasons Used */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* ─── Step 2: Details ─── */}
+      {step === 'details' && (
+        <div className="space-y-5">
+          <h2 className="font-body text-xl font-bold mb-2">Detalles de tu {PRODUCT_TYPES[productType]?.toLowerCase()}</h2>
+
+          {/* Brand + Model row */}
           <div>
-            <label className="block text-sm font-medium mb-1">Condición *</label>
-            <select
-              required
-              value={form.condition}
-              onChange={e => updateForm('condition', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="">Seleccionar</option>
-              {Object.entries(CONDITIONS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Temporadas de uso</label>
-            <input
-              type="text"
-              value={form.seasons_used}
-              onChange={e => updateForm('seasons_used', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              placeholder="Ej: 2 temporadas"
-            />
-          </div>
-        </div>
-
-        {/* Price */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Precio (CLP) *</label>
-          <input
-            type="number"
-            required
-            min="1"
-            value={form.price}
-            onChange={e => updateForm('price', e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Ej: 150000"
-          />
-        </div>
-
-        {/* Region & Comuna */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Región *</label>
-            <select
-              required
-              value={form.region}
-              onChange={e => updateForm('region', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="">Seleccionar</option>
-              {REGIONS.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Comuna</label>
-            <input
-              type="text"
-              value={form.comuna}
-              onChange={e => updateForm('comuna', e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              placeholder="Ej: Providencia"
-            />
-          </div>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Descripción</label>
-          <textarea
-            value={form.description}
-            onChange={e => updateForm('description', e.target.value)}
-            className="w-full border rounded px-3 py-2 h-28"
-            placeholder="Describe el estado, detalles, y cualquier información relevante"
-          />
-        </div>
-
-        {/* Dynamic Attributes */}
-        {currentAttributes.length > 0 && (
-          <div className="border-t pt-4">
-            <h2 className="font-body text-lg font-medium tracking-sub mb-3">
-              Atributos de {PRODUCT_TYPES[form.product_type]}
-            </h2>
-            <div className="space-y-4">
-              {currentAttributes.map(attr => renderAttributeField(attr))}
-            </div>
-          </div>
-        )}
-
-        {/* Images */}
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Fotos ({images.length}/{MAX_IMAGES}) - Mínimo {MIN_IMAGES} *
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageChange}
-            className="w-full border rounded px-3 py-2"
-          />
-          {previews.length > 0 && (
-            <div className="grid grid-cols-4 gap-2 mt-2">
-              {previews.map((src, i) => (
-                <div key={i} className="relative">
-                  <img src={src} alt="" className="w-full h-24 object-cover rounded" />
+            <div className="grid grid-cols-2 gap-3">
+              {/* Brand */}
+              <div className="relative">
+                <label className="block text-sm font-medium mb-1">Marca *</label>
+                {brandConfirmed ? (
                   <button
                     type="button"
-                    onClick={() => removeImage(i)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                    onClick={() => setBrandConfirmed(false)}
+                    className="w-full flex items-center gap-2 bg-white rounded-lg px-3 py-2.5 text-left"
                   >
-                    x
+                    {getBrandLogoUrl(brand) && (
+                      <img src={getBrandLogoUrl(brand)!} alt="" className="w-5 h-5 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
+                    )}
+                    <span className="font-semibold text-sm">{brand}</span>
                   </button>
-                </div>
-              ))}
+                ) : (
+                  <div className="relative">
+                    {getBrandLogoUrl(brand) && (
+                      <img src={getBrandLogoUrl(brand)!} alt="" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
+                    )}
+                    <input
+                      type="text"
+                      value={brand}
+                      onChange={e => { setBrand(e.target.value); setShowBrandSuggestions(true); setFieldErrors(prev => { const n = {...prev}; delete n.brand; return n }) }}
+                      onFocus={() => setShowBrandSuggestions(true)}
+                      onBlur={() => { setTimeout(() => setShowBrandSuggestions(false), 150); if (brand.trim()) setBrandConfirmed(true) }}
+                      className={`w-full border rounded-lg py-2.5 ${getBrandLogoUrl(brand) ? 'pl-10' : 'pl-3'} pr-3 text-sm ${fieldErrors.brand ? 'border-red-400' : ''}`}
+                      placeholder={BRAND_PLACEHOLDERS[productType] || 'Marca'}
+                      autoFocus
+                    />
+                    {showBrandSuggestions && filteredBrands.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                        {filteredBrands.map(b => {
+                          const logoUrl = getBrandLogoUrl(b)
+                          return (
+                            <button
+                              key={b}
+                              type="button"
+                              onMouseDown={() => { setBrand(b); setShowBrandSuggestions(false); setBrandConfirmed(true) }}
+                              className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-sm hover:bg-brand-50 hover:text-brand-500"
+                            >
+                              {logoUrl ? (
+                                <img src={logoUrl} alt="" className="w-5 h-5 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
+                              ) : (
+                                <div className="w-5 h-5 bg-gray-100 rounded flex items-center justify-center text-[10px] font-bold text-gray-400">
+                                  {b.charAt(0)}
+                                </div>
+                              )}
+                              {b}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {fieldErrors.brand && <p className="text-xs text-red-500 mt-1">{fieldErrors.brand}</p>}
+              </div>
+
+              {/* Model */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Modelo</label>
+                {modelConfirmed && model.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => setModelConfirmed(false)}
+                    className="w-full flex items-center bg-white rounded-lg px-3 py-2.5 text-left"
+                  >
+                    <span className="font-semibold text-sm">{model}</span>
+                  </button>
+                ) : (
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={e => setModel(e.target.value)}
+                    onBlur={() => { if (model.trim()) setModelConfirmed(true) }}
+                    className="w-full border rounded-lg px-3 py-2.5 text-sm"
+                    placeholder={MODEL_PLACEHOLDERS[productType] || 'Modelo'}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Condition — visual bar */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Condición *</label>
+            {fieldErrors.condition && <p className="text-xs text-red-500 mb-2">{fieldErrors.condition}</p>}
+            <div className="flex gap-1">
+              {CONDITION_ORDER.map(cond => {
+                const isSelected = condition === cond.key
+                const Icon = CONDITION_ICONS[cond.key]
+                return (
+                  <button
+                    key={cond.key}
+                    type="button"
+                    onClick={() => {
+                      setCondition(cond.key)
+                      if (cond.key === 'nuevo_sellado') setSeasonsUsed('')
+                      else if (!seasonsUsed) setSeasonsUsed('1')
+                      setFieldErrors(prev => { const n = {...prev}; delete n.condition; return n })
+                    }}
+                    className={`flex-1 flex flex-col items-center gap-1.5 p-2.5 rounded-lg border-2 transition-all ${isSelected ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
+                  >
+                    <Icon className={`w-5 h-5 ${isSelected ? 'text-brand-500' : 'text-gray-400'}`} strokeWidth={1.5} />
+                    <span className={`text-[10px] font-bold leading-tight ${isSelected ? 'text-brand-500' : 'text-gray-500'}`}>{cond.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Seasons — hidden for sellado */}
+          {condition && condition !== 'nuevo_sellado' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Temporadas de uso</label>
+              <input
+                type="number"
+                min="1"
+                value={seasonsUsed}
+                onChange={e => setSeasonsUsed(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2.5"
+                placeholder="1"
+              />
             </div>
           )}
-        </div>
 
-        {/* Terms */}
-        <div className="flex items-start gap-2">
-          <input
-            type="checkbox"
-            id="terms"
-            checked={termsAccepted}
-            onChange={e => setTermsAccepted(e.target.checked)}
-            className="mt-1"
+          {/* Price */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Precio (CLP) *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={price ? Number(price).toLocaleString('es-CL') : ''}
+                onChange={e => {
+                  const raw = e.target.value.replace(/\D/g, '')
+                  setPrice(raw)
+                  setFieldErrors(prev => { const n = {...prev}; delete n.price; return n })
+                }}
+                className={`w-full border rounded-lg pl-7 pr-3 py-2.5 ${fieldErrors.price ? 'border-red-400' : ''}`}
+                placeholder="150.000"
+              />
+            </div>
+            {fieldErrors.price && <p className="text-xs text-red-500 mt-1">{fieldErrors.price}</p>}
+          </div>
+
+          {/* Region & Comuna */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Región *</label>
+              <select
+                value={region}
+                onChange={e => { setRegion(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.region; return n }) }}
+                className={`w-full border rounded-lg px-3 py-2.5 ${fieldErrors.region ? 'border-red-400' : ''}`}
+              >
+                <option value="">Seleccionar</option>
+                {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+              {fieldErrors.region && <p className="text-xs text-red-500 mt-1">{fieldErrors.region}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Comuna</label>
+              <input
+                type="text"
+                value={comuna}
+                onChange={e => setComuna(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2.5"
+                placeholder="Ej: Las Condes"
+              />
+            </div>
+          </div>
+
+          {/* Next */}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={prevStep} className="border px-6 py-3 rounded-lg hover:bg-gray-50 text-sm">
+              Atrás
+            </button>
+            <button type="button" onClick={nextStep} className="flex-1 bg-brand-500 text-white py-3 rounded-lg font-medium hover:bg-brand-600 transition-colors">
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Step 3: Photos ─── */}
+      {step === 'photos' && (
+        <div className="space-y-5">
+          <h2 className="font-body text-xl font-bold mb-2">Fotos de tu producto</h2>
+          <p className="text-sm text-gray-500">Sube al menos {MIN_IMAGES} fotos. La primera será la portada.</p>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Descripción (opcional)</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2.5 h-24 resize-none"
+              placeholder="Describe el estado, detalles o cualquier información relevante..."
+            />
+          </div>
+
+          <SortableImageGrid
+            images={imageItems}
+            onReorder={(reordered) => {
+              const newOrder = reordered.map(item => {
+                const idx = parseInt(item.id.replace('img-', ''))
+                return images[idx]
+              })
+              setImages(newOrder)
+              setPreviews(newOrder.map(f => URL.createObjectURL(f)))
+            }}
+            onRemove={(id) => {
+              const idx = parseInt(id.replace('img-', ''))
+              const next = images.filter((_, i) => i !== idx)
+              setImages(next)
+              setPreviews(next.map(f => URL.createObjectURL(f)))
+            }}
+            onAdd={(files) => {
+              if (images.length + files.length > MAX_IMAGES) {
+                setPopup({ message: `Máximo ${MAX_IMAGES} fotos`, type: 'error' })
+                return
+              }
+              const next = [...images, ...files]
+              setImages(next)
+              setPreviews(next.map(f => URL.createObjectURL(f)))
+            }}
           />
-          <label htmlFor="terms" className="text-sm">
-            Acepto los términos y condiciones de publicación *
-          </label>
-        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-brand-500 text-white py-3 rounded hover:bg-brand-600 disabled:opacity-50 font-medium"
-        >
-          {loading ? 'Publicando...' : 'Publicar producto'}
-        </button>
-      </form>
+          {/* Navigation */}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={prevStep} className="border px-6 py-3 rounded-lg hover:bg-gray-50 text-sm">
+              Atrás
+            </button>
+            <button
+              type="button"
+              onClick={nextStep}
+              disabled={loading}
+              className="flex-1 bg-brand-500 text-white py-3 rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
+            >
+              {loading ? 'Publicando...' : isLoggedIn ? 'Publicar producto' : 'Siguiente'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Step 4: Auth (only if not logged in) ─── */}
+      {step === 'auth' && !otpStep && (
+        <div className="space-y-5">
+          {/* Publish without account option */}
+          <div className="border rounded-xl p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={publishAnon}
+                onChange={e => setPublishAnon(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+              />
+              <div>
+                <span className="text-sm font-medium">Publicar sin cuenta</span>
+                <p className="text-xs text-gray-400 mt-0.5">Solo necesitas un dato de contacto</p>
+              </div>
+            </label>
+
+            {publishAnon && (
+              <div className="mt-4 space-y-3">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-yellow-800 mb-2">Sin cuenta no tendrás acceso a:</p>
+                  <ul className="space-y-1.5">
+                    <li className="flex items-center gap-2 text-sm text-yellow-700">
+                      <svg className="w-4 h-4 text-yellow-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      Estadísticas de visitas e interacciones
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-yellow-700">
+                      <svg className="w-4 h-4 text-yellow-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      Sistema de ofertas de compradores
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-yellow-700">
+                      <svg className="w-4 h-4 text-yellow-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      Subastas y permutas de productos
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-yellow-700">
+                      <svg className="w-4 h-4 text-yellow-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      Editar o gestionar tu publicación
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Correo, teléfono o Instagram *</label>
+                  <input
+                    type="text"
+                    value={anonContact}
+                    onChange={e => { setAnonContact(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.anonContact; return n }) }}
+                    className={`w-full border rounded-lg px-3 py-2.5 text-sm ${fieldErrors.anonContact ? 'border-red-400' : ''}`}
+                    placeholder="Ej: tu@email.com, +56912345678 o @usuario"
+                  />
+                  {fieldErrors.anonContact && <p className="text-xs text-red-500 mt-1">{fieldErrors.anonContact}</p>}
+                </div>
+
+                <div className="flex gap-3">
+                  <button type="button" onClick={prevStep} className="border px-6 py-3 rounded-lg hover:bg-gray-50 text-sm">
+                    Atrás
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAnonPublish}
+                    disabled={loading}
+                    className="flex-1 bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors text-sm"
+                  >
+                    {loading ? 'Publicando...' : 'Publicar sin cuenta'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {!publishAnon && (
+            <>
+          {/* Toggle login/register */}
+          <div className="flex rounded-lg border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('login'); setFieldErrors({}) }}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${authMode === 'login' ? 'bg-brand-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              Ya tengo cuenta
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('register'); setFieldErrors({}) }}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${authMode === 'register' ? 'bg-brand-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              Crear cuenta
+            </button>
+          </div>
+
+          {authMode === 'login' ? (
+            <>
+              <p className="text-sm text-gray-500">Inicia sesión y tu producto se publicará automáticamente.</p>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={e => { setAuthEmail(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.authEmail; return n }) }}
+                  className={`w-full border rounded-lg px-3 py-2.5 ${fieldErrors.authEmail ? 'border-red-400' : ''}`}
+                  placeholder="tu@email.com"
+                />
+                {fieldErrors.authEmail && <p className="text-xs text-red-500 mt-1">{fieldErrors.authEmail}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Contraseña</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={e => { setAuthPassword(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.authPassword; return n }) }}
+                  className={`w-full border rounded-lg px-3 py-2.5 ${fieldErrors.authPassword ? 'border-red-400' : ''}`}
+                  placeholder="Tu contraseña"
+                />
+                {fieldErrors.authPassword && <p className="text-xs text-red-500 mt-1">{fieldErrors.authPassword}</p>}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={prevStep} className="border px-6 py-3 rounded-lg hover:bg-gray-50 text-sm">
+                  Atrás
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoginSubmit}
+                  disabled={loading}
+                  className="flex-1 bg-brand-500 text-white py-3 rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
+                >
+                  {loading ? 'Ingresando...' : 'Ingresar y publicar'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-500">Tu producto se publicará automáticamente al verificar tu cuenta.</p>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email *</label>
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={e => { setAuthEmail(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.authEmail; return n }) }}
+                  className={`w-full border rounded-lg px-3 py-2.5 ${fieldErrors.authEmail ? 'border-red-400' : ''}`}
+                  placeholder="tu@email.com"
+                />
+                {fieldErrors.authEmail && <p className="text-xs text-red-500 mt-1">{fieldErrors.authEmail}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
+                <div className="flex gap-2">
+                  <select
+                    value={authCountryCode}
+                    onChange={e => setAuthCountryCode(e.target.value)}
+                    className="border rounded-lg px-2 py-2.5 text-sm w-24 shrink-0"
+                  >
+                    <option value="+56">🇨🇱 +56</option>
+                    <option value="+54">🇦🇷 +54</option>
+                    <option value="+55">🇧🇷 +55</option>
+                    <option value="+1">🇺🇸 +1</option>
+                  </select>
+                  <input
+                    type="tel"
+                    value={formatPhone(authPhone)}
+                    onChange={e => { setAuthPhone(e.target.value.replace(/\D/g, '').slice(0, 9)); setFieldErrors(prev => { const n = {...prev}; delete n.authPhone; return n }) }}
+                    className={`w-full border rounded-lg px-3 py-2.5 ${fieldErrors.authPhone ? 'border-red-400' : ''}`}
+                    placeholder="9 1234 5678"
+                  />
+                </div>
+                {fieldErrors.authPhone && <p className="text-xs text-red-500 mt-1">{fieldErrors.authPhone}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Contraseña *</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={authPassword}
+                    onChange={e => { setAuthPassword(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.authPassword; return n }) }}
+                    className={`w-full border rounded-lg px-3 py-2.5 pr-10 ${fieldErrors.authPassword ? 'border-red-400' : ''}`}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={showPassword ? 'M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88' : 'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178zM15 12a3 3 0 11-6 0 3 3 0 016 0z'} />
+                    </svg>
+                  </button>
+                </div>
+                {fieldErrors.authPassword && <p className="text-xs text-red-500 mt-1">{fieldErrors.authPassword}</p>}
+                {authPassword.length > 0 && (() => {
+                  const checks = { length: authPassword.length >= 6, upper: /[A-Z]/.test(authPassword), number: /[0-9]/.test(authPassword) }
+                  const strength = Object.values(checks).filter(Boolean).length
+                  const colors = ['bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500']
+                  return (
+                    <div className="mt-2">
+                      <div className="flex gap-1">
+                        {[0, 1, 2].map(i => (
+                          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < strength ? colors[strength] : 'bg-gray-200'}`} />
+                        ))}
+                      </div>
+                      <div className="mt-1.5 space-y-0.5">
+                        <p className={`text-xs ${checks.length ? 'text-green-600' : 'text-gray-400'}`}>{checks.length ? '✓' : '○'} Mínimo 6 caracteres</p>
+                        <p className={`text-xs ${checks.upper ? 'text-green-600' : 'text-gray-400'}`}>{checks.upper ? '✓' : '○'} Una mayúscula</p>
+                        <p className={`text-xs ${checks.number ? 'text-green-600' : 'text-gray-400'}`}>{checks.number ? '✓' : '○'} Un número</p>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={prevStep} className="border px-6 py-3 rounded-lg hover:bg-gray-50 text-sm">
+                  Atrás
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAuthSubmit}
+                  disabled={loading}
+                  className="flex-1 bg-brand-500 text-white py-3 rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
+                >
+                  {loading ? 'Creando cuenta...' : 'Crear cuenta y publicar'}
+                </button>
+              </div>
+            </>
+          )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ─── OTP Verification ─── */}
+      {step === 'auth' && otpStep && (
+        <div className="space-y-5 text-center">
+          <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto">
+            <svg className="w-7 h-7 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+          </div>
+          <h2 className="font-body text-xl font-bold">Verifica tu email</h2>
+          <p className="text-sm text-gray-500">Enviamos un código a <strong>{authEmail}</strong></p>
+
+          <div>
+            <input
+              type="text"
+              value={otpCode}
+              onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setFieldErrors(prev => { const n = {...prev}; delete n.otp; return n }) }}
+              className={`w-48 mx-auto block text-center text-2xl tracking-[0.5em] border rounded-lg px-3 py-3 font-mono ${fieldErrors.otp ? 'border-red-400' : ''}`}
+              placeholder="000000"
+              maxLength={6}
+            />
+            {fieldErrors.otp && <p className="text-xs text-red-500 mt-2">{fieldErrors.otp}</p>}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOtpVerify}
+            disabled={loading || otpCode.length < 6}
+            className="w-full max-w-xs mx-auto block bg-brand-500 text-white py-3 rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
+          >
+            {loading ? 'Verificando...' : 'Verificar y publicar'}
+          </button>
+        </div>
+      )}
+
+      {/* ─── Success (anon) ─── */}
+      {step === 'success' && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="font-body text-2xl font-black text-gray-900 mb-2">Producto publicado</h2>
+          <p className="text-sm text-gray-500 mb-1">Tu publicación está en revisión.</p>
+          <p className="text-sm text-gray-500 mb-8">Te contactaremos a <strong>{anonContact}</strong> cuando esté aprobada.</p>
+          <div className="flex flex-col gap-3 max-w-xs mx-auto">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="bg-brand-500 text-white py-3 rounded-lg font-medium hover:bg-brand-600 transition-colors"
+            >
+              Volver al inicio
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStep('type')
+                setProductType('')
+                setBrand('')
+                setModel('')
+                setCondition('usado_como_nuevo')
+                setPrice('')
+                setImages([])
+                setPreviews([])
+                setDescription('')
+                setAnonContact('')
+                setPublishAnon(false)
+              }}
+              className="border py-3 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+            >
+              Publicar otro producto
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
 
   // Protected routes — check session only (fast, no DB call)
   const { data: { session } } = await supabase.auth.getSession()
-  const protectedPaths = ['/vender', '/mis-productos', '/perfil', '/admin']
+  const protectedPaths = ['/mis-productos', '/perfil', '/admin']
   const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   if (isProtected && !session) {

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import PopupMessage from '@/components/PopupMessage'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,20 +12,20 @@ export default function LoginPage() {
   const redirect = searchParams.get('redirect') || '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' } | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError('')
+    setFieldErrors({})
 
+    const errors: Record<string, string> = {}
     const trimmedEmail = email.trim().toLowerCase()
-    if (!trimmedEmail) {
-      setError('Ingresa tu email')
-      return
-    }
-    if (!password) {
-      setError('Ingresa tu contraseña')
+    if (!trimmedEmail) errors.email = 'Este campo es obligatorio'
+    if (!password) errors.password = 'Este campo es obligatorio'
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
 
@@ -37,7 +38,12 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError(translateError(error.message))
+      const msg = error.message.toLowerCase()
+      if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429') || error.status === 429) {
+        setPopup({ message: 'Has realizado demasiados intentos. Por seguridad, espera unos minutos antes de intentar nuevamente.', type: 'warning' })
+      } else {
+        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+      }
       setLoading(false)
       return
     }
@@ -69,13 +75,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 mb-[60px]">
-      <h1 className="font-body text-3xl font-black mb-6">Iniciar sesión</h1>
+    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
+      <h1 className="font-body text-3xl font-black mb-6 text-brand-500">Iniciar sesión</h1>
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
-          {error}
-        </div>
+      {popup && (
+        <PopupMessage
+          message={popup.message}
+          type={popup.type}
+          onClose={() => setPopup(null)}
+          autoClose={popup.type === 'warning' ? 0 : 5000}
+        />
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -83,25 +92,25 @@ export default function LoginPage() {
           <label className="block text-sm font-medium mb-1">Email</label>
           <input
             type="email"
-            required
             value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            onChange={e => { setEmail(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.email; return n }) }}
+            className={`w-full border rounded px-3 py-2 ${fieldErrors.email ? 'border-red-400' : ''}`}
             placeholder="tu@email.com"
             autoComplete="email"
           />
+          {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
         </div>
 
         <div>
           <label className="block text-sm font-medium mb-1">Contraseña</label>
           <input
             type="password"
-            required
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            onChange={e => { setPassword(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.password; return n }) }}
+            className={`w-full border rounded px-3 py-2 ${fieldErrors.password ? 'border-red-400' : ''}`}
             autoComplete="current-password"
           />
+          {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
         </div>
 
         <div className="flex justify-end">
@@ -129,10 +138,3 @@ export default function LoginPage() {
   )
 }
 
-function translateError(message: string): string {
-  if (message.includes('Invalid login credentials')) return 'Email o contraseña incorrectos'
-  if (message.includes('Email not confirmed')) return 'Tu email no ha sido confirmado. Revisa tu bandeja de entrada.'
-  if (message.includes('rate limit')) return 'Demasiados intentos. Espera unos minutos.'
-  if (message.includes('User not found')) return 'No existe una cuenta con este email'
-  return message
-}
