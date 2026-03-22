@@ -38,7 +38,7 @@ export default function ScreenLock({ children }: { children: React.ReactNode }) 
     <div className="fixed inset-0 z-[99999] flex items-center justify-center">
       {/* Background image */}
       <img
-        src="/images/Reskichile Reskichile Reskichile Reskichile Reskichile.jpg"
+        src="/images/reskichile-bg.jpg"
         alt=""
         className="absolute inset-0 w-full h-full object-cover"
       />

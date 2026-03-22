@@ -101,7 +101,7 @@ export default function ContactoPage() {
       })
     }
     return result
-  }, [rows, search, sortBy])
+  }, [rows, statusFilter, search, sortBy])
 
   async function updateField(productId: string, field: string, value: unknown) {
     const supabase = createClient()

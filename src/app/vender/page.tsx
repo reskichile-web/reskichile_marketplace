@@ -8,30 +8,38 @@ import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGri
 import PopupMessage from '@/components/PopupMessage'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
+import {
+  GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
+  GiSkier, GiWinterGloves, GiMonclerJacket,
+  GiArmoredPants, GiLightBackpack,
+  GiDuffelBag, GiMountaintop, GiFullMotorcycleHelmet,
+  GiProtectionGlasses, GiRadarSweep, GiPhotoCamera,
+} from 'react-icons/gi'
+import { FaSkiingNordic } from 'react-icons/fa'
 
 const MAX_IMAGES = 8
 const MIN_IMAGES = 3
 
 type Step = 'type' | 'details' | 'photos' | 'auth' | 'success'
 
-// Category icons as SVG paths
-const TYPE_ICONS: Record<string, string> = {
-  esquis: 'M12 2L8 22M16 2L12 22M4 8h16M4 16h12',
-  snowboards: 'M12 2v20M8 4c4 2 4 6 4 8s0 6-4 8M16 4c-4 2-4 6-4 8s0 6 4 8',
-  botas_esqui: 'M6 22V12a6 6 0 0112 0v10M9 2l3 5 3-5M8 12h8',
-  botas_snowboard: 'M7 22V10a5 5 0 0110 0v12M9 6h6M9 14h6',
-  bastones: 'M7 2l5 20M12 2l5 20M5 8h14',
-  cascos: 'M4 14a8 8 0 1116 0H4zM8 14v4h8v-4M12 2v4',
-  guantes: 'M6 14V8a2 2 0 014 0v6M10 8V4a2 2 0 014 0v10M14 6V4a2 2 0 014 0v10M6 14l-2 6h16l-2-6',
-  fijaciones: 'M4 8h16v8H4zM8 8V6a4 4 0 018 0v2M8 16v2M16 16v2',
-  parkas: 'M8 2h8l2 6v14H6V8zM6 8h12M10 2v4M14 2v4',
-  pantalones: 'M8 2h8v8l-2 12H10L8 10z',
-  antiparras: 'M2 10a4 4 0 014-4h12a4 4 0 014 4v0a4 4 0 01-4 4H6a4 4 0 01-4-4zM10 10a2 2 0 104 0M12 6v-2',
-  mochilas: 'M8 22V6a4 4 0 018 0v16M6 10h12M10 2h4M8 14h8',
-  bolsos: 'M4 8h16v12H4zM8 8V6a4 4 0 018 0v2M4 12h16',
-  equipo_avalanchas: 'M12 2l8 18H4zM12 8v6M12 16h0',
-  camaras_accion: 'M4 6h16v12H4zM9 6V4h6v2M12 10a2 2 0 100 4 2 2 0 000-4z',
-  otros: 'M12 2L2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TYPE_ICON_COMPONENTS: Record<string, any> = {
+  esquis: GiSkis,
+  snowboards: GiSnowboard,
+  botas_esqui: GiSkiBoot,
+  botas_snowboard: GiWalkingBoot,
+  bastones: GiSkier,
+  cascos: GiFullMotorcycleHelmet,
+  guantes: GiWinterGloves,
+  fijaciones: FaSkiingNordic,
+  parkas: GiMonclerJacket,
+  pantalones: GiArmoredPants,
+  antiparras: GiProtectionGlasses,
+  mochilas: GiLightBackpack,
+  bolsos: GiDuffelBag,
+  equipo_avalanchas: GiRadarSweep,
+  camaras_accion: GiPhotoCamera,
+  otros: GiMountaintop,
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -450,9 +458,10 @@ export default function SellPage() {
                 onClick={() => { setProductType(key); setStep('details') }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${productType === key ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
               >
-                <svg className={`w-7 h-7 ${productType === key ? 'text-brand-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={TYPE_ICONS[key] || TYPE_ICONS.otros} />
-                </svg>
+                {(() => {
+                  const Icon = TYPE_ICON_COMPONENTS[key] || TYPE_ICON_COMPONENTS.otros
+                  return <Icon className={`w-7 h-7 ${productType === key ? 'text-brand-500' : 'text-gray-400'}`} />
+                })()}
                 <span className="text-[11px] font-medium leading-tight">{label}</span>
               </button>
             ))}

@@ -36,7 +36,7 @@ export default async function HomePage() {
   const categoryImages: Record<string, string> = {
     esquis: '/images/3.png',
     snowboards: '/images/snowboard.jpg',
-    botas_esqui: '/images/How To Choose Your Ski Boots.jpeg',
+    botas_esqui: '/images/ski-boots.jpeg',
     botas_snowboard: 'https://images.unsplash.com/photo-1522056615691-da7b8106c665?w=600&q=80&fit=crop',
     cascos: '/images/1.png',
     antiparras: 'https://images.unsplash.com/photo-1515876305430-f06edab8282a?w=600&q=80&fit=crop',
@@ -53,7 +53,7 @@ export default async function HomePage() {
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden -mt-[96px] md:-mt-[131px]">
-        <img src="/images/_ (24).jpeg" alt="" className="absolute -top-[5%] left-0 right-0 h-[160%] w-full object-cover object-top md:hidden" />
+        <img src="/images/hero-mobile.jpeg" alt="" className="absolute -top-[5%] left-0 right-0 h-[160%] w-full object-cover object-top md:hidden" />
         <img src="https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=3840&q=90&fit=crop" alt="" className="absolute inset-0 w-full h-full object-cover object-top hidden md:block" />
         <div className="absolute inset-0 bg-white/65 md:bg-white/80" />
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />

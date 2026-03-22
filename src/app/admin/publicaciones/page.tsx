@@ -41,6 +41,7 @@ export default function PublicacionesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -69,6 +70,7 @@ export default function PublicacionesPage() {
     return products.filter(p => {
       if (statusFilter !== 'all' && p.status !== statusFilter) return false
       if (brandFilter && p.brand !== brandFilter) return false
+      if (typeFilter && p.product_type !== typeFilter) return false
       if (search) {
         const q = search.toLowerCase()
         const title = [p.brand, p.model].filter(Boolean).join(' ').toLowerCase()
@@ -77,7 +79,7 @@ export default function PublicacionesPage() {
       }
       return true
     })
-  }, [products, statusFilter, brandFilter, search])
+  }, [products, statusFilter, brandFilter, typeFilter, search])
 
   async function handleStatusChange(productId: string, status: string, extra?: Record<string, unknown>) {
     const supabase = createClient()
@@ -132,34 +134,45 @@ export default function PublicacionesPage() {
       {/* Filters */}
       <div className="space-y-3 mb-6">
         {/* Status tabs */}
-        <div className="flex gap-2 overflow-x-auto">
-          {(['all', 'pending', 'approved', 'rejected', 'sold'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              className={`px-4 py-2 rounded text-sm whitespace-nowrap ${statusFilter === f ? 'bg-brand-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
-            >
-              {f === 'all' ? 'Todos' : PRODUCT_STATUSES[f] || f}
-              <span className="ml-1 opacity-70">
-                ({f === 'all' ? products.length : products.filter(p => p.status === f).length})
-              </span>
-            </button>
-          ))}
+        <div className="flex gap-1.5 overflow-x-auto">
+          {(['all', 'pending', 'approved', 'missing_photos', 'rejected', 'sold', 'archived', 'draft'] as const).map(f => {
+            const count = f === 'all' ? products.length : products.filter(p => p.status === f).length
+            return (
+              <button
+                key={f}
+                onClick={() => setStatusFilter(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === f ? 'bg-gray-900 text-white' : count === 0 ? 'bg-gray-50 text-gray-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                {f === 'all' ? 'Todos' : PRODUCT_STATUSES[f] || f}
+                <span className="ml-1 opacity-60">{count}</span>
+              </button>
+            )
+          })}
         </div>
 
-        {/* Search + brand filter */}
+        {/* Search + filters */}
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar marca, modelo o vendedor..."
-            className="flex-1 border rounded px-3 py-2 text-sm"
+            className="flex-1 border rounded-lg px-3 py-2 text-sm"
           />
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm sm:w-40"
+          >
+            <option value="">Todos los tipos</option>
+            {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
           <select
             value={brandFilter}
             onChange={e => setBrandFilter(e.target.value)}
-            className="border rounded px-3 py-2 text-sm sm:w-48"
+            className="border rounded-lg px-3 py-2 text-sm sm:w-40"
           >
             <option value="">Todas las marcas</option>
             {brands.map(b => (
