@@ -34,15 +34,13 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Just refresh the session — no extra DB queries in middleware
-  await supabase.auth.getUser()
+  // Refresh session + check auth in one call
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Protected routes — check session only (fast, no DB call)
-  const { data: { session } } = await supabase.auth.getSession()
   const protectedPaths = ['/mis-productos', '/perfil', '/admin']
   const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
-  if (isProtected && !session) {
+  if (isProtected && !user) {
     const redirectUrl = new URL('/auth/login', request.url)
     redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
