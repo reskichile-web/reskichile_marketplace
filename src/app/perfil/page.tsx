@@ -106,7 +106,6 @@ export default function ProfilePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    setMessage('')
 
     const trimmedName = name.trim()
     const trimmedPhone = phone.trim()
