@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { StaggerGrid, StaggerItem } from '@/components/StaggerGrid'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
 
 interface Product {
@@ -244,7 +245,7 @@ export default function ProductBrowser({ products }: Props) {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            <StaggerGrid>
               {filtered.map((product) => {
                 const mainImage = product.product_images?.sort(
                   (a, b) => a.order - b.order
@@ -252,7 +253,8 @@ export default function ProductBrowser({ products }: Props) {
                 const title = [product.brand, product.model].filter(Boolean).join(' ')
 
                 return (
-                  <Link key={product.id} href={`/producto/${product.id}`} className="group">
+                  <StaggerItem key={product.id}>
+                  <Link href={`/producto/${product.id}`} className="group">
                     <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
                       {mainImage ? (
                         <Image
@@ -278,9 +280,10 @@ export default function ProductBrowser({ products }: Props) {
                       </p>
                     </div>
                   </Link>
+                  </StaggerItem>
                 )
               })}
-            </div>
+            </StaggerGrid>
           )}
 
           <div className="text-center mt-12">

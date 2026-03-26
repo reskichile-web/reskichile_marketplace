@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import PopupMessage from '@/components/PopupMessage'
+import PageLoader from '@/components/PageLoader'
+import Spinner from '@/components/Spinner'
 
 function useHideFooterImage() {
   useEffect(() => {
@@ -139,7 +141,7 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return <div className="max-w-md mx-auto mt-16 px-4">Cargando...</div>
+    return <PageLoader loading={true} className="max-w-md mx-auto mt-16 px-4"><div /></PageLoader>
   }
 
   const initial = name ? name.charAt(0).toUpperCase() : email.charAt(0).toUpperCase()
@@ -187,7 +189,7 @@ export default function ProfilePage() {
             </div>
             {uploadingAvatar && (
               <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" color="white" />
               </div>
             )}
           </button>
@@ -237,7 +239,7 @@ export default function ProfilePage() {
             </div>
             {uploadingAvatar && (
               <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <Spinner size="md" color="white" />
               </div>
             )}
           </button>

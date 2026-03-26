@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
+import { StaggerGrid, StaggerItem } from '@/components/StaggerGrid'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS, ITEMS_PER_PAGE } from '@/lib/constants'
 
 interface Props {
@@ -245,7 +246,7 @@ export default async function CatalogPage({ searchParams }: Props) {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              <StaggerGrid>
                 {products.map((product) => {
                   const mainImage = product.product_images?.sort(
                     (a: { order: number }, b: { order: number }) => a.order - b.order
@@ -253,8 +254,8 @@ export default async function CatalogPage({ searchParams }: Props) {
                   const title = [product.brand, product.model].filter(Boolean).join(' ')
 
                   return (
+                    <StaggerItem key={product.id}>
                     <Link
-                      key={product.id}
                       href={`/producto/${product.id}`}
                       className="group"
                     >
@@ -283,9 +284,10 @@ export default async function CatalogPage({ searchParams }: Props) {
                         </p>
                       </div>
                     </Link>
+                    </StaggerItem>
                   )
                 })}
-              </div>
+              </StaggerGrid>
 
               {/* Pagination */}
               {totalPages > 1 && (

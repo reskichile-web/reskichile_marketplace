@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
 import PopupMessage from '@/components/PopupMessage'
+import Spinner from '@/components/Spinner'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -346,7 +347,7 @@ export default function RegisterPage() {
         {/* Status */}
         {verifying && (
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
             <span className="text-sm text-gray-500">Verificando...</span>
           </div>
         )}

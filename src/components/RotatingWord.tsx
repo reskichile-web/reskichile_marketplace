@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { EASE_OUT_EXPO } from '@/lib/animations'
 
 const WORDS = [
   'Esquís',
@@ -35,7 +36,7 @@ export default function RotatingWord() {
           className="inline-flex"
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
         >
           {letters.map((letter, i) => (
             <motion.span

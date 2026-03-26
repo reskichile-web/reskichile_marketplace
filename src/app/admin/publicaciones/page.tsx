@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS } from '@/lib/constants'
+import PageLoader from '@/components/PageLoader'
+import Spinner from '@/components/Spinner'
 
 interface AdminProduct {
   id: string
@@ -125,7 +127,7 @@ export default function PublicacionesPage() {
 
 
   if (loading) return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
+    <PageLoader loading={true} className="max-w-7xl mx-auto mt-0 px-8 pt-4"><div /></PageLoader>
   )
 
   return (
@@ -276,10 +278,7 @@ export default function PublicacionesPage() {
                           <button onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="text-xs border border-red-200 text-red-500 px-2.5 py-1 rounded hover:bg-red-50 disabled:opacity-50 flex items-center gap-1">
                             {deletingId === product.id ? (
                               <>
-                                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
+                                <Spinner size="sm" color="brand" />
                                 Eliminando
                               </>
                             ) : 'Eliminar'}

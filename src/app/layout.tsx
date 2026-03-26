@@ -6,6 +6,7 @@ import Header from '@/components/Header'
 import StickyHeader from '@/components/StickyHeader'
 import Footer from '@/components/Footer'
 import ScreenLock from '@/components/ScreenLock'
+import ScrollToTop from '@/components/ScrollToTop'
 import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
@@ -55,6 +56,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, dmSans.variable)}>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
+        <ScrollToTop />
         <ScreenLock>
           <StickyHeader><Header /></StickyHeader>
           <div className="h-[95px] md:h-[130px]" />

@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
+import PageLoader from '@/components/PageLoader'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -65,7 +66,7 @@ export default function ProductDetailPage() {
     setContacting(false)
   }
 
-  if (loading) return <div className="max-w-4xl mx-auto mt-16 px-4">Cargando...</div>
+  if (loading) return <PageLoader loading={true} className="max-w-4xl mx-auto mt-16 px-4"><div /></PageLoader>
   if (!product) return <div className="max-w-4xl mx-auto mt-16 px-4">Producto no encontrado</div>
 
   const images = (product.product_images || []).sort((a, b) => a.order - b.order)
@@ -76,6 +77,7 @@ export default function ProductDetailPage() {
   const attrs = (product.attributes || {}) as Record<string, unknown>
 
   return (
+    <PageLoader loading={false}>
     <div className="max-w-4xl mx-auto mt-8 px-4 pb-16">
       <div className="grid md:grid-cols-2 gap-8">
         {/* Image gallery — swipeable */}
@@ -100,7 +102,17 @@ export default function ProductDetailPage() {
             }}
           >
             {images.length > 0 ? (
-              <Image src={images[currentImage]?.url} alt={title} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+              <>
+                <Image src={images[currentImage]?.url} alt={title} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                {/* Preload all gallery images */}
+                <div className="hidden">
+                  {images.map((img, i) => (
+                    i !== currentImage && (
+                      <Image key={img.url} src={img.url} alt="" width={1} height={1} loading="eager" sizes="(max-width: 768px) 100vw, 50vw" />
+                    )
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">Sin fotos</div>
             )}
@@ -268,5 +280,6 @@ export default function ProductDetailPage() {
         </div>
       </div>
     </div>
+    </PageLoader>
   )
 }

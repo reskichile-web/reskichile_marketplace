@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { EASE_OUT_EXPO } from '@/lib/animations'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
@@ -57,7 +58,7 @@ export default function CategoryIconBar({ selected, onSelect }: Props) {
             onMouseLeave={() => setHovered(null)}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.04, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ delay: i * 0.04, duration: 0.3, ease: EASE_OUT_EXPO }}
             className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl shrink-0 transition-colors ${
               isActive
                 ? 'bg-brand-500 text-white'

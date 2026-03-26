@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES } from '@/lib/constants'
+import PageLoader from '@/components/PageLoader'
 
 interface ContactRow {
   product_id: string
@@ -116,7 +117,7 @@ export default function ContactoPage() {
   const checkedCount = filtered.filter(r => r.contact_user_checked && r.contact_product_checked).length
 
   if (loading) return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
+    <PageLoader loading={true} className="max-w-7xl mx-auto mt-0 px-8 pt-4"><div /></PageLoader>
   )
 
   return (

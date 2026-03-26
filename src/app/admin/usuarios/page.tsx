@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import PageLoader from '@/components/PageLoader'
 
 interface UserWithProducts {
   id: string
@@ -74,7 +75,7 @@ export default function UsuariosPage() {
   }), [users])
 
   if (loading) return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
+    <PageLoader loading={true} className="max-w-7xl mx-auto mt-0 px-8 pt-4"><div /></PageLoader>
   )
 
   return (

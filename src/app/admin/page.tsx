@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import PageLoader from '@/components/PageLoader'
 
 interface Stats {
   total: number
@@ -66,7 +67,7 @@ export default function AdminHomePage() {
   }, [])
 
   if (loading) return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 text-gray-500">Cargando...</div>
+    <PageLoader loading={true} className="max-w-7xl mx-auto mt-0 px-8 pt-4"><div /></PageLoader>
   )
 
   const cards = [

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Spinner from '@/components/Spinner'
 import OtpInput from '@/components/OtpInput'
 
 const PASSWORD_MIN = 6
@@ -138,7 +139,7 @@ export default function ChangePasswordPage() {
   if (step === 'sending') {
     return (
       <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col items-center justify-center pb-6">
-        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <Spinner size="lg" className="mb-4" />
         <p className="text-sm text-gray-500">Enviando código de verificación...</p>
       </div>
     )
@@ -171,7 +172,7 @@ export default function ChangePasswordPage() {
 
         {verifying && (
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
             <span className="text-sm text-gray-500">Verificando...</span>
           </div>
         )}

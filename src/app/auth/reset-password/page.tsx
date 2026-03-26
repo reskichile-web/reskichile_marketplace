@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Spinner from '@/components/Spinner'
 
 const PASSWORD_MIN = 6
 
@@ -70,7 +71,7 @@ export default function ResetPasswordPage() {
   if (checking) return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="text-center">
-        <div className="animate-spin w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full mx-auto mb-4" />
+        <Spinner size="lg" className="mx-auto mb-4" />
         <p className="text-sm text-gray-500">Verificando...</p>
       </div>
     </div>

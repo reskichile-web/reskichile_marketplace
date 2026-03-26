@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { EASE_OUT_EXPO } from '@/lib/animations'
 
 const GEAR_CATEGORIES = new Set(['esquis', 'botas_esqui', 'snowboards', 'cascos'])
 const AI_CATEGORIES = new Set(['esquis'])
@@ -38,7 +39,7 @@ export default function CategoryCard({ type, label, image, imagePosition, darkOv
         alt={label}
         className={`absolute inset-0 w-full h-full object-cover ${imagePosition || 'object-center'}`}
         animate={{ scale: active ? 1.1 : 1 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
         loading="lazy"
       />
 
@@ -55,7 +56,7 @@ export default function CategoryCard({ type, label, image, imagePosition, darkOv
         {/* Mobile */}
         <motion.div
           animate={{ y: active ? -(linkCount * 24 + 12) : 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
           className="md:hidden"
         >
           <span className="font-body text-xl font-black text-white block">
@@ -65,7 +66,7 @@ export default function CategoryCard({ type, label, image, imagePosition, darkOv
         {/* Desktop */}
         <motion.div
           animate={{ y: active ? -(linkCount * 34 + 30) : 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
           className="hidden md:block"
         >
           <span className="font-body text-3xl font-black text-white block">
@@ -80,7 +81,7 @@ export default function CategoryCard({ type, label, image, imagePosition, darkOv
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.3, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.3, delay: 0.05, ease: EASE_OUT_EXPO }}
               className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6 space-y-2"
               onClick={e => e.stopPropagation()}
             >

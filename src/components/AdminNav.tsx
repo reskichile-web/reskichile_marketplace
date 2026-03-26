@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
+import { EASE_OUT_EXPO } from '@/lib/animations'
 
 const NAV_ITEMS = [
   {
@@ -116,7 +117,7 @@ export default function AdminNav() {
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
             className="fixed top-0 left-0 bottom-0 w-72 bg-white z-[9999] shadow-2xl flex flex-col"
           >
             <div className="flex items-center justify-between px-5 h-[56px] border-b border-gray-100">

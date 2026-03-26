@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Spinner from '@/components/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
 
@@ -196,7 +197,7 @@ export default function ForgotPasswordPage() {
 
         {verifying && (
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" />
             <span className="text-sm text-gray-500">Verificando...</span>
           </div>
         )}

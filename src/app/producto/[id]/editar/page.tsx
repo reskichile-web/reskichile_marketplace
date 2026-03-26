@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import imageCompression from 'browser-image-compression'
+import PageLoader from '@/components/PageLoader'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 import {
@@ -294,11 +295,12 @@ export default function EditProductPage() {
     router.push(`/producto/${params.id}`)
   }
 
-  if (loading) return <div className="max-w-2xl mx-auto mt-16 px-4">Cargando...</div>
+  if (loading) return <PageLoader loading={true} className="max-w-2xl mx-auto mt-16 px-4"><div /></PageLoader>
 
   const logoUrl = getBrandLogoUrl(form.brand)
 
   return (
+    <PageLoader loading={false}>
     <div className="max-w-2xl mx-auto mt-8 px-4 pb-16">
       <h1 className="font-body text-3xl font-black mb-6">Editar producto</h1>
 
@@ -431,5 +433,6 @@ export default function EditProductPage() {
         </div>
       </form>
     </div>
+    </PageLoader>
   )
 }
