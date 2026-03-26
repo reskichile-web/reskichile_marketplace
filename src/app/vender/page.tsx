@@ -8,6 +8,7 @@ import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGri
 import PopupMessage from '@/components/PopupMessage'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
+import imageCompression from 'browser-image-compression'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -695,12 +696,15 @@ export default function SellPage() {
               setImages(next)
               setPreviews(next.map(f => URL.createObjectURL(f)))
             }}
-            onAdd={(files) => {
+            onAdd={async (files) => {
               if (images.length + files.length > MAX_IMAGES) {
                 setPopup({ message: `Máximo ${MAX_IMAGES} fotos`, type: 'error' })
                 return
               }
-              const next = [...images, ...files]
+              const compressed = await Promise.all(
+                files.map(f => imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true }))
+              )
+              const next = [...images, ...compressed]
               setImages(next)
               setPreviews(next.map(f => URL.createObjectURL(f)))
             }}

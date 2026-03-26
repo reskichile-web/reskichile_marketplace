@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
@@ -99,7 +100,7 @@ export default function ProductDetailPage() {
             }}
           >
             {images.length > 0 ? (
-              <img src={images[currentImage]?.url} alt={title} className="w-full h-full object-cover" />
+              <Image src={images[currentImage]?.url} alt={title} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">Sin fotos</div>
             )}

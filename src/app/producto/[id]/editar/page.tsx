@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import imageCompression from 'browser-image-compression'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 import {
@@ -118,8 +119,8 @@ export default function EditProductPage() {
 
   const [attributes, setAttributes] = useState<Record<string, string | boolean>>({})
   const [existingImages, setExistingImages] = useState<{ id: string; url: string; order: number }[]>([])
-  const [newImages, setNewImages] = useState<File[]>([])
-  const [newPreviews, setNewPreviews] = useState<string[]>([])
+  const [newImages, setNewImages] = useState<{ id: string; file: File; preview: string }[]>([])
+  const newImageCounter = useRef(0)
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([])
   const [sellerId, setSellerId] = useState<string>('')
 
@@ -184,41 +185,46 @@ export default function EditProductPage() {
     ...existingImages
       .filter(img => !deletedImageIds.includes(img.id))
       .map(img => ({ id: img.id, url: img.url })),
-    ...newImages.map((_, i) => ({ id: `new-${i}`, url: newPreviews[i], isNew: true })),
+    ...newImages.map(img => ({ id: img.id, url: img.preview, isNew: true })),
   ]
 
   function handleReorderImages(reordered: ImageItem[]) {
     const reorderedExisting: typeof existingImages = []
-    const reorderedNewImages: File[] = []
-    const reorderedNewPreviews: string[] = []
+    const reorderedNew: typeof newImages = []
     reordered.forEach(item => {
       if (item.id.startsWith('new-')) {
-        const idx = parseInt(item.id.replace('new-', ''))
-        reorderedNewImages.push(newImages[idx])
-        reorderedNewPreviews.push(newPreviews[idx])
+        const found = newImages.find(img => img.id === item.id)
+        if (found) reorderedNew.push(found)
       } else {
         const found = existingImages.find(img => img.id === item.id)
         if (found) reorderedExisting.push(found)
       }
     })
     setExistingImages(reorderedExisting)
-    setNewImages(reorderedNewImages)
-    setNewPreviews(reorderedNewPreviews)
+    setNewImages(reorderedNew)
   }
 
   function handleRemoveImage(id: string) {
     if (id.startsWith('new-')) {
-      const idx = parseInt(id.replace('new-', ''))
-      setNewImages(prev => prev.filter((_, i) => i !== idx))
-      setNewPreviews(prev => { URL.revokeObjectURL(prev[idx]); return prev.filter((_, i) => i !== idx) })
+      setNewImages(prev => {
+        const removed = prev.find(img => img.id === id)
+        if (removed) URL.revokeObjectURL(removed.preview)
+        return prev.filter(img => img.id !== id)
+      })
     } else {
       setDeletedImageIds(prev => [...prev, id])
     }
   }
 
-  function handleAddImages(files: File[]) {
-    setNewImages(prev => [...prev, ...files])
-    setNewPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+  async function handleAddImages(files: File[]) {
+    const compressed = await Promise.all(
+      files.map(f => imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true }))
+    )
+    const items = compressed.map(file => {
+      const id = `new-${newImageCounter.current++}`
+      return { id, file, preview: URL.createObjectURL(file) }
+    })
+    setNewImages(prev => [...prev, ...items])
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -275,7 +281,7 @@ export default function EditProductPage() {
     if (newImages.length > 0) {
       const nextOrder = remainingExisting.length
       for (let i = 0; i < newImages.length; i++) {
-        const file = newImages[i]
+        const file = newImages[i].file
         const ext = file.name.split('.').pop()
         const path = `${sellerId}/${params.id}/${Date.now()}_${i}.${ext}`
         const { error: uploadError } = await supabase.storage.from('product-images').upload(path, file)

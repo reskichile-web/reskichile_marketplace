@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Montserrat, DM_Sans } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
@@ -31,6 +31,13 @@ const dmSans = DM_Sans({
   weight: ['400', '500', '600', '700'],
   variable: '--font-nav',
 })
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export const metadata: Metadata = {
   title: 'ReskiChile - Equipamiento de montaña usado',

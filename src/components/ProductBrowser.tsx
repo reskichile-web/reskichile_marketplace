@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
 
 interface Product {
@@ -252,13 +253,14 @@ export default function ProductBrowser({ products }: Props) {
 
                 return (
                   <Link key={product.id} href={`/producto/${product.id}`} className="group">
-                    <div className="aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
+                    <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
                       {mainImage ? (
-                        <img
+                        <Image
                           src={mainImage.url}
                           alt={title}
-                          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-                          loading="lazy"
+                          fill
+                          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300">
