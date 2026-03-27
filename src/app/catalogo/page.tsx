@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import { StaggerGrid, StaggerItem } from '@/components/StaggerGrid'
+import CatalogFilterDrawer from '@/components/CatalogFilterDrawer'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS, ITEMS_PER_PAGE } from '@/lib/constants'
 
 interface Props {
@@ -101,6 +102,42 @@ export default async function CatalogPage({ searchParams }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Mobile filter drawer */}
+      <CatalogFilterDrawer hasFilters={hasFilters}>
+        <form className="space-y-6">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Tipo</h3>
+            <div className="space-y-1.5">
+              <Link href={buildUrl({ product_type: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.product_type ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todos</Link>
+              {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
+                <Link key={v} href={buildUrl({ product_type: v, page: '1' })} className={`block text-sm py-1 ${searchParams.product_type === v ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{l}</Link>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Condición</h3>
+            <div className="space-y-1.5">
+              <Link href={buildUrl({ condition: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.condition ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todas</Link>
+              {Object.entries(CONDITIONS).map(([v, l]) => (
+                <Link key={v} href={buildUrl({ condition: v, page: '1' })} className={`block text-sm py-1 ${searchParams.condition === v ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{l}</Link>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Región</h3>
+            <div className="space-y-1.5">
+              <Link href={buildUrl({ region: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.region ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todas</Link>
+              {REGIONS.map(r => (
+                <Link key={r} href={buildUrl({ region: r, page: '1' })} className={`block text-sm py-1 ${searchParams.region === r ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{r}</Link>
+              ))}
+            </div>
+          </div>
+          {hasFilters && (
+            <Link href="/catalogo" className="block text-sm text-center text-red-500 font-medium pt-2">Limpiar filtros</Link>
+          )}
+        </form>
+      </CatalogFilterDrawer>
 
       {/* Main layout: filters sidebar + product grid */}
       <div className="flex gap-8">

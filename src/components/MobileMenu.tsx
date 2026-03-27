@@ -85,21 +85,6 @@ export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
                 </div>
               ) : (
                 <>
-                  {/* Auth links for non-logged in */}
-                  {!isLoggedIn && (
-                    <div className="mb-5">
-                      <div className="flex items-center gap-3">
-                        <Link href="/auth/login" onClick={() => setOpen(false)} className="text-sm text-gray-600 hover:text-brand-500">
-                          Iniciar sesión
-                        </Link>
-                        <span className="text-gray-300">|</span>
-                        <Link href="/auth/registro" onClick={() => setOpen(false)} className="text-sm text-gray-600 hover:text-brand-500">
-                          Registrarse
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Vender */}
                   <Link
                     href="/vender"

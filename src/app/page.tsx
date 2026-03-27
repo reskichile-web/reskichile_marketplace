@@ -110,10 +110,12 @@ export default async function HomePage() {
       )}
 
       {/* CTA — simple card */}
-      <section className="max-w-[1000px] mx-auto px-4 md:px-6">
-        <div className="relative rounded-2xl overflow-hidden p-10 md:p-16 text-center">
-          <img src="/images/pantalones.svg" alt="" className="absolute inset-0 w-full h-full object-cover" />
+      <section className="max-w-[1000px] mx-auto md:px-6">
+        <div className="relative md:rounded-2xl overflow-hidden p-10 md:p-16 text-center">
+          <img src="/images/pantalones.svg" alt="" className="absolute inset-0 w-full h-full object-cover scale-110" />
           <div className="absolute inset-0 bg-white/80" />
+          <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white/90 to-transparent md:hidden" />
+          <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white/90 to-transparent md:hidden" />
           <div className="relative">
             <h2 className="font-body text-2xl md:text-4xl font-black text-gray-900">
               ¿Tienes equipo que ya no usas?
