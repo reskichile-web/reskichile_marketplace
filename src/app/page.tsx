@@ -67,7 +67,7 @@ export default async function HomePage() {
         <div className="flex flex-row justify-center md:justify-start gap-3 sm:gap-4 mt-8 md:mt-10">
           <Link
             href="/catalogo"
-            className="inline-flex items-center justify-center gap-1.5 md:gap-2.5 bg-brand-500 text-white px-4 md:px-8 py-2.5 md:py-3.5 rounded-lg font-medium shadow-sm hover:bg-brand-600 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs md:text-base"
+            className="inline-flex items-center justify-center gap-1.5 md:gap-2.5 bg-brand-500 text-white px-4 md:px-8 py-2.5 md:py-3.5 rounded-full font-medium shadow-sm hover:bg-brand-600 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs md:text-base"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
@@ -76,7 +76,7 @@ export default async function HomePage() {
           </Link>
           <Link
             href="/vender"
-            className="inline-flex items-center justify-center gap-1.5 md:gap-2.5 border border-gray-300 bg-white px-4 md:px-8 py-2.5 md:py-3.5 rounded-lg font-medium shadow-sm hover:border-gray-400 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs md:text-base"
+            className="inline-flex items-center justify-center gap-1.5 md:gap-2.5 border border-gray-300 bg-white px-4 md:px-8 py-2.5 md:py-3.5 rounded-full font-medium shadow-sm hover:border-gray-400 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-xs md:text-base"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
