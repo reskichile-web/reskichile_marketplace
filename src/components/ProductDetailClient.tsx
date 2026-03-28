@@ -45,7 +45,7 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
   }
 
   return (
-    <div className="-mt-[95px] md:mt-0">
+    <div className="-mt-4 md:mt-0">
     <div className="max-w-4xl mx-auto md:mt-8 md:px-4 pb-16">
       <div className="grid md:grid-cols-2 md:gap-8">
         <ProductGallery images={images} title={title} />
