@@ -258,7 +258,7 @@ export default function ProductGallery({ images, title }: Props) {
     <div>
       <div
         ref={containerRef}
-        className="relative aspect-[4/5] bg-white overflow-hidden md:rounded-lg md:border md:border-gray-100"
+        className="relative aspect-[4/5] bg-white overflow-hidden md:rounded-lg md:border md:border-gray-100 touch-pan-y"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
