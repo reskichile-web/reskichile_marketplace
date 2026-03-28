@@ -7,7 +7,7 @@ import AdminNav from './AdminNav'
 import ProfileDropdown from './ProfileDropdown'
 
 export default async function Header() {
-  const { user, isAdmin } = await getAuthUser()
+  const { user, isAdmin, avatarUrl, userName } = await getAuthUser()
 
   if (isAdmin) return <AdminNav />
 
@@ -37,9 +37,9 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             {!isAdmin && <SearchBar />}
             {user ? (
-              <ProfileDropdown />
+              <ProfileDropdown avatarUrl={avatarUrl} userName={userName} />
             ) : (
-              <Link href="/auth/login" className="p-1" aria-label="Iniciar sesión">
+              <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
@@ -48,33 +48,35 @@ export default async function Header() {
           </div>
 
           {/* Right actions — desktop */}
-          <div className="hidden md:flex items-center gap-5 shrink-0 font-nav">
+          <div className="hidden md:flex items-center gap-3 shrink-0">
             {user ? (
               <>
-                <Link href="/mis-productos" className="text-sm text-gray-600 hover:text-brand-500 transition-colors">
-                  Mis productos
+                {/* Mis productos icon */}
+                <Link
+                  href="/mis-productos"
+                  className="p-2 text-gray-500 hover:text-brand-500 transition-colors rounded-lg hover:bg-gray-50"
+                  title="Mis productos"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
                 </Link>
-                <Link href="/perfil" className="text-sm text-gray-600 hover:text-brand-500 transition-colors">
-                  Perfil
-                </Link>
-                <form action="/auth/logout" method="POST">
-                  <button type="submit" className="text-sm text-gray-400 hover:text-red-500 transition-colors">
-                    Salir
-                  </button>
-                </form>
+
+                {/* Avatar dropdown */}
+                <ProfileDropdown avatarUrl={avatarUrl} userName={userName} />
               </>
             ) : (
               <>
-                <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
-                  Iniciar sesión
+                <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
+                  Iniciar sesion
                 </Link>
                 <span className="text-gray-200">|</span>
-                <Link href="/auth/registro" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                <Link href="/auth/registro" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
                   Registrarse
                 </Link>
               </>
             )}
-            <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors">
+            <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors font-nav">
               Vender
             </Link>
           </div>

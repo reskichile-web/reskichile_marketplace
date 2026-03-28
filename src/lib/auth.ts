@@ -10,13 +10,18 @@ export const getAuthUser = cache(async () => {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return { user: null, isAdmin: false }
+  if (!user) return { user: null, isAdmin: false, avatarUrl: null, userName: null }
 
   const { data: profile } = await supabase
     .from('users')
-    .select('is_admin')
+    .select('is_admin, avatar_url, name')
     .eq('id', user.id)
     .single()
 
-  return { user, isAdmin: profile?.is_admin ?? false }
+  return {
+    user,
+    isAdmin: profile?.is_admin ?? false,
+    avatarUrl: (profile?.avatar_url as string | null) ?? null,
+    userName: (profile?.name as string | null) ?? null,
+  }
 })
