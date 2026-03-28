@@ -106,44 +106,51 @@ export default function FinanzasPage() {
       {/* ─── Category Chart ─── */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
         <h2 className="text-sm font-bold text-gray-900 mb-5">Proporcion por categoria</h2>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {byCategory.map(cat => (
             <div key={cat.type}>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-sm font-medium text-gray-700">{PRODUCT_TYPES[cat.type] || cat.type}</span>
-                <span className="text-sm font-black text-gray-900">{formatCLP(cat.avgPrice)}</span>
-              </div>
-              {/* Bar — full width, sold+notSold stacked with diagonal separator */}
-              <div className="relative h-8 bg-gray-100 rounded-lg overflow-hidden flex">
-                {/* Sold portion */}
-                <div
-                  className="h-full bg-brand-500 flex items-center justify-center text-white text-xs font-bold relative"
-                  style={{ width: `${Math.max(cat.soldPct, cat.sold > 0 ? 15 : 0)}%` }}
-                >
-                  {cat.sold > 0 && (
-                    <span className="relative z-10 px-1">{cat.sold}</span>
-                  )}
-                  {/* Diagonal edge */}
-                  {cat.sold > 0 && cat.notSold > 0 && (
-                    <div className="absolute right-0 top-0 bottom-0 w-3 bg-brand-500" style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
-                  )}
+                <div className="text-right">
+                  <span className="text-xs text-gray-400 mr-1.5">Prom. venta</span>
+                  <span className="text-sm font-black text-gray-900">{formatCLP(cat.avgPrice)}</span>
                 </div>
-                {/* Not sold portion */}
-                <div
-                  className="h-full bg-brand-100 flex items-center text-brand-600 text-xs font-bold"
-                  style={{ flex: 1 }}
-                >
-                  {cat.notSold > 0 && (
-                    <span className="pl-3">{cat.notSold}</span>
-                  )}
+              </div>
+              {/* Bar — full width with diagonal / separator */}
+              <div className="relative h-9 rounded-lg overflow-hidden">
+                <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                  {/* Sold portion */}
+                  <polygon
+                    points={`0,0 ${cat.soldPct},0 ${Math.max(cat.soldPct - 8, 0)},100 0,100`}
+                    className="fill-brand-500"
+                  />
+                  {/* Not sold portion */}
+                  <polygon
+                    points={`${cat.soldPct},0 100,0 100,100 ${Math.max(cat.soldPct - 8, 0)},100`}
+                    className="fill-brand-100"
+                  />
+                </svg>
+                {/* Labels inside bars */}
+                <div className="absolute inset-0 flex">
+                  <div className="flex items-center justify-center text-white text-xs font-bold" style={{ width: `${Math.max(cat.soldPct, cat.sold > 0 ? 20 : 0)}%` }}>
+                    {cat.sold > 0 && cat.sold}
+                  </div>
+                  <div className="flex-1 flex items-center justify-center text-brand-600 text-xs font-bold">
+                    {cat.notSold > 0 && cat.notSold}
+                  </div>
+                </div>
+              </div>
+              {/* Labels below */}
+              <div className="flex mt-1">
+                <div style={{ width: `${Math.max(cat.soldPct, cat.sold > 0 ? 20 : 0)}%` }} className="text-center">
+                  <span className="text-[10px] text-gray-400">Vendidos</span>
+                </div>
+                <div className="flex-1 text-center">
+                  <span className="text-[10px] text-gray-400">No vendidos</span>
                 </div>
               </div>
             </div>
           ))}
-        </div>
-        <div className="flex items-center gap-4 mt-4 text-xs text-gray-400">
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-brand-500 rounded" /> Vendidos</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-brand-100 rounded" /> No vendidos</span>
         </div>
       </div>
 
