@@ -303,7 +303,12 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-brand-500 text-white py-2.5 rounded-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+            {loading ? (
+              <svg className="w-5 h-5 mx-auto animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeLinecap="round" opacity={0.3} />
+                <path d="M12 2a10 10 0 019.95 9" stroke="white" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            ) : 'Crear cuenta'}
           </button>
         </form>
 

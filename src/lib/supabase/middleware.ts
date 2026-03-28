@@ -40,7 +40,6 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/mis-productos') ||
     pathname.startsWith('/perfil') ||
     pathname.startsWith('/admin') ||
-    pathname.startsWith('/vender') ||
     pathname.endsWith('/editar')
 
   if (isProtected) {

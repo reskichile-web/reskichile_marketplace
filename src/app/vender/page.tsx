@@ -526,7 +526,6 @@ export default function SellPage() {
                       onBlur={() => { setTimeout(() => setShowBrandSuggestions(false), 150); if (brand.trim()) setBrandConfirmed(true) }}
                       className={`w-full border rounded-lg py-2.5 ${getBrandLogoUrl(brand) ? 'pl-10' : 'pl-3'} pr-3 text-sm ${fieldErrors.brand ? 'border-red-400' : ''}`}
                       placeholder={BRAND_PLACEHOLDERS[productType] || 'Marca'}
-                      autoFocus
                     />
                     {showBrandSuggestions && filteredBrands.length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">

@@ -124,6 +124,7 @@ export default function EditProductPage() {
   const [newImages, setNewImages] = useState<{ id: string; file: File; preview: string }[]>([])
   const newImageCounter = useRef(0)
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([])
+  const [imageOrder, setImageOrder] = useState<string[]>([])
   const [sellerId, setSellerId] = useState<string>('')
 
   useEffect(() => {
@@ -160,7 +161,9 @@ export default function EditProductPage() {
       setAttributes((product.attributes as Record<string, string | boolean>) || {})
       setSellerId(product.seller_id || '')
       const imgs = (product.product_images || []) as { id: string; url: string; order: number }[]
-      setExistingImages(imgs.sort((a, b) => a.order - b.order))
+      const sorted = imgs.sort((a, b) => a.order - b.order)
+      setExistingImages(sorted)
+      setImageOrder(sorted.map(img => img.id))
       setLoading(false)
     }
     load()
@@ -182,31 +185,28 @@ export default function EditProductPage() {
     setAttributes(prev => ({ ...prev, [key]: value }))
   }
 
-  // Unified image list
-  const allImages: ImageItem[] = [
-    ...existingImages
-      .filter(img => !deletedImageIds.includes(img.id))
-      .map(img => ({ id: img.id, url: img.url })),
-    ...newImages.map(img => ({ id: img.id, url: img.preview, isNew: true })),
-  ]
+  // Unified image list — respects imageOrder for mixed existing+new
+  const imageMap = new Map<string, ImageItem>()
+  existingImages
+    .filter(img => !deletedImageIds.includes(img.id))
+    .forEach(img => imageMap.set(img.id, { id: img.id, url: img.url }))
+  newImages.forEach(img => imageMap.set(img.id, { id: img.id, url: img.preview, isNew: true }))
+
+  const allImages: ImageItem[] = imageOrder
+    .filter(id => imageMap.has(id))
+    .map(id => imageMap.get(id)!)
+
+  // Add any images not yet in imageOrder (shouldn't happen, but safety)
+  imageMap.forEach((img, id) => {
+    if (!imageOrder.includes(id)) allImages.push(img)
+  })
 
   function handleReorderImages(reordered: ImageItem[]) {
-    const reorderedExisting: typeof existingImages = []
-    const reorderedNew: typeof newImages = []
-    reordered.forEach(item => {
-      if (item.id.startsWith('new-')) {
-        const found = newImages.find(img => img.id === item.id)
-        if (found) reorderedNew.push(found)
-      } else {
-        const found = existingImages.find(img => img.id === item.id)
-        if (found) reorderedExisting.push(found)
-      }
-    })
-    setExistingImages(reorderedExisting)
-    setNewImages(reorderedNew)
+    setImageOrder(reordered.map(img => img.id))
   }
 
   function handleRemoveImage(id: string) {
+    setImageOrder(prev => prev.filter(i => i !== id))
     if (id.startsWith('new-')) {
       setNewImages(prev => {
         const removed = prev.find(img => img.id === id)
@@ -227,6 +227,7 @@ export default function EditProductPage() {
       return { id, file, preview: URL.createObjectURL(file) }
     })
     setNewImages(prev => [...prev, ...items])
+    setImageOrder(prev => [...prev, ...items.map(i => i.id)])
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -273,24 +274,26 @@ export default function EditProductPage() {
       await supabase.from('product_images').delete().in('id', deletedImageIds)
     }
 
-    // Update order
-    const remainingExisting = existingImages.filter(img => !deletedImageIds.includes(img.id))
-    for (let i = 0; i < remainingExisting.length; i++) {
-      await supabase.from('product_images').update({ order: i }).eq('id', remainingExisting[i].id)
-    }
+    // Update order and upload new images — respects unified imageOrder
+    const finalOrder = imageOrder.filter(id => !deletedImageIds.includes(id))
+    let orderIndex = 0
 
-    // Upload new images
-    if (newImages.length > 0) {
-      const nextOrder = remainingExisting.length
-      for (let i = 0; i < newImages.length; i++) {
-        const file = newImages[i].file
-        const ext = file.name.split('.').pop()
-        const path = `${sellerId}/${params.id}/${Date.now()}_${i}.${ext}`
-        const { error: uploadError } = await supabase.storage.from('product-images').upload(path, file)
+    for (const id of finalOrder) {
+      if (id.startsWith('new-')) {
+        // Upload new image at this position
+        const newImg = newImages.find(img => img.id === id)
+        if (!newImg) continue
+        const ext = newImg.file.name.split('.').pop()
+        const path = `${sellerId}/${params.id}/${Date.now()}_${orderIndex}.${ext}`
+        const { error: uploadError } = await supabase.storage.from('product-images').upload(path, newImg.file)
         if (uploadError) continue
         const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
-        await supabase.from('product_images').insert({ product_id: params.id as string, url: publicUrl, order: nextOrder + i })
+        await supabase.from('product_images').insert({ product_id: params.id as string, url: publicUrl, order: orderIndex })
+      } else {
+        // Update existing image order
+        await supabase.from('product_images').update({ order: orderIndex }).eq('id', id)
       }
+      orderIndex++
     }
 
     router.push(`/producto/${params.id}`)

@@ -23,6 +23,7 @@ export default function ScreenLock({ children }: { children: React.ReactNode }) 
     if (code === ACCESS_CODE) {
       setUnlocked(true)
       sessionStorage.setItem('reski_unlocked', 'true')
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     } else {
       setError(true)
       setTimeout(() => setError(false), 1500)
