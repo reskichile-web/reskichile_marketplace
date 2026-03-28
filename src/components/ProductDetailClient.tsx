@@ -78,6 +78,12 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
             </div>
           )}
 
+          {/* Location */}
+          <div className="flex items-center gap-1.5 mt-3 text-sm text-gray-500">
+            <span>📍</span>
+            {product.region}{product.comuna ? `, ${product.comuna}` : ''}
+          </div>
+
           {/* Main attributes (non-sub-product) */}
           {(() => {
             const mainAttrs = attrFields.filter(f => !f.key.startsWith('incluye_') && !f.key.startsWith('fijaciones_'))
@@ -131,12 +137,6 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
               </div>
             )
           })()}
-
-          {/* Location */}
-          <div className="flex items-center gap-1.5 mt-5 text-sm text-gray-500">
-            <span>📍</span>
-            {product.region}{product.comuna ? `, ${product.comuna}` : ''}
-          </div>
 
           {/* Contact seller — centered */}
           {!isOwner && (
