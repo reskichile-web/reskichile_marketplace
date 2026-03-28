@@ -87,32 +87,6 @@ export default function HomePage() {
         <CategoriesSection />
       </Suspense>
 
-      {/* CTA — static */}
-      <section className="max-w-[1000px] mx-auto md:px-6">
-        <div className="relative md:rounded-2xl overflow-hidden p-10 md:p-16 text-center">
-          <img src="/images/pantalones.svg" alt="" className="absolute inset-0 w-full h-full object-cover scale-110" />
-          <div className="absolute inset-0 bg-white/80" />
-          <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white/90 to-transparent md:hidden" />
-          <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white/90 to-transparent md:hidden" />
-          <div className="relative">
-            <h2 className="font-body text-2xl md:text-4xl font-black text-gray-900">
-              ¿Tienes equipo que ya no usas?
-            </h2>
-            <p className="text-gray-500 mt-4 text-lg hidden md:block">
-              Publicalo gratis y encuentra un nuevo dueno.
-            </p>
-            <Link
-              href="/vender"
-              className="pressable inline-block mt-8 bg-brand-500 text-white px-10 py-4 rounded-lg font-medium hover:bg-brand-600 transition-colors"
-            >
-              Publicar producto
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Spacer */}
-      <div className="h-16 md:h-24" />
 
       {/* Products — streams in with skeleton fallback */}
       <Suspense fallback={<ProductsSkeleton />}>
