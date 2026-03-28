@@ -87,23 +87,25 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
       />
 
       <div
-        className="relative z-[1] flex items-center justify-center overflow-hidden select-none"
-        style={{ cursor: zoomed ? (isDragging.current ? 'grabbing' : 'grab') : 'zoom-in' }}
-        onClick={(e) => { e.stopPropagation(); handleClick() }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        className="relative z-[1] w-full h-full flex items-center justify-center overflow-hidden select-none"
+        onClick={(e) => { e.stopPropagation() }}
       >
         <img
           src={src}
           alt={alt}
-          className="max-h-[90vh] max-w-[90vw] object-contain transition-transform duration-200"
+          className="max-h-[90vh] max-w-[90vw] object-contain"
           style={{
+            cursor: zoomed ? 'grab' : 'zoom-in',
             transform: zoomed
               ? `scale(2.5) translate(${offset.x / 2.5}px, ${offset.y / 2.5}px)`
               : 'scale(1)',
+            transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
           }}
           draggable={false}
+          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
         />
       </div>
     </div>,
