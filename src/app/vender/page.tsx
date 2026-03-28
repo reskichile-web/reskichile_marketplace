@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, REGIONS } from '@/lib/constants'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
 import PopupMessage from '@/components/PopupMessage'
+import BrandInput from '@/components/BrandInput'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
@@ -110,7 +111,6 @@ export default function SellPage() {
   // Form data
   const [productType, setProductType] = useState('')
   const [brand, setBrand] = useState('')
-  const [brandConfirmed, setBrandConfirmed] = useState(false)
   const [model, setModel] = useState('')
   const [modelConfirmed, setModelConfirmed] = useState(false)
   const [condition, setCondition] = useState('usado_como_nuevo')
@@ -136,10 +136,6 @@ export default function SellPage() {
   const [otpCode, setOtpCode] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  // Existing brands for autocomplete
-  const [existingBrands, setExistingBrands] = useState<string[]>([])
-  const [showBrandSuggestions, setShowBrandSuggestions] = useState(false)
-
   useEffect(() => {
     async function check() {
       const supabase = createClient()
@@ -147,20 +143,9 @@ export default function SellPage() {
       setIsLoggedIn(!!user)
 
       // Fetch existing brands
-      const { data } = await supabase.from('products').select('brand').eq('status', 'approved')
-      if (data) {
-        const brands = Array.from(new Set(data.map(p => p.brand))).sort()
-        setExistingBrands(brands)
-      }
     }
     check()
   }, [])
-
-  const filteredBrands = useMemo(() => {
-    if (!brand.trim()) return []
-    const q = brand.toLowerCase()
-    return existingBrands.filter(b => b.toLowerCase().includes(q)).slice(0, 6)
-  }, [brand, existingBrands])
 
   const imageItems: ImageItem[] = images.map((_, i) => ({
     id: `img-${i}`,
@@ -500,59 +485,15 @@ export default function SellPage() {
           <div>
             <div className="grid grid-cols-2 gap-3">
               {/* Brand */}
-              <div className="relative">
+              <div>
                 <label className="block text-sm font-medium mb-1">Marca *</label>
-                {brandConfirmed ? (
-                  <button
-                    type="button"
-                    onClick={() => setBrandConfirmed(false)}
-                    className="w-full flex items-center gap-2 bg-white rounded-lg px-3 py-2.5 text-left"
-                  >
-                    {getBrandLogoUrl(brand) && (
-                      <img src={getBrandLogoUrl(brand)!} alt="" className="w-5 h-5 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
-                    )}
-                    <span className="font-semibold text-sm">{brand}</span>
-                  </button>
-                ) : (
-                  <div className="relative">
-                    {getBrandLogoUrl(brand) && (
-                      <img src={getBrandLogoUrl(brand)!} alt="" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
-                    )}
-                    <input
-                      type="text"
-                      value={brand}
-                      onChange={e => { setBrand(e.target.value); setShowBrandSuggestions(true); setFieldErrors(prev => { const n = {...prev}; delete n.brand; return n }) }}
-                      onFocus={() => setShowBrandSuggestions(true)}
-                      onBlur={() => { setTimeout(() => setShowBrandSuggestions(false), 150); if (brand.trim()) setBrandConfirmed(true) }}
-                      className={`w-full border rounded-lg py-2.5 ${getBrandLogoUrl(brand) ? 'pl-10' : 'pl-3'} pr-3 text-sm ${fieldErrors.brand ? 'border-red-400' : ''}`}
-                      placeholder={BRAND_PLACEHOLDERS[productType] || 'Marca'}
-                    />
-                    {showBrandSuggestions && filteredBrands.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
-                        {filteredBrands.map(b => {
-                          const logoUrl = getBrandLogoUrl(b)
-                          return (
-                            <button
-                              key={b}
-                              type="button"
-                              onMouseDown={() => { setBrand(b); setShowBrandSuggestions(false); setBrandConfirmed(true) }}
-                              className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-sm hover:bg-brand-50 hover:text-brand-500"
-                            >
-                              {logoUrl ? (
-                                <img src={logoUrl} alt="" className="w-5 h-5 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
-                              ) : (
-                                <div className="w-5 h-5 bg-gray-100 rounded flex items-center justify-center text-[10px] font-bold text-gray-400">
-                                  {b.charAt(0)}
-                                </div>
-                              )}
-                              {b}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <BrandInput
+                  value={brand}
+                  onChange={v => { setBrand(v); setFieldErrors(prev => { const n = {...prev}; delete n.brand; return n }) }}
+                  productType={productType}
+                  placeholder={BRAND_PLACEHOLDERS[productType] || 'Marca'}
+                  error={!!fieldErrors.brand}
+                />
                 {fieldErrors.brand && <p className="text-xs text-red-500 mt-1">{fieldErrors.brand}</p>}
               </div>
 

@@ -7,6 +7,7 @@ import imageCompression from 'browser-image-compression'
 import PageLoader from '@/components/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
+import BrandInput from '@/components/BrandInput'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 import {
   PRODUCT_TYPES,
@@ -340,13 +341,18 @@ export default function EditProductPage() {
 
       <form onSubmit={handleSubmit}>
         {/* Header — brand + model */}
-        <div className="flex items-center gap-3 mb-6">
-          {logoUrl && (
-            <img src={logoUrl} alt="" className="w-8 h-8 object-contain rounded" onError={e => (e.currentTarget.style.display = 'none')} />
-          )}
-          <div className="flex-1">
-            <div className="flex items-baseline gap-2">
-              <InlineField label="Marca" value={form.brand} onSave={v => updateForm('brand', v)} />
+        <div className="mb-6">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Marca</label>
+              <BrandInput
+                value={form.brand}
+                onChange={v => updateForm('brand', v)}
+                productType={form.product_type}
+                placeholder="Marca"
+              />
+            </div>
+            <div>
               <InlineField label="Modelo" value={form.model} onSave={v => updateForm('model', v)} />
             </div>
           </div>
@@ -416,6 +422,20 @@ export default function EditProductPage() {
                       </span>
                       <p className="text-sm font-medium group-hover:text-brand-500 transition-colors">{val === true ? 'Sí' : val === false ? 'No' : <span className="text-gray-500">–</span>}</p>
                     </button>
+                  )
+                }
+                // Brand fields get BrandInput with suggestions
+                if (attr.key.includes('marca')) {
+                  return (
+                    <div key={attr.key}>
+                      <label className="block text-xs text-gray-400 mb-1">{attr.label}</label>
+                      <BrandInput
+                        value={(attributes[attr.key] as string) || ''}
+                        onChange={v => updateAttribute(attr.key, v)}
+                        productType={form.product_type}
+                        placeholder={attr.label}
+                      />
+                    </div>
                   )
                 }
                 return (
