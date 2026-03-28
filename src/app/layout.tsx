@@ -5,7 +5,6 @@ import './globals.css'
 import Header from '@/components/Header'
 import StickyHeader from '@/components/StickyHeader'
 import Footer from '@/components/Footer'
-import ScreenLock from '@/components/ScreenLock'
 import ScrollToTop from '@/components/ScrollToTop'
 import NavigationProgress from '@/components/NavigationProgress'
 import { cn } from '@/lib/utils'
@@ -64,14 +63,12 @@ export default function RootLayout({
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
         <NavigationProgress />
         <ScrollToTop />
-        <ScreenLock>
-          <StickyHeader><Header /></StickyHeader>
-          <div className="h-[95px] md:h-[130px]" />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-        </ScreenLock>
+        <StickyHeader><Header /></StickyHeader>
+        <div className="h-[95px] md:h-[130px]" />
+        <main className="flex-1">
+          {children}
+        </main>
+        <Footer />
       </body>
     </html>
   )

@@ -111,19 +111,36 @@ function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
   )
 }
 
-// ─── Mobile: arrow buttons to reorder ───────────────────────────────────────
+// ─── Mobile: arrow buttons to reorder with slide animation ──────────────────
 
 function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
+  const [animatingId, setAnimatingId] = useState<string | null>(null)
+  const [animDir, setAnimDir] = useState<-1 | 1>(1)
+
   function moveImage(index: number, direction: -1 | 1) {
     const newIndex = index + direction
     if (newIndex < 0 || newIndex >= images.length) return
-    onReorder(arrayMove([...images], index, newIndex))
+    setAnimatingId(images[index].id)
+    setAnimDir(direction)
+    // Let the CSS transition play, then commit the reorder
+    setTimeout(() => {
+      onReorder(arrayMove([...images], index, newIndex))
+      setAnimatingId(null)
+    }, 150)
   }
 
   return (
     <div className="grid grid-cols-3 gap-2">
       {images.map((image, index) => (
-        <div key={image.id} className="relative aspect-[4/5] rounded-lg overflow-hidden bg-gray-100">
+        <div
+          key={image.id}
+          className="relative aspect-[4/5] rounded-lg overflow-hidden bg-gray-100 transition-transform duration-150 ease-out"
+          style={{
+            transform: animatingId === image.id
+              ? `translateX(${animDir * 30}%)`
+              : 'translateX(0)',
+          }}
+        >
           <img src={image.url} alt="" className="w-full h-full object-cover" />
 
           {/* Order badge */}
@@ -132,7 +149,7 @@ function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
           </div>
 
           {image.isNew && (
-            <div className="absolute bottom-1.5 left-1.5 bg-brand-500 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">
+            <div className="absolute top-1.5 left-8 bg-brand-500 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">
               Nueva
             </div>
           )}
@@ -141,35 +158,33 @@ function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
           <button
             type="button"
             onClick={() => onRemove(image.id)}
-            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+            className="absolute top-1.5 right-1.5 w-7 h-7 bg-red-500/90 text-white rounded-full flex items-center justify-center text-sm font-bold"
           >
             ×
           </button>
 
-          {/* Reorder arrows */}
-          <div className="absolute bottom-1.5 right-1.5 flex gap-0.5">
-            {index > 0 && (
-              <button
-                type="button"
-                onClick={() => moveImage(index, -1)}
-                className="w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-            {index < images.length - 1 && (
-              <button
-                type="button"
-                onClick={() => moveImage(index, 1)}
-                className="w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            )}
+          {/* Reorder arrows — centered at bottom, large white buttons */}
+          <div className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-2 pb-2">
+            <button
+              type="button"
+              onClick={() => moveImage(index, -1)}
+              disabled={index === 0}
+              className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-sm disabled:opacity-30 pressable"
+            >
+              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => moveImage(index, 1)}
+              disabled={index === images.length - 1}
+              className="w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow-sm disabled:opacity-30 pressable"
+            >
+              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
       ))}
