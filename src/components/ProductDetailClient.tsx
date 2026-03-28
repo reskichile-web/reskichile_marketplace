@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES } from '@/lib/constants'
+import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductGallery from '@/components/ProductGallery'
 
@@ -47,95 +47,74 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
   return (
     <div className="max-w-4xl mx-auto md:mt-8 md:px-4 pb-16">
       <div className="grid md:grid-cols-2 md:gap-8">
-        {/* Image gallery — edge to edge on mobile */}
-        <ProductGallery images={images} title={title} />
+        {/* Image gallery — edge to edge on mobile, flush with navbar */}
+        <div className="-mt-[1px] md:mt-0">
+          <ProductGallery images={images} title={title} />
+        </div>
 
         {/* Product info */}
         <div className="px-4 md:px-0 mt-4 md:mt-0">
-          <p className="text-sm text-brand-500 font-medium">{PRODUCT_TYPES[product.product_type]}</p>
-          <h1 className="font-body text-3xl font-black">{title}</h1>
-          <div className="flex items-center gap-4 mt-2">
-            <p className="font-body text-3xl font-semibold text-brand-500">${product.price.toLocaleString('es-CL')}</p>
-            {!isOwner && (
-              <button className="bg-brand-500 text-white px-5 py-2 rounded-lg font-medium text-sm hover:bg-brand-600 transition-colors">
-                Hacer oferta
-              </button>
+          {/* Type + Location row */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-brand-500 font-medium">{PRODUCT_TYPES[product.product_type]}</p>
+            <p className="text-sm text-gray-500 flex items-center gap-1">
+              <span>📍</span>
+              {product.region}{product.comuna ? `, ${product.comuna}` : ''}
+            </p>
+          </div>
+
+          <h1 className="font-body text-2xl md:text-3xl font-black mt-1">{title}</h1>
+          <p className="font-body text-2xl md:text-3xl font-semibold text-brand-500 mt-1">${product.price.toLocaleString('es-CL')}</p>
+
+          {/* Condition — icon + text inline */}
+          <div className="flex items-center gap-2 mt-4">
+            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+            </svg>
+            <span className="text-sm text-gray-700">{CONDITIONS[product.condition] || product.condition}</span>
+          </div>
+
+          {/* Details — no background, label on top, value below */}
+          <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            {product.seasons_used && (
+              <div>
+                <span className="text-gray-400 text-xs">Temporadas</span>
+                <p className="font-medium text-gray-900">{product.seasons_used}</p>
+              </div>
             )}
-          </div>
 
-          {/* Condition scale */}
-          <div className="mt-6">
-            <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-3">Estado del producto</p>
-            <div className="flex items-stretch gap-1">
-              {([
-                { key: 'nuevo_sellado', label: 'Sellado', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg> },
-                { key: 'nuevo', label: 'Nuevo', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg> },
-                { key: 'usado_como_nuevo', label: 'Como nuevo', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg> },
-                { key: 'usado_buen_estado', label: 'Buen estado', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H14.23c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" /></svg> },
-                { key: 'usado_aceptable', label: 'Aceptable', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.645-5.645a.563.563 0 010-.795l.39-.39a.563.563 0 01.795 0L11.42 12.8l4.46-4.46a.563.563 0 01.795 0l.39.39a.563.563 0 010 .795L11.42 15.17z" /></svg> },
-              ] as { key: string; label: string; icon: React.ReactNode }[]).map((cond, i) => {
-                const isActive = product.condition === cond.key
-                const condKeys = ['nuevo_sellado', 'nuevo', 'usado_como_nuevo', 'usado_buen_estado', 'usado_aceptable']
-                const activeIdx = condKeys.indexOf(product.condition)
-                const isBefore = i <= activeIdx
-
-                return (
-                  <div key={cond.key} className="flex-1 text-center">
-                    <div className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${isActive ? 'bg-brand-500 text-white' : isBefore ? 'bg-brand-50 text-brand-500' : 'bg-gray-50 text-gray-300'}`}>
-                      {cond.icon}
-                      <span className="text-[10px] font-bold leading-tight">{cond.label}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              {product.seasons_used && (
-                <div className="bg-gray-50 p-2 rounded">
-                  <span className="text-gray-500">Temporadas:</span>{' '}
-                  <span className="font-medium">{product.seasons_used}</span>
+            {attrFields.map(field => {
+              const val = attrs[field.key]
+              if (val === undefined || val === '' || val === null) return null
+              const displayVal = typeof val === 'boolean' ? (val ? 'Si' : 'No') : String(val)
+              return (
+                <div key={field.key}>
+                  <span className="text-gray-400 text-xs">{field.label}</span>
+                  <p className="font-medium text-gray-900">{displayVal}</p>
                 </div>
-              )}
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-gray-500">Region:</span>{' '}
-                <span className="font-medium">{product.region}</span>
-              </div>
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-gray-500">Comuna:</span>{' '}
-                <span className="font-medium">{product.comuna}</span>
-              </div>
-
-              {attrFields.map(field => {
-                const val = attrs[field.key]
-                if (val === undefined || val === '' || val === null) return null
-                const displayVal = typeof val === 'boolean' ? (val ? 'Si' : 'No') : String(val)
-                return (
-                  <div key={field.key} className="bg-gray-50 p-2 rounded">
-                    <span className="text-gray-500">{field.label}:</span>{' '}
-                    <span className="font-medium">{displayVal}</span>
-                  </div>
-                )
-              })}
-            </div>
+              )
+            })}
           </div>
 
           {product.description && (
             <div className="mt-6">
-              <h2 className="font-body font-medium tracking-sub mb-2">Descripcion</h2>
-              <p className="text-gray-700 whitespace-pre-wrap">{product.description}</p>
+              <span className="text-gray-400 text-xs">Descripcion</span>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap mt-0.5">{product.description}</p>
             </div>
           )}
 
+          {/* Contact seller */}
           {!isOwner && (
             <button
               onClick={handleContact}
               disabled={contacting}
-              className="pressable w-full mt-6 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-lg"
+              className="pressable inline-flex items-center gap-2 mt-6 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
             >
-              {contacting ? 'Conectando...' : 'Contactar vendedor por WhatsApp'}
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.948 11.948 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.387 0-4.592-.838-6.313-2.234l-.44-.362-3.09 1.036 1.036-3.09-.362-.44A9.958 9.958 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z" />
+              </svg>
+              {contacting ? 'Conectando...' : 'Contactar Vendedor'}
             </button>
           )}
 
