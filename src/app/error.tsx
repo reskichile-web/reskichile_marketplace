@@ -1,6 +1,23 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
+
+function AnimatedDots() {
+  return (
+    <span className="inline-flex w-6">
+      <span className="animate-[dot_1.4s_ease-in-out_infinite]">.</span>
+      <span className="animate-[dot_1.4s_ease-in-out_0.2s_infinite]">.</span>
+      <span className="animate-[dot_1.4s_ease-in-out_0.4s_infinite]">.</span>
+      <style>{`
+        @keyframes dot {
+          0%, 20% { opacity: 0; }
+          40%, 100% { opacity: 1; }
+        }
+      `}</style>
+    </span>
+  )
+}
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
@@ -9,17 +26,18 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-      {/* Warning mountain */}
-      <svg viewBox="0 0 120 100" fill="none" className="w-32 text-gray-300 mb-6">
-        <path d="M10 85 L60 20 L110 85 Z" fill="currentColor" opacity={0.06} />
-        <path d="M10 85 L60 20 L110 85 Z" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" fill="none" opacity={0.2} />
-        <line x1="60" y1="42" x2="60" y2="62" stroke="currentColor" strokeWidth={3} strokeLinecap="round" opacity={0.25} />
-        <circle cx="60" cy="72" r="2" fill="currentColor" opacity={0.25} />
-      </svg>
+      {/* Wrench icon */}
+      <div className="flex items-center gap-3 mb-6">
+        <svg className="w-8 h-8 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z" />
+        </svg>
+        <h1 className="font-body text-2xl font-black text-gray-900">
+          Work in progress<AnimatedDots />
+        </h1>
+      </div>
 
-      <h1 className="font-body text-2xl font-black text-gray-900 mb-2">Algo salio mal</h1>
       <p className="text-gray-400 text-sm max-w-xs mb-8">
-        Ocurrio un error inesperado. Intenta de nuevo o vuelve al inicio.
+        Nuestro equipo esta trabajando en mejorar esta seccion. Vuelve pronto.
       </p>
       <div className="flex gap-3">
         <button
@@ -28,12 +46,12 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         >
           Reintentar
         </button>
-        <a
+        <Link
           href="/"
           className="pressable border border-gray-200 px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
         >
           Ir al inicio
-        </a>
+        </Link>
       </div>
     </div>
   )

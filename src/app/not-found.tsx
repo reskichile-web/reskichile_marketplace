@@ -1,20 +1,36 @@
 import Link from 'next/link'
 
+function AnimatedDots() {
+  return (
+    <span className="inline-flex w-6">
+      <span style={{ animation: 'dot 1.4s ease-in-out infinite' }}>.</span>
+      <span style={{ animation: 'dot 1.4s ease-in-out 0.2s infinite' }}>.</span>
+      <span style={{ animation: 'dot 1.4s ease-in-out 0.4s infinite' }}>.</span>
+      <style>{`
+        @keyframes dot {
+          0%, 20% { opacity: 0; }
+          40%, 100% { opacity: 1; }
+        }
+      `}</style>
+    </span>
+  )
+}
+
 export default function NotFound() {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-      {/* Mountain illustration */}
-      <svg viewBox="0 0 200 120" fill="none" className="w-48 text-gray-300 mb-8">
-        <path d="M0 100 L50 35 L75 60 L110 20 L160 55 L200 100 Z" fill="currentColor" opacity={0.08} />
-        <path d="M0 100 L50 35 L75 60 L110 20 L160 55 L200 100" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" fill="none" opacity={0.2} />
-        <circle cx="170" cy="22" r="8" stroke="currentColor" strokeWidth={1} fill="none" opacity={0.1} />
-        {/* 404 text on mountain */}
-        <text x="100" y="75" textAnchor="middle" fill="currentColor" opacity={0.15} fontSize="28" fontWeight="900">404</text>
-      </svg>
+      {/* Wrench icon */}
+      <div className="flex items-center gap-3 mb-6">
+        <svg className="w-8 h-8 text-gray-900" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z" />
+        </svg>
+        <h1 className="font-body text-2xl font-black text-gray-900">
+          Work in progress<AnimatedDots />
+        </h1>
+      </div>
 
-      <h1 className="font-body text-2xl font-black text-gray-900 mb-2">Pagina no encontrada</h1>
       <p className="text-gray-400 text-sm max-w-xs mb-8">
-        Esta ruta no existe o fue movida. Puede que el enlace este incorrecto.
+        Nuestro equipo esta trabajando en mejorar esta seccion. Vuelve pronto.
       </p>
       <div className="flex gap-3">
         <Link href="/" className="pressable bg-brand-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors">
