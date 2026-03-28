@@ -203,7 +203,7 @@ export default function ProfilePage() {
             )}
           </div>
           <h1 className="font-body text-xl font-black mt-1">{name || 'Mi perfil'}</h1>
-          <p className="text-sm text-gray-500">{email}</p>
+          <p className="text-sm text-gray-500 select-all">{email}</p>
         </div>
       </div>
 
@@ -246,7 +246,7 @@ export default function ProfilePage() {
           <div className="pb-1">
             <h1 className="font-body text-2xl font-black">{name || 'Mi perfil'}</h1>
             <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-500">{email}</p>
+              <p className="text-sm text-gray-500 select-all">{email}</p>
               {avatarUrl && (
                 <button onClick={handleAvatarDelete} className="text-[10px] text-gray-400 hover:text-red-500">Eliminar foto</button>
               )}

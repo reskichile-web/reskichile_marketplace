@@ -13,6 +13,10 @@ export default async function Header() {
 
   return (
     <header className="bg-white shadow-sm">
+      {/* Preload avatar image for instant display */}
+      {avatarUrl && (
+        <link rel="preload" as="image" href={avatarUrl} />
+      )}
       {/* Main row */}
       <div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">
