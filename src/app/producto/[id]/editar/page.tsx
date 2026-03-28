@@ -8,7 +8,6 @@ import PageLoader from '@/components/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
 import BrandInput from '@/components/BrandInput'
-import { getBrandLogoUrl } from '@/lib/brand-logos'
 import {
   PRODUCT_TYPES,
   CONDITIONS,
@@ -328,7 +327,6 @@ export default function EditProductPage() {
     </div>
   )
 
-  const logoUrl = getBrandLogoUrl(form.brand)
 
   return (
     <PageLoader loading={false}>

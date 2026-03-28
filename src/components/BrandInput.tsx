@@ -14,7 +14,6 @@ interface Props {
 }
 
 export default function BrandInput({ value, onChange, productType, placeholder = 'Marca', className, error }: Props) {
-  const [focused, setFocused] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)

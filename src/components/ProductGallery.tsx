@@ -18,7 +18,7 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
   const dragging = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
 
-  function handleClick(e: React.MouseEvent) {
+  function handleClick() {
     if (dragging.current) return
     if (zoomed) {
       setZoomed(false)
