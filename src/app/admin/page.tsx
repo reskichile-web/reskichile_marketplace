@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import PageLoader from '@/components/PageLoader'
 import AdminDashboardSkeleton from '@/components/skeletons/AdminDashboardSkeleton'
 
 interface Stats {

@@ -19,11 +19,10 @@ const CATEGORIES = [
 ]
 
 interface Props {
-  isLoggedIn: boolean
   isAdmin: boolean
 }
 
-export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
+export default function MobileMenu({ isAdmin }: Props) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 

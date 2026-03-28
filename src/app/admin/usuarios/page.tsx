@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import PageLoader from '@/components/PageLoader'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 
 interface UserWithProducts {

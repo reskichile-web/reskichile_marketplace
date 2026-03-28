@@ -18,7 +18,7 @@ export default async function Header() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">
           {/* Mobile: menu left */}
           <div className="md:hidden">
-            <MobileMenu isLoggedIn={!!user} isAdmin={isAdmin} />
+            <MobileMenu isAdmin={isAdmin} />
           </div>
 
           {/* Logo — centered on mobile, left on desktop */}

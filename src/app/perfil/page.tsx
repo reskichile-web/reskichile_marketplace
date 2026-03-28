@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import PopupMessage from '@/components/PopupMessage'
-import PageLoader from '@/components/PageLoader'
 import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
 import Spinner from '@/components/Spinner'
 

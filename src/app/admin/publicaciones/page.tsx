@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS } from '@/lib/constants'
-import PageLoader from '@/components/PageLoader'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
 
