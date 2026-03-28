@@ -121,12 +121,12 @@ export default function FinanzasPage() {
                 <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
                   {/* Sold portion */}
                   <polygon
-                    points={`0,0 ${cat.soldPct},0 ${Math.max(cat.soldPct - 8, 0)},100 0,100`}
+                    points={`0,0 ${cat.soldPct},0 ${Math.max(cat.soldPct - 3, 0)},100 0,100`}
                     className="fill-brand-500"
                   />
                   {/* Not sold portion */}
                   <polygon
-                    points={`${cat.soldPct},0 100,0 100,100 ${Math.max(cat.soldPct - 8, 0)},100`}
+                    points={`${cat.soldPct},0 100,0 100,100 ${Math.max(cat.soldPct - 3, 0)},100`}
                     className="fill-brand-100"
                   />
                 </svg>
