@@ -341,15 +341,13 @@ export default function EditProductPage() {
         {/* Header — brand + model */}
         <div className="mb-6">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Marca</label>
-              <BrandInput
-                value={form.brand}
-                onChange={v => updateForm('brand', v)}
-                productType={form.product_type}
-                placeholder="Marca"
-              />
-            </div>
+            <BrandInput
+              value={form.brand}
+              onChange={v => updateForm('brand', v)}
+              productType={form.product_type}
+              placeholder="Marca"
+              label="Marca"
+            />
             <div>
               <InlineField label="Modelo" value={form.model} onSave={v => updateForm('model', v)} />
             </div>
@@ -425,15 +423,14 @@ export default function EditProductPage() {
                 // Brand fields get BrandInput with suggestions
                 if (attr.key.includes('marca')) {
                   return (
-                    <div key={attr.key}>
-                      <label className="block text-xs text-gray-400 mb-1">{attr.label}</label>
-                      <BrandInput
-                        value={(attributes[attr.key] as string) || ''}
-                        onChange={v => updateAttribute(attr.key, v)}
-                        productType={form.product_type}
-                        placeholder={attr.label}
-                      />
-                    </div>
+                    <BrandInput
+                      key={attr.key}
+                      value={(attributes[attr.key] as string) || ''}
+                      onChange={v => updateAttribute(attr.key, v)}
+                      productType={form.product_type}
+                      placeholder={attr.label}
+                      label={attr.label}
+                    />
                   )
                 }
                 return (
