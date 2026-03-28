@@ -129,8 +129,9 @@ export default function ProductGallery({ images, title }: Props) {
     setDragX(0)
   }
 
-  // ─── Touch ───
+  // ─── Touch (single finger only — 2+ fingers = pinch zoom, ignore) ───
   function onTouchStart(e: React.TouchEvent) {
+    if (e.touches.length > 1) return // pinch zoom — don't interfere
     const t = e.touches[0]
     touchRef.current = { startX: t.clientX, startY: t.clientY, locked: false, isHorizontal: false }
     setSwiping(false)
@@ -138,6 +139,10 @@ export default function ProductGallery({ images, title }: Props) {
   }
 
   function onTouchMove(e: React.TouchEvent) {
+    if (e.touches.length > 1) { // pinch zoom started mid-swipe — cancel
+      if (swiping) { setSwiping(false); setDragX(0) }
+      return
+    }
     if (images.length <= 1) return
     const t = e.touches[0]
     const dx = t.clientX - touchRef.current.startX
