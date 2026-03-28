@@ -1,10 +1,10 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
   PointerSensor,
-  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -31,6 +31,8 @@ interface Props {
   maxImages?: number
 }
 
+// ─── Desktop: drag & drop ───────────────────────────────────────────────────
+
 function SortableImage({ image, onRemove }: { image: ImageItem; onRemove: () => void }) {
   const {
     attributes,
@@ -44,7 +46,7 @@ function SortableImage({ image, onRemove }: { image: ImageItem; onRemove: () => 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 50 : 'auto',
+    zIndex: isDragging ? 50 : 'auto' as const,
     opacity: isDragging ? 0.5 : 1,
   }
 
@@ -58,19 +60,12 @@ function SortableImage({ image, onRemove }: { image: ImageItem; onRemove: () => 
     >
       <img src={image.url} alt="" className="w-full h-full object-cover" />
 
-      {/* Order badge */}
-      <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-        {/* Will be set by parent via index */}
-      </div>
-
-      {/* New badge */}
       {image.isNew && (
         <div className="absolute bottom-1.5 left-1.5 bg-brand-500 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">
           Nueva
         </div>
       )}
 
-      {/* Delete button */}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onRemove() }}
@@ -79,23 +74,13 @@ function SortableImage({ image, onRemove }: { image: ImageItem; onRemove: () => 
       >
         ×
       </button>
-
-      {/* Drag indicator */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <div className="bg-black/40 text-white p-1.5 rounded-lg">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-          </svg>
-        </div>
-      </div>
     </div>
   )
 }
 
-export default function SortableImageGrid({ images, onReorder, onRemove, onAdd, maxImages = 8 }: Props) {
+function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
 
   function handleDragEnd(event: DragEndEvent) {
@@ -107,10 +92,101 @@ export default function SortableImageGrid({ images, onReorder, onRemove, onAdd, 
     }
   }
 
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={images.map(i => i.id)} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-4 gap-2">
+          {images.map((image, index) => (
+            <div key={image.id} className="relative">
+              <SortableImage image={image} onRemove={() => onRemove(image.id)} />
+              <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 text-white text-[10px] font-bold rounded-full flex items-center justify-center pointer-events-none z-10">
+                {index + 1}
+              </div>
+            </div>
+          ))}
+          <AddButton images={images} maxImages={maxImages!} onAdd={onAdd} />
+        </div>
+      </SortableContext>
+    </DndContext>
+  )
+}
+
+// ─── Mobile: arrow buttons to reorder ───────────────────────────────────────
+
+function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
+  function moveImage(index: number, direction: -1 | 1) {
+    const newIndex = index + direction
+    if (newIndex < 0 || newIndex >= images.length) return
+    onReorder(arrayMove([...images], index, newIndex))
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {images.map((image, index) => (
+        <div key={image.id} className="relative aspect-[4/5] rounded-lg overflow-hidden bg-gray-100">
+          <img src={image.url} alt="" className="w-full h-full object-cover" />
+
+          {/* Order badge */}
+          <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 text-white text-[10px] font-bold rounded-full flex items-center justify-center z-10">
+            {index + 1}
+          </div>
+
+          {image.isNew && (
+            <div className="absolute bottom-1.5 left-1.5 bg-brand-500 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">
+              Nueva
+            </div>
+          )}
+
+          {/* Delete */}
+          <button
+            type="button"
+            onClick={() => onRemove(image.id)}
+            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+          >
+            ×
+          </button>
+
+          {/* Reorder arrows */}
+          <div className="absolute bottom-1.5 right-1.5 flex gap-0.5">
+            {index > 0 && (
+              <button
+                type="button"
+                onClick={() => moveImage(index, -1)}
+                className="w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            {index < images.length - 1 && (
+              <button
+                type="button"
+                onClick={() => moveImage(index, 1)}
+                className="w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      <AddButton images={images} maxImages={maxImages!} onAdd={onAdd} />
+    </div>
+  )
+}
+
+// ─── Shared add button ──────────────────────────────────────────────────────
+
+function AddButton({ images, maxImages, onAdd }: { images: ImageItem[]; maxImages: number; onAdd: (files: File[]) => void }) {
+  if (images.length >= maxImages) return null
+
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || [])
     if (images.length + files.length > maxImages) {
-      alert(`Máximo ${maxImages} fotos`)
+      alert(`Maximo ${maxImages} fotos`)
       return
     }
     onAdd(files)
@@ -118,42 +194,39 @@ export default function SortableImageGrid({ images, onReorder, onRemove, onAdd, 
   }
 
   return (
+    <label className="aspect-[4/5] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-500 hover:bg-brand-50 transition-colors">
+      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+      <span className="text-xs text-gray-400 mt-1">Agregar</span>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFileInput}
+        className="hidden"
+      />
+    </label>
+  )
+}
+
+// ─── Main component — switches between mobile and desktop ───────────────────
+
+export default function SortableImageGrid(props: Props) {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  return (
     <div>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={images.map(i => i.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {images.map((image, index) => (
-              <div key={image.id} className="relative">
-                <SortableImage image={image} onRemove={() => onRemove(image.id)} />
-                {/* Order number overlay */}
-                <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 text-white text-[10px] font-bold rounded-full flex items-center justify-center pointer-events-none z-10">
-                  {index + 1}
-                </div>
-              </div>
-            ))}
-
-            {/* Add button */}
-            {images.length < maxImages && (
-              <label className="aspect-[4/5] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-500 hover:bg-brand-50 transition-colors">
-                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-xs text-gray-400 mt-1">Agregar</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileInput}
-                  className="hidden"
-                />
-              </label>
-            )}
-          </div>
-        </SortableContext>
-      </DndContext>
-
+      {isMobile ? <MobileGrid {...props} /> : <DesktopGrid {...props} />}
       <p className="text-xs text-gray-500 mt-2">
-        {images.length}/{maxImages} fotos · Arrastra para reordenar
+        {props.images.length}/{props.maxImages || 8} fotos{!isMobile && ' · Arrastra para reordenar'}
       </p>
     </div>
   )
