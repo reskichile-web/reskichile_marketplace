@@ -245,7 +245,7 @@ export default function ProductGallery({ images, title }: Props) {
 
   if (images.length === 0) {
     return (
-      <div className="aspect-[4/5] bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+      <div className="aspect-[4/5] bg-gray-100 md:rounded-lg flex items-center justify-center text-gray-400">
         Sin fotos
       </div>
     )
@@ -258,7 +258,7 @@ export default function ProductGallery({ images, title }: Props) {
     <div>
       <div
         ref={containerRef}
-        className="relative aspect-[4/5] bg-white rounded-lg overflow-hidden border border-gray-100"
+        className="relative aspect-[4/5] bg-white overflow-hidden md:rounded-lg md:border md:border-gray-100"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

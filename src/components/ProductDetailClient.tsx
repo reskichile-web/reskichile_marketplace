@@ -45,13 +45,13 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
   }
 
   return (
-    <div className="max-w-4xl mx-auto mt-8 px-4 pb-16">
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Image gallery */}
+    <div className="max-w-4xl mx-auto md:mt-8 md:px-4 pb-16">
+      <div className="grid md:grid-cols-2 md:gap-8">
+        {/* Image gallery — edge to edge on mobile */}
         <ProductGallery images={images} title={title} />
 
         {/* Product info */}
-        <div>
+        <div className="px-4 md:px-0 mt-4 md:mt-0">
           <p className="text-sm text-brand-500 font-medium">{PRODUCT_TYPES[product.product_type]}</p>
           <h1 className="font-body text-3xl font-black">{title}</h1>
           <div className="flex items-center gap-4 mt-2">
