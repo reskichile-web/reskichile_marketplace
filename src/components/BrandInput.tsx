@@ -47,8 +47,8 @@ export default function BrandInput({ value, onChange, productType, placeholder =
           type="text"
           value={value}
           onChange={e => { onChange(e.target.value); setShowSuggestions(true) }}
-          onFocus={() => { setFocused(true); setShowSuggestions(true) }}
-          onBlur={() => setFocused(false)}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => {}}
           placeholder={placeholder}
           className={`w-full border rounded-lg py-2.5 ${logoUrl ? 'pl-10' : 'pl-3'} pr-3 text-sm ${error ? 'border-red-400' : ''} ${className || ''}`}
         />
