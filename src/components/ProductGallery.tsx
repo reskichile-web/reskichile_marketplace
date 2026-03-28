@@ -80,10 +80,16 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
         {zoomed ? 'Arrastra para mover · Click para alejar' : 'Click para acercar'}
       </div>
 
+      {/* Click outside image to close */}
       <div
-        className="relative w-full h-full flex items-center justify-center overflow-hidden select-none"
+        className="absolute inset-0 z-0"
+        onClick={onClose}
+      />
+
+      <div
+        className="relative z-[1] flex items-center justify-center overflow-hidden select-none"
         style={{ cursor: zoomed ? (isDragging.current ? 'grabbing' : 'grab') : 'zoom-in' }}
-        onClick={handleClick}
+        onClick={(e) => { e.stopPropagation(); handleClick() }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

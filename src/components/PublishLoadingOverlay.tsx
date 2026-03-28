@@ -55,16 +55,6 @@ function Confetti() {
   )
 }
 
-function MountainIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 120 80" fill="none">
-      <path d="M10 70 L35 25 L50 45 L65 20 L95 70 Z" fill="currentColor" opacity={0.08} />
-      <path d="M10 70 L35 25 L50 45 L65 20 L95 70" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" fill="none" />
-      <path d="M35 25 L42 35 L50 45" stroke="currentColor" strokeWidth={1} opacity={0.3} />
-      <circle cx="85" cy="22" r="6" stroke="currentColor" strokeWidth={1.2} fill="none" opacity={0.2} />
-    </svg>
-  )
-}
 
 export default function PublishLoadingOverlay({ phase, imageProgress }: Props) {
   const config = PHASE_CONFIG[phase]
@@ -87,10 +77,6 @@ export default function PublishLoadingOverlay({ phase, imageProgress }: Props) {
       {/* Confetti on success */}
       {isSuccess && <Confetti />}
 
-      {/* Background subtle pattern */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <MountainIcon className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] text-brand-500 opacity-[0.03]" />
-      </div>
 
       <div className="relative flex flex-col items-center max-w-xs w-full">
         {/* Logo */}
@@ -111,16 +97,16 @@ export default function PublishLoadingOverlay({ phase, imageProgress }: Props) {
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-8"
+              className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mb-8"
             >
               <motion.svg
-                className="w-10 h-10 text-green-500"
+                className="w-10 h-10"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                stroke="white"
+                strokeWidth={3.5}
+                strokeLinecap="square"
+                strokeLinejoin="miter"
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
                 transition={{ duration: 0.4, delay: 0.2 }}
