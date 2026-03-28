@@ -166,7 +166,7 @@ export default function ProductGallery({ images, title }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const touchRef = useRef({ startX: 0, startY: 0, locked: false, isHorizontal: false })
+  const touchRef = useRef({ startX: 0, startY: 0, locked: false, isHorizontal: false, pinched: false })
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -175,17 +175,24 @@ export default function ProductGallery({ images, title }: Props) {
     setDragX(0)
   }
 
-  // ─── Touch (single finger only — 2+ fingers = pinch zoom, ignore) ───
+  // ─── Touch — pinch zoom poisons the entire gesture ───
   function onTouchStart(e: React.TouchEvent) {
-    if (e.touches.length > 1) return // pinch zoom — don't interfere
+    if (e.touches.length > 1) {
+      touchRef.current.pinched = true
+      if (swiping) { setSwiping(false); setDragX(0) }
+      return
+    }
     const t = e.touches[0]
-    touchRef.current = { startX: t.clientX, startY: t.clientY, locked: false, isHorizontal: false }
+    touchRef.current = { startX: t.clientX, startY: t.clientY, locked: false, isHorizontal: false, pinched: false }
     setSwiping(false)
     setDragX(0)
   }
 
   function onTouchMove(e: React.TouchEvent) {
-    if (e.touches.length > 1) { // pinch zoom started mid-swipe — cancel
+    // If pinch happened at any point in this gesture, ignore everything
+    if (touchRef.current.pinched) return
+    if (e.touches.length > 1) {
+      touchRef.current.pinched = true
       if (swiping) { setSwiping(false); setDragX(0) }
       return
     }
@@ -209,7 +216,11 @@ export default function ProductGallery({ images, title }: Props) {
   }
 
   function onTouchEnd() {
-    if (!swiping) return
+    if (touchRef.current.pinched || !swiping) {
+      setSwiping(false)
+      setDragX(0)
+      return
+    }
 
     const threshold = 25
     if (dragX < -threshold && current < images.length - 1) {
