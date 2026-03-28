@@ -38,10 +38,10 @@ export default function PopupMessage({ message, onClose, autoClose = 5000 }: Pro
 
         {/* Icon — triangle with ! */}
         <div className="flex justify-center mb-3">
-          <svg className="w-10 h-10 text-gray-400" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L1 21h22L12 2z" fill="currentColor" opacity={0.1} stroke="currentColor" strokeWidth={1} strokeLinejoin="round" />
-            <path d="M12 10v4" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-            <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="currentColor" strokeWidth={1} />
+          <svg className="w-10 h-10 text-gray-700" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L1 21h22L12 2z" fill="currentColor" opacity={0.08} stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
+            <path d="M12 10v4" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+            <circle cx="12" cy="17" r="0.8" fill="currentColor" />
           </svg>
         </div>
 
