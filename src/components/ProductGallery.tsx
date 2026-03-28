@@ -111,6 +111,52 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
   )
 }
 
+// ─── Image with loading/error state ──────────────────────────────────────────
+
+function GalleryImage({ src, alt, priority }: { src: string; alt: string; priority?: boolean }) {
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  return (
+    <>
+      {/* Loading spinner — visible until image loads */}
+      {!loaded && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-[1]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+            <span className="text-xs text-gray-400">Cargando imagen...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-[1]">
+          <div className="flex flex-col items-center gap-2 text-gray-400">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+            </svg>
+            <span className="text-xs">No se pudo cargar</span>
+          </div>
+        </div>
+      )}
+
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        priority={priority}
+        sizes="(max-width: 768px) 100vw, 50vw"
+        className={`object-contain pointer-events-none transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        placeholder="blur"
+        blurDataURL={BLUR_DATA_URL}
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+      />
+    </>
+  )
+}
+
 // ─── Main gallery ───────────────────────────────────────────────────────────
 
 export default function ProductGallery({ images, title }: Props) {
@@ -218,15 +264,10 @@ export default function ProductGallery({ images, title }: Props) {
               style={{ width: w > 0 ? w : `${100 / images.length}%` }}
               onClick={handleImageClick}
             >
-              <Image
+              <GalleryImage
                 src={img.url}
                 alt={i === 0 ? title : `${title} - ${i + 1}`}
-                fill
                 priority={i === 0}
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-contain pointer-events-none"
-                placeholder="blur"
-                blurDataURL={BLUR_DATA_URL}
               />
             </div>
           ))}
