@@ -36,10 +36,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductDetailPage({ params }: Props) {
-  const [{ user, isAdmin }, supabase] = await Promise.all([
-    getAuthUser(),
-    Promise.resolve(createServerSupabaseClient()),
-  ])
+  const { user, isAdmin } = await getAuthUser()
+  const supabase = createServerSupabaseClient()
 
   const { data } = await supabase
     .from('products')
