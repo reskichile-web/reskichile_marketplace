@@ -164,10 +164,15 @@ export default function SellPage() {
     return `${digits[0]} ${digits.slice(1, 5)} ${digits.slice(5)}`
   }
 
+  function scrollTop() {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }
+
   function nextStep() {
     if (step === 'type') {
       if (!productType) return
       setStep('details')
+      scrollTop()
     } else if (step === 'details') {
       const errors: Record<string, string> = {}
       if (!brand.trim()) errors.brand = 'Obligatorio'
@@ -180,6 +185,7 @@ export default function SellPage() {
       }
       setFieldErrors({})
       setStep('photos')
+      scrollTop()
     } else if (step === 'photos') {
       if (images.length < MIN_IMAGES) {
         setPopup({ message: `Debes subir al menos ${MIN_IMAGES} fotos`, type: 'error' })
@@ -189,6 +195,7 @@ export default function SellPage() {
         handlePublish()
       } else {
         setStep('auth')
+        scrollTop()
       }
     }
   }
@@ -197,6 +204,7 @@ export default function SellPage() {
     if (step === 'details') setStep('type')
     else if (step === 'photos') setStep('details')
     else if (step === 'auth') setStep('photos')
+    scrollTop()
   }
 
   async function handlePublish(userId?: string) {
@@ -461,7 +469,7 @@ export default function SellPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => { setProductType(key); setStep('details') }}
+                onClick={() => { setProductType(key); setStep('details'); scrollTop() }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${productType === key ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
               >
                 {(() => {
