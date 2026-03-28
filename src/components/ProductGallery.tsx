@@ -15,9 +15,8 @@ interface Props {
 function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   const [zoomed, setZoomed] = useState(false)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
-  const isDragging = useRef(false)
-  const didDrag = useRef(false)
-  const lastPos = useRef({ x: 0, y: 0 })
+  const dragState = useRef({ active: false, moved: false, lastX: 0, lastY: 0 })
+  const imgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
@@ -29,32 +28,39 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
     }
   }, [onClose])
 
-  function handlePointerDown(e: React.PointerEvent) {
+  // Drag via document listeners — always works
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!dragState.current.active) return
+      e.preventDefault()
+      dragState.current.moved = true
+      setOffset(prev => ({
+        x: prev.x + (e.clientX - dragState.current.lastX),
+        y: prev.y + (e.clientY - dragState.current.lastY),
+      }))
+      dragState.current.lastX = e.clientX
+      dragState.current.lastY = e.clientY
+    }
+    function onUp() {
+      dragState.current.active = false
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [])
+
+  function handleImgMouseDown(e: React.MouseEvent) {
     if (!zoomed) return
     e.preventDefault()
-    isDragging.current = true
-    didDrag.current = false
-    lastPos.current = { x: e.clientX, y: e.clientY }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    dragState.current = { active: true, moved: false, lastX: e.clientX, lastY: e.clientY }
   }
 
-  function handlePointerMove(e: React.PointerEvent) {
-    if (!isDragging.current) return
-    didDrag.current = true
-    setOffset(prev => ({
-      x: prev.x + (e.clientX - lastPos.current.x),
-      y: prev.y + (e.clientY - lastPos.current.y),
-    }))
-    lastPos.current = { x: e.clientX, y: e.clientY }
-  }
-
-  function handlePointerUp() {
-    isDragging.current = false
-  }
-
-  function handleClick() {
-    if (didDrag.current) {
-      didDrag.current = false
+  function handleImgClick() {
+    if (dragState.current.moved) {
+      dragState.current.moved = false
       return
     }
     if (zoomed) {
@@ -65,10 +71,18 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
     }
   }
 
+  function handleBackdropClick(e: React.MouseEvent) {
+    // Only close if clicking the backdrop itself, not the image
+    if (e.target === e.currentTarget) onClose()
+  }
+
   return createPortal(
-    <div className="fixed inset-0 z-[99999] bg-black/70 flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-[99999] bg-black/70 flex items-center justify-center select-none"
+      onClick={handleBackdropClick}
+    >
       <button
-        onClick={onClose}
+        onClick={(e) => { e.stopPropagation(); onClose() }}
         className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -80,34 +94,22 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
         {zoomed ? 'Arrastra para mover · Click para alejar' : 'Click para acercar'}
       </div>
 
-      {/* Click outside image to close */}
-      <div
-        className="absolute inset-0 z-0"
-        onClick={onClose}
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        className="max-h-[90vh] max-w-[90vw] object-contain"
+        style={{
+          cursor: zoomed ? (dragState.current.active ? 'grabbing' : 'grab') : 'zoom-in',
+          transform: zoomed
+            ? `scale(2.5) translate(${offset.x / 2.5}px, ${offset.y / 2.5}px)`
+            : 'scale(1)',
+          transition: dragState.current.active ? 'none' : 'transform 0.2s ease-out',
+        }}
+        draggable={false}
+        onClick={(e) => { e.stopPropagation(); handleImgClick() }}
+        onMouseDown={handleImgMouseDown}
       />
-
-      <div
-        className="relative z-[1] w-full h-full flex items-center justify-center overflow-hidden select-none"
-        onClick={(e) => { e.stopPropagation() }}
-      >
-        <img
-          src={src}
-          alt={alt}
-          className="max-h-[90vh] max-w-[90vw] object-contain"
-          style={{
-            cursor: zoomed ? 'grab' : 'zoom-in',
-            transform: zoomed
-              ? `scale(2.5) translate(${offset.x / 2.5}px, ${offset.y / 2.5}px)`
-              : 'scale(1)',
-            transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
-          }}
-          draggable={false}
-          onClick={handleClick}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-        />
-      </div>
     </div>,
     document.body
   )
