@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
@@ -22,15 +22,24 @@ export default function CategoryCard({ type, label, image, imagePosition, darkOv
   const isGear = GEAR_CATEGORIES.has(type)
   const hasAI = AI_CATEGORIES.has(type)
   const linkCount = (isGear ? 1 : 0) + 2 + (hasAI ? 1 : 0)
+  const touchStart = useRef({ y: 0, time: 0 })
 
   return (
     <div
       className="relative block aspect-square overflow-hidden rounded-xl cursor-pointer"
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
+      onTouchStart={(e) => {
+        touchStart.current = { y: e.touches[0].clientY, time: Date.now() }
+      }}
       onTouchEnd={(e) => {
-        e.stopPropagation()
-        setActive(prev => !prev)
+        const dy = Math.abs(e.changedTouches[0].clientY - touchStart.current.y)
+        const dt = Date.now() - touchStart.current.time
+        // Only toggle if it was a tap (no scroll, quick touch)
+        if (dy < 10 && dt < 300) {
+          e.stopPropagation()
+          setActive(prev => !prev)
+        }
       }}
     >
       {/* Image with zoom */}
