@@ -97,9 +97,9 @@ export default function PublishLoadingOverlay({ phase, imageProgress }: Props) {
         <motion.img
           src="/logo.svg"
           alt=""
-          className="h-8 mb-12 opacity-20"
+          className="h-8 mb-12"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.2 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         />
 

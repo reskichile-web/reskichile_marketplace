@@ -34,7 +34,7 @@ export default function PopupMessage({ message, onClose, autoClose = 5000 }: Pro
         style={{ animation: 'popup-in 0.2s ease-out' }}
       >
         {/* Logo */}
-        <img src="/logo.svg" alt="" className="h-6 mx-auto mb-5 opacity-30" />
+        <img src="/logo.svg" alt="" className="h-6 mx-auto mb-5" />
 
         {/* Icon — triangle with ! */}
         <div className="flex justify-center mb-3">

@@ -40,9 +40,9 @@ export default function LoginPage() {
     if (error) {
       const msg = error.message.toLowerCase()
       if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429') || error.status === 429) {
-        setPopup({ message: 'Has realizado demasiados intentos. Por seguridad, espera unos minutos antes de intentar nuevamente.', type: 'warning' })
+        setPopup({ message: 'Demasiados intentos. Espera unos minutos e intenta de nuevo.', type: 'warning' })
       } else {
-        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+        setPopup({ message: 'Email o contrasena incorrectos.', type: 'error' })
       }
       setLoading(false)
       return
@@ -75,7 +75,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
+    <div className="max-w-md mx-auto px-4 pt-8 md:pt-16 pb-16">
       <h1 className="font-body text-3xl font-black mb-6 text-brand-500">Iniciar sesión</h1>
 
       {popup && (

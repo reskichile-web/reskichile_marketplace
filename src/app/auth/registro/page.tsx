@@ -94,9 +94,9 @@ export default function RegisterPage() {
     if (error) {
       const msg = error.message.toLowerCase()
       if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429') || error.status === 429) {
-        setPopup({ message: 'Has realizado demasiados intentos. Por seguridad, espera unos minutos antes de intentar nuevamente.', type: 'warning' })
+        setPopup({ message: 'Demasiados intentos. Espera unos minutos e intenta de nuevo.', type: 'warning' })
       } else {
-        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+        setPopup({ message: 'No se pudo crear la cuenta. Verifica tus datos e intenta de nuevo.', type: 'error' })
       }
       setLoading(false)
       return
@@ -171,7 +171,7 @@ export default function RegisterPage() {
   // ─── Step: Form ───
   if (step === 'form') {
     return (
-      <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
+      <div className="max-w-md mx-auto px-4 pt-8 md:pt-16 pb-16">
         <h1 className="font-body text-3xl font-black mb-6 text-brand-500">Crear cuenta</h1>
 
         {popup && (
@@ -325,7 +325,7 @@ export default function RegisterPage() {
   // ─── Step: OTP Verification ───
   if (step === 'otp') {
     return (
-      <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
+      <div className="max-w-md mx-auto px-4 pt-8 md:pt-16 pb-16">
         <div className="text-center mb-8">
           {/* Animated envelope icon */}
           <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-5 animate-bounce-slow">
@@ -398,7 +398,7 @@ export default function RegisterPage() {
 
   // ─── Step: Success ───
   return (
-    <div className="max-w-md mx-auto px-4 min-h-[calc(100vh-130px)] flex flex-col justify-center pb-6 -mb-[40px]">
+    <div className="max-w-md mx-auto px-4 pt-8 md:pt-16 pb-16">
       <div className="text-center">
         <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
           <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

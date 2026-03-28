@@ -227,7 +227,7 @@ export default function SellPage() {
     }
 
     if (!uid) {
-      setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+      setPopup({ message: 'Ocurrio un error. Verifica tus datos e intenta de nuevo.', type: 'error' })
       setLoading(false)
       setPublishPhase(null)
       return
@@ -256,7 +256,7 @@ export default function SellPage() {
       .single()
 
     if (productError || !product) {
-      setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+      setPopup({ message: 'Ocurrio un error. Verifica tus datos e intenta de nuevo.', type: 'error' })
       setLoading(false)
       setPublishPhase(null)
       return
@@ -322,7 +322,7 @@ export default function SellPage() {
       if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429')) {
         setPopup({ message: 'Has realizado demasiados intentos. Espera unos minutos.', type: 'warning' })
       } else {
-        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+        setPopup({ message: 'Ocurrio un error. Verifica tus datos e intenta de nuevo.', type: 'error' })
       }
       setLoading(false)
       return
@@ -373,7 +373,7 @@ export default function SellPage() {
       await res.json()
 
       if (!res.ok) {
-        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+        setPopup({ message: 'Ocurrio un error. Verifica tus datos e intenta de nuevo.', type: 'error' })
         setLoading(false)
         return
       }
@@ -381,7 +381,7 @@ export default function SellPage() {
       setLoading(false)
       setStep('success')
     } catch {
-      setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+      setPopup({ message: 'Ocurrio un error. Verifica tus datos e intenta de nuevo.', type: 'error' })
       setLoading(false)
     }
   }
@@ -408,7 +408,7 @@ export default function SellPage() {
       if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('429')) {
         setPopup({ message: 'Has realizado demasiados intentos. Espera unos minutos.', type: 'warning' })
       } else {
-        setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
+        setPopup({ message: 'Ocurrio un error. Verifica tus datos e intenta de nuevo.', type: 'error' })
       }
       setLoading(false)
       return
