@@ -1,14 +1,20 @@
 import Link from 'next/link'
+import Image from 'next/image'
+import { BLUR_DATA_URL } from '@/lib/image-utils'
 
 export default function Footer() {
   return (
     <footer className="mt-auto">
       {/* Image banner */}
       <div className="relative overflow-hidden h-[250px] md:h-[380px]">
-        <img
+        <Image
           src="/images/clement-delhaye-cnluLIyhpBA-unsplash.jpg"
           alt=""
-          className="absolute inset-0 w-full h-full object-cover object-[center_70%]"
+          fill
+          sizes="100vw"
+          className="object-cover object-[center_70%]"
+          placeholder="blur"
+          blurDataURL={BLUR_DATA_URL}
         />
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent" />
       </div>

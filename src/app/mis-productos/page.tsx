@@ -1,14 +1,17 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/auth'
 import Link from 'next/link'
 import { PRODUCT_TYPES, CONDITIONS, PRODUCT_STATUSES } from '@/lib/constants'
+import EmptyState from '@/components/illustrations/EmptyState'
 
 export default async function MyProductsPage() {
-  const supabase = createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getAuthUser()
 
   if (!user) {
     return <div className="max-w-4xl mx-auto mt-16 px-4">No autorizado</div>
   }
+
+  const supabase = createServerSupabaseClient()
 
   const { data: products } = await supabase
     .from('products')
@@ -27,7 +30,12 @@ export default async function MyProductsPage() {
         </div>
 
       {!products || products.length === 0 ? (
-        <p className="text-gray-500">No tienes productos publicados aún.</p>
+        <EmptyState
+          title="Aun no tienes productos"
+          description="Publica tu primer equipo y encuentra un nuevo dueno."
+          actionLabel="Publicar producto"
+          actionHref="/vender"
+        />
       ) : (
         <div className="space-y-4">
           {products.map((product) => {

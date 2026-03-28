@@ -34,16 +34,25 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Refresh session + check auth in one call
-  const { data: { user } } = await supabase.auth.getUser()
+  // Only call getUser() (network round-trip) on protected routes
+  const pathname = request.nextUrl.pathname
+  const isProtected =
+    pathname.startsWith('/mis-productos') ||
+    pathname.startsWith('/perfil') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/vender') ||
+    pathname.endsWith('/editar')
 
-  const protectedPaths = ['/mis-productos', '/perfil', '/admin']
-  const isProtected = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
-
-  if (isProtected && !user) {
-    const redirectUrl = new URL('/auth/login', request.url)
-    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
+  if (isProtected) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      const redirectUrl = new URL('/auth/login', request.url)
+      redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
+      return NextResponse.redirect(redirectUrl)
+    }
+  } else {
+    // Public routes: refresh session cookie locally, no network call
+    await supabase.auth.getSession()
   }
 
   return response

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import PageLoader from '@/components/PageLoader'
+import AdminDashboardSkeleton from '@/components/skeletons/AdminDashboardSkeleton'
 
 interface Stats {
   total: number
@@ -66,9 +67,7 @@ export default function AdminHomePage() {
     load()
   }, [])
 
-  if (loading) return (
-    <PageLoader loading={true} className="max-w-7xl mx-auto mt-0 px-8 pt-4"><div /></PageLoader>
-  )
+  if (loading) return <AdminDashboardSkeleton />
 
   const cards = [
     { label: 'Total publicaciones', value: stats.total, color: 'text-gray-900', bg: 'bg-gray-50' },

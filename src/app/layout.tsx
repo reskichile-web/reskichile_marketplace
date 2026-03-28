@@ -7,11 +7,12 @@ import StickyHeader from '@/components/StickyHeader'
 import Footer from '@/components/Footer'
 import ScreenLock from '@/components/ScreenLock'
 import ScrollToTop from '@/components/ScrollToTop'
+import NavigationProgress from '@/components/NavigationProgress'
 import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  weight: ['300', '500', '600', '700', '900'],
   variable: '--font-body',
 })
 
@@ -29,7 +30,7 @@ const kollektif = localFont({
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['500', '700'],
   variable: '--font-nav',
 })
 
@@ -56,6 +57,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, dmSans.variable)}>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
+        <NavigationProgress />
         <ScrollToTop />
         <ScreenLock>
           <StickyHeader><Header /></StickyHeader>

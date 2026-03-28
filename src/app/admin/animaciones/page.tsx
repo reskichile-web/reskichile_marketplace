@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import AnimatedLogo from '@/components/AnimatedLogo'
+import dynamic from 'next/dynamic'
 import CategoryIconBar from '@/components/CategoryIconBar'
+
+const AnimatedLogo = dynamic(() => import('@/components/AnimatedLogo'), { ssr: false })
 
 export default function AnimacionesPage() {
   const [selectedCategory, setSelectedCategory] = useState('esquis')

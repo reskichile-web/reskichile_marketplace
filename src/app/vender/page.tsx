@@ -9,6 +9,7 @@ import PopupMessage from '@/components/PopupMessage'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
+import PublishLoadingOverlay from '@/components/PublishLoadingOverlay'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -103,6 +104,8 @@ export default function SellPage() {
   const [step, setStep] = useState<Step>('type')
   const [loading, setLoading] = useState(false)
   const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' } | null>(null)
+  const [publishPhase, setPublishPhase] = useState<'compressing' | 'uploading' | 'creating' | 'success' | null>(null)
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
 
   // Form data
   const [productType, setProductType] = useState('')
@@ -214,6 +217,7 @@ export default function SellPage() {
 
   async function handlePublish(userId?: string) {
     setLoading(true)
+    setPublishPhase('compressing')
     const supabase = createClient()
 
     let uid = userId
@@ -225,9 +229,11 @@ export default function SellPage() {
     if (!uid) {
       setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
       setLoading(false)
+      setPublishPhase(null)
       return
     }
 
+    setPublishPhase('creating')
     const priceInt = parseInt(price)
 
     const { data: product, error: productError } = await supabase
@@ -252,11 +258,16 @@ export default function SellPage() {
     if (productError || !product) {
       setPopup({ message: 'No pudimos procesar tu solicitud. Verifica tus datos e intenta nuevamente.', type: 'error' })
       setLoading(false)
+      setPublishPhase(null)
       return
     }
 
     // Upload images
+    setPublishPhase('uploading')
+    setUploadProgress({ current: 0, total: images.length })
+
     for (let i = 0; i < images.length; i++) {
+      setUploadProgress({ current: i + 1, total: images.length })
       const file = images[i]
       const ext = file.name.split('.').pop()
       const path = `${uid}/${product.id}/${Date.now()}_${i}.${ext}`
@@ -281,6 +292,8 @@ export default function SellPage() {
       })
     }
 
+    setPublishPhase('success')
+    await new Promise(resolve => setTimeout(resolve, 1200))
     router.push(`/producto/${product.id}`)
   }
 
@@ -427,6 +440,14 @@ export default function SellPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-8 pb-24">
+      {/* Full-page publish overlay */}
+      {publishPhase && (
+        <PublishLoadingOverlay
+          phase={publishPhase}
+          imageProgress={publishPhase === 'uploading' ? uploadProgress : undefined}
+        />
+      )}
+
       {/* Progress bar — hidden on success */}
       {step !== 'success' && (
         <div className="mb-8">

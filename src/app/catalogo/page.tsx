@@ -1,11 +1,14 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 30
 
+import type { Metadata } from 'next'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import { StaggerGrid, StaggerItem } from '@/components/StaggerGrid'
 import CatalogFilterDrawer from '@/components/CatalogFilterDrawer'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS, ITEMS_PER_PAGE } from '@/lib/constants'
+import { BLUR_DATA_URL } from '@/lib/image-utils'
+import EmptyState from '@/components/illustrations/EmptyState'
 
 interface Props {
   searchParams: {
@@ -18,6 +21,21 @@ interface Props {
     page?: string
     sort?: string
   }
+}
+
+export function generateMetadata({ searchParams }: Props): Metadata {
+  const type = searchParams.product_type
+  const typeName = type ? PRODUCT_TYPES[type] : null
+
+  const title = typeName
+    ? `${typeName} en venta - ReskiChile`
+    : 'Catalogo - ReskiChile'
+
+  const description = typeName
+    ? `Encuentra ${typeName.toLowerCase()} usados al mejor precio en ReskiChile`
+    : 'Equipamiento de ski, snowboard y montaña usado en Chile'
+
+  return { title, description }
 }
 
 export default async function CatalogPage({ searchParams }: Props) {
@@ -45,7 +63,14 @@ export default async function CatalogPage({ searchParams }: Props) {
   if (searchParams.min_price) query = query.gte('price', parseInt(searchParams.min_price))
   if (searchParams.max_price) query = query.lte('price', parseInt(searchParams.max_price))
 
-  const { data: products, count } = await query
+  // Run both queries in parallel instead of sequentially
+  const [productsResult, brandsResult] = await Promise.all([
+    query,
+    supabase.from('products').select('brand').eq('status', 'approved'),
+  ])
+
+  const { data: products, count } = productsResult
+  const { data: allProducts } = brandsResult
 
   const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE)
   const hasFilters = Object.entries(searchParams).some(([k, v]) => v && k !== 'page' && k !== 'sort')
@@ -58,12 +83,6 @@ export default async function CatalogPage({ searchParams }: Props) {
     })
     return `/catalogo?${sp.toString()}`
   }
-
-  // Get all brands for filter
-  const { data: allProducts } = await supabase
-    .from('products')
-    .select('brand')
-    .eq('status', 'approved')
 
   const brands = Array.from(new Set(allProducts?.map(p => p.brand) || []))
     .sort((a, b) => a.localeCompare(b, 'es'))
@@ -82,19 +101,19 @@ export default async function CatalogPage({ searchParams }: Props) {
           <span className="text-sm text-gray-500 hidden sm:inline">Ordenar:</span>
           <div className="flex gap-1 text-sm font-nav font-semibold">
             <Link
-              href={buildUrl({ sort: 'recent', page: '1' })}
+              prefetch={false} href={buildUrl({ sort: 'recent', page: '1' })}
               className={`px-3 py-1.5 rounded-sm transition-colors ${sort === 'recent' ? 'bg-brand-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Recientes
             </Link>
             <Link
-              href={buildUrl({ sort: 'price_asc', page: '1' })}
+              prefetch={false} href={buildUrl({ sort: 'price_asc', page: '1' })}
               className={`px-3 py-1.5 rounded-sm transition-colors ${sort === 'price_asc' ? 'bg-brand-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Menor precio
             </Link>
             <Link
-              href={buildUrl({ sort: 'price_desc', page: '1' })}
+              prefetch={false} href={buildUrl({ sort: 'price_desc', page: '1' })}
               className={`px-3 py-1.5 rounded-sm transition-colors ${sort === 'price_desc' ? 'bg-brand-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               Mayor precio
@@ -109,27 +128,27 @@ export default async function CatalogPage({ searchParams }: Props) {
           <div>
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Tipo</h3>
             <div className="space-y-1.5">
-              <Link href={buildUrl({ product_type: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.product_type ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todos</Link>
+              <Link prefetch={false} href={buildUrl({ product_type: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.product_type ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todos</Link>
               {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
-                <Link key={v} href={buildUrl({ product_type: v, page: '1' })} className={`block text-sm py-1 ${searchParams.product_type === v ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{l}</Link>
+                <Link key={v} prefetch={false} href={buildUrl({ product_type: v, page: '1' })} className={`block text-sm py-1 ${searchParams.product_type === v ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{l}</Link>
               ))}
             </div>
           </div>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Condición</h3>
             <div className="space-y-1.5">
-              <Link href={buildUrl({ condition: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.condition ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todas</Link>
+              <Link prefetch={false} href={buildUrl({ condition: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.condition ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todas</Link>
               {Object.entries(CONDITIONS).map(([v, l]) => (
-                <Link key={v} href={buildUrl({ condition: v, page: '1' })} className={`block text-sm py-1 ${searchParams.condition === v ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{l}</Link>
+                <Link key={v} prefetch={false} href={buildUrl({ condition: v, page: '1' })} className={`block text-sm py-1 ${searchParams.condition === v ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{l}</Link>
               ))}
             </div>
           </div>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Región</h3>
             <div className="space-y-1.5">
-              <Link href={buildUrl({ region: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.region ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todas</Link>
+              <Link prefetch={false} href={buildUrl({ region: '', page: '1' })} className={`block text-sm py-1 ${!searchParams.region ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>Todas</Link>
               {REGIONS.map(r => (
-                <Link key={r} href={buildUrl({ region: r, page: '1' })} className={`block text-sm py-1 ${searchParams.region === r ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{r}</Link>
+                <Link key={r} prefetch={false} href={buildUrl({ region: r, page: '1' })} className={`block text-sm py-1 ${searchParams.region === r ? 'text-brand-500 font-bold' : 'text-gray-600'}`}>{r}</Link>
               ))}
             </div>
           </div>
@@ -150,7 +169,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Tipo</h3>
                 <div className="space-y-1.5">
                   <Link
-                    href={buildUrl({ product_type: '', page: '1' })}
+                    prefetch={false} href={buildUrl({ product_type: '', page: '1' })}
                     className={`block text-sm py-1 ${!searchParams.product_type ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                   >
                     Todos
@@ -158,7 +177,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                   {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
                     <Link
                       key={v}
-                      href={buildUrl({ product_type: v, page: '1' })}
+                      prefetch={false} href={buildUrl({ product_type: v, page: '1' })}
                       className={`block text-sm py-1 ${searchParams.product_type === v ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                     >
                       {l}
@@ -172,7 +191,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Condición</h3>
                 <div className="space-y-1.5">
                   <Link
-                    href={buildUrl({ condition: '', page: '1' })}
+                    prefetch={false} href={buildUrl({ condition: '', page: '1' })}
                     className={`block text-sm py-1 ${!searchParams.condition ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                   >
                     Todas
@@ -180,7 +199,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                   {Object.entries(CONDITIONS).map(([v, l]) => (
                     <Link
                       key={v}
-                      href={buildUrl({ condition: v, page: '1' })}
+                      prefetch={false} href={buildUrl({ condition: v, page: '1' })}
                       className={`block text-sm py-1 ${searchParams.condition === v ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                     >
                       {l}
@@ -194,7 +213,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Marca</h3>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
                   <Link
-                    href={buildUrl({ brand: '', page: '1' })}
+                    prefetch={false} href={buildUrl({ brand: '', page: '1' })}
                     className={`block text-sm py-1 ${!searchParams.brand ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                   >
                     Todas
@@ -202,7 +221,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                   {brands.map(b => (
                     <Link
                       key={b}
-                      href={buildUrl({ brand: b, page: '1' })}
+                      prefetch={false} href={buildUrl({ brand: b, page: '1' })}
                       className={`block text-sm py-1 truncate ${searchParams.brand === b ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                     >
                       {b}
@@ -216,7 +235,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Región</h3>
                 <div className="space-y-1.5">
                   <Link
-                    href={buildUrl({ region: '', page: '1' })}
+                    prefetch={false} href={buildUrl({ region: '', page: '1' })}
                     className={`block text-sm py-1 ${!searchParams.region ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                   >
                     Todas
@@ -224,7 +243,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                   {REGIONS.map(r => (
                     <Link
                       key={r}
-                      href={buildUrl({ region: r, page: '1' })}
+                      prefetch={false} href={buildUrl({ region: r, page: '1' })}
                       className={`block text-sm py-1 ${searchParams.region === r ? 'text-brand-500 font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                     >
                       {r}
@@ -273,14 +292,12 @@ export default async function CatalogPage({ searchParams }: Props) {
         {/* Product grid — takes remaining width */}
         <div className="flex-1 min-w-0">
           {!products || products.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-gray-400 text-lg">No se encontraron productos</p>
-              {hasFilters && (
-                <Link href="/catalogo" className="text-brand-500 text-sm mt-2 inline-block hover:underline">
-                  Ver todos los productos
-                </Link>
-              )}
-            </div>
+            <EmptyState
+              title="No encontramos productos"
+              description={hasFilters ? 'Intenta ajustar los filtros o busca otra cosa.' : 'Aun no hay productos publicados.'}
+              actionLabel={hasFilters ? 'Limpiar filtros' : 'Publicar producto'}
+              actionHref={hasFilters ? '/catalogo' : '/vender'}
+            />
           ) : (
             <>
               <StaggerGrid>
@@ -294,7 +311,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                     <StaggerItem key={product.id}>
                     <Link
                       href={`/producto/${product.id}`}
-                      className="group"
+                      className="group pressable-subtle"
                     >
                       <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
                         {mainImage ? (
@@ -304,6 +321,8 @@ export default async function CatalogPage({ searchParams }: Props) {
                             fill
                             sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                             className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                            placeholder="blur"
+                            blurDataURL={BLUR_DATA_URL}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -330,13 +349,13 @@ export default async function CatalogPage({ searchParams }: Props) {
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-4 mt-16">
                   {page > 1 && (
-                    <Link href={buildUrl({ page: String(page - 1) })} className="text-sm text-gray-500 hover:text-gray-900">
+                    <Link prefetch={false} href={buildUrl({ page: String(page - 1) })} className="text-sm text-gray-500 hover:text-gray-900">
                       ← Anterior
                     </Link>
                   )}
                   <span className="text-sm text-gray-400">{page} / {totalPages}</span>
                   {page < totalPages && (
-                    <Link href={buildUrl({ page: String(page + 1) })} className="text-sm text-gray-500 hover:text-gray-900">
+                    <Link prefetch={false} href={buildUrl({ page: String(page + 1) })} className="text-sm text-gray-500 hover:text-gray-900">
                       Siguiente →
                     </Link>
                   )}

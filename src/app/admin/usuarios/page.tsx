@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import PageLoader from '@/components/PageLoader'
+import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 
 interface UserWithProducts {
   id: string
@@ -74,9 +75,7 @@ export default function UsuariosPage() {
     pendingAccess: users.filter(u => u.must_change_password).length,
   }), [users])
 
-  if (loading) return (
-    <PageLoader loading={true} className="max-w-7xl mx-auto mt-0 px-8 pt-4"><div /></PageLoader>
-  )
+  if (loading) return <AdminTableSkeleton />
 
   return (
     <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 pb-16">

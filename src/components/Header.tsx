@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/auth'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
@@ -7,18 +7,7 @@ import AdminNav from './AdminNav'
 import ProfileDropdown from './ProfileDropdown'
 
 export default async function Header() {
-  const supabase = createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  let isAdmin = false
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-    isAdmin = profile?.is_admin ?? false
-  }
+  const { user, isAdmin } = await getAuthUser()
 
   if (isAdmin) return <AdminNav />
 
@@ -85,7 +74,7 @@ export default async function Header() {
                 </Link>
               </>
             )}
-            <Link href="/vender" className="bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors">
+            <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors">
               Vender
             </Link>
           </div>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS } from '@/lib/constants'
 import PageLoader from '@/components/PageLoader'
+import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
 
 interface AdminProduct {
@@ -84,14 +85,17 @@ export default function PublicacionesPage() {
   }, [products, statusFilter, brandFilter, typeFilter, search])
 
   async function handleStatusChange(productId: string, status: string, extra?: Record<string, unknown>) {
+    // Optimistic update — instant UI feedback
+    const prevProducts = products
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, status, ...extra } as AdminProduct : p))
+
     const supabase = createClient()
     const { error } = await supabase.from('products').update({ status, ...extra }).eq('id', productId)
     if (error) {
-      console.error('Status update error:', error.message)
+      // Revert on failure
+      setProducts(prevProducts)
       alert('Error al cambiar estado: ' + error.message)
-      return
     }
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, status, ...extra } as AdminProduct : p))
   }
 
   async function handleApprove(productId: string) {
@@ -126,9 +130,7 @@ export default function PublicacionesPage() {
   }
 
 
-  if (loading) return (
-    <PageLoader loading={true} className="max-w-7xl mx-auto mt-0 px-8 pt-4"><div /></PageLoader>
-  )
+  if (loading) return <AdminTableSkeleton />
 
   return (
     <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 pb-16">

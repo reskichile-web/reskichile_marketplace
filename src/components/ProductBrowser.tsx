@@ -5,6 +5,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { StaggerGrid, StaggerItem } from '@/components/StaggerGrid'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
+import { BLUR_DATA_URL } from '@/lib/image-utils'
+import EmptyState from '@/components/illustrations/EmptyState'
 
 interface Product {
   id: string
@@ -236,12 +238,17 @@ export default function ProductBrowser({ products }: Props) {
         {/* Product grid */}
         <div className="flex-1 min-w-0">
           {filtered.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-gray-400 text-lg">No se encontraron productos</p>
+            <div>
+              <EmptyState
+                title="No se encontraron productos"
+                description={hasFilters ? 'Intenta ajustar los filtros.' : undefined}
+              />
               {hasFilters && (
-                <button onClick={clearFilters} className="text-brand-500 text-sm mt-2 hover:underline">
-                  Limpiar filtros
-                </button>
+                <div className="text-center -mt-8">
+                  <button onClick={clearFilters} className="text-brand-500 text-sm hover:underline">
+                    Limpiar filtros
+                  </button>
+                </div>
               )}
             </div>
           ) : (
@@ -254,7 +261,7 @@ export default function ProductBrowser({ products }: Props) {
 
                 return (
                   <StaggerItem key={product.id}>
-                  <Link href={`/producto/${product.id}`} className="group">
+                  <Link href={`/producto/${product.id}`} className="group pressable-subtle">
                     <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
                       {mainImage ? (
                         <Image
@@ -263,6 +270,8 @@ export default function ProductBrowser({ products }: Props) {
                           fill
                           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                          placeholder="blur"
+                          blurDataURL={BLUR_DATA_URL}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300">

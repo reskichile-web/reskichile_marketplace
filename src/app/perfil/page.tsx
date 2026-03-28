@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import PopupMessage from '@/components/PopupMessage'
 import PageLoader from '@/components/PageLoader'
+import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
 import Spinner from '@/components/Spinner'
 
 function useHideFooterImage() {
@@ -107,7 +108,6 @@ export default function ProfilePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSaving(true)
 
     const trimmedName = name.trim()
     const trimmedPhone = phone.trim()
@@ -115,9 +115,12 @@ export default function ProfilePage() {
 
     if (trimmedPhone && !/^569\d{8}$/.test(trimmedPhone)) {
       setPopup({ message: 'El teléfono debe tener formato 569XXXXXXXX (11 dígitos)', type: 'error' })
-      setSaving(false)
       return
     }
+
+    // Optimistic: show success immediately
+    setSaving(true)
+    setPopup({ message: 'Perfil actualizado', type: 'info' })
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -134,14 +137,12 @@ export default function ProfilePage() {
 
     if (error) {
       setPopup({ message: 'Error al guardar. Intenta de nuevo.', type: 'error' })
-    } else {
-      setPopup({ message: 'Perfil actualizado', type: 'info' })
     }
     setSaving(false)
   }
 
   if (loading) {
-    return <PageLoader loading={true} className="max-w-md mx-auto mt-16 px-4"><div /></PageLoader>
+    return <PerfilSkeleton />
   }
 
   const initial = name ? name.charAt(0).toUpperCase() : email.charAt(0).toUpperCase()
