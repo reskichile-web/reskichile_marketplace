@@ -125,7 +125,10 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
                     const val = attrs[field.key]
                     if (val === undefined || val === '' || val === null) return null
                     const displayVal = typeof val === 'boolean' ? (val ? 'Si' : 'No') : String(val)
-                    const shortLabel = field.label.replace(/de las fijaciones|de los fijaciones/gi, '').trim()
+                    const shortLabel = field.label
+                      .replace(/de las fijaciones|de los fijaciones/gi, '')
+                      .replace(/Tipo de conexión/gi, 'Conexion')
+                      .trim()
                     return (
                       <div key={field.key}>
                         <span className="text-gray-400 text-xs">{shortLabel}</span>
