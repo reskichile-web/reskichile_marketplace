@@ -15,7 +15,8 @@ interface Props {
 function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   const [zoomed, setZoomed] = useState(false)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
-  const dragged = useRef(false)
+  const isDragging = useRef(false)
+  const didDrag = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
@@ -28,37 +29,40 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
     }
   }, [onClose])
 
+  function handlePointerDown(e: React.PointerEvent) {
+    if (!zoomed) return
+    e.preventDefault()
+    isDragging.current = true
+    didDrag.current = false
+    lastPos.current = { x: e.clientX, y: e.clientY }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!isDragging.current) return
+    didDrag.current = true
+    setOffset(prev => ({
+      x: prev.x + (e.clientX - lastPos.current.x),
+      y: prev.y + (e.clientY - lastPos.current.y),
+    }))
+    lastPos.current = { x: e.clientX, y: e.clientY }
+  }
+
+  function handlePointerUp() {
+    isDragging.current = false
+  }
+
   function handleClick() {
-    if (dragged.current) return
+    if (didDrag.current) {
+      didDrag.current = false
+      return
+    }
     if (zoomed) {
       setZoomed(false)
       setOffset({ x: 0, y: 0 })
     } else {
       setZoomed(true)
     }
-  }
-
-  function handleMouseDown(e: React.MouseEvent) {
-    if (!zoomed) return
-    e.preventDefault()
-    dragged.current = false
-    lastPos.current = { x: e.clientX, y: e.clientY }
-
-    function onMove(ev: MouseEvent) {
-      dragged.current = true
-      setOffset(prev => ({
-        x: prev.x + (ev.clientX - lastPos.current.x),
-        y: prev.y + (ev.clientY - lastPos.current.y),
-      }))
-      lastPos.current = { x: ev.clientX, y: ev.clientY }
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-      setTimeout(() => { dragged.current = false }, 50)
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
   }
 
   return createPortal(
@@ -77,15 +81,17 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
       </div>
 
       <div
-        className="relative w-full h-full flex items-center justify-center overflow-hidden"
-        style={{ cursor: zoomed ? 'grab' : 'zoom-in' }}
+        className="relative w-full h-full flex items-center justify-center overflow-hidden select-none"
+        style={{ cursor: zoomed ? (isDragging.current ? 'grabbing' : 'grab') : 'zoom-in' }}
         onClick={handleClick}
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
       >
         <img
           src={src}
           alt={alt}
-          className="max-h-[90vh] max-w-[90vw] object-contain select-none transition-transform duration-200"
+          className="max-h-[90vh] max-w-[90vw] object-contain transition-transform duration-200"
           style={{
             transform: zoomed
               ? `scale(2.5) translate(${offset.x / 2.5}px, ${offset.y / 2.5}px)`
@@ -104,7 +110,7 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
 export default function ProductGallery({ images, title }: Props) {
   const [current, setCurrent] = useState(0)
   const [dragX, setDragX] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
+  const [swiping, setSwiping] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -121,7 +127,7 @@ export default function ProductGallery({ images, title }: Props) {
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0]
     touchRef.current = { startX: t.clientX, startY: t.clientY, locked: false, isHorizontal: false }
-    setIsDragging(false)
+    setSwiping(false)
     setDragX(0)
   }
 
@@ -132,7 +138,7 @@ export default function ProductGallery({ images, title }: Props) {
     const dy = t.clientY - touchRef.current.startY
 
     if (!touchRef.current.locked) {
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
         touchRef.current.locked = true
         touchRef.current.isHorizontal = Math.abs(dx) > Math.abs(dy)
       }
@@ -140,27 +146,26 @@ export default function ProductGallery({ images, title }: Props) {
     }
 
     if (!touchRef.current.isHorizontal) return
-
     e.preventDefault()
-    setIsDragging(true)
+    setSwiping(true)
     setDragX(dx)
   }
 
   function onTouchEnd() {
-    if (!isDragging) return
+    if (!swiping) return
 
-    const threshold = 50
+    const threshold = 25
     if (dragX < -threshold && current < images.length - 1) {
       setCurrent(current + 1)
     } else if (dragX > threshold && current > 0) {
       setCurrent(current - 1)
     }
     setDragX(0)
-    setIsDragging(false)
+    setSwiping(false)
   }
 
   function handleImageClick() {
-    if (isDragging) return
+    if (swiping) return
     if (typeof window !== 'undefined' && window.innerWidth >= 768) {
       setModalOpen(true)
     }
@@ -174,15 +179,11 @@ export default function ProductGallery({ images, title }: Props) {
     )
   }
 
-  // Calculate offset: each image is 100% of container width
-  const containerWidth = containerRef.current?.clientWidth || 0
-  const translateX = isDragging
-    ? -current * containerWidth + dragX
-    : -current * containerWidth
+  const w = containerRef.current?.clientWidth || 0
+  const tx = swiping ? -current * w + dragX : -current * w
 
   return (
     <div>
-      {/* Gallery */}
       <div
         ref={containerRef}
         className="relative aspect-[4/5] bg-white rounded-lg overflow-hidden border border-gray-100"
@@ -194,16 +195,16 @@ export default function ProductGallery({ images, title }: Props) {
         <div
           className="absolute top-0 left-0 h-full flex"
           style={{
-            width: containerWidth > 0 ? images.length * containerWidth : `${images.length * 100}%`,
-            transform: containerWidth > 0 ? `translateX(${translateX}px)` : `translateX(-${current * 100}%)`,
-            transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+            width: w > 0 ? images.length * w : `${images.length * 100}%`,
+            transform: w > 0 ? `translateX(${tx}px)` : `translateX(-${current * 100}%)`,
+            transition: swiping ? 'none' : 'transform 0.25s ease-out',
           }}
         >
           {images.map((img, i) => (
             <div
               key={img.url}
               className="relative h-full bg-white"
-              style={{ width: containerWidth > 0 ? containerWidth : `${100 / images.length}%` }}
+              style={{ width: w > 0 ? w : `${100 / images.length}%` }}
               onClick={handleImageClick}
             >
               <Image
