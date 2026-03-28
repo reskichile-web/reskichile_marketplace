@@ -28,6 +28,9 @@
 
   html {
     scroll-behavior: smooth;
+    /* Lock viewport height to visible area (ignores Safari address bar) */
+    height: 100%;
+    overflow-x: hidden;
   }
 
   * {
@@ -38,6 +41,11 @@
     @apply bg-background text-foreground;
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
+    /* Prevent any horizontal scroll on the page */
+    overflow-x: hidden;
+    /* Fix iOS Safari rubber-banding */
+    -webkit-overflow-scrolling: touch;
+    position: relative;
   }
 
   /* Prevent horizontal overscroll from triggering back-navigation */
