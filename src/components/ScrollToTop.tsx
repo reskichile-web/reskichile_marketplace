@@ -7,7 +7,7 @@ export default function ScrollToTop() {
   const pathname = usePathname()
 
   useEffect(() => {
-    window.scrollTo(0, 0)
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
   }, [pathname])
 
   return null

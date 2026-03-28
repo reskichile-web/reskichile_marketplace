@@ -47,6 +47,10 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.svg',
   },
+  manifest: '/manifest.json',
+  other: {
+    'theme-color': '#2674bf',
+  },
 }
 
 export default function RootLayout({

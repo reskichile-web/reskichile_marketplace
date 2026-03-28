@@ -52,27 +52,45 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
         {/* Image gallery */}
         <div>
           <div
-            className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden touch-pan-y"
+            className="relative aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden"
             onTouchStart={(e) => {
-              const touch = e.touches[0]
-              ;(e.currentTarget as HTMLElement).dataset.startX = String(touch.clientX)
+              (e.currentTarget as HTMLElement).dataset.startX = String(e.touches[0].clientX)
+              ;(e.currentTarget as HTMLElement).dataset.startTime = String(Date.now())
+            }}
+            onTouchMove={(e) => {
+              if (images.length <= 1) return
+              const startX = Number((e.currentTarget as HTMLElement).dataset.startX || 0)
+              const diff = e.touches[0].clientX - startX
+              const el = e.currentTarget.querySelector('[data-gallery-track]') as HTMLElement
+              if (el) el.style.transform = `translateX(${diff * 0.3}px)`
             }}
             onTouchEnd={(e) => {
               const startX = Number((e.currentTarget as HTMLElement).dataset.startX || 0)
               const endX = e.changedTouches[0].clientX
               const diff = startX - endX
-              if (Math.abs(diff) > 50 && images.length > 1) {
-                if (diff > 0) {
-                  setCurrentImage(prev => (prev + 1) % images.length)
-                } else {
-                  setCurrentImage(prev => (prev - 1 + images.length) % images.length)
-                }
+              const el = e.currentTarget.querySelector('[data-gallery-track]') as HTMLElement
+              if (el) {
+                el.style.transition = 'transform 0.2s ease-out'
+                el.style.transform = 'translateX(0)'
+                setTimeout(() => { el.style.transition = '' }, 200)
+              }
+              if (Math.abs(diff) > 40 && images.length > 1) {
+                if (diff > 0) setCurrentImage(prev => (prev + 1) % images.length)
+                else setCurrentImage(prev => (prev - 1 + images.length) % images.length)
               }
             }}
           >
             {images.length > 0 ? (
               <>
-                <Image src={images[currentImage]?.url} alt={title} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" placeholder="blur" blurDataURL={BLUR_DATA_URL} />
+                <div data-gallery-track className="absolute inset-0 will-change-transform">
+                  <Image src={images[currentImage]?.url} alt={title} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" placeholder="blur" blurDataURL={BLUR_DATA_URL} />
+                </div>
+                {/* Counter */}
+                {images.length > 1 && (
+                  <div className="absolute top-3 right-3 bg-black/50 text-white text-xs font-medium px-2 py-0.5 rounded-full md:hidden">
+                    {currentImage + 1}/{images.length}
+                  </div>
+                )}
                 <div className="hidden">
                   {images.map((img, i) => (
                     i !== currentImage && (
@@ -85,6 +103,7 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
               <div className="w-full h-full flex items-center justify-center text-gray-400">Sin fotos</div>
             )}
 
+            {/* Arrow buttons — desktop */}
             {images.length > 1 && (
               <>
                 <button
@@ -106,13 +125,14 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
               </>
             )}
 
+            {/* Dots indicator */}
             {images.length > 1 && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                 {images.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setCurrentImage(i)}
-                    className={`w-2 h-2 rounded-full transition-colors ${i === currentImage ? 'bg-white' : 'bg-white/40'}`}
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${i === currentImage ? 'bg-white w-4' : 'bg-white/40'}`}
                   />
                 ))}
               </div>

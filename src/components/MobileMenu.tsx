@@ -89,7 +89,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin }: Props) {
                   <Link
                     href="/vender"
                     onClick={() => setOpen(false)}
-                    className="block w-full text-center bg-brand-500 text-white font-bold text-sm py-3 rounded-lg hover:bg-brand-600 transition-colors mb-5"
+                    className="pressable block w-full text-center bg-brand-500 text-white font-bold text-sm py-3 rounded-lg hover:bg-brand-600 transition-colors mb-5"
                   >
                     Vender
                   </Link>

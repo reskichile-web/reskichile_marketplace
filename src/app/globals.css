@@ -26,6 +26,10 @@
     --radius: 0.5rem;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     @apply border-border;
   }
@@ -34,6 +38,11 @@
     @apply bg-background text-foreground;
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent horizontal overscroll from triggering back-navigation */
+  .overflow-x-auto {
+    overscroll-behavior-x: contain;
   }
 }
 

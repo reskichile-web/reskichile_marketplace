@@ -103,7 +103,7 @@ export default function HomePage() {
             </p>
             <Link
               href="/vender"
-              className="inline-block mt-8 bg-brand-500 text-white px-10 py-4 rounded-lg font-medium hover:bg-brand-600 transition-colors"
+              className="pressable inline-block mt-8 bg-brand-500 text-white px-10 py-4 rounded-lg font-medium hover:bg-brand-600 transition-colors"
             >
               Publicar producto
             </Link>
