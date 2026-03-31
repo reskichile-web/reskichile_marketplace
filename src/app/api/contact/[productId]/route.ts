@@ -41,6 +41,8 @@ export async function POST(
     )
   }
 
+  const FALLBACK_PHONE = '56964880714'
+
   // Get product with seller info
   const { data: product } = await supabase
     .from('products')
@@ -57,18 +59,19 @@ export async function POST(
     return NextResponse.json({ error: 'No puedes contactarte a ti mismo' }, { status: 400 })
   }
 
-  // Get seller phone (server-side only - never exposed to client)
-  const { data: seller } = await supabase
-    .from('users')
-    .select('phone')
-    .eq('id', product.seller_id)
-    .single()
+  // Get seller phone — fallback to ReskiChile number if no seller or no phone
+  let phone = FALLBACK_PHONE
 
-  if (!seller?.phone) {
-    return NextResponse.json(
-      { error: 'El vendedor no tiene número de contacto registrado' },
-      { status: 400 }
-    )
+  if (product.seller_id) {
+    const { data: seller } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('id', product.seller_id)
+      .single()
+
+    if (seller?.phone) {
+      phone = seller.phone.replace(/\D/g, '')
+    }
   }
 
   // Build WhatsApp URL with pre-filled message
@@ -76,7 +79,6 @@ export async function POST(
   const message = encodeURIComponent(
     `Hola, te contacto por "${productName}" en ReskiChile`
   )
-  const phone = seller.phone.replace(/\D/g, '')
   const url = `https://wa.me/${phone}?text=${message}`
 
   return NextResponse.json({ url })
