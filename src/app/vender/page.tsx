@@ -326,14 +326,7 @@ export default function SellPage() {
       return
     }
 
-    if (data.user) {
-      const fullPhone = `${authCountryCode}${digits}`
-      await supabase.from('users').upsert({
-        id: data.user.id,
-        email: data.user.email,
-        phone: fullPhone,
-      }, { onConflict: 'id' })
-    }
+    // Phone will be saved after OTP verification (when session exists)
 
     setLoading(false)
     setOtpStep(true)
@@ -422,6 +415,17 @@ export default function SellPage() {
       setFieldErrors({ otp: 'Código incorrecto' })
       setLoading(false)
       return
+    }
+
+    // Now we have a session — save phone number
+    if (data.user) {
+      const digits = authPhone.replace(/\D/g, '')
+      const fullPhone = `${authCountryCode}${digits}`
+      await supabase.from('users').upsert({
+        id: data.user.id,
+        email: data.user.email,
+        phone: fullPhone,
+      }, { onConflict: 'id' })
     }
 
     // Publish with the new user

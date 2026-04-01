@@ -2,9 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { PRODUCT_TYPES } from '@/lib/constants'
-import { BLUR_DATA_URL } from '@/lib/image-utils'
 
 interface Props {
   id: string
@@ -30,19 +28,15 @@ export default function ProductCard({ id, title, productType, price, mainImageUr
       <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
         {mainImageUrl && !imgError ? (
           <>
-            {/* Primary image — always visible */}
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={mainImageUrl}
               alt={title}
-              fill
-              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover"
-              placeholder="blur"
-              blurDataURL={BLUR_DATA_URL}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
               onError={() => setImgError(true)}
             />
 
-            {/* Second image — reveals on hover with clip-circle animation */}
             {secondImageUrl && (
               <div
                 className="absolute inset-0 transition-[clip-path] duration-500 ease-out"
@@ -52,12 +46,11 @@ export default function ProductCard({ id, title, productType, price, mainImageUr
                     : 'circle(0% at 50% 50%)',
                 }}
               >
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={secondImageUrl}
                   alt={`${title} - 2`}
-                  fill
-                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  className="object-cover"
+                  className="absolute inset-0 w-full h-full object-cover"
                   loading="lazy"
                   onLoad={() => setSecondLoaded(true)}
                 />

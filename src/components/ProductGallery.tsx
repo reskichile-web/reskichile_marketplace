@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
-import { BLUR_DATA_URL } from '@/lib/image-utils'
 
 interface Props {
   images: { url: string; order: number }[]
@@ -145,15 +144,12 @@ function GalleryImage({ src, alt, priority }: { src: string; alt: string; priori
         </div>
       )}
 
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt={alt}
-        fill
-        priority={priority}
-        sizes="(max-width: 768px) 100vw, 50vw"
-        className={`object-contain pointer-events-none transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
-        placeholder="blur"
-        blurDataURL={BLUR_DATA_URL}
+        className={`absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        loading={priority ? 'eager' : 'lazy'}
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
       />
