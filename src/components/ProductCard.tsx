@@ -38,23 +38,32 @@ export default function ProductCard({ id, title, productType, price, mainImageUr
             />
 
             {secondImageUrl && (
-              <div
-                className="absolute inset-0 transition-[clip-path] duration-500 ease-out"
-                style={{
-                  clipPath: hovered && secondLoaded
-                    ? 'circle(100% at 50% 50%)'
-                    : 'circle(0% at 50% 50%)',
-                }}
-              >
+              <>
+                {/* Preload second image — hidden but forces browser to fetch */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={secondImageUrl}
-                  alt={`${title} - 2`}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  loading="lazy"
+                  alt=""
+                  className="hidden"
                   onLoad={() => setSecondLoaded(true)}
                 />
-              </div>
+                {/* Reveal on hover */}
+                <div
+                  className="absolute inset-0 transition-[clip-path] duration-500 ease-out"
+                  style={{
+                    clipPath: hovered && secondLoaded
+                      ? 'circle(100% at 50% 50%)'
+                      : 'circle(0% at 50% 50%)',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={secondImageUrl}
+                    alt={`${title} - 2`}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </div>
+              </>
             )}
           </>
         ) : (
