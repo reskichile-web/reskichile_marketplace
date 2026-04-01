@@ -28,43 +28,40 @@ export default function ProductCard({ id, title, productType, price, mainImageUr
       <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
         {mainImageUrl && !imgError ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={mainImageUrl}
-              alt={title}
-              className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
-              onError={() => setImgError(true)}
-            />
-
             {secondImageUrl && (
               <>
-                {/* Preload second image — hidden but forces browser to fetch */}
+                {/* Preload second image */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={secondImageUrl} alt="" className="hidden" onLoad={() => setSecondLoaded(true)} />
+
+                {/* Second image — base layer, always rendered */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={secondImageUrl}
-                  alt=""
-                  className="hidden"
-                  onLoad={() => setSecondLoaded(true)}
+                  alt={`${title} - 2`}
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
-                {/* Reveal on hover */}
-                <div
-                  className="absolute inset-0 transition-[clip-path] duration-500 ease-out"
-                  style={{
-                    clipPath: hovered && secondLoaded
-                      ? 'circle(100% at 50% 50%)'
-                      : 'circle(0% at 50% 50%)',
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={secondImageUrl}
-                    alt={`${title} - 2`}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                </div>
               </>
             )}
+
+            {/* Primary image — on top, circle-reveals back when not hovered */}
+            <div
+              className="absolute inset-0 transition-[clip-path] duration-500 ease-out"
+              style={{
+                clipPath: hovered && secondLoaded && secondImageUrl
+                  ? 'circle(0% at 50% 50%)'
+                  : 'circle(100% at 50% 50%)',
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mainImageUrl}
+                alt={title}
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                onError={() => setImgError(true)}
+              />
+            </div>
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
