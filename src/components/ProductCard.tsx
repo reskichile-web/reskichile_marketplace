@@ -18,6 +18,7 @@ interface Props {
 export default function ProductCard({ id, title, productType, price, mainImageUrl, secondImageUrl }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   return (
     <Link
@@ -27,7 +28,7 @@ export default function ProductCard({ id, title, productType, price, mainImageUr
       onMouseLeave={() => setHovered(false)}
     >
       <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
-        {mainImageUrl ? (
+        {mainImageUrl && !imgError ? (
           <>
             {/* Primary image — always visible */}
             <Image
@@ -38,6 +39,7 @@ export default function ProductCard({ id, title, productType, price, mainImageUr
               className="object-cover"
               placeholder="blur"
               blurDataURL={BLUR_DATA_URL}
+              onError={() => setImgError(true)}
             />
 
             {/* Second image — reveals on hover with clip-circle animation */}
