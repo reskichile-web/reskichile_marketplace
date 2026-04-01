@@ -9,6 +9,7 @@ import EmptyState from '@/components/illustrations/EmptyState'
 
 interface Product {
   id: string
+  slug?: string | null
   product_type: string
   brand: string
   model: string | null
@@ -262,6 +263,7 @@ export default function ProductBrowser({ products }: Props) {
                   <StaggerItem key={product.id}>
                     <ProductCard
                       id={product.id}
+                      slug={product.slug}
                       title={title}
                       productType={product.product_type}
                       price={product.price}

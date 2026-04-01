@@ -13,11 +13,11 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const supabase = createServerSupabaseClient()
-    const { data: product } = await supabase
-      .from('products')
-      .select('brand, model, price, product_type, product_images(url, order)')
-      .eq('id', params.id)
-      .single()
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)
+    const query = supabase.from('products').select('brand, model, price, product_type, product_images(url, order)')
+    const { data: product } = isUuid
+      ? await query.eq('id', params.id).single()
+      : await query.eq('slug', params.id).single()
 
     if (!product) return { title: 'Producto - ReskiChile' }
 
@@ -41,18 +41,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailPage({ params }: Props) {
   const supabase = createServerSupabaseClient()
+  const { user, isAdmin } = await getAuthUser()
 
-  const [{ user, isAdmin }, productResult] = await Promise.all([
-    getAuthUser(),
-    supabase
-      .from('products')
-      .select('*, product_images(*)')
-      .eq('id', params.id)
-      .single()
-  ])
+  // Support both UUID and slug
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)
+  const query = supabase.from('products').select('*, product_images(*)')
+  const { data } = isUuid
+    ? await query.eq('id', params.id).single()
+    : await query.eq('slug', params.id).single()
 
-  if (!productResult.data) notFound()
-  const data = productResult.data
+  if (!data) notFound()
 
   const product = data as unknown as ProductWithImages
 

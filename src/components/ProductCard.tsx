@@ -6,6 +6,7 @@ import { PRODUCT_TYPES } from '@/lib/constants'
 
 interface Props {
   id: string
+  slug?: string | null
   title: string
   productType: string
   price: number
@@ -13,14 +14,14 @@ interface Props {
   secondImageUrl?: string
 }
 
-export default function ProductCard({ id, title, productType, price, mainImageUrl, secondImageUrl }: Props) {
+export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
 
   return (
     <Link
-      href={`/producto/${id}`}
+      href={`/producto/${slug || id}`}
       className="group pressable-subtle"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

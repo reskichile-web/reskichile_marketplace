@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { buildImagePath } from '@/lib/storage-utils'
+import { buildProductSlug } from '@/lib/slug-utils'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,6 +52,10 @@ export async function POST(request: NextRequest) {
       console.error('Product insert error:', productError)
       return NextResponse.json({ error: 'Error al crear producto' }, { status: 500 })
     }
+
+    // Set slug
+    const slug = buildProductSlug(brand.trim(), model?.trim() || null, product.id)
+    await supabase.from('products').update({ slug }).eq('id', product.id)
 
     // Upload images
     const imageFiles = formData.getAll('images') as File[]

@@ -11,6 +11,7 @@ import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucid
 import imageCompression from 'browser-image-compression'
 import PublishLoadingOverlay from '@/components/PublishLoadingOverlay'
 import { buildImagePath } from '@/lib/storage-utils'
+import { buildProductSlug } from '@/lib/slug-utils'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -255,6 +256,10 @@ export default function SellPage() {
       return
     }
 
+    // Set slug
+    const slug = buildProductSlug(brand.trim(), model.trim() || null, product.id)
+    await supabase.from('products').update({ slug }).eq('id', product.id)
+
     // Upload images
     setPublishPhase('uploading')
     setUploadProgress({ current: 0, total: images.length })
@@ -287,7 +292,7 @@ export default function SellPage() {
 
     setPublishPhase('success')
     await new Promise(resolve => setTimeout(resolve, 1200))
-    router.push(`/producto/${product.id}`)
+    router.push(`/producto/${slug}`)
   }
 
   async function handleAuthSubmit() {
