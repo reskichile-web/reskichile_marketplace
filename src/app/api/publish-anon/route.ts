@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { buildImagePath } from '@/lib/storage-utils'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,8 +58,8 @@ export async function POST(request: NextRequest) {
       const file = imageFiles[i]
       if (!file.size) continue
 
-      const ext = file.name.split('.').pop()
-      const path = `anon/${product.id}/${Date.now()}_${i}.${ext}`
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = buildImagePath('anon', product.id, brand.trim(), model?.trim() || null, i, ext)
       const buffer = Buffer.from(await file.arrayBuffer())
 
       const { error: uploadError } = await supabase.storage

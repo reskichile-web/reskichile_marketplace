@@ -8,6 +8,7 @@ import PageLoader from '@/components/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
 import BrandInput from '@/components/BrandInput'
+import { buildImagePath } from '@/lib/storage-utils'
 import {
   PRODUCT_TYPES,
   CONDITIONS,
@@ -283,8 +284,8 @@ export default function EditProductPage() {
         // Upload new image at this position
         const newImg = newImages.find(img => img.id === id)
         if (!newImg) continue
-        const ext = newImg.file.name.split('.').pop()
-        const path = `${sellerId}/${params.id}/${Date.now()}_${orderIndex}.${ext}`
+        const ext = newImg.file.name.split('.').pop() || 'jpg'
+        const path = buildImagePath(sellerId, params.id as string, form.brand.trim(), form.model.trim() || null, orderIndex, ext)
         const { error: uploadError } = await supabase.storage.from('product-images').upload(path, newImg.file)
         if (uploadError) continue
         const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)

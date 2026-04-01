@@ -10,6 +10,7 @@ import BrandInput from '@/components/BrandInput'
 import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 import PublishLoadingOverlay from '@/components/PublishLoadingOverlay'
+import { buildImagePath } from '@/lib/storage-utils'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -261,8 +262,8 @@ export default function SellPage() {
     for (let i = 0; i < images.length; i++) {
       setUploadProgress({ current: i + 1, total: images.length })
       const file = images[i]
-      const ext = file.name.split('.').pop()
-      const path = `${uid}/${product.id}/${Date.now()}_${i}.${ext}`
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = buildImagePath(uid, product.id, brand.trim(), model.trim() || null, i, ext)
 
       const { error: uploadError } = await supabase.storage
         .from('product-images')
