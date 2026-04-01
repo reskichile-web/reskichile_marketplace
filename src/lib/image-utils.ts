@@ -1,7 +1,4 @@
 // Tiny SVG blur placeholder — brand-tinted gray gradient
-// Used as blurDataURL for next/image on dynamic product images
+// Pre-computed base64 (no Buffer dependency — works in client components)
 export const BLUR_DATA_URL =
-  'data:image/svg+xml;base64,' +
-  Buffer.from(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="50"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#edf4fb"/><stop offset="100%" stop-color="#d4e5f5"/></linearGradient></defs><rect width="40" height="50" fill="url(#g)"/></svg>'
-  ).toString('base64')
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI1MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2VkZjRmYiIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2Q0ZTVmNSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSI0MCIgaGVpZ2h0PSI1MCIgZmlsbD0idXJsKCNnKSIvPjwvc3ZnPg=='
