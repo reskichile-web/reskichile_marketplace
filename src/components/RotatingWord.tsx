@@ -29,7 +29,7 @@ export default function RotatingWord() {
   const letters = useMemo(() => WORDS[index].split(''), [index])
 
   return (
-    <span className="inline-flex overflow-hidden align-bottom text-brand-500">
+    <span className="inline-flex overflow-hidden align-bottom text-brand-500 [text-shadow:none]">
       <AnimatePresence mode="wait">
         <motion.span
           key={WORDS[index]}

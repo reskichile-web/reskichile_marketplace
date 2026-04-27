@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Montserrat, DM_Sans } from 'next/font/google'
+import { Montserrat, Outfit, Space_Grotesk } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
 import Header from '@/components/Header'
@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
   subsets: ['latin'],
-  weight: ['300', '500', '600', '700', '900'],
+  weight: ['300', '500', '600', '700', '800', '900'],
+  style: ['normal', 'italic'],
   variable: '--font-body',
 })
 
@@ -27,10 +28,16 @@ const kollektif = localFont({
   display: 'swap',
 })
 
-const dmSans = DM_Sans({
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['200', '300', '500'],
+  variable: '--font-nav',
+})
+
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   weight: ['500', '700'],
-  variable: '--font-nav',
+  variable: '--font-button',
 })
 
 export const viewport: Viewport = {
@@ -59,7 +66,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, dmSans.variable)}>
+    <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, outfit.variable, spaceGrotesk.variable)}>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
         <NavigationProgress />
         <ScrollToTop />

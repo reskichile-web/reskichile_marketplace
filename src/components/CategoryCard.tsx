@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 
-const GEAR_CATEGORIES = new Set(['esquis', 'botas_esqui', 'snowboards', 'cascos'])
 const AI_CATEGORIES = new Set(['esquis'])
 
 interface Props {
@@ -19,9 +18,8 @@ interface Props {
 
 export default function CategoryCard({ type, label, image, imagePosition, darkOverlay }: Props) {
   const [active, setActive] = useState(false)
-  const isGear = GEAR_CATEGORIES.has(type)
   const hasAI = AI_CATEGORIES.has(type)
-  const linkCount = (isGear ? 1 : 0) + 2 + (hasAI ? 1 : 0)
+  const linkCount = 2 + (hasAI ? 1 : 0)
   const touchStart = useRef({ y: 0, time: 0 })
 
   return (
@@ -94,11 +92,6 @@ export default function CategoryCard({ type, label, image, imagePosition, darkOv
               className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6 space-y-2"
               onClick={e => e.stopPropagation()}
             >
-              {isGear && (
-                <Link href={`/rental?type=${type}`} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
-                  Rental
-                </Link>
-              )}
               <Link href={`/catalogo?product_type=${type}`} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
                 Marketplace
               </Link>

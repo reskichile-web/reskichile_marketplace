@@ -13,6 +13,7 @@ const config: Config = {
         sub: ['var(--font-sub)'],
         body: ['var(--font-body)'],
         nav: ['var(--font-nav)'],
+        button: ['var(--font-button)'],
       },
       letterSpacing: {
         'sub': '0.1em',

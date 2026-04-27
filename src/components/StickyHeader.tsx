@@ -9,6 +9,8 @@ export default function StickyHeader({ children }: { children: React.ReactNode }
 
   // Don't hide on product pages
   const alwaysVisible = pathname.startsWith('/producto/')
+  // Catalog renders its own custom header — global one stays out
+  const hiddenOnRoute = pathname.startsWith('/catalogo')
 
   useEffect(() => {
     if (alwaysVisible) {
@@ -23,6 +25,8 @@ export default function StickyHeader({ children }: { children: React.ReactNode }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [alwaysVisible])
+
+  if (hiddenOnRoute) return null
 
   return (
     <div

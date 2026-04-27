@@ -82,6 +82,81 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes shine-sweep {
+  0% { transform: translateX(-150%) skewX(-20deg); }
+  60%, 100% { transform: translateX(350%) skewX(-20deg); }
+}
+
+.shine-beam {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shine-beam::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0) 70%,
+    transparent 100%
+  );
+  width: 80%;
+  animation: shine-sweep 5s ease-in-out infinite;
+  z-index: 1;
+}
+.shine-beam-dark::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(255, 255, 255, 0) 70%,
+    transparent 100%
+  );
+}
+.shine-beam-delayed::after {
+  animation-delay: 1.5s;
+}
+
+.hover-wave {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.hover-wave > * {
+  position: relative;
+  z-index: 1;
+}
+.hover-wave::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.55s cubic-bezier(0.65, 0, 0.35, 1);
+  z-index: -1;
+}
+.hover-wave:hover::before {
+  transform: scaleX(1);
+}
+.hover-wave:hover {
+  color: #2674bf !important;
+}
+
+.hover-wave-inverse::before {
+  background: #1f2937;
+}
+.hover-wave-inverse:hover {
+  color: #ffffff !important;
+}
+
 /* Touch feedback utilities */
 @layer utilities {
   .pressable {

@@ -40,8 +40,8 @@ export default async function CategoriesSection() {
   if (topCategories.length === 0) return null
 
   return (
-    <section className="max-w-[1000px] mx-auto px-4 md:px-6 pt-6 md:pt-10 pb-12 md:pb-20">
-      <h2 className="font-body text-sm font-medium tracking-widest uppercase text-gray-400 mb-8">
+    <section className="relative z-10 max-w-[1000px] mx-auto px-4 md:px-6 pt-6 md:pt-10 pb-12 md:pb-20">
+      <h2 className="font-body text-sm font-semibold tracking-widest uppercase text-gray-700 mb-8">
         Categorias
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
