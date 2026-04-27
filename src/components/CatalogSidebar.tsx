@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Folder, ChevronDown, Sparkles, MapPin, DollarSign } from 'lucide-react'
+import { Folder, ChevronDown, Sparkles, MapPin } from 'lucide-react'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
