@@ -35,7 +35,6 @@ export default function SkiRackStory() {
   })
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '-30%'])
   const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
-  const watermarkX = useTransform(scrollYProgress, [0, 1], ['0%', '-15%'])
 
   return (
     <div className="bg-white text-black">

@@ -73,7 +73,6 @@ export async function POST(request: Request) {
     email,
     options: {
       redirectTo: `${SITE_URL}/auth/reset-password`,
-      expiresIn: 60 * 60 * 24 * 90, // 90 days
     },
   })
 

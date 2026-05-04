@@ -114,7 +114,7 @@ function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages, compressin
 
 // ─── Mobile: arrow buttons to reorder with slide animation ──────────────────
 
-function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing }: Props) {
+function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
   const [animatingId, setAnimatingId] = useState<string | null>(null)
   const [animDir, setAnimDir] = useState<-1 | 1>(1)
 

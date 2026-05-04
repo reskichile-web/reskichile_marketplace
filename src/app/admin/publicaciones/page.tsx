@@ -512,7 +512,7 @@ Saludos,
 Sebastián`
 
   function cleanPhone(phone: string): string {
-    let p = phone.replace(/[^\d+]/g, '')
+    const p = phone.replace(/[^\d+]/g, '')
     if (p.startsWith('+')) return p.slice(1)
     if (p.startsWith('56')) return p
     if (p.startsWith('9')) return '56' + p

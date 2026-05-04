@@ -134,7 +134,6 @@ export default function EditProductPage() {
   const newImageCounter = useRef(0)
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([])
   const [imageOrder, setImageOrder] = useState<string[]>([])
-  const [sellerId, setSellerId] = useState<string>('')
   const [productSlug, setProductSlug] = useState<string>('')
 
   useEffect(() => {
@@ -169,7 +168,6 @@ export default function EditProductPage() {
         status: product.status || '',
       })
       setAttributes((product.attributes as Record<string, string | boolean>) || {})
-      setSellerId(product.seller_id || '')
       setProductSlug(product.slug || '')
       const imgs = (product.product_images || []) as { id: string; url: string; order: number }[]
       const sorted = imgs.sort((a, b) => a.order - b.order)
