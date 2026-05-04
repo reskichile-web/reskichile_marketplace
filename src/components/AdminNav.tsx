@@ -9,60 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 
 const NAV_ITEMS = [
-  {
-    label: 'Inicio',
-    href: '/admin',
-    icon: (
-      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Publicaciones',
-    href: '/admin/publicaciones',
-    icon: (
-      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Usuarios',
-    href: '/admin/usuarios',
-    icon: (
-      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Contacto',
-    href: '/admin/contacto',
-    icon: (
-      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Finanzas',
-    href: '/admin/finanzas',
-    icon: (
-      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Animaciones',
-    href: '/admin/animaciones',
-    icon: (
-      <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-      </svg>
-    ),
-  },
+  { label: 'Inicio', href: '/admin' },
+  { label: 'Publicaciones', href: '/admin/publicaciones' },
+  { label: 'Usuarios', href: '/admin/usuarios' },
+  { label: 'Mercado', href: '/admin/finanzas' },
 ]
 
 export default function AdminNav() {
@@ -136,16 +86,18 @@ export default function AdminNav() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`block px-3 py-2.5 rounded-md text-sm font-medium ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
                   >
-                    <span className={isActive ? 'text-white' : 'text-gray-400'}>{item.icon}</span>
                     {item.label}
                   </Link>
                 )
               })}
               <div className="border-t border-gray-100 pt-3 mt-3">
-                <Link href="/vender" onClick={() => setSidebarOpen(false)} className="block w-full text-center bg-brand-500 text-white font-bold text-sm py-2.5 rounded-lg mb-3">
+                <Link href="/vender" onClick={() => setSidebarOpen(false)} className="block w-full text-center bg-brand-500 text-white font-bold text-sm py-2.5 rounded-lg mb-2">
                   Publicar producto
+                </Link>
+                <Link href="/mis-productos" onClick={() => setSidebarOpen(false)} className="block w-full text-center border border-brand-500 text-brand-500 font-bold text-sm py-2.5 rounded-lg mb-3">
+                  Mis productos
                 </Link>
                 <form action="/auth/logout" method="POST">
                   <button type="submit" className="block py-2 text-sm text-gray-600 hover:text-brand-500 w-full text-left">
@@ -161,53 +113,48 @@ export default function AdminNav() {
   )
 
   return (
-    <nav className="bg-white shadow-sm">
+    <nav className="bg-white shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <div className="flex items-center justify-between h-[56px]">
-          {/* Mobile burger */}
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden p-1" aria-label="Menú">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-
-          {/* Left: Logo + nav items */}
-          <div className="flex items-center gap-6">
-            {/* Logo */}
+        <div className="flex items-center h-20 gap-6">
+          {/* Left: Logo + mobile burger */}
+          <div className="flex items-center gap-3 shrink-0">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-1" aria-label="Menú">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             <Link href="/" className="shrink-0">
               <img src="/logo.svg" alt="ReskiChile" className="h-8" />
             </Link>
-
-            {/* Separator */}
-            <div className="h-5 w-px bg-gray-200 hidden md:block" />
-
-            {/* Nav items — desktop only */}
-            <div className="hidden md:flex items-center gap-0.5">
-              {NAV_ITEMS.map((item) => {
-                const isActive = pathname === item.href
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`
-                      flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
-                      ${isActive
-                        ? 'bg-gray-900 text-white shadow-sm'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                      }
-                    `}
-                  >
-                    <span className={isActive ? 'text-white' : 'text-gray-400'}>{item.icon}</span>
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
           </div>
 
+          {/* Center: Nav items — centered between logo and right buttons — desktop only */}
+          <div className="hidden md:flex flex-1 justify-center items-center gap-0.5">
+            {NAV_ITEMS.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`
+                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
+                    ${isActive
+                      ? 'bg-gray-900 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+
+          {/* Spacer for mobile (no nav items shown) */}
+          <div className="flex-1 md:hidden" />
+
           {/* Right: Publish + user profile — desktop only */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4 shrink-0">
             <Link
               href="/vender"
               className="flex items-center gap-1.5 bg-brand-500 text-white text-xs font-medium px-3.5 py-1.5 rounded-md hover:bg-brand-600 transition-all duration-200 shadow-sm hover:shadow"
@@ -216,6 +163,16 @@ export default function AdminNav() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
               Publicar producto
+            </Link>
+
+            <Link
+              href="/mis-productos"
+              className="flex items-center gap-1.5 border border-brand-500 text-brand-500 text-xs font-medium px-3.5 py-1.5 rounded-md hover:bg-brand-50 transition-all duration-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Mis productos
             </Link>
 
             {/* Separator */}

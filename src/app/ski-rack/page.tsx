@@ -1,15 +1,11 @@
 import type { Metadata } from 'next'
+import SkiRackStory from '@/components/SkiRackStory'
 
 export const metadata: Metadata = {
-  title: 'Ski Rack - ReskiChile',
+  title: 'SKI-RACK · ReskiChile',
+  description: 'Ski racks de madera, hechos a mano en Chile. Para tu casa, parcela o refugio.',
 }
 
 export default function SkiRackPage() {
-  return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <h1 className="font-body font-extrabold italic text-5xl md:text-8xl text-black tracking-tight select-none">
-        SKI-RACK
-      </h1>
-    </div>
-  )
+  return <SkiRackStory />
 }

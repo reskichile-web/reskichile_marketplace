@@ -76,7 +76,7 @@ export default function AdminHomePage() {
   ]
 
   return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 pb-16">
+    <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
       {/* Welcome */}
       <div className="mb-8">
         <h1 className="font-body text-2xl font-black text-gray-900">Dashboard</h1>

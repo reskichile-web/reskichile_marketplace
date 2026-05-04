@@ -29,6 +29,7 @@ interface Props {
   onRemove: (id: string) => void
   onAdd: (files: File[]) => void
   maxImages?: number
+  compressing?: { current: number; total: number } | null
 }
 
 // ─── Desktop: drag & drop ───────────────────────────────────────────────────
@@ -78,7 +79,7 @@ function SortableImage({ image, onRemove }: { image: ImageItem; onRemove: () => 
   )
 }
 
-function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
+function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
@@ -104,7 +105,7 @@ function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
               </div>
             </div>
           ))}
-          <AddButton images={images} maxImages={maxImages!} onAdd={onAdd} />
+          <AddButton images={images} maxImages={maxImages!} onAdd={onAdd} compressing={compressing} />
         </div>
       </SortableContext>
     </DndContext>
@@ -113,7 +114,7 @@ function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
 
 // ─── Mobile: arrow buttons to reorder with slide animation ──────────────────
 
-function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
+function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing }: Props) {
   const [animatingId, setAnimatingId] = useState<string | null>(null)
   const [animDir, setAnimDir] = useState<-1 | 1>(1)
 
@@ -195,7 +196,7 @@ function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages }: Props) {
 
 // ─── Shared add button ──────────────────────────────────────────────────────
 
-function AddButton({ images, maxImages, onAdd }: { images: ImageItem[]; maxImages: number; onAdd: (files: File[]) => void }) {
+function AddButton({ images, maxImages, onAdd, compressing }: { images: ImageItem[]; maxImages: number; onAdd: (files: File[]) => void; compressing?: { current: number; total: number } | null }) {
   if (images.length >= maxImages) return null
 
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -208,6 +209,19 @@ function AddButton({ images, maxImages, onAdd }: { images: ImageItem[]; maxImage
     e.target.value = ''
   }
 
+  if (compressing) {
+    return (
+      <div className="aspect-[4/5] rounded-lg border-2 border-dashed border-brand-300 bg-brand-50 flex flex-col items-center justify-center">
+        <svg className="w-6 h-6 text-brand-500 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+        </svg>
+        <span className="text-[10px] text-brand-600 mt-1.5 font-medium">Procesando</span>
+        <span className="text-[10px] text-brand-500">{compressing.current}/{compressing.total}</span>
+      </div>
+    )
+  }
+
   return (
     <label className="aspect-[4/5] rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-brand-500 hover:bg-brand-50 transition-colors">
       <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -216,7 +230,7 @@ function AddButton({ images, maxImages, onAdd }: { images: ImageItem[]; maxImage
       <span className="text-xs text-gray-400 mt-1">Agregar</span>
       <input
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
         multiple
         onChange={handleFileInput}
         className="hidden"

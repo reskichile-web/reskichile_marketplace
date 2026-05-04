@@ -42,6 +42,19 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     const supabase = createClient()
+
+    const { data: userExists } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', trimmedEmail)
+      .single()
+
+    if (!userExists) {
+      setError('No encontramos una cuenta con ese email')
+      setLoading(false)
+      return
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
 
     if (error) {

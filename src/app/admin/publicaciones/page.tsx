@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS } from '@/lib/constants'
+import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
 
@@ -13,6 +13,7 @@ interface AdminProduct {
   brand: string
   model: string | null
   price: number
+  sale_price: number | null
   status: string
   created_at: string
   seller_id: string
@@ -52,7 +53,7 @@ export default function PublicacionesPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('products')
-      .select('id, product_type, brand, model, price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, users(name, email, phone), product_images(url, order)')
+      .select('id, product_type, brand, model, price, sale_price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, users(name, email, phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
     setProducts((data as unknown as AdminProduct[]) || [])
@@ -121,6 +122,16 @@ export default function PublicacionesPage() {
     if (!confirm('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.')) return
     setDeletingId(productId)
     const supabase = createClient()
+
+    const product = products.find(p => p.id === productId)
+    if (product?.product_images?.length) {
+      const paths = product.product_images
+        .map(img => img.url.split('/product-images/')[1])
+        .filter(Boolean)
+        .map(p => decodeURIComponent(p))
+      if (paths.length) await supabase.storage.from('product-images').remove(paths)
+    }
+
     await supabase.from('product_images').delete().eq('product_id', productId)
     await supabase.from('products').delete().eq('id', productId)
     setExpandedId(null)
@@ -132,7 +143,7 @@ export default function PublicacionesPage() {
   if (loading) return <AdminTableSkeleton />
 
   return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 pb-16">
+    <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
 
       {/* Filters */}
       <div className="space-y-3 mb-6">
@@ -255,28 +266,33 @@ export default function PublicacionesPage() {
                         <div className="flex gap-1.5">
                           {product.status === 'pending' && (
                             <>
-                              <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-2.5 py-1 rounded hover:bg-green-700">
+                              <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
                                 Aprobar
                               </button>
-                              <button onClick={() => setRejectingId(product.id)} className="text-xs bg-red-600 text-white px-2.5 py-1 rounded hover:bg-red-700">
+                              <button onClick={() => setRejectingId(product.id)} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700">
                                 Rechazar
                               </button>
                             </>
                           )}
                           {product.status === 'rejected' && (
-                            <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-2.5 py-1 rounded hover:bg-green-700">
+                            <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
+                              Aprobar
+                            </button>
+                          )}
+                          {product.status === 'missing_photos' && (
+                            <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
                               Aprobar
                             </button>
                           )}
                           {product.status === 'approved' && (
-                            <button onClick={() => handleMarkSold(product.id)} className="text-xs border border-brand-500 text-brand-500 px-2.5 py-1 rounded hover:bg-brand-50">
+                            <button onClick={() => handleMarkSold(product.id)} className="text-xs border border-brand-500 text-brand-500 px-3 py-1.5 rounded hover:bg-brand-50">
                               Vendido
                             </button>
                           )}
-                          <Link href={`/producto/${product.id}/editar`} className="text-xs border px-2.5 py-1 rounded hover:bg-gray-100">
+                          <Link href={`/producto/${product.id}/editar`} className="text-xs border px-3 py-1.5 rounded hover:bg-gray-100">
                             Editar
                           </Link>
-                          <button onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="text-xs border border-red-200 text-red-500 px-2.5 py-1 rounded hover:bg-red-50 disabled:opacity-50 flex items-center gap-1">
+                          <button onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded hover:bg-red-50 disabled:opacity-50 flex items-center gap-1">
                             {deletingId === product.id ? (
                               <>
                                 <Spinner size="sm" color="brand" />
@@ -290,98 +306,139 @@ export default function PublicacionesPage() {
 
                     {/* Expanded detail row */}
                     {isExpanded && (
-                      <tr className="border-b bg-gray-50/50">
-                        <td colSpan={6} className="px-4 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4">
-                            {/* Images */}
-                            {images.length > 0 && (
-                              <div className="flex gap-2 overflow-x-auto md:flex-col md:w-24">
-                                {images.map((img, i) => (
-                                  <img key={i} src={img.url} alt="" className="w-20 h-20 shrink-0 object-cover rounded" />
-                                ))}
-                              </div>
-                            )}
+                      <tr className="border-b bg-gray-200">
+                        <td colSpan={6} className="px-4 pt-5 pb-8">
+                          <div className="space-y-5 max-w-6xl mx-auto">
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {product.status !== 'sold' && (
+                                <ContactSellerButton product={product} />
+                              )}
+                              <InstagramCopyButton product={product} />
+                            </div>
 
-                            {/* Details */}
-                            <div className="space-y-3">
-                              {/* Basic info */}
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                            {/* Basic info */}
+                            <div className="bg-white rounded-xl p-6">
+                              <div className="flex items-center gap-1.5 mb-3">
+                                <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                </svg>
+                                <span className="font-body text-base font-black text-brand-500 tracking-tight">Detalles</span>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-3 text-base justify-items-start text-left">
                                 <div>
-                                  <span className="text-gray-500">Tipo</span>
-                                  <p className="font-medium">{PRODUCT_TYPES[product.product_type] || product.product_type}</p>
+                                  <span className="font-bold text-gray-700">Tipo</span>
+                                  <p className="font-light">{PRODUCT_TYPES[product.product_type] || product.product_type}</p>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">Condición</span>
-                                  <p className="font-medium">{CONDITIONS[product.condition] || product.condition}</p>
+                                  <span className="font-bold text-gray-700">Condición</span>
+                                  <p className="font-light">{CONDITIONS[product.condition] || product.condition}</p>
                                 </div>
                                 {product.seasons_used && (
                                   <div>
-                                    <span className="text-gray-500">Temporadas</span>
-                                    <p className="font-medium">{product.seasons_used}</p>
+                                    <span className="font-bold text-gray-700">Temporadas</span>
+                                    <p className="font-light">{product.seasons_used}</p>
                                   </div>
                                 )}
                                 <div>
-                                  <span className="text-gray-500">Ubicación</span>
-                                  <p className="font-medium">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>
+                                  <span className="font-bold text-gray-700">Precio</span>
+                                  <p className="font-light text-brand-500">${product.price.toLocaleString('es-CL')}</p>
                                 </div>
                                 <div>
-                                  <span className="text-gray-500">Precio</span>
-                                  <p className="font-medium text-brand-500">${product.price.toLocaleString('es-CL')}</p>
+                                  <span className="font-bold text-gray-700">Precio de venta</span>
+                                  <p className="font-light text-green-600">
+                                    {product.sale_price ? `$${product.sale_price.toLocaleString('es-CL')}` : '—'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-gray-700">Descripción</span>
+                                  <p className="font-light">{product.description || '—'}</p>
                                 </div>
                               </div>
+                            </div>
 
-                              {/* Seller info */}
-                              <div className="border-t pt-2">
-                                <span className="text-xs text-gray-500 uppercase tracking-wide">Vendedor</span>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm mt-1">
-                                  <div>
-                                    <span className="text-gray-500">Nombre</span>
-                                    <p className="font-medium">{product.users?.name || 'Sin nombre'}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500">Email</span>
-                                    <p className="font-medium">{product.users?.email}</p>
-                                  </div>
-                                  {product.users?.phone && (
-                                    <div>
-                                      <span className="text-gray-500">Teléfono</span>
-                                      <p className="font-medium">{product.users.phone}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
+                            {/* Atributos + Vendedor lado a lado */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                               {/* Dynamic attributes */}
-                              {attrs && Object.keys(attrs).length > 0 && (
-                                <div className="border-t pt-2">
-                                  <span className="text-xs text-gray-500 uppercase tracking-wide">Atributos</span>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm mt-1">
+                              {attrs && Object.keys(attrs).length > 0 ? (
+                                <div className="bg-white rounded-xl p-6">
+                                  <div className="flex items-center gap-1.5 mb-3">
+                                    <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z" />
+                                    </svg>
+                                    <span className="font-body text-base font-black text-brand-500 tracking-tight">Atributos</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-base justify-items-start text-left">
                                     {Object.entries(attrs).map(([key, value]) => (
                                       <div key={key}>
-                                        <span className="text-gray-500">{key.replace(/_/g, ' ')}</span>
-                                        <p className="font-medium">{String(value)}</p>
+                                        <span className="font-bold text-gray-700">{key.replace(/_/g, ' ')}</span>
+                                        <p className="font-light">{String(value)}</p>
                                       </div>
                                     ))}
                                   </div>
                                 </div>
-                              )}
+                              ) : <div />}
 
-                              {/* Description */}
-                              {product.description && (
-                                <div className="border-t pt-2">
-                                  <span className="text-xs text-gray-500 uppercase tracking-wide">Descripción</span>
-                                  <p className="text-sm mt-1">{product.description}</p>
+                              {/* Seller info */}
+                              <div className="bg-white rounded-xl p-6">
+                                <div className="flex items-center gap-1.5 mb-3">
+                                  <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                                  </svg>
+                                  <span className="font-body text-base font-black text-brand-500 tracking-tight">Vendedor</span>
                                 </div>
-                              )}
-
-                              {/* Rejection reason */}
-                              {product.rejection_reason && (
-                                <div className="border-t pt-2">
-                                  <span className="text-xs text-red-500 uppercase tracking-wide">Motivo de rechazo</span>
-                                  <p className="text-sm text-red-600 mt-1">{product.rejection_reason}</p>
+                                <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-base justify-items-start text-left">
+                                  <div>
+                                    <span className="font-bold text-gray-700">Nombre</span>
+                                    <p className="font-light">{product.users?.name || 'Sin nombre'}</p>
+                                  </div>
+                                  <div>
+                                    <span className="font-bold text-gray-700">Email</span>
+                                    <p className="font-light">{product.users?.email}</p>
+                                  </div>
+                                  {product.users?.phone && (
+                                    <div>
+                                      <span className="font-bold text-gray-700">Teléfono</span>
+                                      <p className="font-light">{product.users.phone}</p>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <span className="font-bold text-gray-700">Ubicación</span>
+                                    <p className="font-light">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>
+                                  </div>
                                 </div>
-                              )}
+                              </div>
                             </div>
+
+                            {/* Rejection reason */}
+                            {product.rejection_reason && (
+                              <div className="bg-white rounded-xl p-6">
+                                <div className="flex items-center gap-1.5">
+                                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                  </svg>
+                                  <span className="font-body text-sm font-black text-red-500 tracking-tight">Motivo de rechazo</span>
+                                </div>
+                                <p className="text-sm font-light text-red-600 mt-1">{product.rejection_reason}</p>
+                              </div>
+                            )}
+
+                            {/* Images — horizontal abajo */}
+                            {images.length > 0 && (
+                              <div className="bg-white rounded-xl p-6">
+                                <div className="flex items-center gap-1.5 mb-3">
+                                  <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                  </svg>
+                                  <span className="font-body text-base font-black text-brand-500 tracking-tight">Imágenes</span>
+                                </div>
+                                <div className="flex gap-2 overflow-x-auto">
+                                  {images.map((img, i) => (
+                                    <img key={i} src={img.url} alt="" className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 object-cover rounded-lg" />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -419,5 +476,457 @@ export default function PublicacionesPage() {
         </div>
       )}
     </div>
+  )
+}
+
+function ContactSellerButton({ product }: { product: AdminProduct }) {
+  const [open, setOpen] = useState(false)
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBodyDraft, setEmailBodyDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sent' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [successPopup, setSuccessPopup] = useState(false)
+
+  const seller = product.users
+  const title = [product.brand, product.model].filter(Boolean).join(' ')
+  const sellerFirstName = seller?.name?.split(' ')[0] || ''
+  const greeting = sellerFirstName ? `Hola ${sellerFirstName},` : 'Hola,'
+
+  const wsMessage = `Hola, te escribimos desde ReSkiChile.
+
+Queríamos consultarte por el estado de tu publicación de ${title} en nuestro catálogo. ¿Continúa disponible o ya la vendiste?
+
+Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
+
+  const defaultEmailBody = `${greeting}
+
+Soy Sebastián del equipo de ventas de ReSkiChile.
+
+Te escribo para saber el estado actual de tu publicación **${title}**. ¿Sigue disponible o ya la vendiste?
+
+Si ya la vendiste, agradecería mucho que me compartieras el precio final de venta para mantener nuestros registros al día.
+
+Saludos,
+Sebastián`
+
+  function cleanPhone(phone: string): string {
+    let p = phone.replace(/[^\d+]/g, '')
+    if (p.startsWith('+')) return p.slice(1)
+    if (p.startsWith('56')) return p
+    if (p.startsWith('9')) return '56' + p
+    return p
+  }
+
+  function openWhatsApp() {
+    if (!seller?.phone) return
+    const url = `https://wa.me/${cleanPhone(seller.phone)}?text=${encodeURIComponent(wsMessage)}`
+    window.open(url, '_blank')
+    setOpen(false)
+  }
+
+  function openEmailModal() {
+    if (!seller?.email) return
+    setEmailSubject(`Estado de tu publicación: ${title}`)
+    setEmailBodyDraft(defaultEmailBody)
+    setSendStatus('idle')
+    setErrorMsg('')
+    setEmailModalOpen(true)
+    setOpen(false)
+  }
+
+  async function sendEmail() {
+    if (!seller?.email) return
+    setSending(true)
+    setSendStatus('idle')
+    try {
+      const res = await fetch('/api/admin/contact-seller', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: seller.email, subject: emailSubject, body: emailBodyDraft }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al enviar')
+      setEmailModalOpen(false)
+      setSuccessPopup(true)
+    } catch (e) {
+      setSendStatus('error')
+      setErrorMsg(e instanceof Error ? e.message : 'Error desconocido')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (!seller?.email && !seller?.phone) return null
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 bg-brand-500 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-brand-600 shadow-sm"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+        </svg>
+        Contactar vendedor
+        <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden min-w-[200px] max-w-[calc(100vw-32px)]">
+            {seller.phone && (
+              <button
+                onClick={openWhatsApp}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 text-left"
+              >
+                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                </svg>
+                <span className="font-medium">WhatsApp</span>
+              </button>
+            )}
+            {seller.email && (
+              <button
+                onClick={openEmailModal}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 text-left border-t border-gray-100"
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0l-9.75 6.093-9.75-6.093" />
+                </svg>
+                <span className="font-medium">Correo</span>
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Success popup */}
+      {successPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setSuccessPopup(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="font-body text-lg font-black text-gray-900 mb-1">Correo enviado</h3>
+            <p className="text-sm text-gray-500 mb-5">El mensaje fue enviado correctamente al vendedor.</p>
+            <button
+              onClick={() => setSuccessPopup(false)}
+              className="w-full bg-brand-500 text-white font-medium text-sm py-2.5 rounded-lg hover:bg-brand-600"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Email modal */}
+      {emailModalOpen && seller?.email && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !sending && setEmailModalOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-body text-lg font-black text-gray-900">Enviar correo</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Desde <span className="font-medium text-gray-700">reskichile@gmail.com</span> · Para <span className="font-medium text-gray-700">{seller.email}</span>
+                </p>
+              </div>
+              <button onClick={() => !sending && setEmailModalOpen(false)} disabled={sending} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-1">Asunto</label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  disabled={sending}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Mensaje</label>
+                  <span className="text-[10px] text-gray-400">Usa <code className="bg-gray-100 px-1 rounded">**palabra**</code> para negrita</span>
+                </div>
+                <textarea
+                  value={emailBodyDraft}
+                  onChange={e => setEmailBodyDraft(e.target.value)}
+                  disabled={sending}
+                  rows={14}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-light leading-relaxed focus:border-brand-500 focus:outline-none disabled:bg-gray-50 resize-none"
+                />
+              </div>
+
+              {sendStatus === 'error' && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {errorMsg}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setEmailModalOpen(false)}
+                disabled={sending}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={sendEmail}
+                disabled={sending || !emailSubject.trim() || !emailBodyDraft.trim()}
+                className="px-5 py-2 text-sm bg-brand-500 text-white font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 flex items-center gap-2"
+              >
+                {sending ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    Enviando...
+                  </>
+                ) : 'Enviar correo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function buildInstagramText(product: AdminProduct): string {
+  const lines: string[] = []
+  const isSold = product.status === 'sold'
+  lines.push(isSold ? 'Vendido ❌' : 'Disponible ✅')
+  lines.push(`$${product.price.toLocaleString('es-CL')}`)
+
+  const title = [product.brand, product.model].filter(Boolean).join(' ')
+  if (title) lines.push(title)
+
+  // Attribute labels lookup
+  const attrDefs = PRODUCT_ATTRIBUTES[product.product_type] || []
+  const labelMap: Record<string, string> = {}
+  attrDefs.forEach(a => { labelMap[a.key] = a.label })
+
+  if (product.attributes && typeof product.attributes === 'object') {
+    for (const [key, value] of Object.entries(product.attributes)) {
+      if (value === undefined || value === null || value === '') continue
+      const label = labelMap[key] || key.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase())
+      const display = value === true ? 'Sí' : value === false ? 'No' : String(value)
+      lines.push(`${label}: ${display}`)
+    }
+  }
+
+  if (product.condition) {
+    lines.push(`Estado: ${CONDITIONS[product.condition] || product.condition}`)
+  }
+
+  if (product.description) {
+    const flat = product.description.replace(/\s*\n+\s*/g, ' ').trim()
+    lines.push('')
+    lines.push(`Descripción: ${flat}`)
+  }
+
+  const location = [product.comuna, product.region].filter(Boolean).join(', ')
+  if (location) {
+    lines.push('')
+    lines.push(`📍 ${location}`)
+  }
+
+  return lines.join('\n')
+}
+
+function InstagramCopyButton({ product }: { product: AdminProduct }) {
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState<number | 'all' | null>(null)
+
+  const text = buildInstagramText(product)
+  const images = (product.product_images || []).slice().sort((a, b) => a.order - b.order)
+
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      alert('No se pudo copiar al portapapeles')
+    }
+  }
+
+  async function downloadImage(url: string, index: number) {
+    setDownloading(index)
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Error de red')
+      const blob = await res.blob()
+      const ext = url.split('.').pop()?.split('?')[0] || 'jpg'
+      const safeTitle = [product.brand, product.model].filter(Boolean).join('_').replace(/[^\w-]/g, '_')
+      const filename = `${safeTitle}_${index + 1}.${ext}`
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+    } catch (e) {
+      alert('Error al descargar: ' + (e instanceof Error ? e.message : 'desconocido'))
+    } finally {
+      setDownloading(null)
+    }
+  }
+
+  async function downloadAll() {
+    setDownloading('all')
+    try {
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+      const safeTitle = [product.brand, product.model].filter(Boolean).join('_').replace(/[^\w-]/g, '_') || 'producto'
+
+      for (let i = 0; i < images.length; i++) {
+        const res = await fetch(images[i].url)
+        if (!res.ok) throw new Error(`Error al descargar imagen ${i + 1}`)
+        const blob = await res.blob()
+        const ext = images[i].url.split('.').pop()?.split('?')[0] || 'jpg'
+        zip.file(`${safeTitle}_${i + 1}.${ext}`, blob)
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const objectUrl = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = `${safeTitle}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+    } catch (e) {
+      alert('Error al descargar: ' + (e instanceof Error ? e.message : 'desconocido'))
+    } finally {
+      setDownloading(null)
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-800 shadow-sm"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+        </svg>
+        Copy Instagram
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-body text-lg font-black text-gray-900">Copy para Instagram</h3>
+              <button onClick={() => setOpen(false)} className="p-1 hover:bg-gray-100 rounded">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
+              {/* Text + copy */}
+              <div className="relative">
+                <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm font-light whitespace-pre-wrap font-sans">{text}</pre>
+                <button
+                  onClick={copyText}
+                  className={`absolute top-2 right-2 flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-medium transition-colors ${copied ? 'bg-green-500 text-white' : 'bg-gray-900 text-white hover:bg-gray-800'}`}
+                >
+                  {copied ? (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copiado
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                      </svg>
+                      Copiar
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Images horizontal */}
+              {images.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Imágenes ({images.length})</span>
+                    <button
+                      onClick={downloadAll}
+                      disabled={downloading !== null}
+                      className="text-xs bg-brand-500 text-white px-3 py-1.5 rounded font-medium hover:bg-brand-600 disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {downloading === 'all' ? (
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                      )}
+                      Descargar todas
+                    </button>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {images.map((img, i) => (
+                      <div key={i} className="relative shrink-0 group">
+                        <img src={img.url} alt="" className="w-32 h-32 object-cover rounded-lg" />
+                        <button
+                          onClick={() => downloadImage(img.url, i)}
+                          disabled={downloading !== null}
+                          className="absolute bottom-1.5 right-1.5 bg-gray-900/80 text-white p-1.5 rounded hover:bg-gray-900 disabled:opacity-50"
+                          title="Descargar"
+                        >
+                          {downloading === i ? (
+                            <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

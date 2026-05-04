@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function AdminDashboardSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 pb-16">
+    <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
       {/* Title */}
       <div className="mb-8">
         <Skeleton className="h-8 w-40" />

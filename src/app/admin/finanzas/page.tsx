@@ -2,23 +2,57 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_TYPES } from '@/lib/constants'
+import { PRODUCT_TYPES, CONDITIONS } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import {
+  GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
+  GiSkier, GiWinterGloves, GiMonclerJacket,
+  GiArmoredPants, GiLightBackpack,
+  GiDuffelBag, GiMountaintop, GiFullMotorcycleHelmet,
+  GiProtectionGlasses, GiRadarSweep, GiPhotoCamera,
+} from 'react-icons/gi'
+import { FaSkiingNordic } from 'react-icons/fa'
 
-interface SaleRecord {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TYPE_ICONS: Record<string, any> = {
+  esquis: GiSkis,
+  snowboards: GiSnowboard,
+  botas_esqui: GiSkiBoot,
+  botas_snowboard: GiWalkingBoot,
+  bastones: GiSkier,
+  cascos: GiFullMotorcycleHelmet,
+  guantes: GiWinterGloves,
+  fijaciones: FaSkiingNordic,
+  parkas: GiMonclerJacket,
+  pantalones: GiArmoredPants,
+  antiparras: GiProtectionGlasses,
+  mochilas: GiLightBackpack,
+  bolsos: GiDuffelBag,
+  equipo_avalanchas: GiRadarSweep,
+  camaras_accion: GiPhotoCamera,
+  otros: GiMountaintop,
+}
+
+interface SoldProduct {
   id: string
   product_type: string
   brand: string
   model: string | null
   condition: string
   region: string
-  listing_price: number
+  price: number
   sale_price: number | null
-  price_difference: number | null
-  listed_at: string
-  recorded_at: string
-  seller_name: string | null
-  seller_email: string | null
+  created_at: string
+  updated_at: string
+  anon_contact: string | null
+  slug: string
+  users: { name: string | null; email: string; phone: string | null } | null
+}
+
+interface CatalogProduct {
+  product_type: string
+  status: string
+  price: number
 }
 
 function formatCLP(n: number) {
@@ -26,111 +60,114 @@ function formatCLP(n: number) {
 }
 
 export default function FinanzasPage() {
-  const [records, setRecords] = useState<SaleRecord[]>([])
+  const [sold, setSold] = useState<SoldProduct[]>([])
+  const [all, setAll] = useState<CatalogProduct[]>([])
   const [loading, setLoading] = useState(true)
-  const [typeFilter, setTypeFilter] = useState<string>('')
+  const [typeFilter, setTypeFilter] = useState('')
   const [search, setSearch] = useState('')
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('sales_history')
-        .select('id, product_type, brand, model, condition, region, listing_price, sale_price, price_difference, listed_at, recorded_at, seller_name, seller_email')
-        .eq('status', 'sold')
-        .order('recorded_at', { ascending: false })
 
-      setRecords((data as SaleRecord[]) || [])
+      const [{ data: soldData }, { data: allData }] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, product_type, brand, model, condition, region, price, sale_price, created_at, updated_at, anon_contact, slug, users(name, email, phone)')
+          .eq('status', 'sold')
+          .order('updated_at', { ascending: false }),
+
+        supabase
+          .from('products')
+          .select('product_type, status, price')
+          .in('status', ['pending', 'approved', 'sold', 'archived']),
+      ])
+
+      setSold((soldData as unknown as SoldProduct[]) || [])
+      setAll(allData || [])
       setLoading(false)
     }
     load()
   }, [])
 
-  // ─── By category (uses ALL records from sales_history, not just sold) ───
-  const [allRecords, setAllRecords] = useState<{ product_type: string; status: string; listing_price: number }[]>([])
-
-  useEffect(() => {
-    async function loadAll() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('sales_history')
-        .select('product_type, status, listing_price')
-
-      setAllRecords(data || [])
-    }
-    loadAll()
-  }, [])
-
+  // ─── Chart: por categoría ───
   const byCategory = useMemo(() => {
     const map: Record<string, { total: number; sold: number; totalValue: number }> = {}
-    allRecords.forEach(r => {
+    all.forEach(r => {
       if (!map[r.product_type]) map[r.product_type] = { total: 0, sold: 0, totalValue: 0 }
       map[r.product_type].total++
-      map[r.product_type].totalValue += r.listing_price
+      map[r.product_type].totalValue += r.price
       if (r.status === 'sold') map[r.product_type].sold++
     })
     return Object.entries(map)
-      .map(([type, data]) => ({
+      .map(([type, d]) => ({
         type,
-        ...data,
-        notSold: data.total - data.sold,
-        avgPrice: Math.round(data.totalValue / data.total),
-        soldPct: data.total > 0 ? (data.sold / data.total) * 100 : 0,
+        ...d,
+        notSold: d.total - d.sold,
+        avgPrice: Math.round(d.totalValue / d.total),
+        soldPct: d.total > 0 ? (d.sold / d.total) * 100 : 0,
       }))
       .sort((a, b) => b.total - a.total)
-  }, [allRecords])
+  }, [all])
 
   // ─── Filtered sold table ───
   const filtered = useMemo(() => {
-    return records.filter(r => {
+    return sold.filter(r => {
       if (typeFilter && r.product_type !== typeFilter) return false
       if (search) {
         const q = search.toLowerCase()
-        const text = [r.brand, r.model, r.seller_name, r.seller_email].filter(Boolean).join(' ').toLowerCase()
+        const sellerName = r.users?.name || ''
+        const sellerEmail = r.users?.email || ''
+        const text = [r.brand, r.model, sellerName, sellerEmail, r.anon_contact].filter(Boolean).join(' ').toLowerCase()
         if (!text.includes(q)) return false
       }
       return true
     })
-  }, [records, typeFilter, search])
+  }, [sold, typeFilter, search])
 
   if (loading) return <AdminTableSkeleton />
+
+  const totalListing = filtered.reduce((s, r) => s + r.price, 0)
+  const soldWithPrice = filtered.filter(r => r.sale_price !== null)
+  const totalSale = soldWithPrice.reduce((s, r) => s + (r.sale_price ?? 0), 0)
 
   return (
     <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-body text-2xl font-black text-gray-900">Finanzas</h1>
-        <p className="text-sm text-gray-500 mt-1">Historial de ventas · {records.length} vendidos</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {sold.length} vendidos · {all.filter(r => r.status === 'approved').length} activos en catálogo
+        </p>
       </div>
 
       {/* ─── Category Chart ─── */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
-        <h2 className="text-sm font-bold text-gray-900 mb-5">Proporcion por categoria</h2>
+        <h2 className="text-sm font-bold text-gray-900 mb-5">Proporción por categoría</h2>
         <div className="space-y-4">
           {byCategory.map(cat => (
             <div key={cat.type}>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-medium text-gray-700">{PRODUCT_TYPES[cat.type] || cat.type}</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  {(() => { const Icon = TYPE_ICONS[cat.type] || GiMountaintop; return <Icon className="w-4 h-4 text-gray-400 shrink-0" /> })()}
+                  {PRODUCT_TYPES[cat.type] || cat.type}
+                </span>
                 <div className="text-right">
-                  <span className="text-xs text-gray-400 mr-1.5">Prom. venta</span>
+                  <span className="text-xs text-gray-400 mr-1.5">Prom. precio</span>
                   <span className="text-sm font-black text-gray-900">{formatCLP(cat.avgPrice)}</span>
                 </div>
               </div>
-              {/* Bar — full width with diagonal / separator */}
               <div className="relative h-9 rounded-lg overflow-hidden">
                 <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                  {/* Sold portion */}
                   <polygon
                     points={`0,0 ${cat.soldPct},0 ${Math.max(cat.soldPct - 3, 0)},100 0,100`}
                     className="fill-brand-500"
                   />
-                  {/* Not sold portion */}
                   <polygon
                     points={`${cat.soldPct},0 100,0 100,100 ${Math.max(cat.soldPct - 3, 0)},100`}
                     className="fill-brand-100"
                   />
                 </svg>
-                {/* Labels inside bars */}
                 <div className="absolute inset-0 flex">
                   <div className="flex items-center justify-center text-white text-xs font-bold" style={{ width: `${Math.max(cat.soldPct, cat.sold > 0 ? 20 : 0)}%` }}>
                     {cat.sold > 0 && cat.sold}
@@ -140,7 +177,6 @@ export default function FinanzasPage() {
                   </div>
                 </div>
               </div>
-              {/* Labels below */}
               <div className="flex mt-1">
                 <div style={{ width: `${Math.max(cat.soldPct, cat.sold > 0 ? 20 : 0)}%` }} className="text-center">
                   <span className="text-[10px] text-gray-400">Vendidos</span>
@@ -158,7 +194,7 @@ export default function FinanzasPage() {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-gray-100">
           <h2 className="text-sm font-bold text-gray-900 mb-3">Productos vendidos</h2>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={search}
@@ -169,7 +205,7 @@ export default function FinanzasPage() {
             <select
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm w-40"
+              className="border rounded-lg px-3 py-2 text-sm sm:w-40"
             >
               <option value="">Todos los tipos</option>
               {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
@@ -186,10 +222,10 @@ export default function FinanzasPage() {
                 <th className="px-4 py-3 font-medium">Producto</th>
                 <th className="px-4 py-3 font-medium hidden sm:table-cell">Vendedor</th>
                 <th className="px-4 py-3 font-medium">Precio pub.</th>
-                <th className="px-4 py-3 font-medium">Precio venta</th>
+                <th className="px-4 py-3 font-medium hidden md:table-cell">Precio venta</th>
                 <th className="px-4 py-3 font-medium hidden md:table-cell">Diferencia</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">Region</th>
-                <th className="px-4 py-3 font-medium hidden lg:table-cell">Fecha</th>
+                <th className="px-4 py-3 font-medium hidden md:table-cell">Región</th>
+                <th className="px-4 py-3 font-medium hidden lg:table-cell">Publicado</th>
               </tr>
             </thead>
             <tbody>
@@ -201,40 +237,48 @@ export default function FinanzasPage() {
                 </tr>
               ) : filtered.map(r => {
                 const title = [r.brand, r.model].filter(Boolean).join(' ')
-                const diff = r.price_difference
+                const sellerName = r.users?.name || 'Anónimo'
+                const sellerContact = r.users?.email || r.anon_contact || '—'
+                const diff = r.sale_price !== null ? r.price - r.sale_price : null
                 return (
                   <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div>
-                        <span className="font-medium text-gray-900">{title}</span>
-                        <span className="block text-xs text-gray-400">{PRODUCT_TYPES[r.product_type] || r.product_type}</span>
-                        <span className="block sm:hidden text-xs text-gray-500 mt-0.5">{r.seller_name || '—'}</span>
+                        <a href={`/producto/${r.slug}`} className="font-medium text-gray-900 hover:text-brand-500 transition-colors">
+                          {title}
+                        </a>
+                        <span className="block text-xs text-gray-400">{PRODUCT_TYPES[r.product_type] || r.product_type} · {CONDITIONS[r.condition] || r.condition}</span>
+                        <span className="block sm:hidden text-xs text-gray-500 mt-0.5">{sellerName}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <div>
-                        <span className="text-gray-700">{r.seller_name || '—'}</span>
-                        {r.seller_email && <span className="block text-xs text-gray-400">{r.seller_email}</span>}
+                        <span className="text-gray-700">{sellerName}</span>
+                        <span className="block text-xs text-gray-400">{sellerContact}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {formatCLP(r.listing_price)}
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      {formatCLP(r.price)}
                     </td>
-                    <td className="px-4 py-3 font-bold text-green-600">
-                      {r.sale_price ? formatCLP(r.sale_price) : '—'}
+                    <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap">
+                      {r.sale_price !== null
+                        ? <span className="font-bold text-green-600">{formatCLP(r.sale_price)}</span>
+                        : <span className="text-gray-300">—</span>
+                      }
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {diff !== null && diff !== 0 ? (
-                        <span className={`text-xs font-medium ${diff > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                          {diff > 0 ? '-' : '+'}{formatCLP(Math.abs(diff))}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
+                    <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap">
+                      {diff === null
+                        ? <span className="text-gray-300">—</span>
+                        : diff === 0
+                          ? <span className="text-xs text-gray-400">$0</span>
+                          : <span className={`text-xs font-medium ${diff > 0 ? 'text-orange-500' : 'text-green-500'}`}>
+                              {diff > 0 ? '-' : '+'}{formatCLP(Math.abs(diff))}
+                            </span>
+                      }
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell text-gray-500">{r.region}</td>
-                    <td className="px-4 py-3 hidden lg:table-cell text-gray-500">
-                      {new Date(r.listed_at).toLocaleDateString('es-CL')}
+                    <td className="px-4 py-3 hidden lg:table-cell text-gray-400 whitespace-nowrap">
+                      {new Date(r.created_at).toLocaleDateString('es-CL')}
                     </td>
                   </tr>
                 )
@@ -244,11 +288,15 @@ export default function FinanzasPage() {
         </div>
 
         {filtered.length > 0 && (
-          <div className="px-4 py-3 border-t bg-gray-50/50 flex items-center justify-between text-xs text-gray-500">
+          <div className="px-4 py-3 border-t bg-gray-50/50 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
             <span>{filtered.length} ventas</span>
             <div className="flex gap-4">
-              <span>Total publicado: <span className="font-bold text-gray-700">{formatCLP(filtered.reduce((s, r) => s + r.listing_price, 0))}</span></span>
-              <span>Total vendido: <span className="font-bold text-green-600">{formatCLP(filtered.reduce((s, r) => s + (r.sale_price || 0), 0))}</span></span>
+              <span>Total publicado: <span className="font-bold text-gray-700">{formatCLP(totalListing)}</span></span>
+              {soldWithPrice.length > 0 && (
+                <span>Total venta real: <span className="font-bold text-green-600">{formatCLP(totalSale)}</span>
+                  <span className="text-gray-400 ml-1">({soldWithPrice.length}/{filtered.length} con precio)</span>
+                </span>
+              )}
             </div>
           </div>
         )}

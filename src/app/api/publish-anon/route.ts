@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       if (!file.size) continue
 
       const ext = file.name.split('.').pop() || 'jpg'
-      const path = buildImagePath('anon', product.id, brand.trim(), model?.trim() || null, i, ext)
+      const path = buildImagePath(slug, i, ext)
       const buffer = Buffer.from(await file.arrayBuffer())
 
       const { error: uploadError } = await supabase.storage

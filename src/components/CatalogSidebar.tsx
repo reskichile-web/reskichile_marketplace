@@ -11,7 +11,7 @@ import {
   GiProtectionGlasses, GiRadarSweep, GiPhotoCamera,
 } from 'react-icons/gi'
 import { FaSkiingNordic } from 'react-icons/fa'
-import { AlertTriangle, CheckCircle2, Star, PackageCheck } from 'lucide-react'
+import { Recycle, CheckCircle2, Star, PackageCheck } from 'lucide-react'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
 import type { IconType } from 'react-icons'
 
@@ -41,7 +41,7 @@ const CONDITION_ICONS: Record<string, any> = {
   nuevo: Sparkles,
   usado_como_nuevo: Star,
   usado_buen_estado: CheckCircle2,
-  usado_aceptable: AlertTriangle,
+  usado_aceptable: Recycle,
 }
 
 interface Props {

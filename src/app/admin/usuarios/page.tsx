@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 
@@ -12,27 +12,108 @@ interface UserWithProducts {
   instagram: string | null
   is_admin: boolean
   must_change_password: boolean
+  keep: boolean | null
   created_at: string
   product_count: number
+}
+
+type InviteState = 'idle' | 'loading' | 'sent' | 'error'
+
+function buildWaLink(phone: string, name: string | null, link: string): string {
+  const clean = phone.replace(/\D/g, '')
+  const number = clean.startsWith('56') ? clean : `56${clean}`
+  const firstName = name ? name.split(' ')[0] : ''
+  const greeting = firstName ? `Hola ${firstName}, ` : 'Hola, '
+  const text = `${greeting}te enviamos el link para activar tu cuenta en ReskiChile: ${link}`
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`
+}
+
+function InviteButtons({ user }: { user: UserWithProducts }) {
+  const [emailState, setEmailState] = useState<InviteState>('idle')
+  const [waLink, setWaLink] = useState<string | null>(null)
+  const [waLoading, setWaLoading] = useState(false)
+
+  const getLink = useCallback(async (): Promise<string | null> => {
+    const res = await fetch('/api/admin/invite-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, email: user.email, name: user.name }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.link) return null
+    return data.link
+  }, [user.id, user.email, user.name])
+
+  async function sendEmail() {
+    setEmailState('loading')
+    const link = await getLink()
+    if (!link) { setEmailState('error'); setTimeout(() => setEmailState('idle'), 3000); return }
+    setEmailState('sent')
+    setTimeout(() => setEmailState('idle'), 4000)
+  }
+
+  async function openWhatsApp() {
+    if (!user.phone) return
+    if (waLink) { window.open(waLink, '_blank'); return }
+    setWaLoading(true)
+    const link = await getLink()
+    setWaLoading(false)
+    if (!link) return
+    const url = buildWaLink(user.phone, user.name, link)
+    setWaLink(url)
+    window.open(url, '_blank')
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <button
+        onClick={sendEmail}
+        disabled={emailState === 'loading' || emailState === 'sent'}
+        className={`text-xs px-2.5 py-1 rounded font-medium border transition-all ${
+          emailState === 'sent'
+            ? 'bg-green-50 text-green-700 border-green-200'
+            : emailState === 'error'
+            ? 'bg-red-50 text-red-600 border-red-200'
+            : emailState === 'loading'
+            ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-wait'
+            : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-600'
+        }`}
+      >
+        {emailState === 'loading' ? '...' : emailState === 'sent' ? '✓ Enviado' : emailState === 'error' ? 'Error' : 'Correo'}
+      </button>
+
+      {user.phone && (
+        <button
+          onClick={openWhatsApp}
+          disabled={waLoading}
+          className={`text-xs px-2.5 py-1 rounded font-medium border transition-all ${
+            waLoading
+              ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-wait'
+              : 'bg-white text-green-700 border-green-200 hover:bg-green-50'
+          }`}
+        >
+          {waLoading ? '...' : 'WhatsApp'}
+        </button>
+      )}
+    </div>
+  )
 }
 
 export default function UsuariosPage() {
   const [users, setUsers] = useState<UserWithProducts[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'with_products' | 'no_products' | 'pending_access'>('all')
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'pending_access'>('all')
   const [search, setSearch] = useState('')
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
 
-      // Get all users
       const { data: usersData } = await supabase
         .from('users')
-        .select('id, email, name, phone, instagram, is_admin, must_change_password, created_at')
+        .select('id, email, name, phone, instagram, is_admin, must_change_password, keep, created_at')
         .order('created_at', { ascending: false })
 
-      // Get product counts per seller
       const { data: products } = await supabase
         .from('products')
         .select('seller_id')
@@ -55,9 +136,9 @@ export default function UsuariosPage() {
 
   const filtered = useMemo(() => {
     return users.filter(u => {
-      if (filter === 'with_products' && u.product_count === 0) return false
-      if (filter === 'no_products' && u.product_count > 0) return false
-      if (filter === 'pending_access' && !u.must_change_password) return false
+      if (filter === 'active' && (u.keep !== true || u.must_change_password)) return false
+      if (filter === 'inactive' && u.keep !== false) return false
+      if (filter === 'pending_access' && (!u.must_change_password || u.keep === false)) return false
       if (search) {
         const q = search.toLowerCase()
         const match = [u.email, u.name, u.phone].filter(Boolean).join(' ').toLowerCase()
@@ -69,15 +150,17 @@ export default function UsuariosPage() {
 
   const stats = useMemo(() => ({
     total: users.length,
-    withProducts: users.filter(u => u.product_count > 0).length,
-    noProducts: users.filter(u => u.product_count === 0).length,
-    pendingAccess: users.filter(u => u.must_change_password).length,
+    active: users.filter(u => u.keep === true && !u.must_change_password).length,
+    inactive: users.filter(u => u.keep === false).length,
+    pendingAccess: users.filter(u => u.must_change_password && u.keep !== false).length,
   }), [users])
 
   if (loading) return <AdminTableSkeleton />
 
+  const showInviteCol = filter === 'pending_access' || filtered.some(u => u.keep === true && u.must_change_password)
+
   return (
-    <div className="max-w-7xl mx-auto mt-0 px-8 pt-4 pb-16">
+    <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
       <div className="mb-6">
         <h1 className="font-body text-2xl font-black text-gray-900">Usuarios</h1>
         <p className="text-sm text-gray-500 mt-1">{stats.total} usuarios registrados</p>
@@ -88,9 +171,9 @@ export default function UsuariosPage() {
         <div className="flex gap-2 overflow-x-auto">
           {([
             { key: 'all', label: 'Todos', count: stats.total },
-            { key: 'with_products', label: 'Con publicaciones', count: stats.withProducts },
-            { key: 'no_products', label: 'Sin publicaciones', count: stats.noProducts },
+            { key: 'active', label: 'Activos', count: stats.active },
             { key: 'pending_access', label: 'Acceso pendiente', count: stats.pendingAccess },
+            { key: 'inactive', label: 'Inactivos', count: stats.inactive },
           ] as const).map(f => (
             <button
               key={f.key}
@@ -122,12 +205,13 @@ export default function UsuariosPage() {
               <th className="px-5 py-3 font-medium hidden md:table-cell">Fecha</th>
               <th className="px-5 py-3 font-medium text-center">Publicaciones</th>
               <th className="px-5 py-3 font-medium">Estado</th>
+              {showInviteCol && <th className="px-5 py-3 font-medium">Invitación</th>}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-gray-400">
+                <td colSpan={showInviteCol ? 6 : 5} className="px-5 py-8 text-center text-gray-400">
                   No hay usuarios que coincidan
                 </td>
               </tr>
@@ -162,7 +246,11 @@ export default function UsuariosPage() {
                   )}
                 </td>
                 <td className="px-5 py-3">
-                  {user.must_change_password ? (
+                  {user.keep === false ? (
+                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
+                      Inactivo
+                    </span>
+                  ) : user.must_change_password ? (
                     <span className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700">
                       Sin acceso
                     </span>
@@ -172,6 +260,15 @@ export default function UsuariosPage() {
                     </span>
                   )}
                 </td>
+                {showInviteCol && (
+                  <td className="px-5 py-3">
+                    {user.keep === true && user.must_change_password ? (
+                      <InviteButtons user={user} />
+                    ) : (
+                      <span className="text-gray-200">—</span>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

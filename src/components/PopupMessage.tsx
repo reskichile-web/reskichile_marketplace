@@ -5,12 +5,12 @@ import { createPortal } from 'react-dom'
 
 interface Props {
   message: string
-  type?: 'error' | 'warning' | 'info'
+  type?: 'error' | 'warning' | 'info' | 'success'
   onClose: () => void
   autoClose?: number
 }
 
-export default function PopupMessage({ message, onClose, autoClose = 5000 }: Props) {
+export default function PopupMessage({ message, type = 'info', onClose, autoClose = 5000 }: Props) {
   useEffect(() => {
     if (autoClose > 0) {
       const timer = setTimeout(onClose, autoClose)
@@ -36,13 +36,20 @@ export default function PopupMessage({ message, onClose, autoClose = 5000 }: Pro
         {/* Logo */}
         <img src="/logo.svg" alt="" className="h-6 mx-auto mb-5" />
 
-        {/* Icon — triangle with ! */}
+        {/* Icon */}
         <div className="flex justify-center mb-3">
-          <svg className="w-10 h-10 text-gray-700" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L1 21h22L12 2z" fill="currentColor" opacity={0.08} stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
-            <path d="M12 10v4" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
-            <circle cx="12" cy="17" r="0.8" fill="currentColor" />
-          </svg>
+          {type === 'success' ? (
+            <svg className="w-10 h-10 text-green-500" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" fill="currentColor" opacity={0.1} stroke="currentColor" strokeWidth={1.5} />
+              <path d="M7.5 12l3 3 6-6" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg className="w-10 h-10 text-gray-700" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L1 21h22L12 2z" fill="currentColor" opacity={0.08} stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
+              <path d="M12 10v4" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+              <circle cx="12" cy="17" r="0.8" fill="currentColor" />
+            </svg>
+          )}
         </div>
 
         {/* Message */}

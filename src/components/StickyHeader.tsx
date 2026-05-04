@@ -7,8 +7,8 @@ export default function StickyHeader({ children }: { children: React.ReactNode }
   const [hidden, setHidden] = useState(false)
   const pathname = usePathname()
 
-  // Don't hide on product pages
-  const alwaysVisible = pathname.startsWith('/producto/')
+  // Don't hide on product pages or admin
+  const alwaysVisible = pathname.startsWith('/producto/') || pathname.startsWith('/admin')
   // Catalog renders its own custom header — global one stays out
   const hiddenOnRoute = pathname.startsWith('/catalogo')
 

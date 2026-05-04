@@ -7,7 +7,7 @@ import { PRODUCT_TYPES, REGIONS } from '@/lib/constants'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
 import PopupMessage from '@/components/PopupMessage'
 import BrandInput from '@/components/BrandInput'
-import { AlertTriangle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
+import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
 import PublishLoadingOverlay from '@/components/PublishLoadingOverlay'
 import { buildImagePath } from '@/lib/storage-utils'
@@ -48,7 +48,7 @@ const TYPE_ICON_COMPONENTS: Record<string, any> = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CONDITION_ICONS: Record<string, any> = {
-  usado_aceptable: AlertTriangle,
+  usado_aceptable: Recycle,
   usado_buen_estado: CheckCircle2,
   usado_como_nuevo: Star,
   nuevo: Sparkles,
@@ -268,11 +268,11 @@ export default function SellPage() {
       setUploadProgress({ current: i + 1, total: images.length })
       const file = images[i]
       const ext = file.name.split('.').pop() || 'jpg'
-      const path = buildImagePath(uid, product.id, brand.trim(), model.trim() || null, i, ext)
+      const path = buildImagePath(slug, i, ext)
 
       const { error: uploadError } = await supabase.storage
         .from('product-images')
-        .upload(path, file)
+        .upload(path, file, { contentType: file.type })
 
       if (uploadError) {
         console.error('Upload error:', uploadError)
@@ -554,7 +554,6 @@ export default function SellPage() {
                     onClick={() => {
                       setCondition(cond.key)
                       if (cond.key === 'nuevo_sellado') setSeasonsUsed('')
-                      else if (!seasonsUsed) setSeasonsUsed('1')
                       setFieldErrors(prev => { const n = {...prev}; delete n.condition; return n })
                     }}
                     className={`flex-1 flex flex-col items-center gap-1.5 p-2.5 rounded-lg border-2 transition-all ${isSelected ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
@@ -571,14 +570,23 @@ export default function SellPage() {
           {condition && condition !== 'nuevo_sellado' && (
             <div>
               <label className="block text-sm font-medium mb-1">Temporadas de uso</label>
-              <input
-                type="number"
-                min="1"
-                value={seasonsUsed}
-                onChange={e => setSeasonsUsed(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2.5"
-                placeholder="1"
-              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSeasonsUsed('')}
+                  className={`px-3 py-2.5 rounded-lg border-2 text-sm whitespace-nowrap transition-all ${seasonsUsed === '' ? 'border-brand-500 bg-brand-50 text-brand-500 font-medium' : 'border-gray-100 text-gray-500 hover:border-gray-300'}`}
+                >
+                  Sin especificar
+                </button>
+                <input
+                  type="number"
+                  min="0"
+                  value={seasonsUsed}
+                  onChange={e => setSeasonsUsed(e.target.value)}
+                  className="flex-1 border rounded-lg px-3 py-2.5"
+                  placeholder="Ej. 1"
+                />
+              </div>
             </div>
           )}
 

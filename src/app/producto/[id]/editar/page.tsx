@@ -17,6 +17,10 @@ import {
   type AttributeField,
 } from '@/lib/constants'
 
+const ACCEPTED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+const ACCEPTED_LABEL = 'JPG, PNG o WebP'
+const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
+
 function InlineField({ label, value, onSave, type = 'text', options }: {
   label: string
   value: string
@@ -107,6 +111,10 @@ export default function EditProductPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const [popup, setPopup] = useState<{ title: string; message: string } | null>(null)
+  const [compressing, setCompressing] = useState<{ current: number; total: number } | null>(null)
+  const [uploading, setUploading] = useState<{ current: number; total: number } | null>(null)
+
   const [form, setForm] = useState({
     product_type: '',
     brand: '',
@@ -127,6 +135,7 @@ export default function EditProductPage() {
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([])
   const [imageOrder, setImageOrder] = useState<string[]>([])
   const [sellerId, setSellerId] = useState<string>('')
+  const [productSlug, setProductSlug] = useState<string>('')
 
   useEffect(() => {
     async function load() {
@@ -161,6 +170,7 @@ export default function EditProductPage() {
       })
       setAttributes((product.attributes as Record<string, string | boolean>) || {})
       setSellerId(product.seller_id || '')
+      setProductSlug(product.slug || '')
       const imgs = (product.product_images || []) as { id: string; url: string; order: number }[]
       const sorted = imgs.sort((a, b) => a.order - b.order)
       setExistingImages(sorted)
@@ -220,15 +230,80 @@ export default function EditProductPage() {
   }
 
   async function handleAddImages(files: File[]) {
-    const compressed = await Promise.all(
-      files.map(f => imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true }))
-    )
-    const items = compressed.map(file => {
-      const id = `new-${newImageCounter.current++}`
-      return { id, file, preview: URL.createObjectURL(file) }
-    })
-    setNewImages(prev => [...prev, ...items])
-    setImageOrder(prev => [...prev, ...items.map(i => i.id)])
+    // Classify: valid, heic-to-convert, invalid format, too large
+    const invalidFormat: string[] = []
+    const tooLarge: string[] = []
+    const heicToConvert: File[] = []
+    const valid: File[] = []
+
+    for (const f of files) {
+      if (f.size > MAX_FILE_SIZE) { tooLarge.push(f.name); continue }
+      const isHeic = /\.(heic|heif)$/i.test(f.name) || f.type === 'image/heic' || f.type === 'image/heif'
+      if (isHeic) { heicToConvert.push(f); continue }
+      if (!ACCEPTED_FORMATS.includes(f.type)) { invalidFormat.push(f.name); continue }
+      valid.push(f)
+    }
+
+    if (invalidFormat.length > 0 || tooLarge.length > 0) {
+      const parts: string[] = []
+      if (invalidFormat.length > 0) {
+        parts.push(`Formato no soportado: ${invalidFormat.join(', ')}.\n\nAceptamos ${ACCEPTED_LABEL}.`)
+      }
+      if (tooLarge.length > 0) {
+        parts.push(`Archivo muy pesado (máx 25MB): ${tooLarge.join(', ')}.`)
+      }
+      setPopup({ title: 'Foto rechazada', message: parts.join('\n\n') })
+      if (valid.length === 0 && heicToConvert.length === 0) return
+    }
+
+    try {
+      const totalSteps = heicToConvert.length + valid.length + heicToConvert.length // convert + compress all
+      let stepCount = 0
+      setCompressing({ current: 0, total: totalSteps })
+
+      // Convert HEIC → JPEG client-side
+      const convertedFromHeic: File[] = []
+      if (heicToConvert.length > 0) {
+        const heic2any = (await import('heic2any')).default
+        for (const file of heicToConvert) {
+          try {
+            const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 })
+            const finalBlob = Array.isArray(blob) ? blob[0] : blob
+            const jpegName = file.name.replace(/\.(heic|heif)$/i, '.jpg')
+            convertedFromHeic.push(new File([finalBlob], jpegName, { type: 'image/jpeg' }))
+          } catch {
+            setPopup({
+              title: 'No se pudo convertir HEIC',
+              message: `No pudimos convertir ${file.name} a JPG.\n\nProbá: en tu iPhone abre Ajustes → Cámara → Formatos → "Más compatible" y vuelve a tomar la foto.`,
+            })
+          }
+          stepCount++
+          setCompressing({ current: stepCount, total: totalSteps })
+        }
+      }
+
+      // Compress all (originals + converted)
+      const allToCompress = [...valid, ...convertedFromHeic]
+      const compressed: File[] = []
+      for (const file of allToCompress) {
+        const result = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true })
+        compressed.push(result)
+        stepCount++
+        setCompressing({ current: stepCount, total: totalSteps })
+      }
+
+      const items = compressed.map(file => {
+        const id = `new-${newImageCounter.current++}`
+        return { id, file, preview: URL.createObjectURL(file) }
+      })
+      setNewImages(prev => [...prev, ...items])
+      setImageOrder(prev => [...prev, ...items.map(i => i.id)])
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido'
+      setPopup({ title: 'Error procesando foto', message: `No pudimos procesar una de las fotos: ${msg}\n\nIntenta con otra foto en formato ${ACCEPTED_LABEL}.` })
+    } finally {
+      setCompressing(null)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -277,24 +352,41 @@ export default function EditProductPage() {
 
     // Update order and upload new images — respects unified imageOrder
     const finalOrder = imageOrder.filter(id => !deletedImageIds.includes(id))
+    const failedUploads: string[] = []
+    const newImagesInOrder = finalOrder.filter(id => id.startsWith('new-'))
+    let uploadedCount = 0
+    setUploading({ current: 0, total: newImagesInOrder.length })
     let orderIndex = 0
 
     for (const id of finalOrder) {
       if (id.startsWith('new-')) {
-        // Upload new image at this position
         const newImg = newImages.find(img => img.id === id)
         if (!newImg) continue
         const ext = newImg.file.name.split('.').pop() || 'jpg'
-        const path = buildImagePath(sellerId, params.id as string, form.brand.trim(), form.model.trim() || null, orderIndex, ext)
-        const { error: uploadError } = await supabase.storage.from('product-images').upload(path, newImg.file)
-        if (uploadError) continue
-        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
-        await supabase.from('product_images').insert({ product_id: params.id as string, url: publicUrl, order: orderIndex })
+        const path = buildImagePath(productSlug || params.id as string, orderIndex, ext)
+        const { error: uploadError } = await supabase.storage.from('product-images').upload(path, newImg.file, { contentType: newImg.file.type })
+        if (uploadError) {
+          failedUploads.push(`${newImg.file.name}: ${uploadError.message}`)
+        } else {
+          const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
+          await supabase.from('product_images').insert({ product_id: params.id as string, url: publicUrl, order: orderIndex })
+        }
+        uploadedCount++
+        setUploading({ current: uploadedCount, total: newImagesInOrder.length })
       } else {
-        // Update existing image order
         await supabase.from('product_images').update({ order: orderIndex }).eq('id', id)
       }
       orderIndex++
+    }
+    setUploading(null)
+
+    if (failedUploads.length > 0) {
+      setSaving(false)
+      setPopup({
+        title: 'Algunas fotos no se subieron',
+        message: `Se guardaron los datos del producto pero estas fotos fallaron:\n\n${failedUploads.join('\n')}\n\nIntenta subirlas de nuevo.`,
+      })
+      return
     }
 
     router.push(`/producto/${params.id}`)
@@ -336,6 +428,29 @@ export default function EditProductPage() {
 
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>
+      )}
+
+      {/* Error popup for image issues */}
+      {popup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPopup(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <h3 className="font-body text-lg font-black text-gray-900">{popup.title}</h3>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{popup.message}</p>
+            <button
+              onClick={() => setPopup(null)}
+              className="mt-5 w-full bg-gray-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-800"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -457,6 +572,7 @@ export default function EditProductPage() {
             onReorder={handleReorderImages}
             onRemove={handleRemoveImage}
             onAdd={handleAddImages}
+            compressing={compressing}
           />
         </div>
 
@@ -464,10 +580,20 @@ export default function EditProductPage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={saving}
-            className="flex-1 bg-brand-500 text-white py-3 rounded-lg hover:bg-brand-600 disabled:opacity-50 font-medium transition-colors"
+            disabled={saving || compressing !== null}
+            className="flex-1 bg-brand-500 text-white py-3 rounded-lg hover:bg-brand-600 disabled:opacity-50 font-medium transition-colors flex items-center justify-center gap-2"
           >
-            {saving ? 'Guardando...' : 'Guardar cambios'}
+            {(saving || uploading) && (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+              </svg>
+            )}
+            {uploading
+              ? `Subiendo foto ${uploading.current} de ${uploading.total}...`
+              : saving
+              ? 'Guardando...'
+              : 'Guardar cambios'}
           </button>
           <button
             type="button"

@@ -27,7 +27,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' | 'info' } | null>(null)
+  const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' | 'info' | 'success' } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function ProfilePage() {
 
     // Optimistic: show success immediately
     setSaving(true)
-    setPopup({ message: 'Perfil actualizado', type: 'info' })
+    setPopup({ message: 'Perfil actualizado', type: 'success' })
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -320,7 +320,7 @@ export default function ProfilePage() {
 
 const PASSWORD_MIN = 6
 
-function ChangePasswordSection({ onPopup }: { onPopup: (p: { message: string; type: 'error' | 'warning' | 'info' }) => void }) {
+function ChangePasswordSection({ onPopup }: { onPopup: (p: { message: string; type: 'error' | 'warning' | 'info' | 'success' }) => void }) {
   const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -346,7 +346,7 @@ function ChangePasswordSection({ onPopup }: { onPopup: (p: { message: string; ty
       return
     }
 
-    onPopup({ message: 'Contraseña actualizada', type: 'info' })
+    onPopup({ message: 'Contraseña actualizada', type: 'success' })
     setPassword('')
     setConfirmPassword('')
     setOpen(false)
