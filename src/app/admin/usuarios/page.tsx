@@ -91,19 +91,17 @@ Equipo ReSkiChile`
   async function openEmailModal() {
     setErrorMsg('')
     setSendStatus('idle')
+    setEmailSubject('Configura tu acceso a ReSkiChile')
+    setEmailBodyDraft('')
+    setEmailModalOpen(true)
     setPreparing(true)
     const link = await fetchInviteLink()
     setPreparing(false)
     if (!link) {
       setSendStatus('error')
-      setEmailModalOpen(true)
-      setEmailSubject(`Configura tu acceso a ReSkiChile`)
-      setEmailBodyDraft('')
       return
     }
-    setEmailSubject(`Configura tu acceso a ReSkiChile`)
     setEmailBodyDraft(buildEmailBody(link))
-    setEmailModalOpen(true)
   }
 
   async function sendEmail() {
@@ -132,14 +130,9 @@ Equipo ReSkiChile`
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={openEmailModal}
-          disabled={preparing}
-          className={`text-xs px-2.5 py-1 rounded font-medium border transition-all ${
-            preparing
-              ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-wait'
-              : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-600'
-          }`}
+          className="text-xs px-2.5 py-1 rounded font-medium border bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-600 transition-all"
         >
-          {preparing ? '...' : 'Correo'}
+          Correo
         </button>
 
         {user.phone && (
@@ -164,7 +157,7 @@ Equipo ReSkiChile`
               </svg>
             </div>
             <h3 className="font-body text-lg font-black text-gray-900 mb-1">Correo enviado</h3>
-            <p className="text-sm text-gray-500 mb-5">El link de acceso fue enviado a {user.email}.</p>
+            <p className="text-sm text-gray-500 mb-5">La invitación fue enviada correctamente a {user.email}.</p>
             <button
               onClick={() => setSuccessPopup(false)}
               className="w-full bg-brand-500 text-white font-medium text-sm py-2.5 rounded-lg hover:bg-brand-600"
@@ -181,7 +174,7 @@ Equipo ReSkiChile`
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="font-body text-lg font-black text-gray-900">Enviar invitación</h3>
+                <h3 className="font-body text-lg font-black text-gray-900">Enviar correo</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Desde <span className="font-medium text-gray-700">reskichile@gmail.com</span> · Para <span className="font-medium text-gray-700">{user.email}</span>
                 </p>
@@ -209,13 +202,24 @@ Equipo ReSkiChile`
                   <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Mensaje</label>
                   <span className="text-[10px] text-gray-400">Usa <code className="bg-gray-100 px-1 rounded">**palabra**</code> para negrita</span>
                 </div>
-                <textarea
-                  value={emailBodyDraft}
-                  onChange={e => setEmailBodyDraft(e.target.value)}
-                  disabled={sending}
-                  rows={14}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-light leading-relaxed focus:border-brand-500 focus:outline-none disabled:bg-gray-50 resize-none"
-                />
+                <div className="relative">
+                  <textarea
+                    value={emailBodyDraft}
+                    onChange={e => setEmailBodyDraft(e.target.value)}
+                    disabled={sending || preparing}
+                    rows={14}
+                    placeholder={preparing ? 'Generando link de acceso...' : ''}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-light leading-relaxed focus:border-brand-500 focus:outline-none disabled:bg-gray-50 resize-none"
+                  />
+                  {preparing && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <svg className="w-6 h-6 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                      </svg>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {sendStatus === 'error' && (
@@ -235,7 +239,7 @@ Equipo ReSkiChile`
               </button>
               <button
                 onClick={sendEmail}
-                disabled={sending || !emailSubject.trim() || !emailBodyDraft.trim()}
+                disabled={sending || preparing || !emailSubject.trim() || !emailBodyDraft.trim()}
                 className="px-5 py-2 text-sm bg-brand-500 text-white font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 flex items-center gap-2"
               >
                 {sending ? (
