@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 
@@ -17,83 +17,240 @@ interface UserWithProducts {
   product_count: number
 }
 
-type InviteState = 'idle' | 'loading' | 'sent' | 'error'
-
-function buildWaLink(phone: string, name: string | null, link: string): string {
-  const clean = phone.replace(/\D/g, '')
-  const number = clean.startsWith('56') ? clean : `56${clean}`
-  const firstName = name ? name.split(' ')[0] : ''
-  const greeting = firstName ? `Hola ${firstName}, ` : 'Hola, '
-  const text = `${greeting}te enviamos el link para activar tu cuenta en ReskiChile: ${link}`
-  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`
+function cleanPhone(phone: string): string {
+  const p = phone.replace(/[^\d+]/g, '')
+  if (p.startsWith('+')) return p.slice(1)
+  if (p.startsWith('56')) return p
+  if (p.startsWith('9')) return '56' + p
+  return p
 }
 
 function InviteButtons({ user }: { user: UserWithProducts }) {
-  const [emailState, setEmailState] = useState<InviteState>('idle')
-  const [waLink, setWaLink] = useState<string | null>(null)
-  const [waLoading, setWaLoading] = useState(false)
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBodyDraft, setEmailBodyDraft] = useState('')
+  const [preparing, setPreparing] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sent' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [successPopup, setSuccessPopup] = useState(false)
+  const [waError, setWaError] = useState('')
 
-  const getLink = useCallback(async (): Promise<string | null> => {
-    const res = await fetch('/api/admin/invite-user', {
+  const firstName = user.name?.split(' ')[0] || ''
+  const greeting = firstName ? `Hola ${firstName},` : 'Hola,'
+
+  function buildWaMessage(link: string): string {
+    return `${firstName ? `Hola ${firstName}, ` : 'Hola, '}te enviamos el link para activar tu cuenta en ReSkiChile y configurar tu contraseña: ${link}`
+  }
+
+  function buildEmailBody(link: string): string {
+    return `${greeting}
+
+Te damos la bienvenida a **ReSkiChile**. Tu cuenta ya está creada y solo falta que configures tu contraseña para entrar.
+
+Haz click en el siguiente link para definirla (expira en 24 horas):
+
+${link}
+
+Cualquier duda, respondé este correo.
+
+Saludos,
+Equipo ReSkiChile`
+  }
+
+  async function fetchInviteLink(): Promise<string | null> {
+    const res = await fetch('/api/admin/invite-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, email: user.email, name: user.name }),
+      body: JSON.stringify({ email: user.email }),
     })
     const data = await res.json()
-    if (!res.ok || !data.link) return null
-    return data.link
-  }, [user.id, user.email, user.name])
-
-  async function sendEmail() {
-    setEmailState('loading')
-    const link = await getLink()
-    if (!link) { setEmailState('error'); setTimeout(() => setEmailState('idle'), 3000); return }
-    setEmailState('sent')
-    setTimeout(() => setEmailState('idle'), 4000)
+    if (!res.ok || !data.link) {
+      setErrorMsg(data.error || 'No se pudo generar el link')
+      return null
+    }
+    return data.link as string
   }
 
   async function openWhatsApp() {
     if (!user.phone) return
-    if (waLink) { window.open(waLink, '_blank'); return }
-    setWaLoading(true)
-    const link = await getLink()
-    setWaLoading(false)
-    if (!link) return
-    const url = buildWaLink(user.phone, user.name, link)
-    setWaLink(url)
-    window.open(url, '_blank')
+    setWaError('')
+    const popup = window.open('about:blank', '_blank')
+    const link = await fetchInviteLink()
+    if (!link) {
+      popup?.close()
+      setWaError('No se pudo generar el link')
+      setTimeout(() => setWaError(''), 4000)
+      return
+    }
+    const url = `https://wa.me/${cleanPhone(user.phone)}?text=${encodeURIComponent(buildWaMessage(link))}`
+    if (popup) popup.location.href = url
+    else window.open(url, '_blank')
+  }
+
+  async function openEmailModal() {
+    setErrorMsg('')
+    setSendStatus('idle')
+    setPreparing(true)
+    const link = await fetchInviteLink()
+    setPreparing(false)
+    if (!link) {
+      setSendStatus('error')
+      setEmailModalOpen(true)
+      setEmailSubject(`Configura tu acceso a ReSkiChile`)
+      setEmailBodyDraft('')
+      return
+    }
+    setEmailSubject(`Configura tu acceso a ReSkiChile`)
+    setEmailBodyDraft(buildEmailBody(link))
+    setEmailModalOpen(true)
+  }
+
+  async function sendEmail() {
+    setSending(true)
+    setSendStatus('idle')
+    try {
+      const res = await fetch('/api/admin/contact-seller', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: user.email, subject: emailSubject, body: emailBodyDraft }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al enviar')
+      setEmailModalOpen(false)
+      setSuccessPopup(true)
+    } catch (e) {
+      setSendStatus('error')
+      setErrorMsg(e instanceof Error ? e.message : 'Error desconocido')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <button
-        onClick={sendEmail}
-        disabled={emailState === 'loading' || emailState === 'sent'}
-        className={`text-xs px-2.5 py-1 rounded font-medium border transition-all ${
-          emailState === 'sent'
-            ? 'bg-green-50 text-green-700 border-green-200'
-            : emailState === 'error'
-            ? 'bg-red-50 text-red-600 border-red-200'
-            : emailState === 'loading'
-            ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-wait'
-            : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-600'
-        }`}
-      >
-        {emailState === 'loading' ? '...' : emailState === 'sent' ? '✓ Enviado' : emailState === 'error' ? 'Error' : 'Correo'}
-      </button>
-
-      {user.phone && (
+    <div className="relative">
+      <div className="flex items-center gap-2 flex-wrap">
         <button
-          onClick={openWhatsApp}
-          disabled={waLoading}
+          onClick={openEmailModal}
+          disabled={preparing}
           className={`text-xs px-2.5 py-1 rounded font-medium border transition-all ${
-            waLoading
+            preparing
               ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-wait'
-              : 'bg-white text-green-700 border-green-200 hover:bg-green-50'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400 hover:text-brand-600'
           }`}
         >
-          {waLoading ? '...' : 'WhatsApp'}
+          {preparing ? '...' : 'Correo'}
         </button>
+
+        {user.phone && (
+          <button
+            onClick={openWhatsApp}
+            className="text-xs px-2.5 py-1 rounded font-medium border bg-white text-green-700 border-green-200 hover:bg-green-50 transition-all"
+          >
+            WhatsApp
+          </button>
+        )}
+
+        {waError && <span className="text-xs text-red-600">{waError}</span>}
+      </div>
+
+      {/* Success popup */}
+      {successPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setSuccessPopup(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="font-body text-lg font-black text-gray-900 mb-1">Correo enviado</h3>
+            <p className="text-sm text-gray-500 mb-5">El link de acceso fue enviado a {user.email}.</p>
+            <button
+              onClick={() => setSuccessPopup(false)}
+              className="w-full bg-brand-500 text-white font-medium text-sm py-2.5 rounded-lg hover:bg-brand-600"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Email modal */}
+      {emailModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !sending && setEmailModalOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-body text-lg font-black text-gray-900">Enviar invitación</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Desde <span className="font-medium text-gray-700">reskichile@gmail.com</span> · Para <span className="font-medium text-gray-700">{user.email}</span>
+                </p>
+              </div>
+              <button onClick={() => !sending && setEmailModalOpen(false)} disabled={sending} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-1">Asunto</label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  disabled={sending}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Mensaje</label>
+                  <span className="text-[10px] text-gray-400">Usa <code className="bg-gray-100 px-1 rounded">**palabra**</code> para negrita</span>
+                </div>
+                <textarea
+                  value={emailBodyDraft}
+                  onChange={e => setEmailBodyDraft(e.target.value)}
+                  disabled={sending}
+                  rows={14}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-light leading-relaxed focus:border-brand-500 focus:outline-none disabled:bg-gray-50 resize-none"
+                />
+              </div>
+
+              {sendStatus === 'error' && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {errorMsg}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setEmailModalOpen(false)}
+                disabled={sending}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={sendEmail}
+                disabled={sending || !emailSubject.trim() || !emailBodyDraft.trim()}
+                className="px-5 py-2 text-sm bg-brand-500 text-white font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 flex items-center gap-2"
+              >
+                {sending ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    Enviando...
+                  </>
+                ) : 'Enviar correo'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
