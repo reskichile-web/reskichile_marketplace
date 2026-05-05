@@ -24,6 +24,7 @@ interface AdminProduct {
   description: string | null
   rejection_reason: string | null
   attributes: Record<string, unknown> | null
+  anon_contact: string | null
   users: { name: string | null; email: string; phone: string | null } | null
   product_images: { url: string; order: number }[]
 }
@@ -53,7 +54,7 @@ export default function PublicacionesPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('products')
-      .select('id, product_type, brand, model, price, sale_price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, users(name, email, phone), product_images(url, order)')
+      .select('id, product_type, brand, model, price, sale_price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, anon_contact, users(name, email, phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
     setProducts((data as unknown as AdminProduct[]) || [])
@@ -217,7 +218,8 @@ export default function PublicacionesPage() {
             <tbody>
               {filtered.map(product => {
                 const title = [product.brand, product.model].filter(Boolean).join(' ')
-                const seller = product.users?.name || product.users?.email || 'Desconocido'
+                const isAnon = !product.users
+                const seller = product.users?.name || product.users?.email || ''
                 const isExpanded = expandedId === product.id
                 const images = (product.product_images || []).sort((a, b) => a.order - b.order)
                 const attrs = product.attributes as Record<string, unknown> | null
@@ -243,7 +245,9 @@ export default function PublicacionesPage() {
                             <span className="font-medium">{title}</span>
                             <span className="ml-2 text-xs text-gray-400">{PRODUCT_TYPES[product.product_type] || product.product_type}</span>
                             <span className="block sm:hidden text-xs text-gray-500 mt-0.5">
-                              ${product.price.toLocaleString('es-CL')} · {seller}
+                              ${product.price.toLocaleString('es-CL')} · {isAnon ? (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">Sin Usuario Creado</span>
+                              ) : seller}
                             </span>
                           </div>
                         </div>
@@ -252,7 +256,9 @@ export default function PublicacionesPage() {
                         ${product.price.toLocaleString('es-CL')}
                       </td>
                       <td className="py-3 pr-4 hidden md:table-cell text-gray-600">
-                        {seller}
+                        {isAnon ? (
+                          <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">Sin Usuario Creado</span>
+                        ) : seller}
                       </td>
                       <td className="py-3 pr-4 hidden md:table-cell text-gray-500">
                         {new Date(product.created_at).toLocaleDateString('es-CL')}
@@ -381,31 +387,51 @@ export default function PublicacionesPage() {
 
                               {/* Seller info */}
                               <div className="bg-white rounded-xl p-6">
-                                <div className="flex items-center gap-1.5 mb-3">
-                                  <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                                  </svg>
-                                  <span className="font-body text-base font-black text-brand-500 tracking-tight">Vendedor</span>
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                                    </svg>
+                                    <span className="font-body text-base font-black text-brand-500 tracking-tight">Vendedor</span>
+                                  </div>
+                                  {isAnon && (
+                                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">Sin Usuario Creado</span>
+                                  )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-base justify-items-start text-left">
-                                  <div>
-                                    <span className="font-bold text-gray-700">Nombre</span>
-                                    <p className="font-light">{product.users?.name || 'Sin nombre'}</p>
-                                  </div>
-                                  <div>
-                                    <span className="font-bold text-gray-700">Email</span>
-                                    <p className="font-light">{product.users?.email}</p>
-                                  </div>
-                                  {product.users?.phone && (
-                                    <div>
-                                      <span className="font-bold text-gray-700">Teléfono</span>
-                                      <p className="font-light">{product.users.phone}</p>
-                                    </div>
+                                  {isAnon ? (
+                                    <>
+                                      <div className="col-span-2">
+                                        <span className="font-bold text-gray-700">Contacto</span>
+                                        <p className="font-light break-all">{product.anon_contact || '—'}</p>
+                                      </div>
+                                      <div>
+                                        <span className="font-bold text-gray-700">Ubicación</span>
+                                        <p className="font-light">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div>
+                                        <span className="font-bold text-gray-700">Nombre</span>
+                                        <p className="font-light">{product.users?.name || 'Sin nombre'}</p>
+                                      </div>
+                                      <div>
+                                        <span className="font-bold text-gray-700">Email</span>
+                                        <p className="font-light">{product.users?.email}</p>
+                                      </div>
+                                      {product.users?.phone && (
+                                        <div>
+                                          <span className="font-bold text-gray-700">Teléfono</span>
+                                          <p className="font-light">{product.users.phone}</p>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <span className="font-bold text-gray-700">Ubicación</span>
+                                        <p className="font-light">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>
+                                      </div>
+                                    </>
                                   )}
-                                  <div>
-                                    <span className="font-bold text-gray-700">Ubicación</span>
-                                    <p className="font-light">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>
-                                  </div>
                                 </div>
                               </div>
                             </div>
