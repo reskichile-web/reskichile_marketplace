@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { X, SlidersHorizontal } from 'lucide-react'
 import CatalogSidebar from './CatalogSidebar'
 import type { SkiCounts } from '@/lib/ski-filters'
 
@@ -54,20 +54,12 @@ export default function CatalogMobileFilterButton(props: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Filtros"
-        className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+        className="relative inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full text-sm font-body font-semibold text-gray-800 hover:border-black hover:text-black transition-colors"
       >
-        <svg
-          className="w-6 h-6 text-gray-700"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
+        <SlidersHorizontal className="w-4 h-4" />
+        Filtros
         {activeCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-brand-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+          <span className="bg-brand-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
             {activeCount}
           </span>
         )}
