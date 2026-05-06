@@ -6,6 +6,7 @@ import PopupMessage from '@/components/PopupMessage'
 import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
 import Spinner from '@/components/Spinner'
 import PhoneInput from '@/components/PhoneInput'
+import { parseStoredPhone, toFullPhone } from '@/lib/phone'
 
 function useHideFooterImage() {
   useEffect(() => {
@@ -48,7 +49,9 @@ export default function ProfilePage() {
 
       if (profile) {
         setName(profile.name || '')
-        setPhone(profile.phone || '')
+        // Normalize whatever is stored (legacy formats like "56912345678" without +) to canonical "+56912345678"
+        const parsed = parseStoredPhone(profile.phone || '')
+        setPhone(parsed.local ? toFullPhone(parsed.local, parsed.country) : '')
         setInstagram(profile.instagram || '')
         setAvatarUrl(profile.avatar_url || null)
       }
@@ -110,10 +113,13 @@ export default function ProfilePage() {
     e.preventDefault()
 
     const trimmedName = name.trim()
-    const trimmedPhone = phone.trim()
     const trimmedInstagram = instagram.trim().replace(/^@/, '')
 
-    if (trimmedPhone && !/^\+\d{8,15}$/.test(trimmedPhone)) {
+    // Normalize whatever the user has typed/pasted to canonical format before saving
+    const parsed = parseStoredPhone(phone)
+    const normalizedPhone = parsed.local ? toFullPhone(parsed.local, parsed.country) : ''
+
+    if (normalizedPhone && !/^\+\d{8,15}$/.test(normalizedPhone)) {
       setPopup({ message: 'Número de teléfono inválido', type: 'error' })
       return
     }
@@ -130,7 +136,7 @@ export default function ProfilePage() {
       .from('users')
       .update({
         name: trimmedName || null,
-        phone: trimmedPhone || null,
+        phone: normalizedPhone || null,
         instagram: trimmedInstagram || null,
       })
       .eq('id', user.id)
