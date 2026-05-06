@@ -23,11 +23,20 @@ const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
 
 const TIPO_ESQUI_OPTIONS: { value: string; label: string }[] = [
   { value: 'race', label: 'Race' },
+  { value: 'pista', label: 'Pista' },
   { value: 'all_mountain', label: 'All mountain' },
   { value: 'freeride', label: 'Freeride' },
   { value: 'powder', label: 'Powder' },
   { value: 'freestyle', label: 'Freestyle' },
   { value: 'touring', label: 'Touring' },
+]
+
+const GENERO_ESQUI_OPTIONS: { value: string; label: string }[] = [
+  { value: 'hombre', label: 'Hombre' },
+  { value: 'mujer', label: 'Mujer' },
+  { value: 'unisex', label: 'Unisex' },
+  { value: 'junior', label: 'Junior' },
+  { value: 'nino', label: 'Niño' },
 ]
 
 function InlineField({ label, value, onSave, type = 'text', options }: {
@@ -334,6 +343,8 @@ export default function EditProductPage() {
     if (form.product_type === 'esquis') {
       const tipo = Array.isArray(attributes.tipo) ? (attributes.tipo as string[]) : []
       if (tipo.length > 0) attributesJson.tipo = tipo
+      const genero = typeof attributes.genero === 'string' ? attributes.genero : ''
+      if (genero) attributesJson.genero = genero
     }
 
     const { error: updateError } = await supabase.from('products').update({
@@ -527,34 +538,59 @@ export default function EditProductPage() {
               Atributos de {PRODUCT_TYPES[form.product_type]}
             </p>
             {form.product_type === 'esquis' && (
-              <div className="mb-4">
-                <span className="text-xs text-gray-400">Tipo (puedes elegir varios)</span>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {TIPO_ESQUI_OPTIONS.map(opt => {
-                    const current = Array.isArray(attributes.tipo) ? (attributes.tipo as string[]) : []
-                    const selected = current.includes(opt.value)
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => {
-                          const next = selected
-                            ? current.filter(v => v !== opt.value)
-                            : [...current, opt.value]
-                          updateAttribute('tipo', next)
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                          selected
-                            ? 'bg-brand-500 text-white border-brand-500'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    )
-                  })}
+              <>
+                <div className="mb-4">
+                  <span className="text-xs text-gray-400">Tipo (puedes elegir varios)</span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {TIPO_ESQUI_OPTIONS.map(opt => {
+                      const current = Array.isArray(attributes.tipo) ? (attributes.tipo as string[]) : []
+                      const selected = current.includes(opt.value)
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            const next = selected
+                              ? current.filter(v => v !== opt.value)
+                              : [...current, opt.value]
+                            updateAttribute('tipo', next)
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                            selected
+                              ? 'bg-brand-500 text-white border-brand-500'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
+                <div className="mb-4">
+                  <span className="text-xs text-gray-400">Género</span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {GENERO_ESQUI_OPTIONS.map(opt => {
+                      const current = typeof attributes.genero === 'string' ? attributes.genero : ''
+                      const selected = current === opt.value
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => updateAttribute('genero', selected ? '' : opt.value)}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                            selected
+                              ? 'bg-brand-500 text-white border-brand-500'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {currentAttributes.map(attr => {
