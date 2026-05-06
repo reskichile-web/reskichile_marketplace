@@ -128,16 +128,7 @@ export default async function MyProductsPage() {
 
             return (
               <div key={product.id} className={`relative border rounded-lg p-4 overflow-hidden ${cardCls}`}>
-                {/* Trash icon — top-right of every card */}
-                <div className="absolute top-2 right-2 z-10">
-                  <DeleteProductButton
-                    productId={product.id}
-                    productTitle={title || 'esta publicación'}
-                    iconClassName={trashIconCls}
-                  />
-                </div>
-
-                <div className={`flex gap-3 ${showBigRightIcon ? 'pr-24 sm:pr-28' : 'pr-8'}`}>
+                <div className={`flex gap-3 ${showBigRightIcon ? 'pr-24 sm:pr-28' : ''}`}>
                   {mainImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -160,26 +151,26 @@ export default async function MyProductsPage() {
                   </div>
                 </div>
 
-                {/* Big right-edge icon + label for sold/rejected — spans full card height */}
+                {/* Big right-edge icon for sold/rejected — only sold shows a centered "Vendido" label */}
                 {showBigRightIcon && (
                   <div className={`absolute top-0 right-0 bottom-0 w-24 sm:w-28 flex flex-col items-center justify-center pointer-events-none ${isSold ? 'text-brand-500' : 'text-red-500'}`}>
                     {isSold ? (
-                      <svg className="w-14 h-14 sm:w-16 sm:h-16" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <>
+                        <svg className="w-14 h-14 sm:w-16 sm:h-16" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="mt-1 text-xs font-bold uppercase tracking-wider">Vendido</span>
+                      </>
                     ) : (
                       <svg className="w-12 h-12 sm:w-14 sm:h-14" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     )}
-                    <span className="mt-1 text-xs font-bold uppercase tracking-wider">
-                      {isSold ? 'Vendido' : 'Rechazado'}
-                    </span>
                   </div>
                 )}
 
                 <div className="flex items-center justify-between gap-2 mt-3">
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <Link
                       href={`/producto/${product.id}`}
                       className={`w-20 text-center text-xs py-1.5 rounded font-medium ${verBtnCls}`}
@@ -191,15 +182,20 @@ export default async function MyProductsPage() {
                         Editar
                       </Link>
                     )}
+                    <DeleteProductButton
+                      productId={product.id}
+                      productTitle={title || 'esta publicación'}
+                      iconClassName={trashIconCls}
+                    />
                   </div>
-                  {/* Status label hidden for sold/rejected (shown as the centered right-side label).
-                      For rejected, ProductStatusBlock still surfaces the rejection-motivo button. */}
+                  {/* Sold shows its label as the right-side centered text — no inline label needed.
+                      Rejected keeps the inline "Rechazado · motivo" label as before. */}
                   {!isSold && (
                     <ProductStatusBlock
                       status={status}
                       rejectionReason={product.rejection_reason}
                       cornerVignette={showCornerVignette}
-                      labelClassName={isRejected ? 'sr-only' : labelCls}
+                      labelClassName={labelCls}
                     />
                   )}
                 </div>
