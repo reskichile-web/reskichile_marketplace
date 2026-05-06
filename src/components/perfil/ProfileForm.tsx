@@ -20,6 +20,11 @@ interface Props {
 
 export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave }: Props) {
   const router = useRouter()
+
+  // Prefetch the redirect target so the post-save navigation is instant.
+  useEffect(() => {
+    if (redirectAfterSave) router.prefetch(redirectAfterSave)
+  }, [router, redirectAfterSave])
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [instagram, setInstagram] = useState('')

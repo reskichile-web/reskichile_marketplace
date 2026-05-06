@@ -1,12 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES } from '@/lib/constants'
-import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
 
-interface ProductPreview {
+export interface ProductPreview {
   id: string
   brand: string | null
   model: string | null
@@ -17,7 +14,7 @@ interface ProductPreview {
   image_url: string | null
 }
 
-interface ConversationPreview {
+export interface ConversationPreview {
   id: string
   other_name: string | null
   product_label: string | null
@@ -28,156 +25,33 @@ interface ConversationPreview {
   image_url: string | null
 }
 
-export default function DesktopDashboard() {
-  const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState<{
-    id: string
+interface Props {
+  profile: {
     email: string
     name: string | null
     phone: string | null
     instagram: string | null
     avatar_url: string | null
-  } | null>(null)
-  const [products, setProducts] = useState<ProductPreview[]>([])
-  const [productsTotal, setProductsTotal] = useState(0)
-  const [conversations, setConversations] = useState<ConversationPreview[]>([])
-  const [conversationsTotal, setConversationsTotal] = useState(0)
+  } | null
+  products: ProductPreview[]
+  productsTotal: number
+  conversations: ConversationPreview[]
+  conversationsTotal: number
+}
 
-  useEffect(() => {
-    async function load() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const [profileRes, productsRes, convRes] = await Promise.all([
-        supabase.from('users').select('*').eq('id', user.id).single(),
-        supabase
-          .from('products')
-          .select('id, brand, model, price, status, product_type, slug, product_images(url, order)')
-          .eq('seller_id', user.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('conversations')
-          .select('*')
-          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-          .order('last_message_at', { ascending: false }),
-      ])
-
-      if (profileRes.data) {
-        setProfile({
-          id: profileRes.data.id,
-          email: user.email ?? '',
-          name: profileRes.data.name,
-          phone: profileRes.data.phone,
-          instagram: profileRes.data.instagram,
-          avatar_url: profileRes.data.avatar_url,
-        })
-      }
-
-      const allProducts = (productsRes.data || []).map((p) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sorted = ((p as any).product_images || []).sort(
-          (a: { order: number }, b: { order: number }) => a.order - b.order
-        )
-        return {
-          id: p.id,
-          brand: p.brand,
-          model: p.model,
-          price: p.price,
-          status: p.status,
-          product_type: p.product_type,
-          slug: p.slug,
-          image_url: sorted[0]?.url || null,
-        }
-      })
-      setProducts(allProducts.slice(0, 4))
-      setProductsTotal(allProducts.length)
-
-      const allConvs = convRes.data || []
-      setConversationsTotal(allConvs.length)
-
-      if (allConvs.length > 0) {
-        const productIds = Array.from(
-          new Set(allConvs.map((c) => c.product_id).filter(Boolean))
-        ) as string[]
-        const otherIds = Array.from(
-          new Set(allConvs.map((c) => (c.buyer_id === user.id ? c.seller_id : c.buyer_id)))
-        )
-        const [pRes, uRes, mRes, unRes] = await Promise.all([
-          productIds.length
-            ? supabase
-                .from('products')
-                .select('id, brand, model, product_images(url, order)')
-                .in('id', productIds)
-            : Promise.resolve({ data: [] }),
-          supabase.from('users').select('id, name').in('id', otherIds),
-          supabase
-            .from('messages')
-            .select('conversation_id, body, sender_id, created_at')
-            .in('conversation_id', allConvs.map((c) => c.id))
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('messages')
-            .select('conversation_id, sender_id')
-            .in('conversation_id', allConvs.map((c) => c.id))
-            .is('read_at', null)
-            .neq('sender_id', user.id),
-        ])
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const productMap = new Map<string, any>()
-        ;(pRes.data || []).forEach((p) => productMap.set(p.id, p))
-        const userMap = new Map<string, { id: string; name: string | null }>()
-        ;(uRes.data || []).forEach((u) => userMap.set(u.id, u))
-        const lastBy = new Map<string, { body: string; sender_id: string; created_at: string }>()
-        for (const m of mRes.data || []) {
-          if (!lastBy.has(m.conversation_id)) {
-            lastBy.set(m.conversation_id, m)
-          }
-        }
-        const unreadBy = new Map<string, number>()
-        for (const m of unRes.data || []) {
-          unreadBy.set(m.conversation_id, (unreadBy.get(m.conversation_id) || 0) + 1)
-        }
-
-        const previews: ConversationPreview[] = allConvs.slice(0, 4).map((c) => {
-          const otherId = c.buyer_id === user.id ? c.seller_id : c.buyer_id
-          const other = userMap.get(otherId)
-          const product = c.product_id ? productMap.get(c.product_id) : null
-          const last = lastBy.get(c.id)
-          const sorted =
-            product?.product_images?.sort(
-              (a: { order: number }, b: { order: number }) => a.order - b.order
-            ) || []
-          return {
-            id: c.id,
-            other_name: other?.name || 'Usuario',
-            product_label: product
-              ? [product.brand, product.model].filter(Boolean).join(' ')
-              : null,
-            last_body: last?.body || null,
-            last_at: last?.created_at || c.last_message_at,
-            unread: unreadBy.get(c.id) || 0,
-            is_other_last: !!last && last.sender_id !== user.id,
-            image_url: sorted[0]?.url || null,
-          }
-        })
-        setConversations(previews)
-      }
-
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  if (loading) return <PerfilSkeleton />
-
+export default function DesktopDashboardView({
+  profile,
+  products,
+  productsTotal,
+  conversations,
+  conversationsTotal,
+}: Props) {
   return (
     <div className="max-w-6xl mx-auto px-6 md:px-10 pt-4 md:pt-5 pb-6 h-[calc(100vh-130px)] flex flex-col">
       <h1 className="font-body text-xl xl:text-2xl font-black mb-4 shrink-0">Mi cuenta</h1>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4 min-h-0">
-        {/* Profile card — 1x1 (top-left) */}
+        {/* Profile card */}
         <div className="lg:col-span-1 lg:row-span-1 bg-white rounded-none border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-center gap-3 shrink-0">
             {profile?.avatar_url ? (
@@ -267,7 +141,7 @@ export default function DesktopDashboard() {
           )}
         </div>
 
-        {/* Conversations card — 2x1 (bottom-left wide) */}
+        {/* Conversations card */}
         <div className="lg:col-span-2 bg-white rounded-none border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-baseline justify-between mb-3 shrink-0">
             <h2 className="font-body font-black text-lg">
