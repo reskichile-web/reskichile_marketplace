@@ -36,7 +36,7 @@ export default async function MensajesPage() {
 
   if (conversations.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 min-h-screen pt-10 md:pt-14 pb-20">
+      <div className="max-w-6xl mx-auto px-4 md:px-8 pt-10 md:pt-14 pb-20">
         <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-10">
           <h1 className="font-body text-3xl font-black mb-8">Mis mensajes</h1>
           <EmptyState

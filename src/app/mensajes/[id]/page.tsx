@@ -61,7 +61,7 @@ export default async function ChatPage({ params }: Props) {
     .is('read_at', null)
 
   return (
-    <div className="flex flex-col h-[calc(100vh-72px)] md:h-[calc(100vh-128px)] max-w-3xl mx-auto w-full">
+    <div className="flex flex-col h-[calc(100vh-95px)] md:h-[calc(100vh-130px)] max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-200 bg-white">
         <Link
