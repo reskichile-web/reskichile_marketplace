@@ -152,6 +152,11 @@ export default function EditProductPage() {
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([])
   const [imageOrder, setImageOrder] = useState<string[]>([])
   const [productSlug, setProductSlug] = useState<string>('')
+  const [initialSnapshot, setInitialSnapshot] = useState<{
+    form: typeof form
+    attributes: Record<string, string | boolean | string[]>
+    imageOrder: string[]
+  } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -172,7 +177,7 @@ export default function EditProductPage() {
       const isAdmin = profile?.is_admin ?? false
       if (!isOwner && !isAdmin) { router.push(`/producto/${params.id}`); return }
 
-      setForm({
+      const loadedForm = {
         product_type: product.product_type || '',
         brand: product.brand || '',
         model: product.model || '',
@@ -183,17 +188,31 @@ export default function EditProductPage() {
         comuna: product.comuna || '',
         description: product.description || '',
         status: product.status || '',
-      })
-      setAttributes((product.attributes as Record<string, string | boolean | string[]>) || {})
+      }
+      const loadedAttributes = (product.attributes as Record<string, string | boolean | string[]>) || {}
+      setForm(loadedForm)
+      setAttributes(loadedAttributes)
       setProductSlug(product.slug || '')
       const imgs = (product.product_images || []) as { id: string; url: string; order: number }[]
       const sorted = imgs.sort((a, b) => a.order - b.order)
       setExistingImages(sorted)
-      setImageOrder(sorted.map(img => img.id))
+      const loadedOrder = sorted.map(img => img.id)
+      setImageOrder(loadedOrder)
+      setInitialSnapshot({ form: loadedForm, attributes: loadedAttributes, imageOrder: loadedOrder })
       setLoading(false)
     }
     load()
   }, [params.id, router])
+
+  const isDirty = (() => {
+    if (!initialSnapshot) return false
+    if (newImages.length > 0) return true
+    if (deletedImageIds.length > 0) return true
+    if (JSON.stringify(form) !== JSON.stringify(initialSnapshot.form)) return true
+    if (JSON.stringify(attributes) !== JSON.stringify(initialSnapshot.attributes)) return true
+    if (JSON.stringify(imageOrder) !== JSON.stringify(initialSnapshot.imageOrder)) return true
+    return false
+  })()
 
   const currentAttributes: AttributeField[] = form.product_type
     ? PRODUCT_ATTRIBUTES[form.product_type] || []
@@ -661,8 +680,12 @@ export default function EditProductPage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={saving || compressing !== null}
-            className="flex-1 bg-brand-500 text-white py-3 rounded-lg hover:bg-brand-600 disabled:opacity-50 font-medium transition-colors flex items-center justify-center gap-2"
+            disabled={saving || compressing !== null || !isDirty}
+            className={`flex-1 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+              isDirty && !saving && compressing === null
+                ? 'bg-brand-500 text-white hover:bg-brand-600'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
           >
             {(saving || uploading) && (
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

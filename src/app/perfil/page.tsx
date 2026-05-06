@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' | 'info' | 'success' } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [initialValues, setInitialValues] = useState({ name: '', phone: '', instagram: '' })
 
   useEffect(() => {
     async function loadProfile() {
@@ -48,12 +49,15 @@ export default function ProfilePage() {
         .single()
 
       if (profile) {
-        setName(profile.name || '')
-        // Normalize whatever is stored (legacy formats like "56912345678" without +) to canonical "+56912345678"
+        const loadedName = profile.name || ''
         const parsed = parseStoredPhone(profile.phone || '')
-        setPhone(parsed.local ? toFullPhone(parsed.local, parsed.country) : '')
-        setInstagram(profile.instagram || '')
+        const loadedPhone = parsed.local ? toFullPhone(parsed.local, parsed.country) : ''
+        const loadedInstagram = profile.instagram || ''
+        setName(loadedName)
+        setPhone(loadedPhone)
+        setInstagram(loadedInstagram)
         setAvatarUrl(profile.avatar_url || null)
+        setInitialValues({ name: loadedName, phone: loadedPhone, instagram: loadedInstagram })
       }
       setLoading(false)
     }
@@ -143,9 +147,21 @@ export default function ProfilePage() {
 
     if (error) {
       setPopup({ message: 'Error al guardar. Intenta de nuevo.', type: 'error' })
+    } else {
+      // Mark current values as the new baseline → button goes back to disabled
+      setInitialValues({
+        name: trimmedName,
+        phone: normalizedPhone,
+        instagram: trimmedInstagram,
+      })
     }
     setSaving(false)
   }
+
+  const isDirty =
+    name.trim() !== initialValues.name ||
+    phone !== initialValues.phone ||
+    instagram.trim().replace(/^@/, '') !== initialValues.instagram
 
   if (loading) {
     return <PerfilSkeleton />
@@ -303,8 +319,12 @@ export default function ProfilePage() {
 
         <button
           type="submit"
-          disabled={saving}
-          className="w-full bg-brand-500 text-white py-2.5 rounded-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
+          disabled={saving || !isDirty}
+          className={`w-full py-2.5 rounded-sm font-medium transition-colors ${
+            isDirty && !saving
+              ? 'bg-brand-500 text-white hover:bg-brand-600'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
         >
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
