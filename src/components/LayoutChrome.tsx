@@ -21,19 +21,47 @@ export default function LayoutChrome({ header, footer, children }: Props) {
     pathname === '/mensajes/nuevo' ||
     (pathname.startsWith('/mensajes/') && pathname !== '/mensajes')
 
-  // Lock body scroll while the user is on a fullscreen chat (mobile only).
+  // Lock html/body to the dynamic viewport on a fullscreen chat (mobile only),
+  // otherwise body's min-h-screen (100vh) leaves a gap below the chat (which
+  // uses 100dvh) when the browser chrome retracts.
   useEffect(() => {
     if (!isFullscreenChatRoute) return
+    const html = document.documentElement
+    const body = document.body
     const mq = window.matchMedia('(max-width: 767px)')
-    const original = document.body.style.overflow
+
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      htmlHeight: html.style.height,
+      bodyOverflow: body.style.overflow,
+      bodyHeight: body.style.height,
+      bodyMinHeight: body.style.minHeight,
+    }
+
     function apply() {
-      document.body.style.overflow = mq.matches ? 'hidden' : original
+      if (mq.matches) {
+        html.style.overflow = 'hidden'
+        html.style.height = '100dvh'
+        body.style.overflow = 'hidden'
+        body.style.height = '100dvh'
+        body.style.minHeight = '100dvh'
+      } else {
+        html.style.overflow = previous.htmlOverflow
+        html.style.height = previous.htmlHeight
+        body.style.overflow = previous.bodyOverflow
+        body.style.height = previous.bodyHeight
+        body.style.minHeight = previous.bodyMinHeight
+      }
     }
     apply()
     mq.addEventListener('change', apply)
     return () => {
       mq.removeEventListener('change', apply)
-      document.body.style.overflow = original
+      html.style.overflow = previous.htmlOverflow
+      html.style.height = previous.htmlHeight
+      body.style.overflow = previous.bodyOverflow
+      body.style.height = previous.bodyHeight
+      body.style.minHeight = previous.bodyMinHeight
     }
   }, [isFullscreenChatRoute])
 
