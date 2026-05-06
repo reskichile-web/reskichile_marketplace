@@ -5,6 +5,8 @@ import { useState } from 'react'
 interface Props {
   status: string
   rejectionReason: string | null
+  cornerVignette?: boolean
+  labelClassName?: string
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -73,7 +75,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   },
 }
 
-export default function ProductStatusBlock({ status, rejectionReason }: Props) {
+export default function ProductStatusBlock({ status, rejectionReason, cornerVignette = true, labelClassName }: Props) {
   const [showReason, setShowReason] = useState(false)
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft
   const isRejected = status === 'rejected' && rejectionReason
@@ -82,12 +84,12 @@ export default function ProductStatusBlock({ status, rejectionReason }: Props) {
     <>
       {/* Inline label + optional note button (renders in current flex flow) */}
       <div className="flex items-center gap-1.5">
-        <span className="text-xs font-light text-gray-400">{config.label}</span>
+        <span className={labelClassName ?? 'text-xs font-light text-gray-400'}>{config.label}</span>
         {isRejected && (
           <button
             type="button"
             onClick={() => setShowReason(true)}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-current opacity-70 hover:opacity-100"
             aria-label="Ver motivo de rechazo"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
@@ -101,18 +103,20 @@ export default function ProductStatusBlock({ status, rejectionReason }: Props) {
       </div>
 
       {/* Triangular vignette top-right (absolute, fixed to card corner) */}
-      <div
-        className="absolute top-0 right-0 w-16 h-16 pointer-events-none"
-        aria-label={config.label}
-      >
+      {cornerVignette && (
         <div
-          className={`absolute inset-0 ${config.color} rounded-tr-lg`}
-          style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }}
-        />
-        <div className="absolute top-1.5 right-1.5 text-white">
-          {config.icon}
+          className="absolute top-0 right-0 w-16 h-16 pointer-events-none"
+          aria-label={config.label}
+        >
+          <div
+            className={`absolute inset-0 ${config.color} rounded-tr-lg`}
+            style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }}
+          />
+          <div className="absolute top-1.5 right-1.5 text-white">
+            {config.icon}
+          </div>
         </div>
-      </div>
+      )}
 
       {showReason && isRejected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowReason(false)}>
