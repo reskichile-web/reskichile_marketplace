@@ -281,45 +281,49 @@ export default function DesktopDashboard() {
           {conversations.length === 0 ? (
             <p className="flex-1 text-sm text-gray-500 text-center flex items-center justify-center">Sin conversaciones todavía.</p>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+            <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
               {conversations.map((c) => {
                 const highlight = c.is_other_last && c.unread > 0
                 return (
                   <Link
                     key={c.id}
                     href={`/mensajes/${c.id}`}
-                    className={`flex items-center gap-3 p-2 transition-colors ${
+                    className={`flex items-center gap-3 p-3 min-h-[68px] transition-colors ${
                       highlight ? 'bg-brand-400 hover:bg-brand-500 text-white' : 'hover:bg-gray-50'
                     }`}
                   >
                     {c.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.image_url} alt="" className="w-9 h-9 object-cover shrink-0" />
+                      <img src={c.image_url} alt="" className="w-12 h-12 object-cover shrink-0" />
                     ) : (
-                      <div className={`w-9 h-9 shrink-0 ${highlight ? 'bg-white/20' : 'bg-gray-100'}`} />
+                      <div className={`w-12 h-12 shrink-0 ${highlight ? 'bg-white/20' : 'bg-gray-100'}`} />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2">
-                        <p className={`text-xs font-medium truncate ${highlight ? 'text-white' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-medium truncate ${highlight ? 'text-white' : 'text-gray-900'}`}>
                           {c.other_name}
                           {c.product_label && (
                             <span className={highlight ? 'text-white/80' : 'text-gray-400'}> – {c.product_label}</span>
                           )}
                         </p>
                         {c.last_at && (
-                          <span className={`text-[10px] shrink-0 tabular-nums ${highlight ? 'text-white/80' : 'text-gray-400'}`}>
+                          <span className={`text-xs shrink-0 tabular-nums ${highlight ? 'text-white/80' : 'text-gray-400'}`}>
                             {timeAgoShort(c.last_at)}
                           </span>
                         )}
                       </div>
-                      {c.last_body && (
-                        <p className={`text-xs truncate ${highlight ? 'text-white font-bold' : 'text-gray-500'}`}>
+                      {c.last_body ? (
+                        <p className={`text-xs truncate mt-0.5 ${highlight ? 'text-white font-bold' : 'text-gray-500'}`}>
                           {highlight && c.unread > 1 ? `+${c.unread} mensajes` : c.last_body}
+                        </p>
+                      ) : (
+                        <p className={`text-xs italic mt-0.5 ${highlight ? 'text-white/60' : 'text-gray-400'}`}>
+                          Sin mensajes
                         </p>
                       )}
                     </div>
                     {c.unread > 0 && (
-                      <span className="shrink-0 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                      <span className="shrink-0 bg-red-500 text-white text-[11px] font-bold w-6 h-6 flex items-center justify-center rounded-full">
                         {c.unread > 9 ? '9+' : c.unread}
                       </span>
                     )}
