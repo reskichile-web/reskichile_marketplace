@@ -55,17 +55,32 @@ export default async function InviteRedeemPage({ params }: Props) {
     .eq('id', invite.user_id)
     .single()
 
+  const firstName = profile?.name?.split(' ')[0] || ''
+
   return (
     <div className="max-w-md mx-auto px-4 py-12">
       <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
-        <h1 className="font-body text-2xl font-black text-gray-900">Bienvenido a ReSkiChile</h1>
-        <p className="text-sm text-gray-500 mt-2">
-          {profile?.name ? `Hola ${profile.name}, define ` : 'Define '}
-          tu contraseña para acceder a tu cuenta.
+        <h1 className="font-body text-2xl font-black text-gray-900">
+          {firstName ? `Bienvenido, ${firstName}` : 'Bienvenido a ReSkiChile'}
+        </h1>
+        <p className="text-sm text-gray-600 mt-3 leading-relaxed">
+          Como publicaste con nosotros la temporada pasada y aún tienes productos activos, te creamos una cuenta para que puedas seguir gestionándolos sin volver a registrarte.
         </p>
-        <p className="text-xs text-gray-400 mt-1">{profile?.email}</p>
+        <p className="text-sm text-gray-600 mt-3 leading-relaxed">
+          Solo falta que definas tu contraseña para terminar el registro.
+        </p>
+        {profile?.email && (
+          <div className="mt-5 bg-gray-50 border border-gray-100 rounded-md px-3 py-2">
+            <p className="text-[11px] uppercase tracking-widest text-gray-400 font-bold">Cuenta</p>
+            <p className="text-sm text-gray-800">{profile.email}</p>
+          </div>
+        )}
 
         <RedeemInviteForm slug={params.slug} />
+
+        <p className="mt-6 text-xs text-gray-400 text-center leading-relaxed">
+          Este link es seguro y único para ti. No lo compartas con nadie.
+        </p>
       </div>
     </div>
   )

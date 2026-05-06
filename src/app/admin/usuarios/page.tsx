@@ -40,17 +40,31 @@ function InviteButtons({ user }: { user: UserWithProducts }) {
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,'
 
   function buildWaMessage(link: string): string {
-    return `${firstName ? `Hola ${firstName}, ` : 'Hola, '}te enviamos el link para activar tu cuenta en ReSkiChile y configurar tu contraseña: ${link}`
+    return `${greeting}
+
+Como publicaste en ReSkiChile la temporada pasada y aún tienes productos activos, te creamos una cuenta para que puedas seguir gestionándolos.
+
+Solo falta que definas tu contraseña para terminar el registro:
+
+${link}
+
+El link es seguro y único para ti — no lo compartas con nadie. Expira en 7 días.
+
+Equipo ReSkiChile`
   }
 
   function buildEmailBody(link: string): string {
     return `${greeting}
 
-Te damos la bienvenida a **ReSkiChile**. Tu cuenta ya está creada y solo falta que configures tu contraseña para entrar.
+Te damos la bienvenida a *ReSkiChile*.
 
-Haz click en el siguiente link para definirla (expira en 24 horas):
+Como publicaste con nosotros la temporada pasada y aún tienes productos activos, nos dimos el trabajo de crearte una cuenta para que puedas seguir gestionándolos sin volver a registrarte.
+
+Para terminar el registro solo falta que definas tu contraseña:
 
 ${link}
+
+El link es seguro y único para ti — no lo compartas con nadie. Expira en 7 días.
 
 Cualquier duda, respondé este correo.
 
