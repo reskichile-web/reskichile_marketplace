@@ -177,36 +177,36 @@ export default function DesktopDashboard() {
       <h1 className="font-body text-xl xl:text-2xl font-black mb-4 shrink-0">Mi cuenta</h1>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4 min-h-0">
-        {/* Profile card — spans 1 col, both rows */}
-        <div className="lg:col-span-1 lg:row-span-2 bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-4">
+        {/* Profile card — 1x1 (top-left) */}
+        <div className="lg:col-span-1 lg:row-span-1 bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
+          <div className="flex items-center gap-3 shrink-0">
             {profile?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover" />
+              <img src={profile.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover" />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" />
                 </svg>
               </div>
             )}
             <div className="min-w-0">
-              <h2 className="font-body font-black text-lg truncate">
+              <h2 className="font-body font-black text-base truncate">
                 {profile?.name || 'Mi perfil'}
               </h2>
-              <p className="text-sm text-gray-500 truncate">{profile?.email}</p>
+              <p className="text-xs text-gray-500 truncate">{profile?.email}</p>
             </div>
           </div>
 
-          <div className="mt-6 space-y-3 text-sm">
+          <div className="mt-3 space-y-1.5 text-sm shrink-0">
             <DetailRow label="Teléfono" value={profile?.phone || '—'} />
             <DetailRow label="Instagram" value={profile?.instagram ? `@${profile.instagram}` : '—'} />
           </div>
 
-          <div className="mt-auto pt-5">
+          <div className="mt-auto pt-3 shrink-0">
             <Link
               href="/perfil/editar"
-              className="w-full inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 py-2 rounded-lg transition-colors text-sm font-medium"
+              className="w-full inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 py-1.5 rounded-lg transition-colors text-sm font-medium"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -261,8 +261,8 @@ export default function DesktopDashboard() {
           )}
         </div>
 
-        {/* Conversations card */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
+        {/* Conversations card — 2x1 (bottom-left wide) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-baseline justify-between mb-3 shrink-0">
             <h2 className="font-body font-black text-lg">
               Mensajes
