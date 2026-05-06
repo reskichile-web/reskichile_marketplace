@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import EmptyState from '@/components/illustrations/EmptyState'
+import { PRODUCT_TYPES } from '@/lib/constants'
 
 export const metadata: Metadata = {
   title: 'Mis mensajes - ReskiChile',
@@ -63,7 +64,7 @@ export default async function MensajesPage() {
           .from('products')
           .select('id, brand, model, slug, product_type, price, product_images(url, order)')
           .in('id', productIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [] as { id: string; brand: string | null; model: string | null; slug: string | null; product_type: string; price: number; product_images: { url: string; order: number }[] }[] }),
     supabase.from('users').select('id, name, avatar_url').in('id', otherIds),
     supabase
       .from('messages')
@@ -127,9 +128,11 @@ export default async function MensajesPage() {
 
             const productLabel = product
               ? [product.brand, product.model].filter(Boolean).join(' ')
-              : 'Producto'
+              : null
             const otherName = other?.name || 'Usuario'
-            const title = `${otherName} – ${productLabel}`
+            const productCategory = product ? PRODUCT_TYPES[product.product_type] : null
+            const productPrice = product?.price ? `$${product.price.toLocaleString('es-CL')}` : null
+            const metaParts = [productCategory, productLabel, productPrice].filter(Boolean) as string[]
 
             // Preview body — bold/white when unread
             let preview: React.ReactNode = null
@@ -167,7 +170,7 @@ export default async function MensajesPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={productImage}
-                      alt={productLabel}
+                      alt={productLabel || ''}
                       className="w-20 h-20 sm:w-24 sm:h-24 object-cover shrink-0"
                     />
                   ) : (
@@ -198,7 +201,7 @@ export default async function MensajesPage() {
                           highlight ? 'text-white' : 'text-gray-900'
                         }`}
                       >
-                        {title}
+                        {otherName}
                       </h2>
                       <span
                         className={`text-xs shrink-0 tabular-nums ${
@@ -208,6 +211,15 @@ export default async function MensajesPage() {
                         {timeAgo(c.last_message_at)}
                       </span>
                     </div>
+                    {metaParts.length > 0 && (
+                      <p
+                        className={`text-xs truncate mt-0.5 ${
+                          highlight ? 'text-white/80' : 'text-gray-500'
+                        }`}
+                      >
+                        {metaParts.join(' · ')}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 min-w-0">{preview}</div>
                       {unread > 0 && (
