@@ -34,7 +34,6 @@ const TIPO_ESQUI_OPTIONS: { value: string; label: string }[] = [
 const GENERO_ESQUI_OPTIONS: { value: string; label: string }[] = [
   { value: 'hombre', label: 'Hombre' },
   { value: 'mujer', label: 'Mujer' },
-  { value: 'unisex', label: 'Unisex' },
   { value: 'junior', label: 'Junior' },
   { value: 'nino', label: 'Niño' },
 ]
@@ -343,8 +342,8 @@ export default function EditProductPage() {
     if (form.product_type === 'esquis') {
       const tipo = Array.isArray(attributes.tipo) ? (attributes.tipo as string[]) : []
       if (tipo.length > 0) attributesJson.tipo = tipo
-      const genero = typeof attributes.genero === 'string' ? attributes.genero : ''
-      if (genero) attributesJson.genero = genero
+      const genero = Array.isArray(attributes.genero) ? (attributes.genero as string[]) : []
+      if (genero.length > 0) attributesJson.genero = genero
     }
 
     const { error: updateError } = await supabase.from('products').update({
@@ -568,16 +567,21 @@ export default function EditProductPage() {
                   </div>
                 </div>
                 <div className="mb-4">
-                  <span className="text-xs text-gray-400">Género</span>
+                  <span className="text-xs text-gray-400">Género (puedes elegir varios)</span>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {GENERO_ESQUI_OPTIONS.map(opt => {
-                      const current = typeof attributes.genero === 'string' ? attributes.genero : ''
-                      const selected = current === opt.value
+                      const current = Array.isArray(attributes.genero) ? (attributes.genero as string[]) : []
+                      const selected = current.includes(opt.value)
                       return (
                         <button
                           key={opt.value}
                           type="button"
-                          onClick={() => updateAttribute('genero', selected ? '' : opt.value)}
+                          onClick={() => {
+                            const next = selected
+                              ? current.filter(v => v !== opt.value)
+                              : [...current, opt.value]
+                            updateAttribute('genero', next)
+                          }}
                           className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                             selected
                               ? 'bg-brand-500 text-white border-brand-500'
