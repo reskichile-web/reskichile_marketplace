@@ -5,6 +5,8 @@ interface Props {
   description?: string
   actionLabel?: string
   actionHref?: string
+  actionVariant?: 'primary' | 'subtle'
+  actionIcon?: React.ReactNode
 }
 
 export default function EmptyState({
@@ -12,6 +14,8 @@ export default function EmptyState({
   description = 'Intenta ajustar los filtros o vuelve mas tarde.',
   actionLabel,
   actionHref,
+  actionVariant = 'primary',
+  actionIcon,
 }: Props) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
@@ -54,8 +58,13 @@ export default function EmptyState({
       {actionLabel && actionHref && (
         <Link
           href={actionHref}
-          className="pressable mt-6 bg-brand-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors"
+          className={
+            actionVariant === 'subtle'
+              ? 'mt-6 inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 px-4 py-1.5 transition-colors text-sm font-medium'
+              : 'pressable mt-6 bg-brand-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-600 transition-colors'
+          }
         >
+          {actionIcon}
           {actionLabel}
         </Link>
       )}

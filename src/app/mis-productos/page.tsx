@@ -26,8 +26,14 @@ export default async function MyProductsPage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-10">
         <div className="flex justify-between items-center mb-8">
           <h1 className="font-body text-3xl font-black">Mis productos</h1>
-          <Link href="/vender" className="bg-brand-500 text-white px-5 py-2.5 rounded-lg hover:bg-brand-600 text-sm font-medium">
-            + Publicar nuevo
+          <Link
+            href="/vender"
+            className="inline-flex items-center gap-2.5 bg-brand-500 text-white pl-5 pr-6 py-3 rounded-lg hover:bg-brand-600 transition-colors text-sm font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.25} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Publicar nuevo
           </Link>
         </div>
 
@@ -35,8 +41,14 @@ export default async function MyProductsPage() {
         <EmptyState
           title="Aun no tienes productos"
           description="Publica tu primer equipo y encuentra un nuevo dueno."
-          actionLabel="Publicar producto"
+          actionLabel="Publicar primer producto"
           actionHref="/vender"
+          actionVariant="subtle"
+          actionIcon={
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          }
         />
       ) : (
         <div className="space-y-4">
