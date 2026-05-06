@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getAuthUser } from '@/lib/auth'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
@@ -10,6 +11,17 @@ export default async function Header() {
   const { user, isAdmin, avatarUrl, userName } = await getAuthUser()
 
   if (isAdmin) return <AdminNav />
+
+  let unreadCount = 0
+  if (user) {
+    const supabase = createServerSupabaseClient()
+    const { count } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .is('read_at', null)
+      .neq('sender_id', user.id)
+    unreadCount = count ?? 0
+  }
 
   return (
     <header className="bg-white shadow-sm">
@@ -41,7 +53,7 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             {!isAdmin && <SearchBar />}
             {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} userName={userName} />
+              <ProfileDropdown avatarUrl={avatarUrl} userName={userName} unreadCount={unreadCount} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -53,23 +65,7 @@ export default async function Header() {
 
           {/* Right actions — desktop */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            {user ? (
-              <>
-                {/* Mis productos icon */}
-                <Link
-                  href="/mis-productos"
-                  className="p-2 text-gray-500 hover:text-brand-500 transition-colors rounded-lg hover:bg-gray-50"
-                  title="Mis productos"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                </Link>
-
-                {/* Avatar dropdown */}
-                <ProfileDropdown avatarUrl={avatarUrl} userName={userName} />
-              </>
-            ) : (
+            {!user && (
               <>
                 <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
                   Iniciar sesion
@@ -83,6 +79,20 @@ export default async function Header() {
             <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors font-nav">
               Vender
             </Link>
+            {user && (
+              <>
+                <Link
+                  href="/mis-productos"
+                  className="pressable inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm px-4 py-2.5 rounded-sm hover:border-brand-300 hover:text-brand-500 transition-colors font-nav"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  Mis productos
+                </Link>
+                <ProfileDropdown avatarUrl={avatarUrl} userName={userName} unreadCount={unreadCount} />
+              </>
+            )}
           </div>
 
         </div>

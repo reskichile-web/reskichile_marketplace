@@ -178,7 +178,7 @@ export default function DesktopDashboard() {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4 min-h-0">
         {/* Profile card — 1x1 (top-left) */}
-        <div className="lg:col-span-1 lg:row-span-1 bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
+        <div className="lg:col-span-1 lg:row-span-1 bg-white rounded-none border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-center gap-3 shrink-0">
             {profile?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -206,7 +206,7 @@ export default function DesktopDashboard() {
           <div className="mt-auto pt-3 shrink-0">
             <Link
               href="/perfil/editar"
-              className="w-full inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 py-1.5 rounded-lg transition-colors text-sm font-medium"
+              className="w-full inline-flex items-center justify-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 py-1.5 transition-colors text-sm font-medium"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -217,7 +217,7 @@ export default function DesktopDashboard() {
         </div>
 
         {/* Products card */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
+        <div className="lg:col-span-2 bg-white rounded-none border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-baseline justify-between mb-3 shrink-0">
             <h2 className="font-body font-black text-lg">
               Mis productos
@@ -230,7 +230,13 @@ export default function DesktopDashboard() {
           {products.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <p className="text-sm text-gray-500 mb-3">Aún no has publicado nada.</p>
-              <Link href="/vender" className="inline-block bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-600">
+              <Link
+                href="/vender"
+                className="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 px-4 py-1.5 transition-colors text-sm font-medium"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
                 Publicar primer producto
               </Link>
             </div>
@@ -242,7 +248,7 @@ export default function DesktopDashboard() {
                   href={`/producto/${p.slug || p.id}`}
                   className="group flex flex-col min-h-0"
                 >
-                  <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden min-h-0">
+                  <div className="flex-1 bg-gray-100 overflow-hidden min-h-0">
                     {p.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -262,7 +268,7 @@ export default function DesktopDashboard() {
         </div>
 
         {/* Conversations card — 2x1 (bottom-left wide) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
+        <div className="lg:col-span-2 bg-white rounded-none border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-baseline justify-between mb-3 shrink-0">
             <h2 className="font-body font-black text-lg">
               Mensajes
@@ -275,36 +281,48 @@ export default function DesktopDashboard() {
           {conversations.length === 0 ? (
             <p className="flex-1 text-sm text-gray-500 text-center flex items-center justify-center">Sin conversaciones todavía.</p>
           ) : (
-            <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+            <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
               {conversations.map((c) => {
                 const highlight = c.is_other_last && c.unread > 0
                 return (
                   <Link
                     key={c.id}
                     href={`/mensajes/${c.id}`}
-                    className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-3 p-2 transition-colors ${
                       highlight ? 'bg-brand-400 hover:bg-brand-500 text-white' : 'hover:bg-gray-50'
                     }`}
                   >
                     {c.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.image_url} alt="" className="w-9 h-9 rounded object-cover shrink-0" />
+                      <img src={c.image_url} alt="" className="w-9 h-9 object-cover shrink-0" />
                     ) : (
-                      <div className={`w-9 h-9 rounded shrink-0 ${highlight ? 'bg-white/20' : 'bg-gray-100'}`} />
+                      <div className={`w-9 h-9 shrink-0 ${highlight ? 'bg-white/20' : 'bg-gray-100'}`} />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${highlight ? 'text-white' : 'text-gray-900'}`}>
-                        {c.other_name}
-                        {c.product_label && (
-                          <span className={highlight ? 'text-white/80' : 'text-gray-400'}> – {c.product_label}</span>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className={`text-xs font-medium truncate ${highlight ? 'text-white' : 'text-gray-900'}`}>
+                          {c.other_name}
+                          {c.product_label && (
+                            <span className={highlight ? 'text-white/80' : 'text-gray-400'}> – {c.product_label}</span>
+                          )}
+                        </p>
+                        {c.last_at && (
+                          <span className={`text-[10px] shrink-0 tabular-nums ${highlight ? 'text-white/80' : 'text-gray-400'}`}>
+                            {timeAgoShort(c.last_at)}
+                          </span>
                         )}
-                      </p>
+                      </div>
                       {c.last_body && (
                         <p className={`text-xs truncate ${highlight ? 'text-white font-bold' : 'text-gray-500'}`}>
                           {highlight && c.unread > 1 ? `+${c.unread} mensajes` : c.last_body}
                         </p>
                       )}
                     </div>
+                    {c.unread > 0 && (
+                      <span className="shrink-0 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                        {c.unread > 9 ? '9+' : c.unread}
+                      </span>
+                    )}
                   </Link>
                 )
               })}
@@ -313,7 +331,7 @@ export default function DesktopDashboard() {
         </div>
 
         {/* Likes card (placeholder) */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
+        <div className="bg-white rounded-none border border-gray-200 p-5 flex flex-col overflow-hidden min-h-0">
           <div className="flex items-baseline justify-between mb-3 shrink-0">
             <h2 className="font-body font-black text-lg">Me gusta</h2>
             <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Próximamente</span>
@@ -339,4 +357,14 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <p className="text-sm text-gray-900 truncate">{value}</p>
     </div>
   )
+}
+
+function timeAgoShort(iso: string): string {
+  const d = new Date(iso)
+  const diff = Date.now() - d.getTime()
+  if (diff < 60_000) return 'ahora'
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m`
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h`
+  if (diff < 7 * 86400_000) return `${Math.floor(diff / 86400_000)}d`
+  return d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })
 }

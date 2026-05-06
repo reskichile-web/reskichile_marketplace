@@ -156,23 +156,23 @@ export default async function MensajesPage() {
               <Link
                 key={c.id}
                 href={`/mensajes/${c.id}`}
-                className={`relative block border rounded-lg p-4 transition-colors ${
+                className={`relative block border p-5 min-h-[110px] transition-colors ${
                   highlight
                     ? 'bg-brand-400 border-brand-400 hover:bg-brand-500'
                     : 'bg-white border-gray-200 hover:border-brand-300'
                 }`}
               >
-                <div className="flex gap-3">
+                <div className="flex gap-4 h-full">
                   {productImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={productImage}
                       alt={productLabel}
-                      className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded shrink-0"
+                      className="w-20 h-20 sm:w-24 sm:h-24 object-cover shrink-0"
                     />
                   ) : (
                     <div
-                      className={`w-16 h-16 sm:w-24 sm:h-24 rounded shrink-0 flex items-center justify-center ${
+                      className={`w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex items-center justify-center ${
                         highlight ? 'bg-white/20' : 'bg-gray-100'
                       }`}
                     >
@@ -192,21 +192,30 @@ export default async function MensajesPage() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h2
-                      className={`font-body font-medium truncate pr-8 ${
-                        highlight ? 'text-white' : 'text-gray-900'
-                      }`}
-                    >
-                      {title}
-                    </h2>
-                    {preview}
-                    <p
-                      className={`text-xs mt-1 ${
-                        highlight ? 'text-white/80' : 'text-gray-400'
-                      }`}
-                    >
-                      {timeAgo(c.last_message_at)}
-                    </p>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h2
+                        className={`font-body font-medium truncate ${
+                          highlight ? 'text-white' : 'text-gray-900'
+                        }`}
+                      >
+                        {title}
+                      </h2>
+                      <span
+                        className={`text-xs shrink-0 tabular-nums ${
+                          highlight ? 'text-white/80' : 'text-gray-400'
+                        }`}
+                      >
+                        {timeAgo(c.last_message_at)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 min-w-0">{preview}</div>
+                      {unread > 0 && (
+                        <span className="shrink-0 bg-red-500 text-white text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                          {unread > 9 ? '9+' : unread}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Link>

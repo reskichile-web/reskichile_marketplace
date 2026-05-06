@@ -6,9 +6,10 @@ import Link from 'next/link'
 interface Props {
   avatarUrl?: string | null
   userName?: string | null
+  unreadCount?: number
 }
 
-export default function ProfileDropdown({ avatarUrl, userName }: Props) {
+export default function ProfileDropdown({ avatarUrl, userName, unreadCount = 0 }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -26,7 +27,7 @@ export default function ProfileDropdown({ avatarUrl, userName }: Props) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="pressable-subtle flex items-center"
+        className="pressable-subtle relative flex items-center"
         title="Mi cuenta"
       >
         {avatarUrl ? (
@@ -37,6 +38,11 @@ export default function ProfileDropdown({ avatarUrl, userName }: Props) {
               <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" />
             </svg>
           </div>
+        )}
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full ring-2 ring-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
       </button>
 
@@ -61,7 +67,12 @@ export default function ProfileDropdown({ avatarUrl, userName }: Props) {
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
             </svg>
-            Mis mensajes
+            <span className="flex-1">Mis mensajes</span>
+            {unreadCount > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </Link>
 
           <div className="my-1 border-t border-gray-100" />
