@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronDown, Menu } from 'lucide-react'
-import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
+import { CONDITIONS, REGIONS } from '@/lib/constants'
 import {
   TIPO_OPTIONS,
   GENERO_OPTIONS,
@@ -14,11 +14,9 @@ import {
 } from '@/lib/ski-filters'
 
 interface Props {
-  selectedTypes: string[]
   selectedConditions: string[]
   selectedRegions: string[]
   brand: string
-  typeCounts: Record<string, number>
   conditionCounts: Record<string, number>
   regionCounts: Record<string, number>
   isEsquisOnly: boolean
@@ -32,7 +30,6 @@ interface Props {
 }
 
 type SectionKey =
-  | 'types'
   | 'conditions'
   | 'regions'
   | 'brand'
@@ -44,11 +41,9 @@ type SectionKey =
   | 'conexion'
 
 export default function CatalogSidebar({
-  selectedTypes,
   selectedConditions,
   selectedRegions,
   brand,
-  typeCounts,
   conditionCounts,
   regionCounts,
   isEsquisOnly,
@@ -64,7 +59,6 @@ export default function CatalogSidebar({
   const sp = useSearchParams()
   const [hidden, setHidden] = useState(false)
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
-    types: true,
     conditions: false,
     regions: false,
     brand: false,
@@ -126,7 +120,6 @@ export default function CatalogSidebar({
       selectedConexion.length > 0)
 
   const hasFilters =
-    selectedTypes.length > 0 ||
     selectedConditions.length > 0 ||
     selectedRegions.length > 0 ||
     !!brand ||
@@ -155,81 +148,6 @@ export default function CatalogSidebar({
         Ocultar filtros
         <Menu className="w-4 h-4" />
       </button>
-
-      <Section
-        label="Producto"
-        isOpen={open.types}
-        onToggle={() => toggleSection('types')}
-        active={selectedTypes.length > 0}
-      >
-        {Object.entries(PRODUCT_TYPES).map(([key, label]) => {
-          const checked = selectedTypes.includes(key)
-          const count = typeCounts[key] || 0
-          if (count === 0 && !checked) return null
-          return (
-            <CheckRow
-              key={key}
-              checked={checked}
-              onChange={() => toggleMulti('product_type', key)}
-              label={label}
-              count={count}
-            />
-          )
-        })}
-      </Section>
-
-      <Section
-        label="Condición"
-        isOpen={open.conditions}
-        onToggle={() => toggleSection('conditions')}
-        active={selectedConditions.length > 0}
-      >
-        {Object.entries(CONDITIONS).map(([key, label]) => {
-          const checked = selectedConditions.includes(key)
-          const count = conditionCounts[key] || 0
-          if (count === 0 && !checked) return null
-          return (
-            <CheckRow
-              key={key}
-              checked={checked}
-              onChange={() => toggleMulti('condition', key)}
-              label={label}
-              count={count}
-            />
-          )
-        })}
-      </Section>
-
-      <Section
-        label="Región"
-        isOpen={open.regions}
-        onToggle={() => toggleSection('regions')}
-        active={selectedRegions.length > 0}
-      >
-        {REGIONS.map(region => {
-          const checked = selectedRegions.includes(region)
-          const count = regionCounts[region] || 0
-          if (count === 0 && !checked) return null
-          return (
-            <CheckRow
-              key={region}
-              checked={checked}
-              onChange={() => toggleMulti('region', region)}
-              label={region}
-              count={count}
-            />
-          )
-        })}
-      </Section>
-
-      <Section
-        label="Marca"
-        isOpen={open.brand}
-        onToggle={() => toggleSection('brand')}
-        active={!!brand}
-      >
-        <BrandSearch defaultValue={brand} onSubmit={setBrandSearch} />
-      </Section>
 
       {isEsquisOnly && (
         <>
@@ -371,6 +289,59 @@ export default function CatalogSidebar({
           )}
         </>
       )}
+
+      <Section
+        label="Condición"
+        isOpen={open.conditions}
+        onToggle={() => toggleSection('conditions')}
+        active={selectedConditions.length > 0}
+      >
+        {Object.entries(CONDITIONS).map(([key, label]) => {
+          const checked = selectedConditions.includes(key)
+          const count = conditionCounts[key] || 0
+          if (count === 0 && !checked) return null
+          return (
+            <CheckRow
+              key={key}
+              checked={checked}
+              onChange={() => toggleMulti('condition', key)}
+              label={label}
+              count={count}
+            />
+          )
+        })}
+      </Section>
+
+      <Section
+        label="Región"
+        isOpen={open.regions}
+        onToggle={() => toggleSection('regions')}
+        active={selectedRegions.length > 0}
+      >
+        {REGIONS.map(region => {
+          const checked = selectedRegions.includes(region)
+          const count = regionCounts[region] || 0
+          if (count === 0 && !checked) return null
+          return (
+            <CheckRow
+              key={region}
+              checked={checked}
+              onChange={() => toggleMulti('region', region)}
+              label={region}
+              count={count}
+            />
+          )
+        })}
+      </Section>
+
+      <Section
+        label="Marca"
+        isOpen={open.brand}
+        onToggle={() => toggleSection('brand')}
+        active={!!brand}
+      >
+        <BrandSearch defaultValue={brand} onSubmit={setBrandSearch} />
+      </Section>
 
       {hasFilters && (
         <button

@@ -6,11 +6,9 @@ import CatalogSidebar from './CatalogSidebar'
 import type { SkiCounts } from '@/lib/ski-filters'
 
 interface Props {
-  selectedTypes: string[]
   selectedConditions: string[]
   selectedRegions: string[]
   brand?: string
-  typeCounts: Record<string, number>
   conditionCounts: Record<string, number>
   regionCounts: Record<string, number>
   totalCount: number
@@ -35,7 +33,6 @@ export default function CatalogMobileFilterButton(props: Props) {
       props.selectedConexion.length +
       (props.selectedFij ? 1 : 0))
   const activeCount =
-    props.selectedTypes.length +
     props.selectedConditions.length +
     props.selectedRegions.length +
     (props.brand ? 1 : 0) +
@@ -89,11 +86,9 @@ export default function CatalogMobileFilterButton(props: Props) {
             </div>
             <div className="flex-1 overflow-y-auto p-5">
               <CatalogSidebar
-                selectedTypes={props.selectedTypes}
                 selectedConditions={props.selectedConditions}
                 selectedRegions={props.selectedRegions}
                 brand={props.brand || ''}
-                typeCounts={props.typeCounts}
                 conditionCounts={props.conditionCounts}
                 regionCounts={props.regionCounts}
                 isEsquisOnly={props.isEsquisOnly}

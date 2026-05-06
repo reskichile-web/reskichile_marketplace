@@ -124,11 +124,9 @@ export default async function CatalogPage({ searchParams }: Props) {
 
       <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
         <CatalogMobileFilterButton
-          selectedTypes={types}
           selectedConditions={conditions}
           selectedRegions={regions}
           brand={brand}
-          typeCounts={typeCounts}
           conditionCounts={conditionCounts}
           regionCounts={regionCounts}
           totalCount={allProducts.length}
@@ -148,11 +146,9 @@ export default async function CatalogPage({ searchParams }: Props) {
         <aside className="hidden lg:block">
           <div className="sticky top-24">
             <CatalogSidebar
-              selectedTypes={types}
               selectedConditions={conditions}
               selectedRegions={regions}
               brand={brand}
-              typeCounts={typeCounts}
               conditionCounts={conditionCounts}
               regionCounts={regionCounts}
               isEsquisOnly={isEsquisOnly}
