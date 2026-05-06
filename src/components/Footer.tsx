@@ -1,23 +1,10 @@
 import Link from 'next/link'
-import Image from 'next/image'
-import { BLUR_DATA_URL } from '@/lib/image-utils'
 
 export default function Footer() {
   return (
     <footer className="mt-auto">
-      {/* Image banner */}
-      <div className="relative overflow-hidden h-[250px] md:h-[380px]">
-        <Image
-          src="/images/clement-delhaye-cnluLIyhpBA-unsplash.jpg"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-[center_70%]"
-          placeholder="blur"
-          blurDataURL={BLUR_DATA_URL}
-        />
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent" />
-      </div>
+      {/* Subtle sky gradient: white → celeste → dark blue */}
+      <div className="h-[160px] md:h-[220px] bg-gradient-to-b from-white via-sky-300 to-blue-900" />
 
       {/* Footer content */}
       <div className="bg-gray-900 text-white">

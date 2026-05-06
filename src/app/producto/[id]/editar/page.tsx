@@ -21,6 +21,15 @@ const ACCEPTED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 const ACCEPTED_LABEL = 'JPG, PNG o WebP'
 const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
 
+const TIPO_ESQUI_OPTIONS: { value: string; label: string }[] = [
+  { value: 'race', label: 'Race' },
+  { value: 'all_mountain', label: 'All mountain' },
+  { value: 'freeride', label: 'Freeride' },
+  { value: 'powder', label: 'Powder' },
+  { value: 'freestyle', label: 'Freestyle' },
+  { value: 'touring', label: 'Touring' },
+]
+
 function InlineField({ label, value, onSave, type = 'text', options }: {
   label: string
   value: string
@@ -128,7 +137,7 @@ export default function EditProductPage() {
     status: '',
   })
 
-  const [attributes, setAttributes] = useState<Record<string, string | boolean>>({})
+  const [attributes, setAttributes] = useState<Record<string, string | boolean | string[]>>({})
   const [existingImages, setExistingImages] = useState<{ id: string; url: string; order: number }[]>([])
   const [newImages, setNewImages] = useState<{ id: string; file: File; preview: string }[]>([])
   const newImageCounter = useRef(0)
@@ -167,7 +176,7 @@ export default function EditProductPage() {
         description: product.description || '',
         status: product.status || '',
       })
-      setAttributes((product.attributes as Record<string, string | boolean>) || {})
+      setAttributes((product.attributes as Record<string, string | boolean | string[]>) || {})
       setProductSlug(product.slug || '')
       const imgs = (product.product_images || []) as { id: string; url: string; order: number }[]
       const sorted = imgs.sort((a, b) => a.order - b.order)
@@ -190,7 +199,7 @@ export default function EditProductPage() {
     })
   }
 
-  function updateAttribute(key: string, value: string | boolean) {
+  function updateAttribute(key: string, value: string | boolean | string[]) {
     setAttributes(prev => ({ ...prev, [key]: value }))
   }
 
@@ -317,10 +326,14 @@ export default function EditProductPage() {
     setSaving(true)
     const supabase = createClient()
 
-    const attributesJson: Record<string, string | boolean> = {}
+    const attributesJson: Record<string, string | boolean | string[]> = {}
     for (const attr of currentAttributes) {
       const val = attributes[attr.key]
       if (val !== undefined && val !== '') attributesJson[attr.key] = val
+    }
+    if (form.product_type === 'esquis') {
+      const tipo = Array.isArray(attributes.tipo) ? (attributes.tipo as string[]) : []
+      if (tipo.length > 0) attributesJson.tipo = tipo
     }
 
     const { error: updateError } = await supabase.from('products').update({
@@ -513,6 +526,36 @@ export default function EditProductPage() {
             <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-3">
               Atributos de {PRODUCT_TYPES[form.product_type]}
             </p>
+            {form.product_type === 'esquis' && (
+              <div className="mb-4">
+                <span className="text-xs text-gray-400">Tipo (puedes elegir varios)</span>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {TIPO_ESQUI_OPTIONS.map(opt => {
+                    const current = Array.isArray(attributes.tipo) ? (attributes.tipo as string[]) : []
+                    const selected = current.includes(opt.value)
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          const next = selected
+                            ? current.filter(v => v !== opt.value)
+                            : [...current, opt.value]
+                          updateAttribute('tipo', next)
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                          selected
+                            ? 'bg-brand-500 text-white border-brand-500'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {currentAttributes.map(attr => {
                 if (attr.type === 'boolean') {
