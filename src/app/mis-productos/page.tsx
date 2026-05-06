@@ -39,8 +39,8 @@ export default async function MyProductsPage() {
 
       {!products || products.length === 0 ? (
         <EmptyState
-          title="Aun no tienes productos"
-          description="Publica tu primer equipo y encuentra un nuevo dueno."
+          title="Aún no tienes productos"
+          description="Publica tu primer equipo y encuentra un nuevo dueño."
           actionLabel="Publicar primer producto"
           actionHref="/vender"
           actionVariant="subtle"
