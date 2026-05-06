@@ -24,16 +24,17 @@ export default async function MyProductsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 min-h-screen pt-10 md:pt-14 pb-20">
       <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-10">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="font-body text-3xl font-black">Mis productos</h1>
+        <div className="flex justify-between items-center gap-3 mb-8">
+          <h1 className="font-body text-2xl md:text-3xl font-black whitespace-nowrap">Mis productos</h1>
           <Link
             href="/vender"
-            className="inline-flex items-center gap-2.5 bg-brand-500 text-white pl-5 pr-6 py-3 rounded-lg hover:bg-brand-600 transition-colors text-sm font-medium"
+            aria-label="Publicar nuevo"
+            className="shrink-0 inline-flex items-center gap-2 bg-brand-500 text-white px-3 md:pl-5 md:pr-6 py-2 md:py-3 rounded-lg hover:bg-brand-600 transition-colors text-sm font-medium whitespace-nowrap"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.25} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Publicar nuevo
+            <span className="hidden md:inline">Publicar nuevo</span>
           </Link>
         </div>
 
