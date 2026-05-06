@@ -3,6 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://reskichile.cl'
+const SLUG_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // no 0/O/1/I/L confusion
+
+function generateSlug(length = 8): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(length))
+  let out = ''
+  for (let i = 0; i < length; i++) out += SLUG_ALPHABET[bytes[i] % SLUG_ALPHABET.length]
+  return out
+}
 
 export async function POST(request: Request) {
   const supabase = createServerSupabaseClient()
@@ -21,20 +29,29 @@ export async function POST(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-  })
+  const { data: targetUser, error: lookupErr } = await admin
+    .from('users')
+    .select('id')
+    .eq('email', email.toLowerCase())
+    .single()
 
-  if (error || !data?.properties?.hashed_token) {
-    const msg = error instanceof Error ? error.message : 'No se pudo generar el link'
-    return NextResponse.json({ error: msg }, { status: 500 })
+  if (lookupErr || !targetUser) {
+    return NextResponse.json({ error: 'No se encontró el usuario' }, { status: 404 })
   }
 
-  // Self-hosted URL: keeps reskichile.cl in the link and uses token_hash
-  // (verifyOtp) which doesn't require PKCE client state.
-  const next = encodeURIComponent('/auth/reset-password')
-  const link = `${SITE_URL}/auth/confirm?token_hash=${data.properties.hashed_token}&type=magiclink&next=${next}`
+  // Try a few times in case of slug collision
+  let slug = ''
+  for (let attempt = 0; attempt < 5; attempt++) {
+    slug = generateSlug(8)
+    const { error: insertErr } = await admin
+      .from('password_invites')
+      .insert({ slug, user_id: targetUser.id })
+    if (!insertErr) break
+    if (attempt === 4) {
+      return NextResponse.json({ error: 'No se pudo generar el link' }, { status: 500 })
+    }
+  }
 
+  const link = `${SITE_URL}/i/${slug}`
   return NextResponse.json({ link })
 }
