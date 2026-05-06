@@ -173,8 +173,8 @@ export default function DesktopDashboard() {
   if (loading) return <PerfilSkeleton />
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-8 pt-2 md:pt-3 pb-4 h-[calc(100vh-130px)] flex flex-col">
-      <h1 className="font-body text-xl xl:text-2xl font-black mb-3 shrink-0">Mi cuenta</h1>
+    <div className="max-w-6xl mx-auto px-6 md:px-10 pt-4 md:pt-5 pb-6 h-[calc(100vh-130px)] flex flex-col">
+      <h1 className="font-body text-xl xl:text-2xl font-black mb-4 shrink-0">Mi cuenta</h1>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4 min-h-0">
         {/* Profile card — spans 1 col, both rows */}
@@ -203,15 +203,17 @@ export default function DesktopDashboard() {
             <DetailRow label="Instagram" value={profile?.instagram ? `@${profile.instagram}` : '—'} />
           </div>
 
-          <Link
-            href="/perfil/editar"
-            className="mt-auto pt-6 inline-flex items-center justify-center gap-2 bg-brand-500 text-white py-2.5 rounded-lg hover:bg-brand-600 transition-colors font-medium text-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            Editar perfil
-          </Link>
+          <div className="mt-auto pt-5">
+            <Link
+              href="/perfil/editar"
+              className="w-full inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 py-2 rounded-lg transition-colors text-sm font-medium"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Editar perfil
+            </Link>
+          </div>
         </div>
 
         {/* Products card */}
