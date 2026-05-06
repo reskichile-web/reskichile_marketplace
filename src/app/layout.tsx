@@ -72,7 +72,7 @@ export default function RootLayout({
         <ScrollToTop />
         <StickyHeader><Header /></StickyHeader>
         <div className="h-[95px] md:h-[130px]" />
-        <main className="flex-1 flex flex-col min-h-[calc(100vh-95px)] md:min-h-[calc(100vh-130px)]">
+        <main className="flex-1">
           {children}
         </main>
         <Footer />
