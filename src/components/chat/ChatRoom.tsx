@@ -93,6 +93,9 @@ export default function ChatRoom({ conversationId: initialConversationId, draftP
     }
   }, [messages.length])
 
+  // Keep latest loadOlder in a ref so onScroll can call it without re-creating
+  const loadOlderRef = useRef<() => void>(() => {})
+
   // Detect if user is at bottom (to control auto-scroll behavior)
   const onScroll = useCallback(() => {
     const el = scrollRef.current
@@ -102,9 +105,12 @@ export default function ChatRoom({ conversationId: initialConversationId, draftP
 
     // Load older when scrolled near top
     if (el.scrollTop < 200 && hasMoreOlder && !loadingOlder) {
-      loadOlder()
+      loadOlderRef.current()
     }
   }, [hasMoreOlder, loadingOlder])
+
+  // Wire the ref to the latest loadOlder definition every render
+  loadOlderRef.current = loadOlder
 
   async function loadOlder() {
     if (loadingOlder || !hasMoreOlder || messages.length === 0 || !conversationId) return
