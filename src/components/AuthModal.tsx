@@ -245,6 +245,7 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     })
 
     if (error) {
@@ -376,7 +377,9 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
     setLoading(true)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
 
     if (error) {
       setError(error.message)

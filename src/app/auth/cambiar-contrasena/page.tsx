@@ -53,7 +53,9 @@ export default function ChangePasswordPage() {
       setEmail(user.email || '')
 
       // Send recovery OTP
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email!)
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email!, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
 
       if (error) {
         setError('Error al enviar el código: ' + error.message)
@@ -126,7 +128,9 @@ export default function ChangePasswordPage() {
     setError('')
 
     const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
 
     if (error) {
       setError(error.message)

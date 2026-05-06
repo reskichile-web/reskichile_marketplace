@@ -313,6 +313,7 @@ export default function SellPage() {
     const { data, error } = await supabase.auth.signUp({
       email: authEmail.trim().toLowerCase(),
       password: authPassword,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     })
 
     if (error) {

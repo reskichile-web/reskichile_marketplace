@@ -55,7 +55,9 @@ export default function ForgotPasswordPage() {
       return
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail)
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
 
     if (error) {
       setError(error.message)
@@ -128,7 +130,9 @@ export default function ForgotPasswordPage() {
     setError('')
 
     const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase())
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
 
     if (error) {
       setError(error.message)
