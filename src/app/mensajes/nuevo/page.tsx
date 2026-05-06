@@ -52,7 +52,7 @@ export default async function NuevoChatPage({ searchParams }: Props) {
   )[0]?.url
 
   return (
-    <div className="flex flex-col h-[calc(100vh-95px)] md:h-[calc(100vh-130px)] max-w-5xl mx-auto w-full">
+    <div className="flex flex-col h-[100dvh] md:h-[calc(100vh-130px)] max-w-5xl mx-auto w-full">
       <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-200 bg-white">
         <Link
           href="/mensajes"
