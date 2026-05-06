@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
@@ -17,6 +17,13 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
   const router = useRouter()
   const [contacting, setContacting] = useState(false)
   const [chatOpening, setChatOpening] = useState(false)
+
+  // Prefetch the chat route so it opens instantly when the user clicks
+  useEffect(() => {
+    if (userId && product.seller_id && userId !== product.seller_id) {
+      router.prefetch(`/mensajes/nuevo?product=${product.id}`)
+    }
+  }, [router, userId, product.id, product.seller_id])
 
   const images = (product.product_images || []).sort((a, b) => a.order - b.order)
   const isOwner = userId === product.seller_id

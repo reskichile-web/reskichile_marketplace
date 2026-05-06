@@ -15,36 +15,36 @@ export default async function NuevoChatPage({ searchParams }: Props) {
   if (!productId) redirect('/catalogo')
 
   const supabase = createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+
+  // Parallelize: auth + product fetch don't depend on each other
+  const [authRes, productRes] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('products')
+      .select('id, brand, model, slug, product_type, price, seller_id, product_images(url, order)')
+      .eq('id', productId)
+      .single(),
+  ])
+  const user = authRes.data.user
+  const product = productRes.data
   if (!user) redirect(`/auth/login?redirect=/mensajes/nuevo?product=${productId}`)
-
-  const { data: product } = await supabase
-    .from('products')
-    .select('id, brand, model, slug, product_type, price, seller_id, product_images(url, order)')
-    .eq('id', productId)
-    .single()
-
   if (!product) notFound()
   if (!product.seller_id) redirect(`/producto/${product.slug || product.id}`)
   if (product.seller_id === user.id) redirect(`/producto/${product.slug || product.id}`)
 
-  // If conversation already exists, jump straight to it
-  const { data: existing } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('product_id', productId)
-    .eq('buyer_id', user.id)
-    .eq('seller_id', product.seller_id)
-    .maybeSingle()
-  if (existing) redirect(`/mensajes/${existing.id}`)
-
-  const { data: seller } = await supabase
-    .from('users')
-    .select('id, name, avatar_url')
-    .eq('id', product.seller_id)
-    .single()
+  // Parallelize: existing-conversation check + seller profile
+  const [existingRes, sellerRes] = await Promise.all([
+    supabase
+      .from('conversations')
+      .select('id')
+      .eq('product_id', productId)
+      .eq('buyer_id', user.id)
+      .eq('seller_id', product.seller_id)
+      .maybeSingle(),
+    supabase.from('users').select('id, name, avatar_url').eq('id', product.seller_id).single(),
+  ])
+  if (existingRes.data) redirect(`/mensajes/${existingRes.data.id}`)
+  const seller = sellerRes.data
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productImage = (product as any).product_images?.sort(
