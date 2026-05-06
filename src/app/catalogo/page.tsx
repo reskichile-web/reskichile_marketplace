@@ -8,6 +8,7 @@ import CatalogSortSelect from '@/components/CatalogSortSelect'
 import ProductCard from '@/components/ProductCard'
 import EmptyState from '@/components/illustrations/EmptyState'
 import { PRODUCT_TYPES } from '@/lib/constants'
+import { computeSkiCounts, passesSkiFilters } from '@/lib/ski-filters'
 
 export const metadata: Metadata = {
   title: 'Catálogo - ReskiChile',
@@ -21,6 +22,12 @@ interface Props {
     region?: string
     brand?: string
     sort?: string
+    tipo?: string
+    genero?: string
+    largo?: string
+    ancho?: string
+    fij?: string
+    conexion?: string
   }
 }
 
@@ -32,6 +39,13 @@ export default async function CatalogPage({ searchParams }: Props) {
   const regions = (searchParams.region || '').split(',').filter(Boolean)
   const brand = searchParams.brand || ''
   const sort = searchParams.sort || 'recent'
+
+  const tipo = (searchParams.tipo || '').split(',').filter(Boolean)
+  const genero = (searchParams.genero || '').split(',').filter(Boolean)
+  const largo = (searchParams.largo || '').split(',').filter(Boolean)
+  const ancho = (searchParams.ancho || '').split(',').filter(Boolean)
+  const fij = searchParams.fij || ''
+  const conexion = (searchParams.conexion || '').split(',').filter(Boolean)
 
   let query = supabase
     .from('products')
@@ -49,10 +63,10 @@ export default async function CatalogPage({ searchParams }: Props) {
 
   const [productsResult, countsResult] = await Promise.all([
     query,
-    supabase.from('products').select('product_type, condition, region').eq('status', 'approved'),
+    supabase.from('products').select('product_type, condition, region, attributes').eq('status', 'approved'),
   ])
 
-  const products = productsResult.data || []
+  let products = productsResult.data || []
   const allProducts = countsResult.data || []
 
   const typeCounts: Record<string, number> = {}
@@ -64,9 +78,35 @@ export default async function CatalogPage({ searchParams }: Props) {
     if (p.region) regionCounts[p.region] = (regionCounts[p.region] || 0) + 1
   })
 
-  const hasFilters = types.length > 0 || conditions.length > 0 || regions.length > 0 || !!brand
+  const isEsquisOnly = types.length === 1 && types[0] === 'esquis'
+  const skiCounts = computeSkiCounts(allProducts.filter((p) => p.product_type === 'esquis'))
 
-  // Title: if exactly one product type filter, use its label; else "Catálogo"
+  if (isEsquisOnly) {
+    products = products.filter((p) =>
+      passesSkiFilters(p.attributes as Record<string, unknown> | null, {
+        tipo,
+        genero,
+        largo,
+        ancho,
+        fij,
+        conexion,
+      })
+    )
+  }
+
+  const hasFilters =
+    types.length > 0 ||
+    conditions.length > 0 ||
+    regions.length > 0 ||
+    !!brand ||
+    (isEsquisOnly &&
+      (tipo.length > 0 ||
+        genero.length > 0 ||
+        largo.length > 0 ||
+        ancho.length > 0 ||
+        !!fij ||
+        conexion.length > 0))
+
   const title =
     types.length === 1 && PRODUCT_TYPES[types[0]]
       ? PRODUCT_TYPES[types[0]]
@@ -74,7 +114,6 @@ export default async function CatalogPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-8 md:pt-12 pb-24">
-      {/* Header: title + description */}
       <div className="mb-8 md:mb-10">
         <h1 className="font-body font-black text-4xl md:text-6xl tracking-tight">{title}</h1>
         <p className="mt-3 max-w-2xl text-sm md:text-base text-gray-600 leading-relaxed">
@@ -83,7 +122,6 @@ export default async function CatalogPage({ searchParams }: Props) {
         </p>
       </div>
 
-      {/* Toolbar: mobile filter button + sort */}
       <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
         <CatalogMobileFilterButton
           selectedTypes={types}
@@ -94,12 +132,19 @@ export default async function CatalogPage({ searchParams }: Props) {
           conditionCounts={conditionCounts}
           regionCounts={regionCounts}
           totalCount={allProducts.length}
+          isEsquisOnly={isEsquisOnly}
+          skiCounts={skiCounts}
+          selectedTipo={tipo}
+          selectedGenero={genero}
+          selectedLargo={largo}
+          selectedAncho={ancho}
+          selectedFij={fij}
+          selectedConexion={conexion}
         />
         <CatalogSortSelect value={sort} />
       </div>
 
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-12">
-        {/* Sidebar */}
         <aside className="hidden lg:block">
           <div className="sticky top-24">
             <CatalogSidebar
@@ -110,13 +155,19 @@ export default async function CatalogPage({ searchParams }: Props) {
               typeCounts={typeCounts}
               conditionCounts={conditionCounts}
               regionCounts={regionCounts}
+              isEsquisOnly={isEsquisOnly}
+              skiCounts={skiCounts}
+              selectedTipo={tipo}
+              selectedGenero={genero}
+              selectedLargo={largo}
+              selectedAncho={ancho}
+              selectedFij={fij}
+              selectedConexion={conexion}
             />
           </div>
         </aside>
 
-        {/* Grid area */}
         <div className="min-w-0">
-          {/* Desktop sort + count */}
           <div className="hidden lg:flex items-center justify-between mb-6">
             <p className="text-sm text-gray-500">
               {products.length} {products.length === 1 ? 'producto' : 'productos'}
@@ -144,7 +195,6 @@ export default async function CatalogPage({ searchParams }: Props) {
                   ) || []
                 const title = [product.brand, product.model].filter(Boolean).join(' ')
 
-                // Show waist width badge for skis/snowboards
                 let badge: string | undefined
                 const attrs = product.attributes as Record<string, unknown> | null
                 if (attrs) {

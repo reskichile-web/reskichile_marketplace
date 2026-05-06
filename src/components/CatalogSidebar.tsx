@@ -4,6 +4,14 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronDown, Menu } from 'lucide-react'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
+import {
+  TIPO_OPTIONS,
+  GENERO_OPTIONS,
+  LARGO_BUCKETS,
+  ANCHO_BUCKETS,
+  CONEXION_OPTIONS,
+  type SkiCounts,
+} from '@/lib/ski-filters'
 
 interface Props {
   selectedTypes: string[]
@@ -13,9 +21,27 @@ interface Props {
   typeCounts: Record<string, number>
   conditionCounts: Record<string, number>
   regionCounts: Record<string, number>
+  isEsquisOnly: boolean
+  skiCounts: SkiCounts
+  selectedTipo: string[]
+  selectedGenero: string[]
+  selectedLargo: string[]
+  selectedAncho: string[]
+  selectedFij: string
+  selectedConexion: string[]
 }
 
-type SectionKey = 'types' | 'conditions' | 'regions' | 'brand'
+type SectionKey =
+  | 'types'
+  | 'conditions'
+  | 'regions'
+  | 'brand'
+  | 'tipo'
+  | 'genero'
+  | 'largo'
+  | 'ancho'
+  | 'fij'
+  | 'conexion'
 
 export default function CatalogSidebar({
   selectedTypes,
@@ -25,6 +51,14 @@ export default function CatalogSidebar({
   typeCounts,
   conditionCounts,
   regionCounts,
+  isEsquisOnly,
+  skiCounts,
+  selectedTipo,
+  selectedGenero,
+  selectedLargo,
+  selectedAncho,
+  selectedFij,
+  selectedConexion,
 }: Props) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -34,39 +68,69 @@ export default function CatalogSidebar({
     conditions: false,
     regions: false,
     brand: false,
+    tipo: true,
+    genero: true,
+    largo: true,
+    ancho: false,
+    fij: false,
+    conexion: false,
   })
 
   function toggleSection(key: SectionKey) {
     setOpen(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  function toggleFilter(param: 'product_type' | 'condition' | 'region', value: string) {
-    const current = (sp.get(param) || '').split(',').filter(Boolean)
-    const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+  function pushParams(mutator: (p: URLSearchParams) => void) {
     const params = new URLSearchParams(sp.toString())
-    if (next.length) params.set(param, next.join(','))
-    else params.delete(param)
+    mutator(params)
     params.delete('page')
     router.push(`/catalogo?${params.toString()}`)
   }
 
+  function toggleMulti(param: string, value: string, alsoClear?: string) {
+    const current = (sp.get(param) || '').split(',').filter(Boolean)
+    const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+    pushParams(p => {
+      if (next.length) p.set(param, next.join(','))
+      else p.delete(param)
+      if (alsoClear) p.delete(alsoClear)
+    })
+  }
+
   function setBrandSearch(value: string) {
-    const params = new URLSearchParams(sp.toString())
-    if (value.trim()) params.set('brand', value.trim())
-    else params.delete('brand')
-    params.delete('page')
-    router.push(`/catalogo?${params.toString()}`)
+    pushParams(p => {
+      if (value.trim()) p.set('brand', value.trim())
+      else p.delete('brand')
+    })
+  }
+
+  function setFij(value: '' | 'yes' | 'no') {
+    pushParams(p => {
+      if (value) p.set('fij', value)
+      else p.delete('fij')
+      if (value !== 'yes') p.delete('conexion')
+    })
   }
 
   function clearAll() {
     router.push('/catalogo')
   }
 
+  const skiHasFilters =
+    isEsquisOnly &&
+    (selectedTipo.length > 0 ||
+      selectedGenero.length > 0 ||
+      selectedLargo.length > 0 ||
+      selectedAncho.length > 0 ||
+      !!selectedFij ||
+      selectedConexion.length > 0)
+
   const hasFilters =
     selectedTypes.length > 0 ||
     selectedConditions.length > 0 ||
     selectedRegions.length > 0 ||
-    !!brand
+    !!brand ||
+    skiHasFilters
 
   if (hidden) {
     return (
@@ -106,7 +170,7 @@ export default function CatalogSidebar({
             <CheckRow
               key={key}
               checked={checked}
-              onChange={() => toggleFilter('product_type', key)}
+              onChange={() => toggleMulti('product_type', key)}
               label={label}
               count={count}
             />
@@ -128,7 +192,7 @@ export default function CatalogSidebar({
             <CheckRow
               key={key}
               checked={checked}
-              onChange={() => toggleFilter('condition', key)}
+              onChange={() => toggleMulti('condition', key)}
               label={label}
               count={count}
             />
@@ -150,7 +214,7 @@ export default function CatalogSidebar({
             <CheckRow
               key={region}
               checked={checked}
-              onChange={() => toggleFilter('region', region)}
+              onChange={() => toggleMulti('region', region)}
               label={region}
               count={count}
             />
@@ -166,6 +230,147 @@ export default function CatalogSidebar({
       >
         <BrandSearch defaultValue={brand} onSubmit={setBrandSearch} />
       </Section>
+
+      {isEsquisOnly && (
+        <>
+          <Section
+            label="Tipo"
+            isOpen={open.tipo}
+            onToggle={() => toggleSection('tipo')}
+            active={selectedTipo.length > 0}
+          >
+            {TIPO_OPTIONS.map(opt => {
+              const checked = selectedTipo.includes(opt.value)
+              const count = skiCounts.tipo[opt.value] || 0
+              if (count === 0 && !checked) return null
+              return (
+                <CheckRow
+                  key={opt.value}
+                  checked={checked}
+                  onChange={() => toggleMulti('tipo', opt.value, 'ancho')}
+                  label={opt.label}
+                  count={count}
+                />
+              )
+            })}
+          </Section>
+
+          <Section
+            label="Género"
+            isOpen={open.genero}
+            onToggle={() => toggleSection('genero')}
+            active={selectedGenero.length > 0}
+          >
+            {GENERO_OPTIONS.map(opt => {
+              const checked = selectedGenero.includes(opt.value)
+              const count = skiCounts.genero[opt.value] || 0
+              if (count === 0 && !checked) return null
+              return (
+                <CheckRow
+                  key={opt.value}
+                  checked={checked}
+                  onChange={() => toggleMulti('genero', opt.value)}
+                  label={opt.label}
+                  count={count}
+                />
+              )
+            })}
+          </Section>
+
+          <Section
+            label="Largo"
+            isOpen={open.largo}
+            onToggle={() => toggleSection('largo')}
+            active={selectedLargo.length > 0}
+          >
+            {LARGO_BUCKETS.map(b => {
+              const checked = selectedLargo.includes(b.key)
+              const count = skiCounts.largo[b.key] || 0
+              if (count === 0 && !checked) return null
+              return (
+                <CheckRow
+                  key={b.key}
+                  checked={checked}
+                  onChange={() => toggleMulti('largo', b.key)}
+                  label={b.label}
+                  count={count}
+                />
+              )
+            })}
+          </Section>
+
+          <Section
+            label="Ancho (avanzado)"
+            isOpen={open.ancho}
+            onToggle={() => toggleSection('ancho')}
+            active={selectedAncho.length > 0}
+          >
+            {ANCHO_BUCKETS.map(b => {
+              const checked = selectedAncho.includes(b.key)
+              const count = skiCounts.ancho[b.key] || 0
+              if (count === 0 && !checked) return null
+              return (
+                <CheckRow
+                  key={b.key}
+                  checked={checked}
+                  onChange={() => toggleMulti('ancho', b.key, 'tipo')}
+                  label={b.label}
+                  count={count}
+                />
+              )
+            })}
+          </Section>
+
+          <Section
+            label="Incluye fijaciones"
+            isOpen={open.fij}
+            onToggle={() => toggleSection('fij')}
+            active={!!selectedFij}
+          >
+            <RadioRow
+              label="Cualquiera"
+              checked={selectedFij === ''}
+              onChange={() => setFij('')}
+            />
+            <RadioRow
+              label="Sí"
+              count={skiCounts.fijYes}
+              checked={selectedFij === 'yes'}
+              onChange={() => setFij('yes')}
+            />
+            <RadioRow
+              label="No"
+              count={skiCounts.fijNo}
+              checked={selectedFij === 'no'}
+              onChange={() => setFij('no')}
+            />
+          </Section>
+
+          {selectedFij === 'yes' && (
+            <Section
+              label="Conexión fijaciones"
+              isOpen={open.conexion}
+              onToggle={() => toggleSection('conexion')}
+              active={selectedConexion.length > 0}
+            >
+              {CONEXION_OPTIONS.map(opt => {
+                const checked = selectedConexion.includes(opt.value)
+                const count = skiCounts.conexion[opt.value] || 0
+                if (count === 0 && !checked) return null
+                return (
+                  <CheckRow
+                    key={opt.value}
+                    checked={checked}
+                    onChange={() => toggleMulti('conexion', opt.value)}
+                    label={opt.label}
+                    count={count}
+                  />
+                )
+              })}
+            </Section>
+          )}
+        </>
+      )}
 
       {hasFilters && (
         <button
@@ -244,6 +449,39 @@ function CheckRow({
         {label}
       </span>
       {count > 0 && <span className="text-xs text-gray-400 tabular-nums">{count}</span>}
+    </label>
+  )
+}
+
+function RadioRow({
+  checked,
+  onChange,
+  label,
+  count,
+}: {
+  checked: boolean
+  onChange: () => void
+  label: string
+  count?: number
+}) {
+  return (
+    <label className="flex items-center gap-2.5 cursor-pointer group">
+      <input
+        type="radio"
+        checked={checked}
+        onChange={onChange}
+        className="w-3.5 h-3.5 border-gray-300 text-black focus:ring-black/20 cursor-pointer shrink-0"
+      />
+      <span
+        className={`flex-1 truncate text-sm ${
+          checked ? 'text-black font-medium' : 'text-gray-600 group-hover:text-black'
+        }`}
+      >
+        {label}
+      </span>
+      {count != null && count > 0 && (
+        <span className="text-xs text-gray-400 tabular-nums">{count}</span>
+      )}
     </label>
   )
 }
