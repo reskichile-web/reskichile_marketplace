@@ -9,7 +9,7 @@ import ProfileDropdown from './ProfileDropdown'
 import ChatPresence from './chat/ChatPresence'
 
 export default async function Header() {
-  const { user, isAdmin, avatarUrl, userName } = await getAuthUser()
+  const { user, isAdmin, avatarUrl } = await getAuthUser()
 
   if (isAdmin) return <AdminNav />
 
@@ -55,7 +55,7 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             {!isAdmin && <SearchBar />}
             {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} userName={userName} unreadCount={unreadCount} />
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCount={unreadCount} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -92,7 +92,7 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                <ProfileDropdown avatarUrl={avatarUrl} userName={userName} unreadCount={unreadCount} />
+                <ProfileDropdown avatarUrl={avatarUrl} unreadCount={unreadCount} />
               </>
             )}
           </div>

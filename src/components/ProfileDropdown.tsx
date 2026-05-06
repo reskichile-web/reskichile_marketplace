@@ -5,11 +5,10 @@ import Link from 'next/link'
 
 interface Props {
   avatarUrl?: string | null
-  userName?: string | null
   unreadCount?: number
 }
 
-export default function ProfileDropdown({ avatarUrl, userName, unreadCount = 0 }: Props) {
+export default function ProfileDropdown({ avatarUrl, unreadCount = 0 }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -48,12 +47,6 @@ export default function ProfileDropdown({ avatarUrl, userName, unreadCount = 0 }
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50">
-          {userName && (
-            <div className="px-4 py-2 border-b border-gray-100 mb-1">
-              <p className="text-[11px] uppercase tracking-widest text-gray-400 font-bold">Hola</p>
-              <p className="text-sm font-semibold text-gray-900 truncate">{userName}</p>
-            </div>
-          )}
           <Link
             href="/perfil"
             onClick={() => setOpen(false)}
