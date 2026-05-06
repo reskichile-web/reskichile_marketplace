@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'magiclink',
     email,
-    options: { redirectTo: `${SITE_URL}/auth/reset-password` },
+    options: { redirectTo: `${SITE_URL}/auth/callback?next=/auth/reset-password` },
   })
 
   if (error || !data?.properties?.action_link) {
