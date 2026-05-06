@@ -21,6 +21,8 @@ interface Props {
     condition?: string
     region?: string
     brand?: string
+    min_price?: string
+    max_price?: string
     sort?: string
     tipo?: string
     genero?: string
@@ -37,7 +39,9 @@ export default async function CatalogPage({ searchParams }: Props) {
   const types = (searchParams.product_type || '').split(',').filter(Boolean)
   const conditions = (searchParams.condition || '').split(',').filter(Boolean)
   const regions = (searchParams.region || '').split(',').filter(Boolean)
-  const brand = searchParams.brand || ''
+  const brands = (searchParams.brand || '').split(',').filter(Boolean)
+  const minPrice = searchParams.min_price ? Number(searchParams.min_price) : undefined
+  const maxPrice = searchParams.max_price ? Number(searchParams.max_price) : undefined
   const sort = searchParams.sort || 'recent'
 
   const tipo = (searchParams.tipo || '').split(',').filter(Boolean)
@@ -55,7 +59,9 @@ export default async function CatalogPage({ searchParams }: Props) {
   if (types.length) query = query.in('product_type', types)
   if (conditions.length) query = query.in('condition', conditions)
   if (regions.length) query = query.in('region', regions)
-  if (brand) query = query.ilike('brand', `%${brand}%`)
+  if (brands.length) query = query.in('brand', brands)
+  if (minPrice && !isNaN(minPrice)) query = query.gte('price', minPrice)
+  if (maxPrice && !isNaN(maxPrice)) query = query.lte('price', maxPrice)
 
   if (sort === 'price_asc') query = query.order('price', { ascending: true })
   else if (sort === 'price_desc') query = query.order('price', { ascending: false })
@@ -63,17 +69,30 @@ export default async function CatalogPage({ searchParams }: Props) {
 
   const [productsResult, countsResult] = await Promise.all([
     query,
-    supabase.from('products').select('product_type, condition, region, attributes').eq('status', 'approved'),
+    supabase
+      .from('products')
+      .select('product_type, condition, region, brand, attributes')
+      .eq('status', 'approved'),
   ])
 
   let products = productsResult.data || []
   const allProducts = countsResult.data || []
 
-  const typeCounts: Record<string, number> = {}
   const conditionCounts: Record<string, number> = {}
   const regionCounts: Record<string, number> = {}
+  const brandCounts: Record<string, number> = {}
+
+  // Brand counts: scope to current product_type if set
+  const brandScope = types.length
+    ? allProducts.filter((p) => types.includes(p.product_type))
+    : allProducts
+
+  brandScope.forEach((p) => {
+    if (p.brand) brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1
+  })
+
+  // Condition / region counts: from full approved set
   allProducts.forEach((p) => {
-    if (p.product_type) typeCounts[p.product_type] = (typeCounts[p.product_type] || 0) + 1
     if (p.condition) conditionCounts[p.condition] = (conditionCounts[p.condition] || 0) + 1
     if (p.region) regionCounts[p.region] = (regionCounts[p.region] || 0) + 1
   })
@@ -95,10 +114,11 @@ export default async function CatalogPage({ searchParams }: Props) {
   }
 
   const hasFilters =
-    types.length > 0 ||
     conditions.length > 0 ||
     regions.length > 0 ||
-    !!brand ||
+    brands.length > 0 ||
+    minPrice != null ||
+    maxPrice != null ||
     (isEsquisOnly &&
       (tipo.length > 0 ||
         genero.length > 0 ||
@@ -113,12 +133,11 @@ export default async function CatalogPage({ searchParams }: Props) {
       : 'Catálogo'
 
   return (
-    <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-8 md:pt-12 pb-24">
-      <div className="mb-8 md:mb-10">
-        <h1 className="font-body font-black text-4xl md:text-6xl tracking-tight">{title}</h1>
-        <p className="mt-3 max-w-2xl text-sm md:text-base text-gray-600 leading-relaxed">
-          El marketplace chileno de equipo de montaña usado. Encuentra esquís, snowboards, botas
-          y apparel a precios accesibles, directo de quien lo usó.
+    <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-4 md:pt-6 pb-24">
+      <div className="mb-4 md:mb-6">
+        <h1 className="font-body font-black text-3xl md:text-4xl tracking-tight">{title}</h1>
+        <p className="mt-1.5 max-w-2xl text-sm text-gray-500 leading-relaxed">
+          Equipo de montaña usado, directo de quien lo usó.
         </p>
       </div>
 
@@ -126,9 +145,12 @@ export default async function CatalogPage({ searchParams }: Props) {
         <CatalogMobileFilterButton
           selectedConditions={conditions}
           selectedRegions={regions}
-          brand={brand}
+          selectedBrands={brands}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
           conditionCounts={conditionCounts}
           regionCounts={regionCounts}
+          brandCounts={brandCounts}
           totalCount={allProducts.length}
           isEsquisOnly={isEsquisOnly}
           skiCounts={skiCounts}
@@ -148,9 +170,12 @@ export default async function CatalogPage({ searchParams }: Props) {
             <CatalogSidebar
               selectedConditions={conditions}
               selectedRegions={regions}
-              brand={brand}
+              selectedBrands={brands}
+              minPrice={minPrice}
+              maxPrice={maxPrice}
               conditionCounts={conditionCounts}
               regionCounts={regionCounts}
+              brandCounts={brandCounts}
               isEsquisOnly={isEsquisOnly}
               skiCounts={skiCounts}
               selectedTipo={tipo}

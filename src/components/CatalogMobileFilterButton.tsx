@@ -8,9 +8,12 @@ import type { SkiCounts } from '@/lib/ski-filters'
 interface Props {
   selectedConditions: string[]
   selectedRegions: string[]
-  brand?: string
+  selectedBrands: string[]
+  minPrice?: number
+  maxPrice?: number
   conditionCounts: Record<string, number>
   regionCounts: Record<string, number>
+  brandCounts: Record<string, number>
   totalCount: number
   isEsquisOnly: boolean
   skiCounts: SkiCounts
@@ -35,7 +38,8 @@ export default function CatalogMobileFilterButton(props: Props) {
   const activeCount =
     props.selectedConditions.length +
     props.selectedRegions.length +
-    (props.brand ? 1 : 0) +
+    props.selectedBrands.length +
+    (props.minPrice != null || props.maxPrice != null ? 1 : 0) +
     (skiActive || 0)
 
   useEffect(() => {
@@ -88,9 +92,12 @@ export default function CatalogMobileFilterButton(props: Props) {
               <CatalogSidebar
                 selectedConditions={props.selectedConditions}
                 selectedRegions={props.selectedRegions}
-                brand={props.brand || ''}
+                selectedBrands={props.selectedBrands}
+                minPrice={props.minPrice}
+                maxPrice={props.maxPrice}
                 conditionCounts={props.conditionCounts}
                 regionCounts={props.regionCounts}
+                brandCounts={props.brandCounts}
                 isEsquisOnly={props.isEsquisOnly}
                 skiCounts={props.skiCounts}
                 selectedTipo={props.selectedTipo}

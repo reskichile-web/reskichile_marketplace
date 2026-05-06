@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronDown, Menu } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { CONDITIONS, REGIONS } from '@/lib/constants'
 import {
   TIPO_OPTIONS,
@@ -16,9 +16,12 @@ import {
 interface Props {
   selectedConditions: string[]
   selectedRegions: string[]
-  brand: string
+  selectedBrands: string[]
+  minPrice?: number
+  maxPrice?: number
   conditionCounts: Record<string, number>
   regionCounts: Record<string, number>
+  brandCounts: Record<string, number>
   isEsquisOnly: boolean
   skiCounts: SkiCounts
   selectedTipo: string[]
@@ -30,9 +33,10 @@ interface Props {
 }
 
 type SectionKey =
+  | 'price'
   | 'conditions'
   | 'regions'
-  | 'brand'
+  | 'brands'
   | 'tipo'
   | 'genero'
   | 'largo'
@@ -43,9 +47,12 @@ type SectionKey =
 export default function CatalogSidebar({
   selectedConditions,
   selectedRegions,
-  brand,
+  selectedBrands,
+  minPrice,
+  maxPrice,
   conditionCounts,
   regionCounts,
+  brandCounts,
   isEsquisOnly,
   skiCounts,
   selectedTipo,
@@ -57,14 +64,14 @@ export default function CatalogSidebar({
 }: Props) {
   const router = useRouter()
   const sp = useSearchParams()
-  const [hidden, setHidden] = useState(false)
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
+    price: true,
     conditions: false,
     regions: false,
-    brand: false,
-    tipo: true,
-    genero: true,
-    largo: true,
+    brands: false,
+    tipo: false,
+    genero: false,
+    largo: false,
     ancho: false,
     fij: false,
     conexion: false,
@@ -91,10 +98,12 @@ export default function CatalogSidebar({
     })
   }
 
-  function setBrandSearch(value: string) {
+  function setPrice(min: number | undefined, max: number | undefined) {
     pushParams(p => {
-      if (value.trim()) p.set('brand', value.trim())
-      else p.delete('brand')
+      if (min != null && !isNaN(min)) p.set('min_price', String(min))
+      else p.delete('min_price')
+      if (max != null && !isNaN(max)) p.set('max_price', String(max))
+      else p.delete('max_price')
     })
   }
 
@@ -122,33 +131,81 @@ export default function CatalogSidebar({
   const hasFilters =
     selectedConditions.length > 0 ||
     selectedRegions.length > 0 ||
-    !!brand ||
+    selectedBrands.length > 0 ||
+    minPrice != null ||
+    maxPrice != null ||
     skiHasFilters
 
-  if (hidden) {
-    return (
-      <button
-        type="button"
-        onClick={() => setHidden(false)}
-        className="inline-flex items-center gap-2 text-xs font-body font-bold tracking-widest uppercase text-gray-700 hover:text-black transition-colors"
-      >
-        <Menu className="w-4 h-4" />
-        Mostrar filtros
-      </button>
-    )
-  }
+  // Sorted brand list by count desc
+  const brandList = Object.entries(brandCounts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([name, count]) => ({ name, count }))
 
   return (
-    <div className="text-sm">
-      <button
-        type="button"
-        onClick={() => setHidden(true)}
-        className="inline-flex items-center gap-2 text-xs font-body font-bold tracking-widest uppercase text-gray-700 hover:text-black transition-colors mb-6"
+    <div className="text-sm max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 -mr-2">
+      {/* 1. Precio */}
+      <Section
+        label="Precio"
+        isOpen={open.price}
+        onToggle={() => toggleSection('price')}
+        active={minPrice != null || maxPrice != null}
       >
-        Ocultar filtros
-        <Menu className="w-4 h-4" />
-      </button>
+        <PriceRange
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          onSubmit={setPrice}
+        />
+      </Section>
 
+      {/* 2. Condición */}
+      <Section
+        label="Condición"
+        isOpen={open.conditions}
+        onToggle={() => toggleSection('conditions')}
+        active={selectedConditions.length > 0}
+      >
+        {Object.entries(CONDITIONS).map(([key, label]) => {
+          const checked = selectedConditions.includes(key)
+          const count = conditionCounts[key] || 0
+          if (count === 0 && !checked) return null
+          return (
+            <CheckRow
+              key={key}
+              checked={checked}
+              onChange={() => toggleMulti('condition', key)}
+              label={label}
+              count={count}
+            />
+          )
+        })}
+      </Section>
+
+      {/* 3. Género (esquis) */}
+      {isEsquisOnly && (
+        <Section
+          label="Género"
+          isOpen={open.genero}
+          onToggle={() => toggleSection('genero')}
+          active={selectedGenero.length > 0}
+        >
+          {GENERO_OPTIONS.map(opt => {
+            const checked = selectedGenero.includes(opt.value)
+            const count = skiCounts.genero[opt.value] || 0
+            if (count === 0 && !checked) return null
+            return (
+              <CheckRow
+                key={opt.value}
+                checked={checked}
+                onChange={() => toggleMulti('genero', opt.value)}
+                label={opt.label}
+                count={count}
+              />
+            )
+          })}
+        </Section>
+      )}
+
+      {/* 4. Atributos del producto (esquis) */}
       {isEsquisOnly && (
         <>
           <Section
@@ -166,28 +223,6 @@ export default function CatalogSidebar({
                   key={opt.value}
                   checked={checked}
                   onChange={() => toggleMulti('tipo', opt.value, 'ancho')}
-                  label={opt.label}
-                  count={count}
-                />
-              )
-            })}
-          </Section>
-
-          <Section
-            label="Género"
-            isOpen={open.genero}
-            onToggle={() => toggleSection('genero')}
-            active={selectedGenero.length > 0}
-          >
-            {GENERO_OPTIONS.map(opt => {
-              const checked = selectedGenero.includes(opt.value)
-              const count = skiCounts.genero[opt.value] || 0
-              if (count === 0 && !checked) return null
-              return (
-                <CheckRow
-                  key={opt.value}
-                  checked={checked}
-                  onChange={() => toggleMulti('genero', opt.value)}
                   label={opt.label}
                   count={count}
                 />
@@ -290,28 +325,31 @@ export default function CatalogSidebar({
         </>
       )}
 
+      {/* 5. Marca (lista detectada) */}
       <Section
-        label="Condición"
-        isOpen={open.conditions}
-        onToggle={() => toggleSection('conditions')}
-        active={selectedConditions.length > 0}
+        label="Marca"
+        isOpen={open.brands}
+        onToggle={() => toggleSection('brands')}
+        active={selectedBrands.length > 0}
       >
-        {Object.entries(CONDITIONS).map(([key, label]) => {
-          const checked = selectedConditions.includes(key)
-          const count = conditionCounts[key] || 0
-          if (count === 0 && !checked) return null
+        {brandList.length === 0 && (
+          <p className="text-xs text-gray-400">No hay marcas disponibles.</p>
+        )}
+        {brandList.map(({ name, count }) => {
+          const checked = selectedBrands.includes(name)
           return (
             <CheckRow
-              key={key}
+              key={name}
               checked={checked}
-              onChange={() => toggleMulti('condition', key)}
-              label={label}
+              onChange={() => toggleMulti('brand', name)}
+              label={name}
               count={count}
             />
           )
         })}
       </Section>
 
+      {/* 6. Región */}
       <Section
         label="Región"
         isOpen={open.regions}
@@ -332,15 +370,6 @@ export default function CatalogSidebar({
             />
           )
         })}
-      </Section>
-
-      <Section
-        label="Marca"
-        isOpen={open.brand}
-        onToggle={() => toggleSection('brand')}
-        active={!!brand}
-      >
-        <BrandSearch defaultValue={brand} onSubmit={setBrandSearch} />
       </Section>
 
       {hasFilters && (
@@ -382,7 +411,9 @@ function Section({
           }`}
         >
           {label}
-          {active && <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-500 align-middle" />}
+          {active && (
+            <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-500 align-middle" />
+          )}
         </span>
         <ChevronDown
           className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -457,35 +488,56 @@ function RadioRow({
   )
 }
 
-function BrandSearch({
-  defaultValue,
+function PriceRange({
+  minPrice,
+  maxPrice,
   onSubmit,
 }: {
-  defaultValue: string
-  onSubmit: (v: string) => void
+  minPrice?: number
+  maxPrice?: number
+  onSubmit: (min: number | undefined, max: number | undefined) => void
 }) {
-  const [val, setVal] = useState(defaultValue)
+  const [min, setMin] = useState(minPrice != null ? String(minPrice) : '')
+  const [max, setMax] = useState(maxPrice != null ? String(maxPrice) : '')
+
+  // Sync local state when URL changes externally (e.g. clearAll)
+  useEffect(() => {
+    setMin(minPrice != null ? String(minPrice) : '')
+    setMax(maxPrice != null ? String(maxPrice) : '')
+  }, [minPrice, maxPrice])
+
+  function apply() {
+    const minN = min === '' ? undefined : Number(min)
+    const maxN = max === '' ? undefined : Number(max)
+    onSubmit(minN, maxN)
+  }
+
   return (
-    <form
-      onSubmit={e => {
-        e.preventDefault()
-        onSubmit(val)
-      }}
-      className="flex gap-2"
-    >
-      <input
-        type="text"
-        value={val}
-        onChange={e => setVal(e.target.value)}
-        placeholder="Marca..."
-        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-black"
-      />
-      <button
-        type="submit"
-        className="px-3 py-2 bg-black text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-gray-800 transition-colors"
-      >
-        Ir
-      </button>
-    </form>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          inputMode="numeric"
+          value={min}
+          onChange={e => setMin(e.target.value.replace(/\D/g, ''))}
+          onBlur={apply}
+          onKeyDown={e => e.key === 'Enter' && apply()}
+          placeholder="Mín"
+          className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-black tabular-nums"
+        />
+        <span className="text-gray-400 text-sm">–</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={max}
+          onChange={e => setMax(e.target.value.replace(/\D/g, ''))}
+          onBlur={apply}
+          onKeyDown={e => e.key === 'Enter' && apply()}
+          placeholder="Máx"
+          className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-black tabular-nums"
+        />
+      </div>
+      <p className="text-[10px] text-gray-400 uppercase tracking-wider">CLP</p>
+    </div>
   )
 }

@@ -29,7 +29,7 @@ export default function ProductCard({ id, slug, title, productType, price, mainI
     >
       <div className="relative aspect-[4/5] bg-gray-50 overflow-hidden">
         {badge && (
-          <span className="absolute top-3 left-3 z-10 text-[10px] tracking-widest font-body font-bold uppercase text-gray-600">
+          <span className="absolute top-3 right-3 z-10 text-[10px] tracking-widest font-body font-bold uppercase text-gray-600">
             {badge}
           </span>
         )}
