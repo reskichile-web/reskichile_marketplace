@@ -1,0 +1,396 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import PopupMessage from '@/components/PopupMessage'
+import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
+import Spinner from '@/components/Spinner'
+import PhoneInput from '@/components/PhoneInput'
+import { parseStoredPhone, toFullPhone, validateLocal } from '@/lib/phone'
+
+const PASSWORD_MIN = 6
+
+interface Props {
+  /** When true, hides the mobile-only background image header (desktop edit page) */
+  hideHeaderImage?: boolean
+}
+
+export default function ProfileForm({ hideHeaderImage = false }: Props) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [instagram, setInstagram] = useState('')
+  const [email, setEmail] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' | 'info' | 'success' } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [initialValues, setInitialValues] = useState({ name: '', phone: '', instagram: '' })
+
+  useEffect(() => {
+    async function loadProfile() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      setEmail(user.email ?? '')
+      setUserId(user.id)
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (profile) {
+        const loadedName = profile.name || ''
+        const parsed = parseStoredPhone(profile.phone || '')
+        const loadedPhone = parsed.local ? toFullPhone(parsed.local, parsed.country) : ''
+        const loadedInstagram = profile.instagram || ''
+        setName(loadedName)
+        setPhone(loadedPhone)
+        setInstagram(loadedInstagram)
+        setAvatarUrl(profile.avatar_url || null)
+        setInitialValues({ name: loadedName, phone: loadedPhone, instagram: loadedInstagram })
+      }
+      setLoading(false)
+    }
+
+    loadProfile()
+  }, [])
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !userId) return
+    setUploadingAvatar(true)
+    const supabase = createClient()
+    const path = `${userId}/avatar`
+    await supabase.storage.from('avatars').remove([path])
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadError) {
+      setPopup({ message: 'Error al subir imagen. Intenta de nuevo.', type: 'error' })
+      setUploadingAvatar(false)
+      return
+    }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    const urlWithCache = publicUrl + '?t=' + Date.now()
+    await supabase.from('users').update({ avatar_url: urlWithCache }).eq('id', userId)
+    setAvatarUrl(urlWithCache)
+    setUploadingAvatar(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function handleAvatarDelete() {
+    if (!userId) return
+    setUploadingAvatar(true)
+    const supabase = createClient()
+    await supabase.storage.from('avatars').remove([`${userId}/avatar`])
+    await supabase.from('users').update({ avatar_url: null }).eq('id', userId)
+    setAvatarUrl(null)
+    setUploadingAvatar(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmedName = name.trim()
+    const trimmedInstagram = instagram.trim().replace(/^@/, '')
+    const parsed = parseStoredPhone(phone)
+    const normalizedPhone = parsed.local ? toFullPhone(parsed.local, parsed.country) : ''
+
+    if (normalizedPhone && !/^\+\d{8,15}$/.test(normalizedPhone)) {
+      setPopup({ message: 'Número de teléfono inválido', type: 'error' })
+      return
+    }
+
+    setSaving(true)
+    setPopup({ message: 'Perfil actualizado', type: 'success' })
+
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        name: trimmedName || null,
+        phone: normalizedPhone || null,
+        instagram: trimmedInstagram || null,
+      })
+      .eq('id', user.id)
+
+    if (error) {
+      setPopup({ message: 'Error al guardar. Intenta de nuevo.', type: 'error' })
+    } else {
+      setInitialValues({
+        name: trimmedName,
+        phone: normalizedPhone,
+        instagram: trimmedInstagram,
+      })
+    }
+    setSaving(false)
+  }
+
+  const isDirty =
+    name.trim() !== initialValues.name ||
+    phone !== initialValues.phone ||
+    instagram.trim().replace(/^@/, '') !== initialValues.instagram
+
+  const phoneError = (() => {
+    if (!phone) return null
+    const { country, local } = parseStoredPhone(phone)
+    return validateLocal(local, country)
+  })()
+  const hasErrors = !!phoneError
+  const canSave = isDirty && !hasErrors && !saving
+
+  if (loading) return <PerfilSkeleton />
+
+  return (
+    <div className="max-w-md mx-auto px-4 pb-16">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarUpload}
+        className="hidden"
+      />
+
+      {!hideHeaderImage && (
+        <div className="-mx-4 -mt-[95px] mb-6">
+          <div className="relative h-48 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=800&q=80&fit=crop&crop=center"
+              alt=""
+              className="w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-white/20" />
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent" />
+          </div>
+          <div className="relative -mt-12 flex flex-col items-center">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="relative group"
+            >
+              {avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarUrl} alt="" className="w-24 h-24 rounded-full object-cover shadow-lg border-4 border-white" />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 shadow-lg border-4 border-white">
+                  <svg className="w-14 h-14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" />
+                  </svg>
+                </div>
+              )}
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+              </div>
+              {uploadingAvatar && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <Spinner size="md" color="white" />
+                </div>
+              )}
+            </button>
+            <div className="flex items-center gap-2 mt-1">
+              <button onClick={() => fileInputRef.current?.click()} className="text-[10px] text-gray-400 hover:text-brand-500">Cambiar foto</button>
+              {avatarUrl && (
+                <>
+                  <span className="text-gray-300 text-[10px]">·</span>
+                  <button onClick={handleAvatarDelete} className="text-[10px] text-gray-400 hover:text-red-500">Eliminar</button>
+                </>
+              )}
+            </div>
+            <h1 className="font-body text-xl font-black mt-1">{name || 'Mi perfil'}</h1>
+            <p className="text-sm text-gray-500 select-all">{email}</p>
+          </div>
+        </div>
+      )}
+
+      {hideHeaderImage && (
+        <div className="flex items-center gap-4 mb-8 mt-2">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="relative group shrink-0"
+          >
+            {avatarUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" /></svg>
+              </div>
+            )}
+            {uploadingAvatar && (
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                <Spinner size="md" color="white" />
+              </div>
+            )}
+          </button>
+          <div>
+            <h1 className="font-body text-xl font-black">Editar perfil</h1>
+            <div className="flex items-center gap-2 mt-1 text-xs">
+              <button onClick={() => fileInputRef.current?.click()} className="text-brand-500 hover:text-brand-600">Cambiar foto</button>
+              {avatarUrl && (
+                <>
+                  <span className="text-gray-300">·</span>
+                  <button onClick={handleAvatarDelete} className="text-gray-400 hover:text-red-500">Eliminar</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Nombre</label>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="Tu nombre"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp)</label>
+          <PhoneInput
+            defaultStored={phone}
+            error={phoneError}
+            onChange={(full) => setPhone(full)}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Este número se usa para que los compradores te contacten por WhatsApp.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Instagram</label>
+          <input
+            type="text"
+            value={instagram}
+            onChange={e => setInstagram(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="@tuusuario"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Tu usuario de Instagram para que compradores puedan contactarte.
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          disabled={!canSave}
+          className={`w-full py-2.5 rounded-sm font-medium transition-colors ${
+            canSave
+              ? 'bg-brand-500 text-white hover:bg-brand-600'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          {saving ? 'Guardando...' : 'Guardar cambios'}
+        </button>
+      </form>
+
+      <ChangePasswordSection onPopup={setPopup} />
+
+      {popup && (
+        <PopupMessage
+          message={popup.message}
+          type={popup.type}
+          onClose={() => setPopup(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function ChangePasswordSection({ onPopup }: { onPopup: (p: { message: string; type: 'error' | 'warning' | 'info' | 'success' }) => void }) {
+  const [open, setOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!password) { onPopup({ message: 'Ingresa una contraseña', type: 'error' }); return }
+    if (password.length < PASSWORD_MIN) { onPopup({ message: `Mínimo ${PASSWORD_MIN} caracteres`, type: 'error' }); return }
+    if (!/[A-Z]/.test(password)) { onPopup({ message: 'Debe tener al menos una mayúscula', type: 'error' }); return }
+    if (!/[0-9]/.test(password)) { onPopup({ message: 'Debe tener al menos un número', type: 'error' }); return }
+    if (password !== confirmPassword) { onPopup({ message: 'Las contraseñas no coinciden', type: 'error' }); return }
+    setSaving(true)
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) {
+      onPopup({ message: 'Error al cambiar contraseña', type: 'error' })
+      setSaving(false)
+      return
+    }
+    onPopup({ message: 'Contraseña actualizada', type: 'success' })
+    setPassword('')
+    setConfirmPassword('')
+    setOpen(false)
+    setSaving(false)
+  }
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-900">Contraseña</p>
+          <p className="text-xs text-gray-400 mt-0.5">Cambia tu contraseña de acceso</p>
+        </div>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-sm text-brand-500 hover:text-brand-600 font-medium transition-colors"
+        >
+          {open ? 'Cancelar' : 'Cambiar'}
+        </button>
+      </div>
+
+      {open && (
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nueva contraseña</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              autoComplete="new-password"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500 mt-1">Mínimo {PASSWORD_MIN} caracteres, una mayúscula y un número</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Confirmar contraseña</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              autoComplete="new-password"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-gray-900 text-white py-2.5 rounded-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            {saving ? 'Guardando...' : 'Actualizar contraseña'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
