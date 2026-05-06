@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
 import PopupMessage from '@/components/PopupMessage'
 import Spinner from '@/components/Spinner'
+import PhoneInput from '@/components/PhoneInput'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -19,8 +20,8 @@ export default function RegisterPage() {
   const searchParams = useSearchParams()
   const [step, setStep] = useState<Step>('form')
   const [email, setEmail] = useState(searchParams.get('email') || '')
-  const [countryCode, setCountryCode] = useState('+56')
-  const [phone, setPhone] = useState('')
+  // fullPhone is the international format produced by PhoneInput, e.g. "+56912345678"
+  const [fullPhone, setFullPhone] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -38,19 +39,6 @@ export default function RegisterPage() {
     return () => clearTimeout(timer)
   }, [resendCooldown])
 
-  // Phone formatting: 9 1234 5678
-  function formatPhone(value: string): string {
-    const digits = value.replace(/\D/g, '').slice(0, 9)
-    if (digits.length <= 1) return digits
-    if (digits.length <= 5) return `${digits[0]} ${digits.slice(1)}`
-    return `${digits[0]} ${digits.slice(1, 5)} ${digits.slice(5)}`
-  }
-
-  function handlePhoneChange(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 9)
-    setPhone(digits)
-  }
-
   // Password strength
   const pwChecks = {
     length: password.length >= PASSWORD_MIN,
@@ -66,9 +54,8 @@ export default function RegisterPage() {
     const trimmedEmail = email.trim().toLowerCase()
     if (!trimmedEmail) errors.email = 'Este campo es obligatorio'
     else if (!EMAIL_REGEX.test(trimmedEmail)) errors.email = 'Ingresa un email válido'
-    const digits = phone.replace(/\D/g, '')
-    if (!digits) errors.phone = 'Este campo es obligatorio'
-    else if (digits.length !== 9 || !digits.startsWith('9')) errors.phone = 'Formato: 9 XXXX XXXX (9 dígitos)'
+    if (!fullPhone) errors.phone = 'Este campo es obligatorio'
+    else if (!/^\+\d{8,15}$/.test(fullPhone)) errors.phone = 'Número inválido'
     if (!password) errors.password = 'Este campo es obligatorio'
     else if (!pwChecks.length || !pwChecks.upper || !pwChecks.number) errors.password = 'La contraseña no cumple los requisitos'
     if (!confirmPassword) errors.confirmPassword = 'Este campo es obligatorio'
@@ -134,7 +121,6 @@ export default function RegisterPage() {
     // Now we have a session — save user profile with generic name
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`
       const genericName = `user${Math.floor(Math.random() * 90000) + 10000}`
       await supabase.from('users').upsert({
         id: user.id,
@@ -197,33 +183,19 @@ export default function RegisterPage() {
           {/* Phone with country code */}
           <div>
             <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
-            <div className="flex gap-2">
-              <select
-                value={countryCode}
-                onChange={e => setCountryCode(e.target.value)}
-                className="border rounded px-2 py-2 text-sm w-24 shrink-0"
-              >
-                <option value="+56">🇨🇱 +56</option>
-                <option value="+54">🇦🇷 +54</option>
-                <option value="+55">🇧🇷 +55</option>
-                <option value="+51">🇵🇪 +51</option>
-                <option value="+57">🇨🇴 +57</option>
-                <option value="+52">🇲🇽 +52</option>
-                <option value="+1">🇺🇸 +1</option>
-                <option value="+34">🇪🇸 +34</option>
-              </select>
-              <input
-                type="tel"
-                value={formatPhone(phone)}
-                onChange={e => { handlePhoneChange(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.phone; return n }) }}
-                className={`w-full border rounded px-3 py-2 ${fieldErrors.phone ? 'border-red-400' : ''}`}
-                placeholder="9 1234 5678"
-                autoComplete="tel-national"
-              />
-            </div>
-            {fieldErrors.phone ? (
-              <p className="text-xs text-red-500 mt-1">{fieldErrors.phone}</p>
-            ) : (
+            <PhoneInput
+              required
+              error={fieldErrors.phone || null}
+              onChange={(full) => {
+                setFullPhone(full)
+                setFieldErrors((prev) => {
+                  const n = { ...prev }
+                  delete n.phone
+                  return n
+                })
+              }}
+            />
+            {!fieldErrors.phone && (
               <p className="text-xs text-gray-500 mt-1">Los compradores te contactarán por WhatsApp</p>
             )}
           </div>

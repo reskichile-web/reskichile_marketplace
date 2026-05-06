@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import PopupMessage from '@/components/PopupMessage'
 import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
 import Spinner from '@/components/Spinner'
+import PhoneInput from '@/components/PhoneInput'
 
 function useHideFooterImage() {
   useEffect(() => {
@@ -112,8 +113,8 @@ export default function ProfilePage() {
     const trimmedPhone = phone.trim()
     const trimmedInstagram = instagram.trim().replace(/^@/, '')
 
-    if (trimmedPhone && !/^569\d{8}$/.test(trimmedPhone)) {
-      setPopup({ message: 'El teléfono debe tener formato 569XXXXXXXX (11 dígitos)', type: 'error' })
+    if (trimmedPhone && !/^\+\d{8,15}$/.test(trimmedPhone)) {
+      setPopup({ message: 'Número de teléfono inválido', type: 'error' })
       return
     }
 
@@ -143,8 +144,6 @@ export default function ProfilePage() {
   if (loading) {
     return <PerfilSkeleton />
   }
-
-  const initial = name ? name.charAt(0).toUpperCase() : email.charAt(0).toUpperCase()
 
   return (
     <div className="max-w-md mx-auto px-4 min-h-screen pb-16">
@@ -177,8 +176,10 @@ export default function ProfilePage() {
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-24 h-24 rounded-full object-cover shadow-lg border-4 border-white" />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-3xl font-black shadow-lg border-4 border-white">
-                {initial}
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 shadow-lg border-4 border-white">
+                <svg className="w-14 h-14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" />
+                </svg>
               </div>
             )}
             <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
@@ -227,8 +228,10 @@ export default function ProfilePage() {
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-20 h-20 rounded-full object-cover shadow-sm border-4 border-white" />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-black shadow-sm border-4 border-white">
-                {initial}
+              <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 shadow-sm border-4 border-white">
+                <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" />
+                </svg>
               </div>
             )}
             <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
@@ -268,16 +271,13 @@ export default function ProfilePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Teléfono (con código de país)</label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            placeholder="56912345678"
+          <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp)</label>
+          <PhoneInput
+            defaultStored={phone}
+            onChange={(full) => setPhone(full)}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Formato: 56 + 9 dígitos. Este número se usará para que compradores te contacten por WhatsApp.
+            Este número se usa para que los compradores te contacten por WhatsApp.
           </p>
         </div>
 
