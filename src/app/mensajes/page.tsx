@@ -68,7 +68,7 @@ export default async function MensajesPage() {
     supabase.from('users').select('id, name, avatar_url').in('id', otherIds),
     supabase
       .from('messages')
-      .select('conversation_id, body, sender_id, created_at')
+      .select('conversation_id, body, sender_id, created_at, delivered_at, read_at')
       .in(
         'conversation_id',
         conversations.map((c) => c.id)
@@ -91,13 +91,18 @@ export default async function MensajesPage() {
   const userMap = new Map<string, { id: string; name: string | null; avatar_url: string | null }>()
   ;(usersRes.data || []).forEach((u) => userMap.set(u.id, u))
 
-  const lastByConv = new Map<string, { body: string; sender_id: string; created_at: string }>()
+  const lastByConv = new Map<
+    string,
+    { body: string; sender_id: string; created_at: string; delivered_at: string | null; read_at: string | null }
+  >()
   for (const m of lastMessagesRes.data || []) {
     if (!lastByConv.has(m.conversation_id)) {
       lastByConv.set(m.conversation_id, {
         body: m.body,
         sender_id: m.sender_id,
         created_at: m.created_at,
+        delivered_at: m.delivered_at,
+        read_at: m.read_at,
       })
     }
   }
@@ -134,6 +139,14 @@ export default async function MensajesPage() {
             const productPrice = product?.price ? `$${product.price.toLocaleString('es-CL')}` : null
             const metaParts = [productCategory, productLabel, productPrice].filter(Boolean) as string[]
 
+            // Status text only shown when the LAST message is mine
+            let statusText: string | null = null
+            if (last && last.sender_id === user.id) {
+              if (last.read_at) statusText = 'Visto'
+              else if (last.delivered_at) statusText = 'Entregado'
+              else statusText = 'Enviado'
+            }
+
             // Preview body — bold/white when unread
             let preview: React.ReactNode = null
             if (last) {
@@ -150,6 +163,7 @@ export default async function MensajesPage() {
                   <p className="text-sm text-gray-500 truncate mt-1">
                     {last.sender_id === user.id ? 'Tú: ' : ''}
                     {last.body}
+                    {statusText && <span className="text-gray-400"> · {statusText}</span>}
                   </p>
                 )
               }

@@ -6,15 +6,17 @@ import { createClient } from '@/lib/supabase/client'
 import type { Message } from '@/lib/chat'
 
 interface Props {
-  conversationId: string
+  conversationId?: string
+  draftProductId?: string
   myId: string
   initialMessages: Message[]
 }
 
 const PAGE_SIZE = 30
 
-export default function ChatRoom({ conversationId, myId, initialMessages }: Props) {
+export default function ChatRoom({ conversationId: initialConversationId, draftProductId, myId, initialMessages }: Props) {
   const supabase = createClient()
+  const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId)
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [hasMoreOlder, setHasMoreOlder] = useState(initialMessages.length >= 100)
@@ -32,8 +34,9 @@ export default function ChatRoom({ conversationId, myId, initialMessages }: Prop
     overscan: 8,
   })
 
-  // Realtime subscription — both INSERT (new messages) and UPDATE (delivered/read receipts)
+  // Realtime subscription — only when we have a real conversation (not draft)
   useEffect(() => {
+    if (!conversationId) return
     const channel = supabase
       .channel(`messages:${conversationId}`)
       .on(
@@ -104,7 +107,7 @@ export default function ChatRoom({ conversationId, myId, initialMessages }: Prop
   }, [hasMoreOlder, loadingOlder])
 
   async function loadOlder() {
-    if (loadingOlder || !hasMoreOlder || messages.length === 0) return
+    if (loadingOlder || !hasMoreOlder || messages.length === 0 || !conversationId) return
     setLoadingOlder(true)
     const oldest = messages[0]
     const el = scrollRef.current
@@ -137,9 +140,34 @@ export default function ChatRoom({ conversationId, myId, initialMessages }: Prop
     const tempId = crypto.randomUUID()
     const now = new Date().toISOString()
 
+    let convId = conversationId
+    // Draft mode: lazily create the conversation on first send
+    if (!convId) {
+      if (!draftProductId) {
+        setSending(false)
+        return
+      }
+      try {
+        const res = await fetch('/api/chat/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: draftProductId }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.conversation_id) throw new Error(data.error || 'fail')
+        convId = data.conversation_id
+        setConversationId(convId)
+        // Update URL silently so refresh and share preserve the chat
+        window.history.replaceState({}, '', `/mensajes/${convId}`)
+      } catch {
+        setSending(false)
+        return
+      }
+    }
+
     const optimistic: Message = {
       id: tempId,
-      conversation_id: conversationId,
+      conversation_id: convId!,
       sender_id: myId,
       body,
       delivered_at: null,
@@ -153,7 +181,7 @@ export default function ChatRoom({ conversationId, myId, initialMessages }: Prop
 
     const { error } = await supabase.from('messages').insert({
       id: tempId,
-      conversation_id: conversationId,
+      conversation_id: convId!,
       sender_id: myId,
       body,
     })

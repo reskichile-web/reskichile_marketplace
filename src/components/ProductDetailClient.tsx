@@ -45,29 +45,15 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
     setContacting(false)
   }
 
-  async function handleChat() {
+  function handleChat() {
     if (!userId) {
       router.push(`/auth/login?redirect=/producto/${product.id}`)
       return
     }
+    // Open the chat view immediately. The conversation is created lazily on the
+    // first message inside ChatRoom, so this navigation is instant (no API call).
     setChatOpening(true)
-    try {
-      const res = await fetch('/api/chat/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product_id: product.id }),
-      })
-      const data = await res.json()
-      if (data.conversation_id) {
-        router.push(`/mensajes/${data.conversation_id}`)
-      } else {
-        alert(data.error || 'No pudimos abrir el chat')
-        setChatOpening(false)
-      }
-    } catch {
-      alert('No pudimos abrir el chat')
-      setChatOpening(false)
-    }
+    router.push(`/mensajes/nuevo?product=${product.id}`)
   }
 
   return (
