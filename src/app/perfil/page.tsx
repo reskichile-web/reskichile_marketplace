@@ -6,7 +6,7 @@ import PopupMessage from '@/components/PopupMessage'
 import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
 import Spinner from '@/components/Spinner'
 import PhoneInput from '@/components/PhoneInput'
-import { parseStoredPhone, toFullPhone } from '@/lib/phone'
+import { parseStoredPhone, toFullPhone, validateLocal } from '@/lib/phone'
 
 function useHideFooterImage() {
   useEffect(() => {
@@ -163,6 +163,15 @@ export default function ProfilePage() {
     phone !== initialValues.phone ||
     instagram.trim().replace(/^@/, '') !== initialValues.instagram
 
+  // Validation: phone is optional, but if present must be valid
+  const phoneError = (() => {
+    if (!phone) return null
+    const { country, local } = parseStoredPhone(phone)
+    return validateLocal(local, country)
+  })()
+  const hasErrors = !!phoneError
+  const canSave = isDirty && !hasErrors && !saving
+
   if (loading) {
     return <PerfilSkeleton />
   }
@@ -296,6 +305,7 @@ export default function ProfilePage() {
           <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp)</label>
           <PhoneInput
             defaultStored={phone}
+            error={phoneError}
             onChange={(full) => setPhone(full)}
           />
           <p className="text-xs text-gray-500 mt-1">
@@ -319,9 +329,9 @@ export default function ProfilePage() {
 
         <button
           type="submit"
-          disabled={saving || !isDirty}
+          disabled={!canSave}
           className={`w-full py-2.5 rounded-sm font-medium transition-colors ${
-            isDirty && !saving
+            canSave
               ? 'bg-brand-500 text-white hover:bg-brand-600'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}

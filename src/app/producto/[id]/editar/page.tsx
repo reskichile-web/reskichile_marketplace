@@ -38,12 +38,13 @@ const GENERO_ESQUI_OPTIONS: { value: string; label: string }[] = [
   { value: 'nino', label: 'Niño' },
 ]
 
-function InlineField({ label, value, onSave, type = 'text', options }: {
+function InlineField({ label, value, onSave, type = 'text', options, hasError }: {
   label: string
   value: string
   onSave: (v: string) => void
   type?: 'text' | 'number' | 'select' | 'textarea'
   options?: string[]
+  hasError?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
@@ -57,15 +58,19 @@ function InlineField({ label, value, onSave, type = 'text', options }: {
 
   if (!editing) {
     return (
-      <button type="button" onClick={() => setEditing(true)} className="w-full text-left group">
-        <span className="flex items-center gap-1 text-xs text-gray-400">
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className={`w-full text-left group ${hasError ? 'rounded-md ring-1 ring-red-300 px-2 py-1 -mx-2 -my-1' : ''}`}
+      >
+        <span className={`flex items-center gap-1 text-xs ${hasError ? 'text-red-500' : 'text-gray-400'}`}>
           {label}
           <svg className="w-2.5 h-2.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
           </svg>
         </span>
-        <p className="text-sm font-medium text-gray-900 group-hover:text-brand-500 transition-colors min-h-[20px]">
-          {value || <span className="text-gray-500">–</span>}
+        <p className={`text-sm font-medium group-hover:text-brand-500 transition-colors min-h-[20px] ${hasError ? 'text-red-500' : 'text-gray-900'}`}>
+          {value || <span className={hasError ? 'text-red-400' : 'text-gray-500'}>–</span>}
         </p>
       </button>
     )
@@ -213,6 +218,20 @@ export default function EditProductPage() {
     if (JSON.stringify(imageOrder) !== JSON.stringify(initialSnapshot.imageOrder)) return true
     return false
   })()
+
+  // Field-level validation. Required: product_type, brand, condition, region. Price > 0.
+  const fieldErrors = {
+    product_type: !form.product_type,
+    brand: !form.brand.trim(),
+    condition: !form.condition,
+    region: !form.region,
+    price:
+      !form.price ||
+      isNaN(parseInt(form.price)) ||
+      parseInt(form.price) <= 0,
+  }
+  const hasErrors = Object.values(fieldErrors).some(Boolean)
+  const canSave = isDirty && !hasErrors && !saving && compressing === null
 
   const currentAttributes: AttributeField[] = form.product_type
     ? PRODUCT_ATTRIBUTES[form.product_type] || []
@@ -503,6 +522,7 @@ export default function EditProductPage() {
               productType={form.product_type}
               placeholder="Marca"
               label="Marca"
+              error={fieldErrors.brand}
             />
             <div>
               <InlineField label="Modelo" value={form.model} onSave={v => updateForm('model', v)} />
@@ -521,6 +541,7 @@ export default function EditProductPage() {
             }}
             type="select"
             options={Object.values(PRODUCT_TYPES)}
+            hasError={fieldErrors.product_type}
           />
           <InlineField
             label="Condición"
@@ -531,15 +552,22 @@ export default function EditProductPage() {
             }}
             type="select"
             options={Object.values(CONDITIONS)}
+            hasError={fieldErrors.condition}
           />
           <InlineField label="Temporadas" value={form.seasons_used} onSave={v => updateForm('seasons_used', v)} />
-          <InlineField label="Precio (CLP)" value={form.price ? `$${Number(form.price).toLocaleString('es-CL')}` : ''} onSave={v => updateForm('price', v.replace(/\D/g, ''))} />
+          <InlineField
+            label="Precio (CLP)"
+            value={form.price ? `$${Number(form.price).toLocaleString('es-CL')}` : ''}
+            onSave={v => updateForm('price', v.replace(/\D/g, ''))}
+            hasError={fieldErrors.price}
+          />
           <InlineField
             label="Región"
             value={form.region}
             onSave={v => updateForm('region', v)}
             type="select"
             options={REGIONS}
+            hasError={fieldErrors.region}
           />
           <InlineField label="Comuna" value={form.comuna} onSave={v => updateForm('comuna', v)} />
         </div>
@@ -680,9 +708,9 @@ export default function EditProductPage() {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={saving || compressing !== null || !isDirty}
+            disabled={!canSave}
             className={`flex-1 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-              isDirty && !saving && compressing === null
+              canSave
                 ? 'bg-brand-500 text-white hover:bg-brand-600'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
