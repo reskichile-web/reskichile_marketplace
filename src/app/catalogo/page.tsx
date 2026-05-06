@@ -2,17 +2,16 @@ export const revalidate = 30
 
 import type { Metadata } from 'next'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import CatalogHeader from '@/components/CatalogHeader'
 import CatalogSidebar from '@/components/CatalogSidebar'
 import CatalogMobileFilterButton from '@/components/CatalogMobileFilterButton'
-import CatalogSearchToggle from '@/components/CatalogSearchToggle'
 import CatalogSortSelect from '@/components/CatalogSortSelect'
 import ProductCard from '@/components/ProductCard'
 import EmptyState from '@/components/illustrations/EmptyState'
+import { PRODUCT_TYPES } from '@/lib/constants'
 
 export const metadata: Metadata = {
-  title: 'Catalogo - ReskiChile',
-  description: 'Equipamiento de ski, snowboard y montana usado en Chile',
+  title: 'Catálogo - ReskiChile',
+  description: 'Equipamiento de ski, snowboard y montaña usado en Chile',
 }
 
 interface Props {
@@ -56,7 +55,6 @@ export default async function CatalogPage({ searchParams }: Props) {
   const products = productsResult.data || []
   const allProducts = countsResult.data || []
 
-  // Compute counts per filter category
   const typeCounts: Record<string, number> = {}
   const conditionCounts: Record<string, number> = {}
   const regionCounts: Record<string, number> = {}
@@ -68,139 +66,111 @@ export default async function CatalogPage({ searchParams }: Props) {
 
   const hasFilters = types.length > 0 || conditions.length > 0 || regions.length > 0 || !!brand
 
-  return (
-    <div className="-mt-[95px] md:-mt-[131px] pb-24">
-      {/* Banner */}
-      <section className="relative aspect-[3/1] md:aspect-auto md:h-[420px] overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1612997038509-31033c9d17c5?w=7680&q=95&auto=format&fit=crop"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover object-[center_60%] md:object-[center_95%]"
-        />
-        <div className="absolute inset-0 bg-black/15" />
+  // Title: if exactly one product type filter, use its label; else "Catálogo"
+  const title =
+    types.length === 1 && PRODUCT_TYPES[types[0]]
+      ? PRODUCT_TYPES[types[0]]
+      : 'Catálogo'
 
-        {/* Header pegado arriba */}
-        <div className="absolute top-0 inset-x-0 md:inset-x-8 z-30">
-          <div className="max-w-7xl mx-auto">
-            <CatalogHeader
-              mobileMenu={
-                <CatalogMobileFilterButton
-                  selectedTypes={types}
-                  selectedConditions={conditions}
-                  selectedRegions={regions}
-                  typeCounts={typeCounts}
-                  conditionCounts={conditionCounts}
-                  regionCounts={regionCounts}
-                  totalCount={allProducts.length}
-                />
-              }
+  return (
+    <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-8 md:pt-12 pb-24">
+      {/* Header: title + description */}
+      <div className="mb-8 md:mb-10">
+        <h1 className="font-body font-black text-4xl md:text-6xl tracking-tight">{title}</h1>
+        <p className="mt-3 max-w-2xl text-sm md:text-base text-gray-600 leading-relaxed">
+          El marketplace chileno de equipo de montaña usado. Encuentra esquís, snowboards, botas
+          y apparel a precios accesibles, directo de quien lo usó.
+        </p>
+      </div>
+
+      {/* Toolbar: mobile filter button + sort */}
+      <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
+        <CatalogMobileFilterButton
+          selectedTypes={types}
+          selectedConditions={conditions}
+          selectedRegions={regions}
+          brand={brand}
+          typeCounts={typeCounts}
+          conditionCounts={conditionCounts}
+          regionCounts={regionCounts}
+          totalCount={allProducts.length}
+        />
+        <CatalogSortSelect value={sort} />
+      </div>
+
+      <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-12">
+        {/* Sidebar */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24">
+            <CatalogSidebar
+              selectedTypes={types}
+              selectedConditions={conditions}
+              selectedRegions={regions}
+              brand={brand}
+              typeCounts={typeCounts}
+              conditionCounts={conditionCounts}
+              regionCounts={regionCounts}
             />
           </div>
-        </div>
+        </aside>
 
-        {/* Watermark — bottom + horizontally mirrored above */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center pointer-events-none">
-          <span
-            className="font-body font-extrabold italic text-[20vw] text-white/30 leading-[0.78] tracking-[-0.05em] whitespace-nowrap select-none mb-[2vw] md:mb-[0.4vw]"
-            style={{ transform: 'scaleX(-1) translateY(8px)' }}
-          >
-            RESKICHILE
-          </span>
-          <h1 className="font-body font-extrabold italic text-[20vw] text-white/30 leading-[0.78] tracking-[-0.05em] whitespace-nowrap select-none">
-            RESKICHILE
-          </h1>
-        </div>
-      </section>
-
-      {/* Content */}
-      <div className="relative -mt-6 md:-mt-24 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-sm min-h-[600px] p-5 md:p-10">
-            {/* Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6 mb-6 md:mb-8">
-              <h2 className="font-body font-bold text-black text-lg md:text-2xl">
-                Encuentra tu próximo equipo.
-              </h2>
-              <div className="relative flex items-center justify-between gap-3">
-                <CatalogSortSelect value={sort} />
-                {/* Mobile: search icon that expands as overlay */}
-                <div className="md:hidden">
-                  <CatalogSearchToggle defaultValue={brand} />
-                </div>
-                {/* Desktop: full search input */}
-                <form action="/catalogo" method="GET" className="hidden md:flex items-center gap-3 md:min-w-[300px]">
-                  <label htmlFor="catalog-search" className="text-sm font-body font-medium text-gray-700 shrink-0">
-                    Buscar:
-                  </label>
-                  <input
-                    id="catalog-search"
-                    name="brand"
-                    type="text"
-                    defaultValue={brand}
-                    placeholder="Marca, Modelo, ..."
-                    className="flex-1 bg-gray-100 border-0 rounded-full px-4 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:bg-white transition-colors"
-                  />
-                </form>
-              </div>
-            </div>
-
-            {/* Main layout: sidebar + grid */}
-            <div className="flex flex-col lg:flex-row gap-8">
-              {/* Sidebar — left, desktop only */}
-              <aside className="hidden lg:block w-72 shrink-0 lg:order-first">
-                <div className="lg:sticky lg:top-24">
-                  <CatalogSidebar
-                    selectedTypes={types}
-                    selectedConditions={conditions}
-                    selectedRegions={regions}
-                    typeCounts={typeCounts}
-                    conditionCounts={conditionCounts}
-                    regionCounts={regionCounts}
-                    totalCount={allProducts.length}
-                  />
-                </div>
-              </aside>
-
-              {/* Products grid (3x2) */}
-              <div className="flex-1 min-w-0">
-                {products.length === 0 ? (
-                  <EmptyState
-                    title="No encontramos productos"
-                    description={
-                      hasFilters
-                        ? 'Intenta ajustar los filtros o buscar otra cosa.'
-                        : 'Aún no hay productos publicados.'
-                    }
-                    actionLabel={hasFilters ? 'Limpiar filtros' : 'Publicar producto'}
-                    actionHref={hasFilters ? '/catalogo' : '/vender'}
-                  />
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                    {products.map((product) => {
-                      const sorted =
-                        product.product_images?.sort(
-                          (a: { order: number }, b: { order: number }) => a.order - b.order
-                        ) || []
-                      const title = [product.brand, product.model].filter(Boolean).join(' ')
-                      return (
-                        <ProductCard
-                          key={product.id}
-                          id={product.id}
-                          slug={product.slug}
-                          title={title}
-                          productType={product.product_type}
-                          price={product.price}
-                          mainImageUrl={sorted[0]?.url}
-                          secondImageUrl={sorted[1]?.url}
-                        />
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
-            </div>
+        {/* Grid area */}
+        <div className="min-w-0">
+          {/* Desktop sort + count */}
+          <div className="hidden lg:flex items-center justify-between mb-6">
+            <p className="text-sm text-gray-500">
+              {products.length} {products.length === 1 ? 'producto' : 'productos'}
+            </p>
+            <CatalogSortSelect value={sort} />
           </div>
+
+          {products.length === 0 ? (
+            <EmptyState
+              title="No encontramos productos"
+              description={
+                hasFilters
+                  ? 'Intenta ajustar los filtros o buscar otra cosa.'
+                  : 'Aún no hay productos publicados.'
+              }
+              actionLabel={hasFilters ? 'Limpiar filtros' : 'Publicar producto'}
+              actionHref={hasFilters ? '/catalogo' : '/vender'}
+            />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5">
+              {products.map((product) => {
+                const sorted =
+                  product.product_images?.sort(
+                    (a: { order: number }, b: { order: number }) => a.order - b.order
+                  ) || []
+                const title = [product.brand, product.model].filter(Boolean).join(' ')
+
+                // Show waist width badge for skis/snowboards
+                let badge: string | undefined
+                const attrs = product.attributes as Record<string, unknown> | null
+                if (attrs) {
+                  if (product.product_type === 'esquis' && attrs.ancho_mm != null) {
+                    badge = `${attrs.ancho_mm}mm`
+                  } else if (product.product_type === 'snowboards' && attrs.ancho != null) {
+                    badge = String(attrs.ancho)
+                  }
+                }
+
+                return (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug}
+                    title={title}
+                    productType={product.product_type}
+                    price={product.price}
+                    mainImageUrl={sorted[0]?.url}
+                    secondImageUrl={sorted[1]?.url}
+                    badge={badge}
+                  />
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

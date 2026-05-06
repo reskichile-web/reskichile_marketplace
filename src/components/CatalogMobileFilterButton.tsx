@@ -8,6 +8,7 @@ interface Props {
   selectedTypes: string[]
   selectedConditions: string[]
   selectedRegions: string[]
+  brand?: string
   typeCounts: Record<string, number>
   conditionCounts: Record<string, number>
   regionCounts: Record<string, number>
@@ -17,7 +18,10 @@ interface Props {
 export default function CatalogMobileFilterButton(props: Props) {
   const [open, setOpen] = useState(false)
   const activeCount =
-    props.selectedTypes.length + props.selectedConditions.length + props.selectedRegions.length
+    props.selectedTypes.length +
+    props.selectedConditions.length +
+    props.selectedRegions.length +
+    (props.brand ? 1 : 0)
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -61,7 +65,7 @@ export default function CatalogMobileFilterButton(props: Props) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
-              <CatalogSidebar {...props} />
+              <CatalogSidebar {...props} brand={props.brand || ''} />
             </div>
           </div>
         </div>

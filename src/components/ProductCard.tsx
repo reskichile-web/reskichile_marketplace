@@ -12,9 +12,10 @@ interface Props {
   price: number
   mainImageUrl?: string
   secondImageUrl?: string
+  badge?: string
 }
 
-export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl }: Props) {
+export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl, badge }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -26,7 +27,12 @@ export default function ProductCard({ id, slug, title, productType, price, mainI
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden rounded-lg">
+      <div className="relative aspect-[4/5] bg-gray-50 overflow-hidden">
+        {badge && (
+          <span className="absolute top-3 left-3 z-10 text-[10px] tracking-widest font-body font-bold uppercase text-gray-600">
+            {badge}
+          </span>
+        )}
         {mainImageUrl && !imgError ? (
           <>
             {/* Primary image — base layer, always visible */}
@@ -73,9 +79,9 @@ export default function ProductCard({ id, slug, title, productType, price, mainI
         )}
       </div>
       <div className="mt-3">
-        <p className="text-xs text-gray-400">{PRODUCT_TYPES[productType]}</p>
-        <h3 className="font-body font-semibold text-sm truncate">{title}</h3>
-        <p className="font-body text-lg font-black text-brand-500 mt-0.5">
+        <p className="text-[10px] tracking-widest uppercase text-gray-400 font-body font-bold">{PRODUCT_TYPES[productType]}</p>
+        <h3 className="font-body font-semibold text-sm truncate mt-1">{title}</h3>
+        <p className="font-body text-base font-bold text-black mt-0.5">
           ${price.toLocaleString('es-CL')}
         </p>
       </div>
