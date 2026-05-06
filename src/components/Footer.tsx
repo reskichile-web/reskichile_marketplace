@@ -3,9 +3,6 @@ import Link from 'next/link'
 export default function Footer() {
   return (
     <footer className="mt-auto">
-      {/* Subtle sky gradient: white → pale celeste → muted dark */}
-      <div className="h-[80px] md:h-[120px] bg-gradient-to-b from-white via-sky-100 to-slate-800" />
-
       {/* Footer content */}
       <div className="bg-gray-900 text-white">
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-12 md:py-16">
