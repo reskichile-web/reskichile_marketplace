@@ -32,7 +32,7 @@ export default function ChatRoom({ conversationId, myId, initialMessages }: Prop
     overscan: 8,
   })
 
-  // Realtime subscription
+  // Realtime subscription — both INSERT (new messages) and UPDATE (delivered/read receipts)
   useEffect(() => {
     const channel = supabase
       .channel(`messages:${conversationId}`)
@@ -47,18 +47,33 @@ export default function ChatRoom({ conversationId, myId, initialMessages }: Prop
         (payload) => {
           const incoming = payload.new as Message
           setMessages((prev) => {
-            // Dedupe by id (we use client-generated UUIDs that match server row)
             if (prev.some((m) => m.id === incoming.id)) return prev
             return [...prev, incoming]
           })
-          // Mark as read if from other and chat is open
+          // Recipient + chat open → mark delivered + read
           if (incoming.sender_id !== myId) {
+            const now = new Date().toISOString()
             supabase
               .from('messages')
-              .update({ read_at: new Date().toISOString() })
+              .update({ delivered_at: now, read_at: now })
               .eq('id', incoming.id)
               .then(() => {})
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const updated = payload.new as Message
+          setMessages((prev) =>
+            prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+          )
         }
       )
       .subscribe()
@@ -127,6 +142,7 @@ export default function ChatRoom({ conversationId, myId, initialMessages }: Prop
       conversation_id: conversationId,
       sender_id: myId,
       body,
+      delivered_at: null,
       read_at: null,
       created_at: now,
       pending: true,
@@ -255,14 +271,50 @@ function Bubble({
           {m.body}
         </div>
         {showTime && (
-          <span className="text-[10px] text-gray-400 mt-0.5 px-1">
+          <span className="text-[10px] text-gray-400 mt-0.5 px-1 inline-flex items-center gap-1">
             {formatTime(m.created_at)}
-            {m.pending && ' · enviando…'}
-            {m.failed && ' · falló'}
+            {m.failed && <span className="text-red-500">· no enviado</span>}
+            {mine && !m.failed && <ReceiptIcon m={m} />}
           </span>
         )}
       </div>
     </div>
+  )
+}
+
+function ReceiptIcon({ m }: { m: Message }) {
+  if (m.pending) {
+    // Clock — message not yet on server
+    return (
+      <svg className="w-3 h-3 text-gray-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <circle cx="8" cy="8" r="6" />
+        <path d="M8 4.5v3.7l2.2 1.5" strokeLinecap="round" />
+      </svg>
+    )
+  }
+  if (m.read_at) {
+    // Double check, celeste — read
+    return (
+      <svg className="w-3.5 h-3 text-brand-400" viewBox="0 0 18 12" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 6.5l3 3 6-6" />
+        <path d="M7 9.5l1 .5 6.5-6.5" />
+      </svg>
+    )
+  }
+  if (m.delivered_at) {
+    // Double check, gray — delivered
+    return (
+      <svg className="w-3.5 h-3 text-gray-400" viewBox="0 0 18 12" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 6.5l3 3 6-6" />
+        <path d="M7 9.5l1 .5 6.5-6.5" />
+      </svg>
+    )
+  }
+  // Single check — sent (in DB, recipient not online yet)
+  return (
+    <svg className="w-3 h-3 text-gray-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8.5l3 3 7-7" />
+    </svg>
   )
 }
 

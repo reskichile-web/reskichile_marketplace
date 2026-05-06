@@ -6,6 +6,7 @@ import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
 import AdminNav from './AdminNav'
 import ProfileDropdown from './ProfileDropdown'
+import ChatPresence from './chat/ChatPresence'
 
 export default async function Header() {
   const { user, isAdmin, avatarUrl, userName } = await getAuthUser()
@@ -29,6 +30,7 @@ export default async function Header() {
       {avatarUrl && (
         <link rel="preload" as="image" href={avatarUrl} />
       )}
+      {user && <ChatPresence userId={user.id} />}
       {/* Main row */}
       <div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">

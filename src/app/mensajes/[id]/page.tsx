@@ -52,10 +52,11 @@ export default async function ChatPage({ params }: Props) {
     (a: { order: number }, b: { order: number }) => a.order - b.order
   )[0]?.url
 
-  // Mark as read (sender != me, no read_at)
+  // Mark as delivered + read for any incoming message that wasn't yet
+  const now = new Date().toISOString()
   await supabase
     .from('messages')
-    .update({ read_at: new Date().toISOString() })
+    .update({ delivered_at: now, read_at: now })
     .eq('conversation_id', params.id)
     .neq('sender_id', user.id)
     .is('read_at', null)
