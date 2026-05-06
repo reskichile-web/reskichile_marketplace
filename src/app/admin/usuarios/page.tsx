@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import { PRODUCT_TYPES } from '@/lib/constants'
 
 interface UserWithProducts {
   id: string
@@ -14,7 +15,35 @@ interface UserWithProducts {
   must_change_password: boolean
   keep: boolean | null
   created_at: string
+  avatar_url: string | null
   product_count: number
+}
+
+interface UserDetailResponse {
+  auth: {
+    last_sign_in_at: string | null
+    email_confirmed_at: string | null
+    created_at: string | null
+    providers: string[]
+  } | null
+  products: Array<{
+    id: string
+    brand: string | null
+    model: string | null
+    status: string
+    price: number
+    sale_price: number | null
+    slug: string | null
+    created_at: string
+    product_type: string
+  }>
+  conversations_count: number
+  invites: Array<{
+    slug: string
+    expires_at: string
+    used_at: string | null
+    created_at: string
+  }>
 }
 
 function cleanPhone(phone: string): string {
@@ -279,6 +308,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'pending_access'>('all')
   const [search, setSearch] = useState('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -286,7 +316,7 @@ export default function UsuariosPage() {
 
       const { data: usersData } = await supabase
         .from('users')
-        .select('id, email, name, phone, instagram, is_admin, must_change_password, keep, created_at')
+        .select('id, email, name, phone, instagram, is_admin, must_change_password, keep, created_at, avatar_url')
         .order('created_at', { ascending: false })
 
       const { data: products } = await supabase
@@ -390,65 +420,284 @@ export default function UsuariosPage() {
                   No hay usuarios que coincidan
                 </td>
               </tr>
-            ) : filtered.map(user => (
-              <tr key={user.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-5 py-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">{user.name || 'Sin nombre'}</span>
-                      {user.is_admin && (
-                        <span className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded" style={{ color: '#F5B800', background: '#FFF8E1' }}>
-                          admin
+            ) : filtered.map(user => {
+              const isExpanded = expandedId === user.id
+              return (
+                <React.Fragment key={user.id}>
+                  <tr
+                    className={`border-b last:border-0 cursor-pointer ${isExpanded ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                    onClick={() => setExpandedId(isExpanded ? null : user.id)}
+                  >
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <svg
+                          className={`w-3.5 h-3.5 text-gray-400 transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.5}
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <Avatar url={user.avatar_url} name={user.name} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 truncate">{user.name || 'Sin nombre'}</span>
+                            {user.is_admin && (
+                              <span className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded shrink-0" style={{ color: '#F5B800', background: '#FFF8E1' }}>
+                                admin
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500 truncate block">{user.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 hidden sm:table-cell text-gray-600">
+                      {user.phone || '—'}
+                    </td>
+                    <td className="px-5 py-3 hidden md:table-cell text-gray-500">
+                      {new Date(user.created_at).toLocaleDateString('es-CL')}
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      {user.product_count > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-green-700 bg-green-50 px-2 py-0.5 rounded-full text-xs font-medium">
+                          {user.product_count}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">0</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {user.keep === false ? (
+                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
+                          Inactivo
+                        </span>
+                      ) : user.must_change_password ? (
+                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700">
+                          Sin acceso
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-700">
+                          Activo
                         </span>
                       )}
-                    </div>
-                    <span className="text-xs text-gray-500">{user.email}</span>
-                  </div>
-                </td>
-                <td className="px-5 py-3 hidden sm:table-cell text-gray-600">
-                  {user.phone || '—'}
-                </td>
-                <td className="px-5 py-3 hidden md:table-cell text-gray-500">
-                  {new Date(user.created_at).toLocaleDateString('es-CL')}
-                </td>
-                <td className="px-5 py-3 text-center">
-                  {user.product_count > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-green-700 bg-green-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                      {user.product_count}
-                    </span>
-                  ) : (
-                    <span className="text-gray-300">0</span>
-                  )}
-                </td>
-                <td className="px-5 py-3">
-                  {user.keep === false ? (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
-                      Inactivo
-                    </span>
-                  ) : user.must_change_password ? (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700">
-                      Sin acceso
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-700">
-                      Activo
-                    </span>
-                  )}
-                </td>
-                {showInviteCol && (
-                  <td className="px-5 py-3">
-                    {user.keep === true && user.must_change_password ? (
-                      <InviteButtons user={user} />
-                    ) : (
-                      <span className="text-gray-200">—</span>
+                    </td>
+                    {showInviteCol && (
+                      <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                        {user.keep === true && user.must_change_password ? (
+                          <InviteButtons user={user} />
+                        ) : (
+                          <span className="text-gray-200">—</span>
+                        )}
+                      </td>
                     )}
-                  </td>
-                )}
-              </tr>
-            ))}
+                  </tr>
+                  {isExpanded && (
+                    <tr className="bg-gray-50 border-b">
+                      <td colSpan={showInviteCol ? 6 : 5} className="px-5 py-5">
+                        <UserDetailPanel user={user} />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>
     </div>
   )
+}
+
+function initialsOf(name: string | null): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/).slice(0, 2)
+  return parts.map(p => p[0]?.toUpperCase() ?? '').join('') || '?'
+}
+
+function Avatar({ url, name, size = 36 }: { url: string | null; name: string | null; size?: number }) {
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={url}
+        alt=""
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    )
+  }
+  return (
+    <div
+      className="rounded-full bg-gray-200 text-gray-500 flex items-center justify-center shrink-0 text-xs font-bold"
+      style={{ width: size, height: size }}
+    >
+      {initialsOf(name)}
+    </div>
+  )
+}
+
+function UserDetailPanel({ user }: { user: UserWithProducts }) {
+  const [detail, setDetail] = useState<UserDetailResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setError('')
+      try {
+        const res = await fetch(`/api/admin/user-detail/${user.id}`)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Error')
+        if (!cancelled) setDetail(data)
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Error desconocido')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [user.id])
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="flex items-center gap-4 mb-5">
+        <Avatar url={user.avatar_url} name={user.name} size={64} />
+        <div className="min-w-0">
+          <h3 className="font-body font-black text-lg text-gray-900 truncate">{user.name || 'Sin nombre'}</h3>
+          <p className="text-sm text-gray-500 truncate">{user.email}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 mb-5">
+        <DetailRow label="ID" value={user.id} mono />
+        <DetailRow label="Teléfono" value={user.phone || '—'} />
+        <DetailRow label="Instagram" value={user.instagram ? `@${user.instagram}` : '—'} />
+        <DetailRow label="Rol" value={user.is_admin ? 'Admin' : 'Usuario'} />
+        <DetailRow
+          label="Estado"
+          value={
+            user.keep === false
+              ? 'Inactivo'
+              : user.must_change_password
+                ? 'Sin acceso (sin contraseña)'
+                : 'Activo'
+          }
+        />
+        <DetailRow
+          label="Registrado en públic"
+          value={new Date(user.created_at).toLocaleString('es-CL')}
+        />
+        {detail?.auth?.created_at && (
+          <DetailRow label="Registrado en auth" value={new Date(detail.auth.created_at).toLocaleString('es-CL')} />
+        )}
+        {detail?.auth?.last_sign_in_at && (
+          <DetailRow label="Último ingreso" value={new Date(detail.auth.last_sign_in_at).toLocaleString('es-CL')} />
+        )}
+        {detail?.auth?.email_confirmed_at && (
+          <DetailRow label="Email confirmado" value={new Date(detail.auth.email_confirmed_at).toLocaleString('es-CL')} />
+        )}
+        {detail?.auth?.providers && detail.auth.providers.length > 0 && (
+          <DetailRow label="Proveedores" value={detail.auth.providers.join(', ')} />
+        )}
+      </div>
+
+      {loading ? (
+        <p className="text-xs text-gray-400">Cargando detalle…</p>
+      ) : error ? (
+        <p className="text-xs text-red-500">{error}</p>
+      ) : detail ? (
+        <>
+          <div className="border-t border-gray-100 pt-4 mb-4">
+            <h4 className="text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">
+              Productos ({detail.products.length})
+            </h4>
+            {detail.products.length === 0 ? (
+              <p className="text-xs text-gray-400">Sin productos.</p>
+            ) : (
+              <div className="space-y-1">
+                {detail.products.map(p => (
+                  <div key={p.id} className="flex items-center justify-between text-xs gap-2 py-1 border-b border-gray-50 last:border-0">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-gray-400">{PRODUCT_TYPES[p.product_type] || p.product_type}</span>
+                      <span className="mx-1.5 text-gray-300">·</span>
+                      <span className="text-gray-900 font-medium">
+                        {[p.brand, p.model].filter(Boolean).join(' ') || 'Sin título'}
+                      </span>
+                      <span className="mx-1.5 text-gray-300">·</span>
+                      <span className="text-gray-700">${p.price.toLocaleString('es-CL')}</span>
+                      {p.sale_price && p.sale_price !== p.price && (
+                        <>
+                          <span className="mx-1.5 text-gray-300">·</span>
+                          <span className="text-green-700">vendido en ${p.sale_price.toLocaleString('es-CL')}</span>
+                        </>
+                      )}
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold shrink-0" style={statusBadgeStyle(p.status)}>
+                      {p.status}
+                    </span>
+                    <span className="text-gray-400 shrink-0">{new Date(p.created_at).toLocaleDateString('es-CL')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-100 pt-4 mb-4 grid grid-cols-2 gap-x-8">
+            <DetailRow label="Conversaciones" value={String(detail.conversations_count)} />
+          </div>
+
+          {detail.invites.length > 0 && (
+            <div className="border-t border-gray-100 pt-4">
+              <h4 className="text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">
+                Invitaciones ({detail.invites.length})
+              </h4>
+              <div className="space-y-1">
+                {detail.invites.map(inv => {
+                  const expired = new Date(inv.expires_at).getTime() < Date.now()
+                  const state = inv.used_at ? 'usado' : expired ? 'expirado' : 'activo'
+                  return (
+                    <div key={inv.slug} className="flex items-center gap-3 text-xs">
+                      <code className="bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-700">{inv.slug}</code>
+                      <span className={`text-[10px] uppercase tracking-wider font-bold ${
+                        state === 'usado' ? 'text-gray-400' : state === 'expirado' ? 'text-red-500' : 'text-green-600'
+                      }`}>
+                        {state}
+                      </span>
+                      <span className="text-gray-400">creado {new Date(inv.created_at).toLocaleDateString('es-CL')}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{label}</p>
+      <p className={`text-sm text-gray-900 truncate ${mono ? 'font-mono text-xs' : ''}`}>{value}</p>
+    </div>
+  )
+}
+
+function statusBadgeStyle(status: string): React.CSSProperties {
+  switch (status) {
+    case 'approved':  return { background: '#DCFCE7', color: '#166534' }
+    case 'pending':   return { background: '#FEF3C7', color: '#92400E' }
+    case 'rejected':  return { background: '#FEE2E2', color: '#991B1B' }
+    case 'sold':      return { background: '#DBEAFE', color: '#1E40AF' }
+    case 'archived':  return { background: '#E5E7EB', color: '#4B5563' }
+    case 'missing_photos': return { background: '#FFEDD5', color: '#9A3412' }
+    default:          return { background: '#F3F4F6', color: '#6B7280' }
+  }
 }
