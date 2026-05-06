@@ -24,13 +24,17 @@ export async function POST(request: Request) {
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'magiclink',
     email,
-    options: { redirectTo: `${SITE_URL}/auth/callback?next=/auth/reset-password` },
   })
 
-  if (error || !data?.properties?.action_link) {
+  if (error || !data?.properties?.hashed_token) {
     const msg = error instanceof Error ? error.message : 'No se pudo generar el link'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 
-  return NextResponse.json({ link: data.properties.action_link })
+  // Self-hosted URL: keeps reskichile.cl in the link and uses token_hash
+  // (verifyOtp) which doesn't require PKCE client state.
+  const next = encodeURIComponent('/auth/reset-password')
+  const link = `${SITE_URL}/auth/confirm?token_hash=${data.properties.hashed_token}&type=magiclink&next=${next}`
+
+  return NextResponse.json({ link })
 }
