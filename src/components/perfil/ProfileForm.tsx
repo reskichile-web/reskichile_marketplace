@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import PopupMessage from '@/components/PopupMessage'
 import PerfilSkeleton from '@/components/skeletons/PerfilSkeleton'
@@ -13,9 +14,12 @@ const PASSWORD_MIN = 6
 interface Props {
   /** When true, hides the mobile-only background image header (desktop edit page) */
   hideHeaderImage?: boolean
+  /** When set, navigate here after a successful save (used by /perfil/editar to return to /perfil). */
+  redirectAfterSave?: string
 }
 
-export default function ProfileForm({ hideHeaderImage = false }: Props) {
+export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave }: Props) {
+  const router = useRouter()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [instagram, setInstagram] = useState('')
@@ -125,14 +129,21 @@ export default function ProfileForm({ hideHeaderImage = false }: Props) {
 
     if (error) {
       setPopup({ message: 'Error al guardar. Intenta de nuevo.', type: 'error' })
-    } else {
-      setInitialValues({
-        name: trimmedName,
-        phone: normalizedPhone,
-        instagram: trimmedInstagram,
-      })
+      setSaving(false)
+      return
     }
+
+    setInitialValues({
+      name: trimmedName,
+      phone: normalizedPhone,
+      instagram: trimmedInstagram,
+    })
     setSaving(false)
+
+    if (redirectAfterSave) {
+      router.push(redirectAfterSave)
+      router.refresh()
+    }
   }
 
   const isDirty =

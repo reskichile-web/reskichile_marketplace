@@ -10,11 +10,11 @@ export default function EditarPerfilPage() {
     <>
       {/* Mobile: keep the original look (image header) */}
       <div className="md:hidden">
-        <ProfileForm />
+        <ProfileForm redirectAfterSave="/perfil" />
       </div>
       {/* Desktop: clean header, no image */}
       <div className="hidden md:block max-w-3xl mx-auto px-4 md:px-8 pt-10 md:pt-14 pb-20">
-        <ProfileForm hideHeaderImage />
+        <ProfileForm hideHeaderImage redirectAfterSave="/perfil" />
       </div>
     </>
   )
