@@ -276,7 +276,7 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
 
       {/* Claim-your-listings prompt — page footer */}
       <div className="mt-10 md:mt-12 px-4 md:px-0 border-t border-gray-100 pt-6">
-        <ClaimListingsPrompt align="center" />
+        <ClaimListingsPrompt className="text-center" />
       </div>
     </div>
     </div>

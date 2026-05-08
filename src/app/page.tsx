@@ -113,10 +113,7 @@ export default function HomePage() {
             <span>Publicar equipo</span>
           </Link>
         </div>
-        <ClaimListingsPrompt
-          align="left"
-          className="mt-6 md:mt-7 text-center md:text-left"
-        />
+        <ClaimListingsPrompt className="mt-6 md:mt-7 text-center md:text-left" />
         </div>
       </section>
 

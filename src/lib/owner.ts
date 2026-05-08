@@ -3,7 +3,7 @@
 export const OWNER_WHATSAPP = '56964880714'
 
 export const RECLAIM_LISTINGS_MESSAGE =
-  'Hola! Tengo productos publicados a mi nombre en ReskiChile y quiero reclamar mi cuenta o crear una.'
+  'Hola! Subieron productos a mi nombre en ReskiChile y quiero asociarlos a mi cuenta.'
 
 export function reclaimListingsUrl(): string {
   return `https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(RECLAIM_LISTINGS_MESSAGE)}`
