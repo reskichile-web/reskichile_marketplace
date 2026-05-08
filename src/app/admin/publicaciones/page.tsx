@@ -39,6 +39,74 @@ const STATUS_COLORS: Record<string, string> = {
   archived: 'bg-gray-100 text-gray-500',
 }
 
+function EditableSalePrice({
+  productId,
+  value,
+  onSave,
+}: {
+  productId: string
+  value: number | null
+  onSave: (productId: string, newValue: number | null) => Promise<void>
+}) {
+  const [draft, setDraft] = useState<string>(value != null ? String(value) : '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setDraft(value != null ? String(value) : '')
+  }, [value])
+
+  async function commit() {
+    const trimmed = draft.replace(/[^\d]/g, '')
+    let parsed: number | null
+    if (trimmed === '') {
+      parsed = null
+    } else {
+      const n = parseInt(trimmed, 10)
+      if (isNaN(n) || n <= 0) {
+        // Invalid → revert
+        setDraft(value != null ? String(value) : '')
+        return
+      }
+      parsed = n
+    }
+    if (parsed === value) return
+    setSaving(true)
+    await onSave(productId, parsed)
+    setSaving(false)
+  }
+
+  const formatted = draft && /^\d+$/.test(draft)
+    ? Number(draft).toLocaleString('es-CL')
+    : draft
+
+  return (
+    <div className="flex items-center gap-1 font-light" onClick={(e) => e.stopPropagation()}>
+      <span className="text-green-600">$</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={formatted}
+        onChange={(e) => setDraft(e.target.value.replace(/[^\d]/g, ''))}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            (e.currentTarget as HTMLInputElement).blur()
+          } else if (e.key === 'Escape') {
+            setDraft(value != null ? String(value) : '')
+            ;(e.currentTarget as HTMLInputElement).blur()
+          }
+        }}
+        disabled={saving}
+        placeholder="—"
+        className="text-green-600 bg-transparent border-b border-dashed border-gray-300 focus:border-green-500 focus:outline-none w-24"
+      />
+      {saving && (
+        <span className="ml-1 inline-block w-3 h-3 border-2 border-green-300 border-t-green-600 rounded-full animate-spin" />
+      )}
+    </div>
+  )
+}
+
 export default function PublicacionesPage() {
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [loading, setLoading] = useState(true)
@@ -115,6 +183,24 @@ export default function PublicacionesPage() {
 
   async function handleMarkSold(productId: string) {
     await handleStatusChange(productId, 'sold')
+  }
+
+  async function handleSalePriceChange(productId: string, newValue: number | null) {
+    const prevProducts = products
+    // The DB trigger sync_sale_to_history flips status to 'sold' when sale_price
+    // becomes non-null; mirror that locally to keep the row in sync until reload.
+    setProducts(prev => prev.map(p => {
+      if (p.id !== productId) return p
+      const next = { ...p, sale_price: newValue }
+      if (newValue != null && newValue !== p.sale_price) next.status = 'sold'
+      return next
+    }))
+    const supabase = createClient()
+    const { error } = await supabase.from('products').update({ sale_price: newValue }).eq('id', productId)
+    if (error) {
+      setProducts(prevProducts)
+      alert('Error al guardar precio de venta: ' + error.message)
+    }
   }
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -352,9 +438,11 @@ export default function PublicacionesPage() {
                                 </div>
                                 <div>
                                   <span className="font-bold text-gray-700">Precio de venta</span>
-                                  <p className="font-light text-green-600">
-                                    {product.sale_price ? `$${product.sale_price.toLocaleString('es-CL')}` : '—'}
-                                  </p>
+                                  <EditableSalePrice
+                                    productId={product.id}
+                                    value={product.sale_price}
+                                    onSave={handleSalePriceChange}
+                                  />
                                 </div>
                                 <div>
                                   <span className="font-bold text-gray-700">Descripción</span>
