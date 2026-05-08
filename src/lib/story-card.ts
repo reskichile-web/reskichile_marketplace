@@ -162,10 +162,31 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
     y += Math.ceil(validAttrs.length / 2) * rowH + 26
   }
 
-  // URL footer — light gray, no chip, left-aligned
-  ctx.fillStyle = TEXT_SOFT
-  ctx.font = `500 26px ${FONT_STACK}`
-  ctx.fillText('reskichile.cl', LEFT, Math.min(y + 10, H - 200))
+  // Link-sticker drop zone — visible target so the user knows where to
+  // place the IG Story link sticker after sharing. Replaces the URL
+  // footer (the sticker carries the URL).
+  const stickerW = 640
+  const stickerH = 140
+  const stickerX = (W - stickerW) / 2
+  const stickerY = Math.min(y + 20, H - 260)
+
+  ctx.save()
+  ctx.fillStyle = 'rgba(38, 116, 191, 0.06)'
+  roundRectPath(ctx, stickerX, stickerY, stickerW, stickerH, 30)
+  ctx.fill()
+  ctx.strokeStyle = BRAND
+  ctx.lineWidth = 3
+  ctx.setLineDash([12, 8])
+  roundRectPath(ctx, stickerX, stickerY, stickerW, stickerH, 30)
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.fillStyle = BRAND
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `700 28px ${FONT_STACK}`
+  ctx.fillText('🔗 Pegá aquí tu link de Reski', W / 2, stickerY + stickerH / 2)
+  ctx.textBaseline = 'alphabetic'
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
