@@ -6,6 +6,7 @@ import CatalogSidebar from '@/components/CatalogSidebar'
 import CatalogMobileFilterButton from '@/components/CatalogMobileFilterButton'
 import CatalogSortSelect from '@/components/CatalogSortSelect'
 import ProductCard from '@/components/ProductCard'
+import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import EmptyState from '@/components/illustrations/EmptyState'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { computeSkiCounts, passesSkiFilters } from '@/lib/ski-filters'
@@ -139,6 +140,7 @@ export default async function CatalogPage({ searchParams }: Props) {
         <p className="mt-1.5 max-w-2xl text-sm text-gray-500 leading-relaxed">
           Equipo de montaña usado, directo de quien lo usó.
         </p>
+        <ClaimListingsPrompt className="mt-3 max-w-2xl" />
       </div>
 
       <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">

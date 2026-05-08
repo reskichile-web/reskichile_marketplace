@@ -7,6 +7,7 @@ import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductGallery from '@/components/ProductGallery'
 import ShareButton from '@/components/ShareButton'
+import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -271,6 +272,11 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
             </Link>
           )}
         </div>
+      </div>
+
+      {/* Claim-your-listings prompt — page footer */}
+      <div className="mt-10 md:mt-12 px-4 md:px-0 border-t border-gray-100 pt-6">
+        <ClaimListingsPrompt align="center" />
       </div>
     </div>
     </div>
