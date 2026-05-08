@@ -4,9 +4,11 @@ import type { ProductWithImages } from '@/lib/types'
 const W = 1080
 const H = 1920
 
-// Image fills more of the canvas width; text aligns to the same left edge.
-const IMG_SIZE = 800
-const LEFT = (W - IMG_SIZE) / 2
+// Embedded product photo is rendered 4:5 (matches the catalog/product
+// detail aspect). Side margins double as the left anchor for text.
+const IMG_W = 760
+const IMG_H = 950
+const LEFT = (W - IMG_W) / 2
 
 const BRAND = '#2674bf'
 const BG_TOP = '#edf4fb'
@@ -32,10 +34,10 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, W, H)
 
-  // Brand logo (SVG → canvas) — smaller, higher
-  const logoW = 300
-  const logoY = 130
-  let logoH = 120
+  // Brand logo (SVG → canvas) — small, near the top
+  const logoW = 240
+  const logoY = 110
+  let logoH = 96
   try {
     const logo = await loadImage('/logo.svg')
     logoH = (logo.height / logo.width) * logoW
@@ -43,19 +45,19 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   } catch {
     ctx.fillStyle = BRAND
     ctx.textAlign = 'center'
-    ctx.font = `900 80px ${FONT_STACK}`
-    ctx.fillText('ReskiChile', W / 2, logoY + 80)
+    ctx.font = `900 64px ${FONT_STACK}`
+    ctx.fillText('ReskiChile', W / 2, logoY + 70)
   }
 
-  // Product image card — wider than before
-  const imgY = logoY + logoH + 40
+  // Product image card — 4:5 portrait
+  const imgY = logoY + logoH + 35
 
   ctx.save()
   ctx.shadowColor = 'rgba(15, 23, 42, 0.15)'
   ctx.shadowBlur = 32
   ctx.shadowOffsetY = 12
   ctx.fillStyle = '#ffffff'
-  roundRectPath(ctx, LEFT, imgY, IMG_SIZE, IMG_SIZE, 32)
+  roundRectPath(ctx, LEFT, imgY, IMG_W, IMG_H, 32)
   ctx.fill()
   ctx.restore()
 
@@ -67,16 +69,16 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
     try {
       const img = await loadImage(imageUrl)
       ctx.save()
-      roundRectPath(ctx, LEFT, imgY, IMG_SIZE, IMG_SIZE, 32)
+      roundRectPath(ctx, LEFT, imgY, IMG_W, IMG_H, 32)
       ctx.clip()
-      drawCover(ctx, img, LEFT, imgY, IMG_SIZE, IMG_SIZE)
+      drawCover(ctx, img, LEFT, imgY, IMG_W, IMG_H)
       ctx.restore()
     } catch {
       ctx.save()
-      roundRectPath(ctx, LEFT, imgY, IMG_SIZE, IMG_SIZE, 32)
+      roundRectPath(ctx, LEFT, imgY, IMG_W, IMG_H, 32)
       ctx.clip()
       ctx.fillStyle = '#eef4fb'
-      ctx.fillRect(LEFT, imgY, IMG_SIZE, IMG_SIZE)
+      ctx.fillRect(LEFT, imgY, IMG_W, IMG_H)
       ctx.restore()
     }
   }
@@ -89,46 +91,44 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   const seasons = product.seasons_used
   const location = `${product.region}${product.comuna ? ', ' + product.comuna : ''}`
 
-  let y = imgY + IMG_SIZE + 70
+  let y = imgY + IMG_H + 60
 
-  // Type label — CENTERED, bigger
+  // Type label — CENTERED
   ctx.textAlign = 'center'
   ctx.fillStyle = BRAND
-  ctx.font = `600 34px ${FONT_STACK}`
+  ctx.font = `600 32px ${FONT_STACK}`
   ctx.fillText(typeLabel, W / 2, y)
-  y += 70
+  y += 56
 
-  // Title — CENTERED, bigger
+  // Title — CENTERED
   ctx.fillStyle = TEXT
-  ctx.font = `900 70px ${FONT_STACK}`
+  ctx.font = `900 64px ${FONT_STACK}`
   drawTextEllipsized(ctx, title, W / 2, y, W - 100)
-  y += 90
+  y += 80
 
   // Everything below: LEFT-aligned at the image edge
   ctx.textAlign = 'left'
 
-  // Price — LEFT, bigger
+  // Price — LEFT
   ctx.fillStyle = BRAND
-  ctx.font = `600 70px ${FONT_STACK}`
+  ctx.font = `600 60px ${FONT_STACK}`
   ctx.fillText(price, LEFT, y)
-  y += 60
+  y += 50
 
-  // Condition + seasons — LEFT, bigger
+  // Condition + seasons — LEFT
   const seasonsText = seasons
     ? ` • ${seasons} ${parseInt(seasons) === 1 ? 'Temporada' : 'Temporadas'}`
     : ''
   ctx.fillStyle = TEXT_MUTED
-  ctx.font = `500 32px ${FONT_STACK}`
+  ctx.font = `500 28px ${FONT_STACK}`
   ctx.fillText(`${conditionLabel}${seasonsText}`, LEFT, y)
-  y += 52
+  y += 56
 
-  // Location — LEFT, bigger
-  ctx.fillStyle = TEXT_MUTED
-  ctx.font = `400 32px ${FONT_STACK}`
-  ctx.fillText(`📍 ${location}`, LEFT, y)
-  y += 70
+  // Location row dropped to make room for the 4:5 image. The location
+  // is still in the title attributes / link, just not on the card.
+  void location
 
-  // Attributes grid (2 cols, up to 4) — LEFT, bigger
+  // Attributes grid (2 cols, up to 4) — LEFT
   const attrFields = (PRODUCT_ATTRIBUTES[product.product_type] || []).filter(
     (f) => !f.key.startsWith('incluye_') && !f.key.startsWith('fijaciones_'),
   )
@@ -141,8 +141,8 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
     .slice(0, 4)
 
   if (validAttrs.length > 0) {
-    const colW = IMG_SIZE / 2
-    const rowH = 88
+    const colW = IMG_W / 2
+    const rowH = 78
     validAttrs.forEach((f, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
@@ -150,25 +150,24 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
       const cellY = y + row * rowH
 
       ctx.fillStyle = TEXT_SOFT
-      ctx.font = `500 26px ${FONT_STACK}`
+      ctx.font = `500 24px ${FONT_STACK}`
       ctx.fillText(f.label, x, cellY)
 
       const v = attrs[f.key]
       const display = typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
       ctx.fillStyle = TEXT
-      ctx.font = `700 38px ${FONT_STACK}`
-      ctx.fillText(display, x, cellY + 44)
+      ctx.font = `700 32px ${FONT_STACK}`
+      ctx.fillText(display, x, cellY + 38)
     })
-    y += Math.ceil(validAttrs.length / 2) * rowH + 26
+    y += Math.ceil(validAttrs.length / 2) * rowH + 18
   }
 
   // Link-sticker drop zone — visible target so the user knows where to
-  // place the IG Story link sticker after sharing. Replaces the URL
-  // footer (the sticker carries the URL).
-  const stickerW = 640
-  const stickerH = 140
+  // place the IG Story link sticker after sharing.
+  const stickerW = 600
+  const stickerH = 100
   const stickerX = (W - stickerW) / 2
-  const stickerY = Math.min(y + 20, H - 260)
+  const stickerY = Math.min(y + 14, H - 260)
 
   ctx.save()
   ctx.fillStyle = 'rgba(38, 116, 191, 0.06)'
