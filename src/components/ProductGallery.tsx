@@ -287,10 +287,22 @@ export default function ProductGallery({ images, title }: Props) {
           {images.map((img, i) => (
             <div
               key={img.url}
-              className="relative h-full bg-white"
+              className="relative h-full overflow-hidden"
               style={{ width: w > 0 ? w : `${100 / images.length}%` }}
               onClick={handleImageClick}
             >
+              {/* Blurred backdrop — fills the aspect-ratio gap with a soft
+                  version of the same image (IG/FB-style). Scaled up so the
+                  CSS blur's transparent edges fall outside the visible area. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.url}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 pointer-events-none"
+                loading={i === 0 ? 'eager' : 'lazy'}
+              />
+
               <GalleryImage
                 src={img.url}
                 alt={i === 0 ? title : `${title} - ${i + 1}`}
