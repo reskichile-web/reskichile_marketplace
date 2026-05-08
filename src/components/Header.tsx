@@ -87,6 +87,17 @@ export default async function Header() {
             </Link>
             {user && (
               <>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="pressable inline-flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-sm hover:bg-gray-800 transition-colors font-nav"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h3.75v3.75A2.25 2.25 0 017.5 9.75H3.75V6zM3.75 12.75h3.75A2.25 2.25 0 019.75 15v3.75H6a2.25 2.25 0 01-2.25-2.25v-3.75zM14.25 14.25H18a2.25 2.25 0 012.25 2.25v3.75H16.5a2.25 2.25 0 01-2.25-2.25v-3.75zM14.25 6c0-1.243 1.007-2.25 2.25-2.25H20.25v3.75A2.25 2.25 0 0118 9.75h-3.75V6z" />
+                    </svg>
+                    Admin Dashboard
+                  </Link>
+                )}
                 <Link
                   href="/mis-productos"
                   className="pressable inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm px-4 py-2.5 rounded-sm hover:border-brand-300 hover:text-brand-500 transition-colors font-nav"
