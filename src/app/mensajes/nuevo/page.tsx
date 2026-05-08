@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import ChatRoom from '@/components/chat/ChatRoom'
+import ChatHeaderBack from '@/components/chat/ChatHeaderBack'
 import { PRODUCT_TYPES } from '@/lib/constants'
 
 export const dynamic = 'force-dynamic'
@@ -54,17 +55,11 @@ export default async function NuevoChatPage({ searchParams }: Props) {
   return (
     <div className="flex flex-col h-[100dvh] md:h-[calc(100vh-130px)] max-w-5xl mx-auto w-full">
       <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-200 bg-white">
-        <Link
-          href="/mensajes"
-          aria-label="Volver"
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
-        >
-          <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
+        <ChatHeaderBack />
         <div className="flex-1 min-w-0">
-          <p className="font-body font-semibold text-sm truncate">{seller?.name || 'Usuario'}</p>
+          <Link href="/mensajes" className="block hover:opacity-80 transition-opacity">
+            <p className="font-body font-semibold text-sm truncate">{seller?.name || 'Usuario'}</p>
+          </Link>
           <Link
             href={`/producto/${product.slug || product.id}`}
             className="text-xs text-gray-500 hover:text-gray-800 truncate block"
