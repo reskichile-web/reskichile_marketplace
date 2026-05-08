@@ -123,6 +123,13 @@ export default function SellPage() {
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
 
+  // Preferences (saved on the users row for logged-in sellers; ignored
+  // for anon publishes since there's no users record yet).
+  const [hidePhone, setHidePhone] = useState(false)
+  const [notifyChatEmail, setNotifyChatEmail] = useState(true)
+  const [notifyRemindersEmail, setNotifyRemindersEmail] = useState(true)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+
   // Auth (for non-logged-in users)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const [publishAnon, setPublishAnon] = useState(false)
@@ -193,6 +200,10 @@ export default function SellPage() {
         setPopup({ message: `Debes subir al menos ${MIN_IMAGES} fotos`, type: 'error' })
         return
       }
+      if (!termsAccepted) {
+        setFieldErrors(prev => ({ ...prev, terms: 'Debes aceptar los Términos y Condiciones' }))
+        return
+      }
       if (isLoggedIn) {
         handlePublish()
       } else {
@@ -229,6 +240,18 @@ export default function SellPage() {
 
     setPublishPhase('creating')
     const priceInt = parseInt(price)
+
+    // Persist seller-level preferences. Best-effort — if the row doesn't
+    // exist yet (e.g. fresh OTP signup) we silently skip; product insert
+    // still proceeds.
+    await supabase
+      .from('users')
+      .update({
+        hide_phone: hidePhone,
+        notify_chat_email: notifyChatEmail,
+        notify_reminders_email: notifyRemindersEmail,
+      })
+      .eq('id', uid)
 
     const { data: product, error: productError } = await supabase
       .from('products')
@@ -696,6 +719,64 @@ export default function SellPage() {
               setPreviews(next.map(f => URL.createObjectURL(f)))
             }}
           />
+
+          {/* Preferences (logged-in sellers). The user-level prefs
+              (hide_phone, notify_*) only persist when there's a users
+              record — for anon publishes we skip them server-side. */}
+          {isLoggedIn && (
+            <div className="border rounded-xl p-4 space-y-3 bg-gray-50/50">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferencias</p>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hidePhone}
+                  onChange={e => setHidePhone(e.target.checked)}
+                  className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                />
+                <span className="text-sm text-gray-800">
+                  Ocultar mi número de WhatsApp en mis publicaciones
+                </span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyChatEmail}
+                  onChange={e => setNotifyChatEmail(e.target.checked)}
+                  className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                />
+                <span className="text-sm text-gray-800">
+                  Recibir avisos por correo de mensajes en el chat
+                </span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyRemindersEmail}
+                  onChange={e => setNotifyRemindersEmail(e.target.checked)}
+                  className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                />
+                <span className="text-sm text-gray-800">
+                  Recibir recordatorios automáticos por correo
+                </span>
+              </label>
+            </div>
+          )}
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={e => {
+                setTermsAccepted(e.target.checked)
+                if (e.target.checked) setFieldErrors(prev => { const n = {...prev}; delete n.terms; return n })
+              }}
+              className={`mt-0.5 rounded text-brand-500 focus:ring-brand-500 ${fieldErrors.terms ? 'border-red-400' : 'border-gray-300'}`}
+            />
+            <span className="text-sm text-gray-800">
+              Acepto los Términos y Condiciones de ReskiChile.
+            </span>
+          </label>
+          {fieldErrors.terms && <p className="text-xs text-red-500 -mt-2">{fieldErrors.terms}</p>}
 
           {/* Navigation */}
           <div className="flex gap-3 pt-2">

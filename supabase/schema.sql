@@ -21,6 +21,10 @@ CREATE TABLE public.users (
   -- `is_seller_phone_hidden(uuid)` SECURITY DEFINER RPC, since RLS on this
   -- table doesn't expose cross-user fields.
   hide_phone BOOLEAN NOT NULL DEFAULT FALSE,
+  -- Email notification preferences. Default TRUE; users can opt out from
+  -- the publish form or their profile.
+  notify_chat_email BOOLEAN NOT NULL DEFAULT TRUE,
+  notify_reminders_email BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
