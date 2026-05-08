@@ -17,7 +17,6 @@ const NAV_ITEMS = [
 
 export default function AdminNav() {
   const pathname = usePathname()
-  const [userName, setUserName] = useState<string>('')
   const [userInitial, setUserInitial] = useState<string>('A')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -44,7 +43,6 @@ export default function AdminNav() {
           .eq('id', user.id)
           .single()
         const name = profile?.name || profile?.email?.split('@')[0] || 'Admin'
-        setUserName(name)
         setUserInitial(name.charAt(0).toUpperCase())
       }
     }
