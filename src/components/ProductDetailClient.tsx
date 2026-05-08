@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductGallery from '@/components/ProductGallery'
+import ShareButton from '@/components/ShareButton'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -236,6 +237,12 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
               </button>
             </div>
           )}
+
+          {/* Share — always visible. Mobile uses Web Share API; desktop falls
+              back to a per-target menu (Instagram, WhatsApp, Facebook, link). */}
+          <div className="mt-3">
+            <ShareButton product={product} className="w-full" />
+          </div>
 
           {/* Owner-only toggle: hide WhatsApp number on the public listing. */}
           {isOwner && (
