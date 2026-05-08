@@ -54,7 +54,7 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
             {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -82,17 +82,6 @@ export default async function Header() {
             </Link>
             {user && (
               <>
-                {isAdmin && !inAdminDashboard && (
-                  <Link
-                    href="/admin"
-                    className="pressable inline-flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-sm hover:bg-gray-800 transition-colors font-nav"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h3.75v3.75A2.25 2.25 0 017.5 9.75H3.75V6zM3.75 12.75h3.75A2.25 2.25 0 019.75 15v3.75H6a2.25 2.25 0 01-2.25-2.25v-3.75zM14.25 14.25H18a2.25 2.25 0 012.25 2.25v3.75H16.5a2.25 2.25 0 01-2.25-2.25v-3.75zM14.25 6c0-1.243 1.007-2.25 2.25-2.25H20.25v3.75A2.25 2.25 0 0118 9.75h-3.75V6z" />
-                    </svg>
-                    Admin Dashboard
-                  </Link>
-                )}
                 <Link
                   href="/mis-productos"
                   className="pressable inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm px-4 py-2.5 rounded-sm hover:border-brand-300 hover:text-brand-500 transition-colors font-nav"
@@ -102,17 +91,21 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                <div className="flex items-center gap-2">
-                  <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
-                  {isAdmin && (
+                {/* Admin pill — only visible inside the admin dashboard so the
+                    rest of the site keeps the regular-user navbar exactly. */}
+                {isAdmin && inAdminDashboard ? (
+                  <div className="flex items-center gap-2">
+                    <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#F5B800' }}>
                       <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
                       </svg>
                       admin
                     </span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
+                )}
               </>
             )}
           </div>

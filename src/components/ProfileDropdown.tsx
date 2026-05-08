@@ -13,9 +13,10 @@ interface Props {
    * outside of the provider, this keeps the badge meaningful.
    */
   unreadCountFallback?: number
+  isAdmin?: boolean
 }
 
-export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0 }: Props) {
+export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, isAdmin = false }: Props) {
   const liveUnreadCount = useUnreadCount()
   const unreadCount = liveUnreadCount ?? unreadCountFallback
   const [open, setOpen] = useState(false)
@@ -94,6 +95,22 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0 }: 
               </span>
             )}
           </Link>
+
+          {isAdmin && (
+            <>
+              <div className="my-1 border-t border-gray-100" />
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-500 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ color: '#F5B800' }}>
+                  <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
+                </svg>
+                Admin Dashboard
+              </Link>
+            </>
+          )}
 
           <div className="my-1 border-t border-gray-100" />
 
