@@ -16,8 +16,25 @@ CREATE TABLE public.users (
     CHECK (phone IS NULL OR phone ~ '^\+[0-9]{8,15}$'),
   instagram TEXT,
   is_admin BOOLEAN DEFAULT FALSE,
+  -- When TRUE, the WhatsApp CTA hides on this seller's product pages and
+  -- /api/contact returns 403. Read from clients via the
+  -- `is_seller_phone_hidden(uuid)` SECURITY DEFINER RPC, since RLS on this
+  -- table doesn't expose cross-user fields.
+  hide_phone BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE OR REPLACE FUNCTION public.is_seller_phone_hidden(p_seller uuid)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE(hide_phone, FALSE) FROM public.users WHERE id = p_seller;
+$$;
+REVOKE ALL ON FUNCTION public.is_seller_phone_hidden(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_seller_phone_hidden(uuid) TO anon, authenticated;
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 

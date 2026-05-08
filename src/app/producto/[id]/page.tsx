@@ -54,11 +54,23 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const product = data as unknown as ProductWithImages
 
+  // Whether the seller has opted to hide their WhatsApp number on this listing.
+  // Pulled via SECURITY DEFINER RPC because RLS on users blocks reading the
+  // flag directly from the client. Defaults to false on any error.
+  let sellerHidePhone = false
+  if (product.seller_id) {
+    const { data: hideRes } = await supabase.rpc('is_seller_phone_hidden', {
+      p_seller: product.seller_id,
+    })
+    sellerHidePhone = hideRes === true
+  }
+
   return (
     <ProductDetailClient
       product={product}
       userId={user?.id ?? null}
       isAdmin={isAdmin}
+      sellerHidePhone={sellerHidePhone}
     />
   )
 }

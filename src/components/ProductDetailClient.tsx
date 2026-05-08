@@ -6,17 +6,21 @@ import Link from 'next/link'
 import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductGallery from '@/components/ProductGallery'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   product: ProductWithImages
   userId: string | null
   isAdmin: boolean
+  sellerHidePhone: boolean
 }
 
-export default function ProductDetailClient({ product, userId, isAdmin }: Props) {
+export default function ProductDetailClient({ product, userId, isAdmin, sellerHidePhone }: Props) {
   const router = useRouter()
   const [contacting, setContacting] = useState(false)
   const [chatOpening, setChatOpening] = useState(false)
+  const [hidePhone, setHidePhone] = useState(sellerHidePhone)
+  const [hidePhoneSaving, setHidePhoneSaving] = useState(false)
 
   // Prefetch the chat route so it opens instantly when the user clicks
   useEffect(() => {
@@ -73,6 +77,19 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
     // first message inside ChatRoom, so this navigation is instant (no API call).
     setChatOpening(true)
     router.push(`/mensajes/nuevo?product=${product.id}`)
+  }
+
+  async function toggleHidePhone(next: boolean) {
+    const prev = hidePhone
+    setHidePhone(next)
+    setHidePhoneSaving(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('users').update({ hide_phone: next }).eq('id', userId!)
+    setHidePhoneSaving(false)
+    if (error) {
+      setHidePhone(prev)
+      alert('No se pudo guardar la preferencia')
+    }
   }
 
   return (
@@ -172,9 +189,11 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
             )
           })()}
 
-          {/* Contact seller — WhatsApp + Chat */}
+          {/* Contact seller — WhatsApp + Chat. WhatsApp hidden if the seller
+              opted out via the "ocultar mi número" toggle. */}
           {!isOwner && product.seller_id && (
             <div className="mt-6 flex gap-2 w-full">
+              {!hidePhone && (
               <button
                 onClick={handleContact}
                 disabled={contacting}
@@ -186,6 +205,7 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
                 </svg>
                 {contacting ? 'Conectando…' : 'WhatsApp'}
               </button>
+              )}
 
               <button
                 onClick={handleChat}
@@ -215,6 +235,20 @@ export default function ProductDetailClient({ product, userId, isAdmin }: Props)
                 {contacting ? 'Conectando…' : 'WhatsApp'}
               </button>
             </div>
+          )}
+
+          {/* Owner-only toggle: hide WhatsApp number on the public listing. */}
+          {isOwner && (
+            <label className="mt-3 flex items-center gap-2 text-xs text-gray-500 select-none cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hidePhone}
+                onChange={(e) => toggleHidePhone(e.target.checked)}
+                disabled={hidePhoneSaving}
+                className="w-3.5 h-3.5 accent-brand-500 cursor-pointer disabled:opacity-50"
+              />
+              <span>Ocultar mi número de WhatsApp</span>
+            </label>
           )}
 
           {canEdit && (

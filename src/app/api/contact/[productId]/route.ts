@@ -67,9 +67,19 @@ export async function POST(
   if (product.seller_id) {
     const { data: seller } = await supabase
       .from('users')
-      .select('phone')
+      .select('phone, hide_phone')
       .eq('id', product.seller_id)
       .single()
+
+    if (seller?.hide_phone) {
+      // Seller opted out — refuse to hand out a number even if the client
+      // bypasses the UI gate. Frontend hides the button, this is just belt
+      // and braces.
+      return NextResponse.json(
+        { error: 'El vendedor optó por no compartir su número' },
+        { status: 403 }
+      )
+    }
 
     const wa = phoneToWhatsApp(seller?.phone)
     if (wa) phone = wa
