@@ -40,6 +40,10 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+export function whatsappShareUrl(text: string, url: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`
+}
+
 export function canNativeShare(data?: { files?: File[] }): boolean {
   if (typeof navigator === 'undefined' || !('share' in navigator)) return false
   if (data?.files && (navigator as Navigator & { canShare?: (d: ShareData) => boolean }).canShare) {
