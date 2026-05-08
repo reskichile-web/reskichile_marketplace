@@ -135,3 +135,73 @@ export function validateLocal(local: string, country: CountryOption): string | n
   }
   return null
 }
+
+/**
+ * Coerce any stored phone variant to the canonical international format
+ * "+<country><local>" (e.g. "+56912345678"). Handles legacy stores:
+ *   "+56912345678"  → "+56912345678"  (already canonical)
+ *   "56912345678"   → "+56912345678"  (missing leading +)
+ *   "912345678"     → "+56912345678"  (missing country, assume Chile mobile)
+ *   "9 1234 5678"   → "+56912345678"
+ *   ""/null/junk    → null
+ */
+export function normalizeStoredPhone(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const cleaned = raw.replace(/[^\d+]/g, '')
+  if (!cleaned) return null
+
+  // Already starts with +; trust the country prefix in the digits.
+  if (cleaned.startsWith('+')) {
+    const digits = cleaned.slice(1).replace(/\D/g, '')
+    if (digits.length < 8 || digits.length > 15) return null
+    return `+${digits}`
+  }
+
+  const digits = cleaned.replace(/\D/g, '')
+
+  // International call prefix (00) → strip and treat as +.
+  if (digits.startsWith('00')) {
+    const rest = digits.slice(2)
+    if (rest.length < 8 || rest.length > 15) return null
+    return `+${rest}`
+  }
+
+  // Heuristic: if the digits start with a known country code AND total length
+  // matches that country's expected total, treat as international without +.
+  const sorted = [...COUNTRY_OPTIONS].sort((a, b) => b.code.length - a.code.length)
+  for (const c of sorted) {
+    const cc = c.code.replace('+', '')
+    if (digits.startsWith(cc) && digits.length === cc.length + c.localLength) {
+      return `+${digits}`
+    }
+  }
+
+  // Looks like a bare Chilean mobile (9 + 8 digits) → assume +56.
+  if (digits.length === DEFAULT_COUNTRY.localLength && digits.startsWith('9')) {
+    return `+56${digits}`
+  }
+
+  // Anything else: no safe assumption.
+  return null
+}
+
+/**
+ * Build the WhatsApp-ready phone string from a stored value: digits only,
+ * country code included, no leading "+". Returns null if the input can't be
+ * normalized — caller should fall back (e.g. don't render the WhatsApp CTA).
+ *
+ *   "+56912345678" → "56912345678"
+ *   "912345678"    → "56912345678"
+ *   ""             → null
+ */
+export function phoneToWhatsApp(raw: string | null | undefined): string | null {
+  const normalized = normalizeStoredPhone(raw)
+  if (!normalized) return null
+  return normalized.replace(/\D/g, '')
+}
+
+/**
+ * Regex used by the DB CHECK constraint and any quick "is this string a
+ * canonical phone?" check. Mirrors normalizeStoredPhone's output shape.
+ */
+export const CANONICAL_PHONE_REGEX = /^\+[0-9]{8,15}$/

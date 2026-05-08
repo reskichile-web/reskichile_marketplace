@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { phoneToWhatsApp } from '@/lib/phone'
 
 // Simple in-memory rate limiting
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -59,7 +60,8 @@ export async function POST(
     return NextResponse.json({ error: 'No puedes contactarte a ti mismo' }, { status: 400 })
   }
 
-  // Get seller phone — fallback to ReskiChile number if no seller or no phone
+  // Get seller phone — fallback to ReskiChile number if no seller, no phone,
+  // or the stored phone can't be normalized into a WhatsApp-ready string.
   let phone = FALLBACK_PHONE
 
   if (product.seller_id) {
@@ -69,9 +71,8 @@ export async function POST(
       .eq('id', product.seller_id)
       .single()
 
-    if (seller?.phone) {
-      phone = seller.phone.replace(/\D/g, '')
-    }
+    const wa = phoneToWhatsApp(seller?.phone)
+    if (wa) phone = wa
   }
 
   // Build WhatsApp URL with pre-filled message

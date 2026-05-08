@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import { PRODUCT_TYPES } from '@/lib/constants'
+import { phoneToWhatsApp } from '@/lib/phone'
 
 interface UserWithProducts {
   id: string
@@ -44,14 +45,6 @@ interface UserDetailResponse {
     used_at: string | null
     created_at: string
   }>
-}
-
-function cleanPhone(phone: string): string {
-  const p = phone.replace(/[^\d+]/g, '')
-  if (p.startsWith('+')) return p.slice(1)
-  if (p.startsWith('56')) return p
-  if (p.startsWith('9')) return '56' + p
-  return p
 }
 
 function InviteButtons({ user }: { user: UserWithProducts }) {
@@ -116,7 +109,8 @@ Equipo ReSkiChile`
   }
 
   async function openWhatsApp() {
-    if (!user.phone) return
+    const wa = phoneToWhatsApp(user.phone)
+    if (!wa) return
     setWaError('')
     const popup = window.open('about:blank', '_blank')
     const link = await fetchInviteLink()
@@ -126,7 +120,7 @@ Equipo ReSkiChile`
       setTimeout(() => setWaError(''), 4000)
       return
     }
-    const url = `https://wa.me/${cleanPhone(user.phone)}?text=${encodeURIComponent(buildWaMessage(link))}`
+    const url = `https://wa.me/${wa}?text=${encodeURIComponent(buildWaMessage(link))}`
     if (popup) popup.location.href = url
     else window.open(url, '_blank')
   }

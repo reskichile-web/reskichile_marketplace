@@ -8,7 +8,12 @@ CREATE TABLE public.users (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT NOT NULL,
   name TEXT,
+  -- Stored canonical: "+<country><local>" (e.g. "+56912345678"). Use the
+  -- helpers in src/lib/phone.ts (normalizeStoredPhone, phoneToWhatsApp) at
+  -- every boundary — never persist a raw input.
   phone TEXT,
+  CONSTRAINT users_phone_canonical_format
+    CHECK (phone IS NULL OR phone ~ '^\+[0-9]{8,15}$'),
   instagram TEXT,
   is_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()

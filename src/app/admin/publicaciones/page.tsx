@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
+import { phoneToWhatsApp } from '@/lib/phone'
 
 interface AdminProduct {
   id: string
@@ -628,17 +629,10 @@ Si ya la vendiste, agradecería mucho que me compartieras el precio final de ven
 Saludos,
 Sebastián`
 
-  function cleanPhone(phone: string): string {
-    const p = phone.replace(/[^\d+]/g, '')
-    if (p.startsWith('+')) return p.slice(1)
-    if (p.startsWith('56')) return p
-    if (p.startsWith('9')) return '56' + p
-    return p
-  }
-
   function openWhatsApp() {
-    if (!seller?.phone) return
-    const url = `https://wa.me/${cleanPhone(seller.phone)}?text=${encodeURIComponent(wsMessage)}`
+    const wa = phoneToWhatsApp(seller?.phone)
+    if (!wa) return
+    const url = `https://wa.me/${wa}?text=${encodeURIComponent(wsMessage)}`
     window.open(url, '_blank')
     setOpen(false)
   }
