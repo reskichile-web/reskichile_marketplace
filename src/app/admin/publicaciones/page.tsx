@@ -187,16 +187,19 @@ export default function PublicacionesPage() {
 
   async function handleSalePriceChange(productId: string, newValue: number | null) {
     const prevProducts = products
-    // The DB trigger sync_sale_to_history flips status to 'sold' when sale_price
-    // becomes non-null; mirror that locally to keep the row in sync until reload.
+    const current = products.find(p => p.id === productId)
+    // Setting a non-null sale_price means the unit was sold — also flip status
+    // so the listing stops showing as available. (Used to be a DB trigger;
+    // moved to the client after the sales_history table was dropped.)
+    const flipToSold = newValue != null && newValue !== current?.sale_price
     setProducts(prev => prev.map(p => {
       if (p.id !== productId) return p
-      const next = { ...p, sale_price: newValue }
-      if (newValue != null && newValue !== p.sale_price) next.status = 'sold'
-      return next
+      return { ...p, sale_price: newValue, ...(flipToSold ? { status: 'sold' } : {}) }
     }))
     const supabase = createClient()
-    const { error } = await supabase.from('products').update({ sale_price: newValue }).eq('id', productId)
+    const patch: { sale_price: number | null; status?: string } = { sale_price: newValue }
+    if (flipToSold) patch.status = 'sold'
+    const { error } = await supabase.from('products').update(patch).eq('id', productId)
     if (error) {
       setProducts(prevProducts)
       alert('Error al guardar precio de venta: ' + error.message)
