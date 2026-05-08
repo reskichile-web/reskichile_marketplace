@@ -91,41 +91,40 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   const seasons = product.seasons_used
   const location = `${product.region}${product.comuna ? ', ' + product.comuna : ''}`
 
-  let y = imgY + IMG_H + 60
+  let y = imgY + IMG_H + 70
 
   // Type label — CENTERED
   ctx.textAlign = 'center'
   ctx.fillStyle = BRAND
-  ctx.font = `600 32px ${FONT_STACK}`
+  ctx.font = `600 34px ${FONT_STACK}`
   ctx.fillText(typeLabel, W / 2, y)
-  y += 56
+  y += 60
 
   // Title — CENTERED
   ctx.fillStyle = TEXT
-  ctx.font = `900 64px ${FONT_STACK}`
+  ctx.font = `900 70px ${FONT_STACK}`
   drawTextEllipsized(ctx, title, W / 2, y, W - 100)
-  y += 80
+  y += 84
 
   // Everything below: LEFT-aligned at the image edge
   ctx.textAlign = 'left'
 
   // Price — LEFT
   ctx.fillStyle = BRAND
-  ctx.font = `600 60px ${FONT_STACK}`
+  ctx.font = `600 64px ${FONT_STACK}`
   ctx.fillText(price, LEFT, y)
-  y += 50
+  y += 54
 
   // Condition + seasons — LEFT
   const seasonsText = seasons
     ? ` • ${seasons} ${parseInt(seasons) === 1 ? 'Temporada' : 'Temporadas'}`
     : ''
   ctx.fillStyle = TEXT_MUTED
-  ctx.font = `500 28px ${FONT_STACK}`
+  ctx.font = `500 30px ${FONT_STACK}`
   ctx.fillText(`${conditionLabel}${seasonsText}`, LEFT, y)
-  y += 56
+  y += 60
 
-  // Location row dropped to make room for the 4:5 image. The location
-  // is still in the title attributes / link, just not on the card.
+  // Location row dropped to make room for the 4:5 image.
   void location
 
   // Attributes grid (2 cols, up to 4) — LEFT
@@ -142,7 +141,7 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
 
   if (validAttrs.length > 0) {
     const colW = IMG_W / 2
-    const rowH = 78
+    const rowH = 84
     validAttrs.forEach((f, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
@@ -150,24 +149,24 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
       const cellY = y + row * rowH
 
       ctx.fillStyle = TEXT_SOFT
-      ctx.font = `500 24px ${FONT_STACK}`
+      ctx.font = `500 26px ${FONT_STACK}`
       ctx.fillText(f.label, x, cellY)
 
       const v = attrs[f.key]
       const display = typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
       ctx.fillStyle = TEXT
-      ctx.font = `700 32px ${FONT_STACK}`
-      ctx.fillText(display, x, cellY + 38)
+      ctx.font = `700 36px ${FONT_STACK}`
+      ctx.fillText(display, x, cellY + 42)
     })
     y += Math.ceil(validAttrs.length / 2) * rowH + 18
   }
 
   // Link-sticker drop zone — visible target so the user knows where to
   // place the IG Story link sticker after sharing.
-  const stickerW = 600
-  const stickerH = 100
+  const stickerW = 620
+  const stickerH = 110
   const stickerX = (W - stickerW) / 2
-  const stickerY = Math.min(y + 14, H - 260)
+  const stickerY = Math.min(y + 12, H - 230)
 
   ctx.save()
   ctx.fillStyle = 'rgba(38, 116, 191, 0.06)'
@@ -183,9 +182,17 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   ctx.fillStyle = BRAND
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `700 28px ${FONT_STACK}`
+  ctx.font = `700 30px ${FONT_STACK}`
   ctx.fillText('🔗 Pegá aquí tu link de Reski', W / 2, stickerY + stickerH / 2)
   ctx.textBaseline = 'alphabetic'
+
+  // Footer URL — light gray, centered, fills the remaining space below
+  // the link-sticker drop zone.
+  ctx.fillStyle = TEXT_SOFT
+  ctx.textAlign = 'center'
+  ctx.font = `500 24px ${FONT_STACK}`
+  const footerY = Math.min(stickerY + stickerH + 36, H - 70)
+  ctx.fillText('www.reskichile.cl', W / 2, footerY)
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(

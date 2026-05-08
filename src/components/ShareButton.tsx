@@ -23,7 +23,7 @@ interface ShareTarget {
   hint?: string
   iconBg: string
   icon: React.ReactNode
-  run: (file: File | null) => Promise<Toast> | Toast
+  run: () => Promise<Toast> | Toast
 }
 
 export default function ShareButton({ product, className }: Props) {
@@ -92,10 +92,13 @@ export default function ShareButton({ product, className }: Props) {
   }
 
   async function runTarget(t: ShareTarget) {
+    // Each target owns its own async work — we don't pre-await
+    // generateStoryCard here because Safari consumes the user-activation
+    // gesture during the await, breaking navigator.clipboard.writeText
+    // and similar APIs.
     setBusy(true)
     try {
-      const file = await generateStoryCard(product).catch(() => null)
-      const res = await t.run(file)
+      const res = await t.run()
       if (res) setToast(res)
     } catch {
       setToast({ kind: 'err', text: 'Error al compartir' })
@@ -135,7 +138,8 @@ export default function ShareButton({ product, className }: Props) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 21h14" />
         </svg>
       ),
-      run: (file) => {
+      run: async () => {
+        const file = await generateStoryCard(product).catch(() => null)
         if (!file) return { kind: 'err', text: 'No se pudo generar la imagen' }
         const url = URL.createObjectURL(file)
         const a = document.createElement('a')
