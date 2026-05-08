@@ -4,6 +4,11 @@ import type { ProductWithImages } from '@/lib/types'
 const W = 1080
 const H = 1920
 
+// Image width matches mobile detail: 760, centered. Left margin (160) is
+// reused as the alignment anchor for all left-aligned text.
+const IMG_SIZE = 760
+const LEFT = (W - IMG_SIZE) / 2
+
 const BRAND = '#2674bf'
 const BG_TOP = '#edf4fb'
 const BG_BOTTOM = '#ffffff'
@@ -29,31 +34,29 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   ctx.fillRect(0, 0, W, H)
 
   // Brand logo (SVG → canvas)
-  const logoW = 440
-  let logoH = 175 // fallback if SVG aspect can't be read
+  const logoW = 380
+  const logoY = 170
+  let logoH = 152
   try {
     const logo = await loadImage('/logo.svg')
     logoH = (logo.height / logo.width) * logoW
-    ctx.drawImage(logo, (W - logoW) / 2, 200, logoW, logoH)
+    ctx.drawImage(logo, (W - logoW) / 2, logoY, logoW, logoH)
   } catch {
-    // Fallback: render the wordmark as text
     ctx.fillStyle = BRAND
     ctx.textAlign = 'center'
     ctx.font = `900 80px ${FONT_STACK}`
-    ctx.fillText('ReskiChile', W / 2, 290)
+    ctx.fillText('ReskiChile', W / 2, logoY + 80)
   }
 
   // Product image card
-  const imgSize = 760
-  const imgX = (W - imgSize) / 2
-  const imgY = 200 + logoH + 50
+  const imgY = logoY + logoH + 30
 
   ctx.save()
   ctx.shadowColor = 'rgba(15, 23, 42, 0.15)'
   ctx.shadowBlur = 32
   ctx.shadowOffsetY = 12
   ctx.fillStyle = '#ffffff'
-  roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 32)
+  roundRectPath(ctx, LEFT, imgY, IMG_SIZE, IMG_SIZE, 32)
   ctx.fill()
   ctx.restore()
 
@@ -65,21 +68,21 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
     try {
       const img = await loadImage(imageUrl)
       ctx.save()
-      roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 32)
+      roundRectPath(ctx, LEFT, imgY, IMG_SIZE, IMG_SIZE, 32)
       ctx.clip()
-      drawCover(ctx, img, imgX, imgY, imgSize, imgSize)
+      drawCover(ctx, img, LEFT, imgY, IMG_SIZE, IMG_SIZE)
       ctx.restore()
     } catch {
       ctx.save()
-      roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 32)
+      roundRectPath(ctx, LEFT, imgY, IMG_SIZE, IMG_SIZE, 32)
       ctx.clip()
       ctx.fillStyle = '#eef4fb'
-      ctx.fillRect(imgX, imgY, imgSize, imgSize)
+      ctx.fillRect(LEFT, imgY, IMG_SIZE, IMG_SIZE)
       ctx.restore()
     }
   }
 
-  // Text block — matches mobile product-detail style
+  // Text block
   const title = [product.brand, product.model].filter(Boolean).join(' ') || 'Producto'
   const typeLabel = PRODUCT_TYPES[product.product_type] || product.product_type
   const price = `$${product.price.toLocaleString('es-CL')}`
@@ -87,44 +90,46 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   const seasons = product.seasons_used
   const location = `${product.region}${product.comuna ? ', ' + product.comuna : ''}`
 
-  let y = imgY + imgSize + 70
-  ctx.textAlign = 'center'
+  let y = imgY + IMG_SIZE + 60
 
-  // Type label (brand color, small)
+  // Type label — CENTERED
+  ctx.textAlign = 'center'
   ctx.fillStyle = BRAND
   ctx.font = `600 30px ${FONT_STACK}`
   ctx.fillText(typeLabel, W / 2, y)
-  y += 64
+  y += 60
 
-  // Title (bold, big)
+  // Title — CENTERED
   ctx.fillStyle = TEXT
   ctx.font = `900 64px ${FONT_STACK}`
   drawTextEllipsized(ctx, title, W / 2, y, W - 120)
-  y += 70
+  y += 76
 
-  // Price (semibold, brand, moderate size)
+  // Everything below: LEFT-aligned, anchored at LEFT (image left edge)
+  ctx.textAlign = 'left'
+
+  // Price — LEFT
   ctx.fillStyle = BRAND
   ctx.font = `600 60px ${FONT_STACK}`
-  ctx.fillText(price, W / 2, y)
-  y += 56
+  ctx.fillText(price, LEFT, y)
+  y += 50
 
-  // Condition + seasons row
+  // Condition + seasons — LEFT
   const seasonsText = seasons
     ? ` • ${seasons} ${parseInt(seasons) === 1 ? 'Temporada' : 'Temporadas'}`
     : ''
   ctx.fillStyle = TEXT_MUTED
   ctx.font = `500 26px ${FONT_STACK}`
-  ctx.fillText(`${conditionLabel}${seasonsText}`, W / 2, y)
-  y += 44
+  ctx.fillText(`${conditionLabel}${seasonsText}`, LEFT, y)
+  y += 40
 
-  // Location
+  // Location — LEFT
   ctx.fillStyle = TEXT_MUTED
   ctx.font = `400 26px ${FONT_STACK}`
-  ctx.fillText(`📍 ${location}`, W / 2, y)
+  ctx.fillText(`📍 ${location}`, LEFT, y)
   y += 56
 
-  // Attributes grid (2 cols, up to 4 fields). Same filter as the product
-  // detail page — skip the "incluye_*" / "fijaciones_*" sub-product fields.
+  // Attributes grid (2 cols, up to 4) — LEFT
   const attrFields = (PRODUCT_ATTRIBUTES[product.product_type] || []).filter(
     (f) => !f.key.startsWith('incluye_') && !f.key.startsWith('fijaciones_'),
   )
@@ -137,14 +142,12 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
     .slice(0, 4)
 
   if (validAttrs.length > 0) {
-    const colW = 380
-    const startX = (W - colW * 2) / 2
-    const rowH = 80
-    ctx.textAlign = 'left'
+    const colW = IMG_SIZE / 2
+    const rowH = 76
     validAttrs.forEach((f, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
-      const x = startX + col * colW
+      const x = LEFT + col * colW
       const cellY = y + row * rowH
 
       ctx.fillStyle = TEXT_SOFT
@@ -155,26 +158,15 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
       const display = typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
       ctx.fillStyle = TEXT
       ctx.font = `700 30px ${FONT_STACK}`
-      ctx.fillText(display, x, cellY + 38)
+      ctx.fillText(display, x, cellY + 36)
     })
-    y += Math.ceil(validAttrs.length / 2) * rowH + 30
-    ctx.textAlign = 'center'
+    y += Math.ceil(validAttrs.length / 2) * rowH + 24
   }
 
-  // Subtle URL chip at the bottom — viewers need to know where to find it.
-  const chipText = 'reskichile.cl'
-  ctx.font = `700 26px ${FONT_STACK}`
-  const chipW = ctx.measureText(chipText).width + 56
-  const chipH = 52
-  const chipX = (W - chipW) / 2
-  const chipY = Math.min(y + 20, H - 200)
-  ctx.fillStyle = BRAND
-  roundRectPath(ctx, chipX, chipY, chipW, chipH, 26)
-  ctx.fill()
-  ctx.fillStyle = '#ffffff'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(chipText, W / 2, chipY + chipH / 2 + 1)
-  ctx.textBaseline = 'alphabetic'
+  // URL footer — light gray text, no chip, left-aligned
+  ctx.fillStyle = TEXT_SOFT
+  ctx.font = `500 24px ${FONT_STACK}`
+  ctx.fillText('reskichile.cl', LEFT, Math.min(y + 10, H - 220))
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
