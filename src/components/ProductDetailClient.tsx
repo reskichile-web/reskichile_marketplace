@@ -259,9 +259,9 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
           {/* Share + Copy. Share fires the OS sheet (mobile) or a
               dropdown (desktop). Copy is a dedicated one-tap clipboard
               shortcut for the product URL. */}
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex items-stretch gap-2">
             <ShareButton product={product} className="flex-1" />
-            <CopyLinkButton product={product} className="w-12 h-12" />
+            <CopyLinkButton product={product} className="w-12" />
           </div>
 
           {canEdit && (
