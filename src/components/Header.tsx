@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { getAuthUser } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import MobileMenu from './MobileMenu'
@@ -10,8 +11,13 @@ import ChatProvider from './chat/ChatProvider'
 
 export default async function Header() {
   const { user, isAdmin, avatarUrl } = await getAuthUser()
+  const pathname = headers().get('x-pathname') || ''
+  const inAdminDashboard = pathname.startsWith('/admin')
 
-  if (isAdmin) return <AdminNav />
+  // AdminNav only takes over inside the admin dashboard. Outside of it
+  // (catalog, product pages, perfil…), admins see the regular header so
+  // they can browse like any other user.
+  if (isAdmin && inAdminDashboard) return <AdminNav />
 
   let unreadCount = 0
   if (user) {
@@ -45,15 +51,13 @@ export default async function Header() {
           </Link>
 
           {/* Desktop: search bar */}
-          {!isAdmin && (
-            <div className="hidden md:block flex-1">
-              <SearchBar />
-            </div>
-          )}
+          <div className="hidden md:block flex-1">
+            <SearchBar />
+          </div>
 
           {/* Right actions — mobile */}
           <div className="md:hidden flex items-center gap-3 ml-auto">
-            {!isAdmin && <SearchBar />}
+            <SearchBar />
             {user ? (
               <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
             ) : (
@@ -101,13 +105,11 @@ export default async function Header() {
       </div>
 
       {/* Category nav — desktop only */}
-      {!isAdmin && (
-        <div className="hidden md:block">
-          <div className="max-w-7xl mx-auto px-4 md:px-8">
-            <CategoryNav />
-          </div>
+      <div className="hidden md:block">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <CategoryNav />
         </div>
-      )}
+      </div>
     </header>
     </ChatProvider>
   )
