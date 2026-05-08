@@ -191,6 +191,22 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
             )
           })()}
 
+          {/* Owner-only toggle: hide WhatsApp number on the public listing.
+              Sits above all action buttons so the seller can flip it before
+              anything else. */}
+          {isOwner && (
+            <label className="mt-6 flex items-center gap-2 text-xs text-gray-500 select-none cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hidePhone}
+                onChange={(e) => toggleHidePhone(e.target.checked)}
+                disabled={hidePhoneSaving}
+                className="w-3.5 h-3.5 accent-brand-500 cursor-pointer disabled:opacity-50"
+              />
+              <span>Ocultar mi número de WhatsApp</span>
+            </label>
+          )}
+
           {/* Contact seller — WhatsApp + Chat. WhatsApp hidden if the seller
               opted out via the "ocultar mi número" toggle. */}
           {!isOwner && product.seller_id && (
@@ -245,20 +261,6 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
           <div className="mt-3">
             <ShareButton product={product} className="w-full" />
           </div>
-
-          {/* Owner-only toggle: hide WhatsApp number on the public listing. */}
-          {isOwner && (
-            <label className="mt-3 flex items-center gap-2 text-xs text-gray-500 select-none cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hidePhone}
-                onChange={(e) => toggleHidePhone(e.target.checked)}
-                disabled={hidePhoneSaving}
-                className="w-3.5 h-3.5 accent-brand-500 cursor-pointer disabled:opacity-50"
-              />
-              <span>Ocultar mi número de WhatsApp</span>
-            </label>
-          )}
 
           {canEdit && (
             <Link
