@@ -4,9 +4,8 @@ import type { ProductWithImages } from '@/lib/types'
 const W = 1080
 const H = 1920
 
-// Image width matches mobile detail: 760, centered. Left margin (160) is
-// reused as the alignment anchor for all left-aligned text.
-const IMG_SIZE = 760
+// Image fills more of the canvas width; text aligns to the same left edge.
+const IMG_SIZE = 800
 const LEFT = (W - IMG_SIZE) / 2
 
 const BRAND = '#2674bf'
@@ -33,10 +32,10 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, W, H)
 
-  // Brand logo (SVG → canvas)
-  const logoW = 380
-  const logoY = 170
-  let logoH = 152
+  // Brand logo (SVG → canvas) — smaller, higher
+  const logoW = 300
+  const logoY = 130
+  let logoH = 120
   try {
     const logo = await loadImage('/logo.svg')
     logoH = (logo.height / logo.width) * logoW
@@ -48,8 +47,8 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
     ctx.fillText('ReskiChile', W / 2, logoY + 80)
   }
 
-  // Product image card
-  const imgY = logoY + logoH + 30
+  // Product image card — wider than before
+  const imgY = logoY + logoH + 40
 
   ctx.save()
   ctx.shadowColor = 'rgba(15, 23, 42, 0.15)'
@@ -90,46 +89,46 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   const seasons = product.seasons_used
   const location = `${product.region}${product.comuna ? ', ' + product.comuna : ''}`
 
-  let y = imgY + IMG_SIZE + 60
+  let y = imgY + IMG_SIZE + 70
 
-  // Type label — CENTERED
+  // Type label — CENTERED, bigger
   ctx.textAlign = 'center'
   ctx.fillStyle = BRAND
-  ctx.font = `600 30px ${FONT_STACK}`
+  ctx.font = `600 34px ${FONT_STACK}`
   ctx.fillText(typeLabel, W / 2, y)
-  y += 60
+  y += 70
 
-  // Title — CENTERED
+  // Title — CENTERED, bigger
   ctx.fillStyle = TEXT
-  ctx.font = `900 64px ${FONT_STACK}`
-  drawTextEllipsized(ctx, title, W / 2, y, W - 120)
-  y += 76
+  ctx.font = `900 70px ${FONT_STACK}`
+  drawTextEllipsized(ctx, title, W / 2, y, W - 100)
+  y += 90
 
-  // Everything below: LEFT-aligned, anchored at LEFT (image left edge)
+  // Everything below: LEFT-aligned at the image edge
   ctx.textAlign = 'left'
 
-  // Price — LEFT
+  // Price — LEFT, bigger
   ctx.fillStyle = BRAND
-  ctx.font = `600 60px ${FONT_STACK}`
+  ctx.font = `600 70px ${FONT_STACK}`
   ctx.fillText(price, LEFT, y)
-  y += 50
+  y += 60
 
-  // Condition + seasons — LEFT
+  // Condition + seasons — LEFT, bigger
   const seasonsText = seasons
     ? ` • ${seasons} ${parseInt(seasons) === 1 ? 'Temporada' : 'Temporadas'}`
     : ''
   ctx.fillStyle = TEXT_MUTED
-  ctx.font = `500 26px ${FONT_STACK}`
+  ctx.font = `500 32px ${FONT_STACK}`
   ctx.fillText(`${conditionLabel}${seasonsText}`, LEFT, y)
-  y += 40
+  y += 52
 
-  // Location — LEFT
+  // Location — LEFT, bigger
   ctx.fillStyle = TEXT_MUTED
-  ctx.font = `400 26px ${FONT_STACK}`
+  ctx.font = `400 32px ${FONT_STACK}`
   ctx.fillText(`📍 ${location}`, LEFT, y)
-  y += 56
+  y += 70
 
-  // Attributes grid (2 cols, up to 4) — LEFT
+  // Attributes grid (2 cols, up to 4) — LEFT, bigger
   const attrFields = (PRODUCT_ATTRIBUTES[product.product_type] || []).filter(
     (f) => !f.key.startsWith('incluye_') && !f.key.startsWith('fijaciones_'),
   )
@@ -143,7 +142,7 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
 
   if (validAttrs.length > 0) {
     const colW = IMG_SIZE / 2
-    const rowH = 76
+    const rowH = 88
     validAttrs.forEach((f, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
@@ -151,22 +150,22 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
       const cellY = y + row * rowH
 
       ctx.fillStyle = TEXT_SOFT
-      ctx.font = `500 22px ${FONT_STACK}`
+      ctx.font = `500 26px ${FONT_STACK}`
       ctx.fillText(f.label, x, cellY)
 
       const v = attrs[f.key]
       const display = typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
       ctx.fillStyle = TEXT
-      ctx.font = `700 30px ${FONT_STACK}`
-      ctx.fillText(display, x, cellY + 36)
+      ctx.font = `700 38px ${FONT_STACK}`
+      ctx.fillText(display, x, cellY + 44)
     })
-    y += Math.ceil(validAttrs.length / 2) * rowH + 24
+    y += Math.ceil(validAttrs.length / 2) * rowH + 26
   }
 
-  // URL footer — light gray text, no chip, left-aligned
+  // URL footer — light gray, no chip, left-aligned
   ctx.fillStyle = TEXT_SOFT
-  ctx.font = `500 24px ${FONT_STACK}`
-  ctx.fillText('reskichile.cl', LEFT, Math.min(y + 10, H - 220))
+  ctx.font = `500 26px ${FONT_STACK}`
+  ctx.fillText('reskichile.cl', LEFT, Math.min(y + 10, H - 200))
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
