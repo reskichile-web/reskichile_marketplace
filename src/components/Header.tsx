@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
-import AdminNav from './AdminNav'
+import AdminCategoryNav from './AdminCategoryNav'
 import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 
@@ -13,11 +13,6 @@ export default async function Header() {
   const { user, isAdmin, avatarUrl } = await getAuthUser()
   const pathname = headers().get('x-pathname') || ''
   const inAdminDashboard = pathname.startsWith('/admin')
-
-  // AdminNav only takes over inside the admin dashboard. Outside of it
-  // (catalog, product pages, perfil…), admins see the regular header so
-  // they can browse like any other user.
-  if (isAdmin && inAdminDashboard) return <AdminNav />
 
   let unreadCount = 0
   if (user) {
@@ -87,7 +82,7 @@ export default async function Header() {
             </Link>
             {user && (
               <>
-                {isAdmin && (
+                {isAdmin && !inAdminDashboard && (
                   <Link
                     href="/admin"
                     className="pressable inline-flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-sm hover:bg-gray-800 transition-colors font-nav"
@@ -107,7 +102,17 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
+                <div className="flex items-center gap-2">
+                  <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#F5B800' }}>
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
+                      </svg>
+                      admin
+                    </span>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -115,10 +120,11 @@ export default async function Header() {
         </div>
       </div>
 
-      {/* Category nav — desktop only */}
+      {/* Bottom nav strip — desktop only. Categories normally; admin
+          shortcuts when an admin is inside /admin/*. */}
       <div className="hidden md:block">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <CategoryNav />
+          {isAdmin && inAdminDashboard ? <AdminCategoryNav /> : <CategoryNav />}
         </div>
       </div>
     </header>
