@@ -53,12 +53,17 @@ export default function InstagramStoryButton({ product, className }: Props) {
       const file = await generateStoryCard(product)
 
       if (canNativeShare({ files: [file] })) {
+        // Drop the link into the clipboard before opening the share
+        // sheet — the user can paste it as a Story link sticker once IG
+        // is open. Fire-and-forget; clipboard failures are silent.
+        void copyToClipboard(data.url)
         try {
           await navigator.share({
             files: [file],
             title: data.title,
             text: data.caption,
           } as ShareData)
+          setToast({ kind: 'ok', text: 'Link del producto copiado.' })
           setBusy(false)
           return
         } catch (err) {

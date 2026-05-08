@@ -1,16 +1,18 @@
-import { PRODUCT_TYPES } from '@/lib/constants'
+import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 
 const W = 1080
 const H = 1920
 
 const BRAND = '#2674bf'
-const BG_TOP = '#f6fbff'
-const BG_BOTTOM = '#dbe9f7'
+const BG_TOP = '#edf4fb'
+const BG_BOTTOM = '#ffffff'
 const TEXT = '#0f172a'
 const TEXT_MUTED = '#64748b'
+const TEXT_SOFT = '#94a3b8'
 
-const FONT_STACK = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+const FONT_STACK =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
 
 export async function generateStoryCard(product: ProductWithImages): Promise<File> {
   const canvas = document.createElement('canvas')
@@ -26,112 +28,159 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, W, H)
 
-  // Top accent bar
-  ctx.fillStyle = BRAND
-  ctx.fillRect(0, 0, W, 14)
+  // Brand logo (SVG → canvas)
+  const logoW = 440
+  let logoH = 175 // fallback if SVG aspect can't be read
+  try {
+    const logo = await loadImage('/logo.svg')
+    logoH = (logo.height / logo.width) * logoW
+    ctx.drawImage(logo, (W - logoW) / 2, 200, logoW, logoH)
+  } catch {
+    // Fallback: render the wordmark as text
+    ctx.fillStyle = BRAND
+    ctx.textAlign = 'center'
+    ctx.font = `900 80px ${FONT_STACK}`
+    ctx.fillText('ReskiChile', W / 2, 290)
+  }
 
-  // Brand header
-  ctx.textAlign = 'center'
-  ctx.fillStyle = BRAND
-  ctx.font = `900 78px ${FONT_STACK}`
-  ctx.fillText('ReskiChile', W / 2, 290)
+  // Product image card
+  const imgSize = 760
+  const imgX = (W - imgSize) / 2
+  const imgY = 200 + logoH + 50
 
-  ctx.fillStyle = TEXT_MUTED
-  ctx.font = `500 30px ${FONT_STACK}`
-  ctx.fillText('Equipo de ski + snow • compra y vende', W / 2, 340)
+  ctx.save()
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.15)'
+  ctx.shadowBlur = 32
+  ctx.shadowOffsetY = 12
+  ctx.fillStyle = '#ffffff'
+  roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 32)
+  ctx.fill()
+  ctx.restore()
 
-  // Product image
   const imageUrl = product.product_images
     ?.slice()
     .sort((a, b) => a.order - b.order)[0]?.url
-
-  const imgSize = 760
-  const imgX = (W - imgSize) / 2
-  const imgY = 410
-
-  // Card backdrop with shadow (separate pass so the shadow only applies once)
-  ctx.save()
-  ctx.shadowColor = 'rgba(15, 23, 42, 0.18)'
-  ctx.shadowBlur = 36
-  ctx.shadowOffsetY = 14
-  ctx.fillStyle = '#ffffff'
-  roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 44)
-  ctx.fill()
-  ctx.restore()
 
   if (imageUrl) {
     try {
       const img = await loadImage(imageUrl)
       ctx.save()
-      roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 44)
+      roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 32)
       ctx.clip()
       drawCover(ctx, img, imgX, imgY, imgSize, imgSize)
       ctx.restore()
     } catch {
-      // CORS or load fail — leave white card with brand mark
       ctx.save()
-      roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 44)
+      roundRectPath(ctx, imgX, imgY, imgSize, imgSize, 32)
       ctx.clip()
       ctx.fillStyle = '#eef4fb'
       ctx.fillRect(imgX, imgY, imgSize, imgSize)
-      ctx.fillStyle = BRAND
-      ctx.font = `900 110px ${FONT_STACK}`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('ReskiChile', imgX + imgSize / 2, imgY + imgSize / 2)
-      ctx.textBaseline = 'alphabetic'
       ctx.restore()
     }
   }
 
-  // Text block
+  // Text block — matches mobile product-detail style
   const title = [product.brand, product.model].filter(Boolean).join(' ') || 'Producto'
   const typeLabel = PRODUCT_TYPES[product.product_type] || product.product_type
   const price = `$${product.price.toLocaleString('es-CL')}`
+  const conditionLabel = CONDITIONS[product.condition] || product.condition
+  const seasons = product.seasons_used
   const location = `${product.region}${product.comuna ? ', ' + product.comuna : ''}`
 
-  let y = imgY + imgSize + 100
-
+  let y = imgY + imgSize + 70
   ctx.textAlign = 'center'
+
+  // Type label (brand color, small)
+  ctx.fillStyle = BRAND
+  ctx.font = `600 30px ${FONT_STACK}`
+  ctx.fillText(typeLabel, W / 2, y)
+  y += 64
+
+  // Title (bold, big)
   ctx.fillStyle = TEXT
   ctx.font = `900 64px ${FONT_STACK}`
   drawTextEllipsized(ctx, title, W / 2, y, W - 120)
-  y += 60
-
-  ctx.fillStyle = TEXT_MUTED
-  ctx.font = `500 32px ${FONT_STACK}`
-  ctx.fillText(typeLabel, W / 2, y)
-  y += 110
-
-  ctx.fillStyle = BRAND
-  ctx.font = `900 116px ${FONT_STACK}`
-  ctx.fillText(price, W / 2, y)
   y += 70
 
-  ctx.fillStyle = TEXT_MUTED
-  ctx.font = `500 28px ${FONT_STACK}`
-  ctx.fillText(`📍 ${location}`, W / 2, y)
-  y += 80
-
-  // CTA chip
-  const chipText = 'reskichile.cl'
-  ctx.font = `700 32px ${FONT_STACK}`
-  const chipW = ctx.measureText(chipText).width + 72
-  const chipH = 64
-  const chipX = (W - chipW) / 2
+  // Price (semibold, brand, moderate size)
   ctx.fillStyle = BRAND
-  roundRectPath(ctx, chipX, y, chipW, chipH, 32)
+  ctx.font = `600 60px ${FONT_STACK}`
+  ctx.fillText(price, W / 2, y)
+  y += 56
+
+  // Condition + seasons row
+  const seasonsText = seasons
+    ? ` • ${seasons} ${parseInt(seasons) === 1 ? 'Temporada' : 'Temporadas'}`
+    : ''
+  ctx.fillStyle = TEXT_MUTED
+  ctx.font = `500 26px ${FONT_STACK}`
+  ctx.fillText(`${conditionLabel}${seasonsText}`, W / 2, y)
+  y += 44
+
+  // Location
+  ctx.fillStyle = TEXT_MUTED
+  ctx.font = `400 26px ${FONT_STACK}`
+  ctx.fillText(`📍 ${location}`, W / 2, y)
+  y += 56
+
+  // Attributes grid (2 cols, up to 4 fields). Same filter as the product
+  // detail page — skip the "incluye_*" / "fijaciones_*" sub-product fields.
+  const attrFields = (PRODUCT_ATTRIBUTES[product.product_type] || []).filter(
+    (f) => !f.key.startsWith('incluye_') && !f.key.startsWith('fijaciones_'),
+  )
+  const attrs = (product.attributes || {}) as Record<string, unknown>
+  const validAttrs = attrFields
+    .filter((f) => {
+      const v = attrs[f.key]
+      return v !== undefined && v !== '' && v !== null
+    })
+    .slice(0, 4)
+
+  if (validAttrs.length > 0) {
+    const colW = 380
+    const startX = (W - colW * 2) / 2
+    const rowH = 80
+    ctx.textAlign = 'left'
+    validAttrs.forEach((f, i) => {
+      const col = i % 2
+      const row = Math.floor(i / 2)
+      const x = startX + col * colW
+      const cellY = y + row * rowH
+
+      ctx.fillStyle = TEXT_SOFT
+      ctx.font = `500 22px ${FONT_STACK}`
+      ctx.fillText(f.label, x, cellY)
+
+      const v = attrs[f.key]
+      const display = typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
+      ctx.fillStyle = TEXT
+      ctx.font = `700 30px ${FONT_STACK}`
+      ctx.fillText(display, x, cellY + 38)
+    })
+    y += Math.ceil(validAttrs.length / 2) * rowH + 30
+    ctx.textAlign = 'center'
+  }
+
+  // Subtle URL chip at the bottom — viewers need to know where to find it.
+  const chipText = 'reskichile.cl'
+  ctx.font = `700 26px ${FONT_STACK}`
+  const chipW = ctx.measureText(chipText).width + 56
+  const chipH = 52
+  const chipX = (W - chipW) / 2
+  const chipY = Math.min(y + 20, H - 200)
+  ctx.fillStyle = BRAND
+  roundRectPath(ctx, chipX, chipY, chipW, chipH, 26)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
   ctx.textBaseline = 'middle'
-  ctx.fillText(chipText, W / 2, y + chipH / 2 + 2)
+  ctx.fillText(chipText, W / 2, chipY + chipH / 2 + 1)
   ctx.textBaseline = 'alphabetic'
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error('toBlob failed'))),
       'image/jpeg',
-      0.92
+      0.92,
     )
   })
   const safeBrand = (product.brand || 'reski').toLowerCase().replace(/[^a-z0-9]+/g, '-')
