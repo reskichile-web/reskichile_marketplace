@@ -178,25 +178,18 @@ export default function AdminNav() {
             {/* Separator */}
             <div className="h-5 w-px bg-gray-200" />
 
-            {/* User profile */}
+            {/* User profile — avatar + admin badge, no name */}
             <Link href="/perfil" className="flex items-center gap-2 group">
-              {/* Avatar */}
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-xs shadow-sm group-hover:shadow transition-shadow">
                 {userInitial}
               </div>
-              {/* Name + role */}
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900 leading-tight group-hover:text-brand-500 transition-colors">
-                  {userName || '...'}
+              <div className="flex items-center gap-1">
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="#F5B800" stroke="none">
+                  <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
+                </svg>
+                <span className="text-[10px] font-bold tracking-widest uppercase leading-tight" style={{ color: '#F5B800' }}>
+                  admin
                 </span>
-                <div className="flex items-center gap-1">
-                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="#F5B800" stroke="none">
-                    <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
-                  </svg>
-                  <span className="text-[10px] font-bold tracking-widest uppercase leading-tight" style={{ color: '#F5B800' }}>
-                    admin
-                  </span>
-                </div>
               </div>
             </Link>
 

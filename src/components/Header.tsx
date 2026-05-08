@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
-import AdminCategoryNav from './AdminCategoryNav'
+import AdminNav from './AdminNav'
 import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 
@@ -13,6 +13,10 @@ export default async function Header() {
   const { user, isAdmin, avatarUrl } = await getAuthUser()
   const pathname = headers().get('x-pathname') || ''
   const inAdminDashboard = pathname.startsWith('/admin')
+
+  // Admin dashboard gets its own dedicated navbar; everything else uses
+  // the regular header below.
+  if (isAdmin && inAdminDashboard) return <AdminNav />
 
   let unreadCount = 0
   if (user) {
@@ -54,7 +58,7 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
             {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -91,21 +95,7 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                {/* Admin pill — only visible inside the admin dashboard so the
-                    rest of the site keeps the regular-user navbar exactly. */}
-                {isAdmin && inAdminDashboard ? (
-                  <div className="flex items-center gap-2">
-                    <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#F5B800' }}>
-                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
-                      </svg>
-                      admin
-                    </span>
-                  </div>
-                ) : (
-                  <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
-                )}
+                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
               </>
             )}
           </div>
@@ -113,11 +103,10 @@ export default async function Header() {
         </div>
       </div>
 
-      {/* Bottom nav strip — desktop only. Categories normally; admin
-          shortcuts when an admin is inside /admin/*. */}
+      {/* Category nav — desktop only */}
       <div className="hidden md:block">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          {isAdmin && inAdminDashboard ? <AdminCategoryNav /> : <CategoryNav />}
+          <CategoryNav />
         </div>
       </div>
     </header>
