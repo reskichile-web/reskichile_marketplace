@@ -93,12 +93,13 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
 
   let y = imgY + IMG_H + 70
 
-  // Type label — CENTERED
+  // Type label — CENTERED, smaller and lighter, with more breathing
+  // room before the title.
   ctx.textAlign = 'center'
   ctx.fillStyle = BRAND
-  ctx.font = `600 34px ${FONT_STACK}`
+  ctx.font = `400 26px ${FONT_STACK}`
   ctx.fillText(typeLabel, W / 2, y)
-  y += 60
+  y += 78
 
   // Title — CENTERED
   ctx.fillStyle = TEXT

@@ -56,15 +56,18 @@ export default function ShareButton({ product, className }: Props) {
 
   async function handlePrimaryClick() {
     if (busy) return
+    const data = productShareData(product)
+    // Drop the link into the clipboard FIRST, while the user-activation
+    // gesture is still alive. The await on generateStoryCard below would
+    // otherwise consume it on Safari and silently fail the copy.
+    void copyToClipboard(data.url)
     setBusy(true)
     try {
-      const data = productShareData(product)
       const file = await generateStoryCard(product)
 
       // Mobile-first: hand the story card to the OS share sheet so the
       // user can pick IG, WhatsApp, Mensajes, etc.
       if (canNativeShare({ files: [file] })) {
-        void copyToClipboard(data.url)
         try {
           await navigator.share({
             files: [file],
