@@ -31,17 +31,6 @@ export function productShareData(product: ProductWithImages): ProductShareData {
   return { url, title, text, caption, imageUrl }
 }
 
-export async function fetchImageAsFile(url: string, name = 'reski.jpg'): Promise<File | null> {
-  try {
-    const res = await fetch(url, { mode: 'cors' })
-    if (!res.ok) return null
-    const blob = await res.blob()
-    return new File([blob], name, { type: blob.type || 'image/jpeg' })
-  } catch {
-    return null
-  }
-}
-
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text)
@@ -51,22 +40,12 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function whatsappShareUrl(text: string, url: string): string {
-  return `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`
-}
-
-export function facebookShareUrl(url: string): string {
-  return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
-}
-
-export function twitterShareUrl(text: string, url: string): string {
-  return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
-}
-
 export function canNativeShare(data?: { files?: File[] }): boolean {
   if (typeof navigator === 'undefined' || !('share' in navigator)) return false
   if (data?.files && (navigator as Navigator & { canShare?: (d: ShareData) => boolean }).canShare) {
-    return !!(navigator as Navigator & { canShare?: (d: ShareData) => boolean }).canShare!({ files: data.files })
+    return !!(navigator as Navigator & { canShare?: (d: ShareData) => boolean }).canShare!({
+      files: data.files,
+    })
   }
   return true
 }

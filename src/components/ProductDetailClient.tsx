@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductGallery from '@/components/ProductGallery'
-import ShareButton from '@/components/ShareButton'
+import InstagramStoryButton from '@/components/InstagramStoryButton'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -238,10 +238,11 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
             </div>
           )}
 
-          {/* Share — always visible. Mobile uses Web Share API; desktop falls
-              back to a per-target menu (Instagram, WhatsApp, Facebook, link). */}
+          {/* IG Story share — generates a 1080×1920 card and triggers the
+              OS share sheet (mobile) so the user lands inside Instagram with
+              the visual ready to post as Story. */}
           <div className="mt-3">
-            <ShareButton product={product} className="w-full" />
+            <InstagramStoryButton product={product} className="w-full" />
           </div>
 
           {/* Owner-only toggle: hide WhatsApp number on the public listing. */}
