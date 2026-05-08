@@ -386,7 +386,7 @@ export default function PublicacionesPage() {
                             </button>
                           )}
                           <Link href={`/producto/${product.id}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-brand-500 text-white px-3 py-1.5 rounded hover:bg-brand-600">
-                            Ver producto
+                            Ver
                           </Link>
                           <Link href={`/producto/${product.id}/editar`} className="text-xs border px-3 py-1.5 rounded hover:bg-gray-100">
                             Editar
