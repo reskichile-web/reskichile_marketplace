@@ -25,11 +25,9 @@ export default async function PerfilPage() {
       .select('id, brand, model, price, status, product_type, slug, product_images(url, order)')
       .eq('seller_id', user.id)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('conversations')
-      .select('*')
-      .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-      .order('last_message_at', { ascending: false }),
+    // RPC aggregates last-message + unread_count server-side, avoiding the
+    // O(N×M) message scan we used to do in JS.
+    supabase.rpc('conversations_overview'),
   ])
 
   const profile = profileRes.data
@@ -59,7 +57,18 @@ export default async function PerfilPage() {
     }
   })
 
-  const allConvs = convRes.data || []
+  interface OverviewRow {
+    id: string
+    product_id: string | null
+    buyer_id: string
+    seller_id: string
+    last_message_at: string
+    last_body: string | null
+    last_sender_id: string | null
+    last_message_created_at: string | null
+    unread_count: number
+  }
+  const allConvs = (convRes.data || []) as OverviewRow[]
   let conversations: ConversationPreview[] = []
   if (allConvs.length > 0) {
     const productIds = Array.from(
@@ -68,7 +77,7 @@ export default async function PerfilPage() {
     const otherIds = Array.from(
       new Set(allConvs.map((c) => (c.buyer_id === user.id ? c.seller_id : c.buyer_id)))
     )
-    const [pRes, uRes, mRes, unRes] = await Promise.all([
+    const [pRes, uRes] = await Promise.all([
       productIds.length
         ? supabase
             .from('products')
@@ -76,17 +85,6 @@ export default async function PerfilPage() {
             .in('id', productIds)
         : Promise.resolve({ data: [] as { id: string; brand: string | null; model: string | null; product_images: { url: string; order: number }[] }[] }),
       supabase.from('users').select('id, name').in('id', otherIds),
-      supabase
-        .from('messages')
-        .select('conversation_id, body, sender_id, created_at')
-        .in('conversation_id', allConvs.map((c) => c.id))
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('messages')
-        .select('conversation_id, sender_id')
-        .in('conversation_id', allConvs.map((c) => c.id))
-        .is('read_at', null)
-        .neq('sender_id', user.id),
     ])
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -94,22 +92,11 @@ export default async function PerfilPage() {
     ;(pRes.data || []).forEach((p) => productMap.set(p.id, p))
     const userMap = new Map<string, { id: string; name: string | null }>()
     ;(uRes.data || []).forEach((u) => userMap.set(u.id, u))
-    const lastBy = new Map<string, { body: string; sender_id: string; created_at: string }>()
-    for (const m of mRes.data || []) {
-      if (!lastBy.has(m.conversation_id)) {
-        lastBy.set(m.conversation_id, m)
-      }
-    }
-    const unreadBy = new Map<string, number>()
-    for (const m of unRes.data || []) {
-      unreadBy.set(m.conversation_id, (unreadBy.get(m.conversation_id) || 0) + 1)
-    }
 
     conversations = allConvs.slice(0, 4).map((c) => {
       const otherId = c.buyer_id === user.id ? c.seller_id : c.buyer_id
       const other = userMap.get(otherId)
       const product = c.product_id ? productMap.get(c.product_id) : null
-      const last = lastBy.get(c.id)
       const sorted =
         product?.product_images?.sort(
           (a: { order: number }, b: { order: number }) => a.order - b.order
@@ -120,10 +107,10 @@ export default async function PerfilPage() {
         product_label: product
           ? [product.brand, product.model].filter(Boolean).join(' ')
           : null,
-        last_body: last?.body || null,
-        last_at: last?.created_at || c.last_message_at,
-        unread: unreadBy.get(c.id) || 0,
-        is_other_last: !!last && last.sender_id !== user.id,
+        last_body: c.last_body,
+        last_at: c.last_message_created_at || c.last_message_at,
+        unread: c.unread_count,
+        is_other_last: !!c.last_sender_id && c.last_sender_id !== user.id,
         image_url: sorted[0]?.url || null,
       }
     })

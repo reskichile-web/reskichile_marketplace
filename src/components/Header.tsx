@@ -6,7 +6,7 @@ import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
 import AdminNav from './AdminNav'
 import ProfileDropdown from './ProfileDropdown'
-import ChatPresence from './chat/ChatPresence'
+import ChatProvider from './chat/ChatProvider'
 
 export default async function Header() {
   const { user, isAdmin, avatarUrl } = await getAuthUser()
@@ -25,12 +25,12 @@ export default async function Header() {
   }
 
   return (
+    <ChatProvider userId={user?.id ?? null} initialUnreadCount={unreadCount}>
     <header className="bg-white shadow-sm">
       {/* Preload avatar image for instant display */}
       {avatarUrl && (
         <link rel="preload" as="image" href={avatarUrl} />
       )}
-      {user && <ChatPresence userId={user.id} />}
       {/* Main row */}
       <div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">
@@ -55,7 +55,7 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             {!isAdmin && <SearchBar />}
             {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} unreadCount={unreadCount} />
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -92,7 +92,7 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                <ProfileDropdown avatarUrl={avatarUrl} unreadCount={unreadCount} />
+                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
               </>
             )}
           </div>
@@ -109,5 +109,6 @@ export default async function Header() {
         </div>
       )}
     </header>
+    </ChatProvider>
   )
 }

@@ -27,12 +27,25 @@ export default async function ChatPage({ params }: Props) {
 
   const otherId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
 
+  // Mark as delivered + read for any incoming message that wasn't yet, BEFORE
+  // fetching messages so the initial render shows the correct receipt state
+  // and avoids a "Entregado → Visto" flicker for the other side.
+  const now = new Date().toISOString()
+  await supabase
+    .from('messages')
+    .update({ delivered_at: now, read_at: now })
+    .eq('conversation_id', params.id)
+    .neq('sender_id', user.id)
+    .is('read_at', null)
+
   const [messagesRes, otherRes, productRes] = await Promise.all([
+    // Fetch the 100 MOST RECENT messages (DESC + reverse) so the chat opens
+    // at the bottom showing the latest conversation state.
     supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', params.id)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(100),
     supabase.from('users').select('id, name, avatar_url').eq('id', otherId).single(),
     conv.product_id
@@ -44,22 +57,13 @@ export default async function ChatPage({ params }: Props) {
       : Promise.resolve({ data: null }),
   ])
 
-  const initialMessages = messagesRes.data || []
+  const initialMessages = (messagesRes.data || []).slice().reverse()
   const other = otherRes.data
   const product = productRes.data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productImage = (product as any)?.product_images?.sort(
     (a: { order: number }, b: { order: number }) => a.order - b.order
   )[0]?.url
-
-  // Mark as delivered + read for any incoming message that wasn't yet
-  const now = new Date().toISOString()
-  await supabase
-    .from('messages')
-    .update({ delivered_at: now, read_at: now })
-    .eq('conversation_id', params.id)
-    .neq('sender_id', user.id)
-    .is('read_at', null)
 
   return (
     <div className="flex flex-col h-[100dvh] md:h-[calc(100vh-130px)] max-w-5xl mx-auto w-full">

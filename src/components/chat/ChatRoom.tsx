@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import type { Message } from '@/lib/chat'
@@ -15,7 +15,9 @@ interface Props {
 const PAGE_SIZE = 30
 
 export default function ChatRoom({ conversationId: initialConversationId, draftProductId, myId, initialMessages }: Props) {
-  const supabase = createClient()
+  // createClient() returns a fresh browser client every call; memoize so the
+  // realtime channel effect doesn't tear down + resubscribe on every render.
+  const supabase = useMemo(() => createClient(), [])
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId)
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [loadingOlder, setLoadingOlder] = useState(false)

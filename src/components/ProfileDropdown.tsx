@@ -2,13 +2,22 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useUnreadCount } from './chat/ChatProvider'
 
 interface Props {
   avatarUrl?: string | null
-  unreadCount?: number
+  /**
+   * SSR-computed unread count, used as a fallback before the live count from
+   * ChatProvider settles. ChatProvider seeds itself with this same value, so
+   * in practice they match — but in case a consumer renders ProfileDropdown
+   * outside of the provider, this keeps the badge meaningful.
+   */
+  unreadCountFallback?: number
 }
 
-export default function ProfileDropdown({ avatarUrl, unreadCount = 0 }: Props) {
+export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0 }: Props) {
+  const liveUnreadCount = useUnreadCount()
+  const unreadCount = liveUnreadCount ?? unreadCountFallback
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 

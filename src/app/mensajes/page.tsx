@@ -11,13 +11,19 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-interface ConvRow {
+interface OverviewRow {
   id: string
   product_id: string | null
   buyer_id: string
   seller_id: string
   last_message_at: string
   created_at: string
+  last_body: string | null
+  last_sender_id: string | null
+  last_message_created_at: string | null
+  last_delivered_at: string | null
+  last_read_at: string | null
+  unread_count: number
 }
 
 export default async function MensajesPage() {
@@ -27,13 +33,8 @@ export default async function MensajesPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: convs } = await supabase
-    .from('conversations')
-    .select('*')
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-    .order('last_message_at', { ascending: false })
-
-  const conversations = (convs || []) as ConvRow[]
+  const { data: overviewData } = await supabase.rpc('conversations_overview')
+  const conversations = (overviewData || []) as OverviewRow[]
 
   if (conversations.length === 0) {
     return (
@@ -64,7 +65,7 @@ export default async function MensajesPage() {
     new Set(conversations.map((c) => (c.buyer_id === user.id ? c.seller_id : c.buyer_id)))
   )
 
-  const [productsRes, usersRes, lastMessagesRes, unreadRes] = await Promise.all([
+  const [productsRes, usersRes] = await Promise.all([
     productIds.length
       ? supabase
           .from('products')
@@ -72,23 +73,6 @@ export default async function MensajesPage() {
           .in('id', productIds)
       : Promise.resolve({ data: [] as { id: string; brand: string | null; model: string | null; slug: string | null; product_type: string; price: number; product_images: { url: string; order: number }[] }[] }),
     supabase.from('users').select('id, name, avatar_url').in('id', otherIds),
-    supabase
-      .from('messages')
-      .select('conversation_id, body, sender_id, created_at, delivered_at, read_at')
-      .in(
-        'conversation_id',
-        conversations.map((c) => c.id)
-      )
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('messages')
-      .select('conversation_id')
-      .in(
-        'conversation_id',
-        conversations.map((c) => c.id)
-      )
-      .is('read_at', null)
-      .neq('sender_id', user.id),
   ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -96,27 +80,6 @@ export default async function MensajesPage() {
   ;(productsRes.data || []).forEach((p) => productMap.set(p.id, p))
   const userMap = new Map<string, { id: string; name: string | null; avatar_url: string | null }>()
   ;(usersRes.data || []).forEach((u) => userMap.set(u.id, u))
-
-  const lastByConv = new Map<
-    string,
-    { body: string; sender_id: string; created_at: string; delivered_at: string | null; read_at: string | null }
-  >()
-  for (const m of lastMessagesRes.data || []) {
-    if (!lastByConv.has(m.conversation_id)) {
-      lastByConv.set(m.conversation_id, {
-        body: m.body,
-        sender_id: m.sender_id,
-        created_at: m.created_at,
-        delivered_at: m.delivered_at,
-        read_at: m.read_at,
-      })
-    }
-  }
-
-  const unreadByConv = new Map<string, number>()
-  for (const m of unreadRes.data || []) {
-    unreadByConv.set(m.conversation_id, (unreadByConv.get(m.conversation_id) || 0) + 1)
-  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 min-h-screen pt-10 md:pt-14 pb-20">
@@ -128,8 +91,15 @@ export default async function MensajesPage() {
             const product = c.product_id ? productMap.get(c.product_id) : null
             const otherId = c.buyer_id === user.id ? c.seller_id : c.buyer_id
             const other = userMap.get(otherId)
-            const last = lastByConv.get(c.id)
-            const unread = unreadByConv.get(c.id) || 0
+            const last = c.last_body
+              ? {
+                  body: c.last_body,
+                  sender_id: c.last_sender_id!,
+                  delivered_at: c.last_delivered_at,
+                  read_at: c.last_read_at,
+                }
+              : null
+            const unread = c.unread_count
             const isOtherLast = last && last.sender_id !== user.id
             const highlight = !!last && isOtherLast && unread > 0
 
