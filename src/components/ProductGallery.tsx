@@ -284,13 +284,6 @@ export default function ProductGallery({ images, title }: Props) {
           ))}
         </div>
 
-        {/* Counter — mobile */}
-        {images.length > 1 && (
-          <div className="absolute top-3 right-3 bg-black/50 text-white text-xs font-medium px-2 py-0.5 rounded-full md:hidden z-10">
-            {current + 1}/{images.length}
-          </div>
-        )}
-
         {/* Zoom hint — desktop */}
         <div className="absolute bottom-3 right-3 bg-black/40 text-white text-[10px] px-2 py-1 rounded hidden md:flex items-center gap-1 z-10 pointer-events-none">
           <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
