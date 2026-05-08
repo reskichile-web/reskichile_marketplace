@@ -119,6 +119,21 @@ function ZoomModal({ src, alt, onClose }: { src: string; alt: string; onClose: (
 function GalleryImage({ src, alt, priority }: { src: string; alt: string; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  // Handle the cache race: when the image is served from disk cache the
+  // browser may finish the request before React attaches onLoad, so the
+  // event never reaches us and the spinner stays forever. Check `complete`
+  // post-mount and resolve directly. Also retry if a slow lazy load has
+  // already finished by the time we hydrate.
+  useEffect(() => {
+    const el = imgRef.current
+    if (!el) return
+    if (el.complete) {
+      if (el.naturalWidth > 0) setLoaded(true)
+      else setError(true)
+    }
+  }, [src])
 
   return (
     <>
@@ -146,6 +161,7 @@ function GalleryImage({ src, alt, priority }: { src: string; alt: string; priori
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
         className={`absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
