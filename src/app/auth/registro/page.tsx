@@ -311,6 +311,11 @@ export default function RegisterPage() {
             Enviamos un código de 6 dígitos a
           </p>
           <p className="text-sm font-semibold text-gray-900 mt-1">{email}</p>
+          <div className="mt-4 mx-auto max-w-xs px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-xs text-amber-800">
+              Si no lo ves en tu bandeja, <span className="font-bold">REVISAR SPAM</span>
+            </p>
+          </div>
         </div>
 
         {/* OTP Input */}
