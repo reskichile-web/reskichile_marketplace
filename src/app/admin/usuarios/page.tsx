@@ -303,10 +303,14 @@ export default function UsuariosPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'pending_access'>('all')
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
+
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      setCurrentUserId(authUser?.id ?? null)
 
       const { data: usersData } = await supabase
         .from('users')
@@ -332,6 +336,11 @@ export default function UsuariosPage() {
     }
     load()
   }, [])
+
+  function handleUserDeleted(deletedId: string) {
+    setUsers(prev => prev.filter(u => u.id !== deletedId))
+    setExpandedId(prev => (prev === deletedId ? null : prev))
+  }
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -490,7 +499,11 @@ export default function UsuariosPage() {
                   {isExpanded && (
                     <tr className="bg-gray-50 border-b">
                       <td colSpan={showInviteCol ? 6 : 5} className="px-5 py-5">
-                        <UserDetailPanel user={user} />
+                        <UserDetailPanel
+                          user={user}
+                          isSelf={user.id === currentUserId}
+                          onDeleted={() => handleUserDeleted(user.id)}
+                        />
                       </td>
                     </tr>
                   )}
@@ -532,7 +545,7 @@ function Avatar({ url, name, size = 36 }: { url: string | null; name: string | n
   )
 }
 
-function UserDetailPanel({ user }: { user: UserWithProducts }) {
+function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; isSelf: boolean; onDeleted: () => void }) {
   const [detail, setDetail] = useState<UserDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -671,6 +684,110 @@ function UserDetailPanel({ user }: { user: UserWithProducts }) {
           )}
         </>
       ) : null}
+
+      <DangerZone user={user} isSelf={isSelf} productCount={detail?.products.length ?? user.product_count} onDeleted={onDeleted} />
+    </div>
+  )
+}
+
+function DangerZone({ user, isSelf, productCount, onDeleted }: { user: UserWithProducts; isSelf: boolean; productCount: number; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  if (isSelf || user.is_admin) return null
+
+  async function handleDelete() {
+    setDeleting(true)
+    setErrorMsg('')
+    try {
+      const res = await fetch(`/api/admin/delete-user/${user.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo eliminar')
+      setOpen(false)
+      onDeleted()
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Error desconocido')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="border-t border-red-100 pt-4 mt-4">
+      <h4 className="text-xs uppercase tracking-widest text-red-500 font-bold mb-2">Zona de peligro</h4>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-xs text-gray-500">
+          Eliminar este usuario borra su cuenta, sus publicaciones ({productCount}) y todas sus conversaciones. No se puede deshacer.
+        </p>
+        <button
+          onClick={() => { setConfirmText(''); setErrorMsg(''); setOpen(true) }}
+          className="shrink-0 text-xs px-3 py-1.5 rounded font-medium border bg-white text-red-600 border-red-200 hover:bg-red-50 transition-all"
+        >
+          Eliminar usuario
+        </button>
+      </div>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !deleting && setOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="font-body text-lg font-black text-gray-900">Eliminar usuario</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Esta acción es permanente.</p>
+            </div>
+
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm text-gray-700">
+                Se borrará la cuenta de <span className="font-semibold">{user.name || user.email}</span>, sus {productCount} publicaciones y todas sus conversaciones.
+              </p>
+              <div>
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-1">
+                  Escribe <code className="bg-gray-100 px-1 rounded normal-case">{user.email}</code> para confirmar
+                </label>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={e => setConfirmText(e.target.value)}
+                  disabled={deleting}
+                  autoFocus
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none disabled:bg-gray-50"
+                />
+              </div>
+              {errorMsg && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {errorMsg}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setOpen(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting || confirmText.trim().toLowerCase() !== user.email.toLowerCase()}
+                className="px-5 py-2 text-sm bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    Eliminando...
+                  </>
+                ) : 'Eliminar definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
