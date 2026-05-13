@@ -31,6 +31,25 @@ export default function ShareButton({ product, className }: Props) {
   const [open, setOpen] = useState(false)
   const [toast, setToast] = useState<Toast>(null)
   const popRef = useRef<HTMLDivElement>(null)
+  // Pre-built story-card file, cached as soon as the component mounts so
+  // that the click handler can hand it to navigator.share synchronously —
+  // any await between the user gesture and navigator.share consumes the
+  // activation on Safari/iOS and the share silently fails.
+  const storyFileRef = useRef<File | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    generateStoryCard(product)
+      .then((file) => {
+        if (!cancelled) storyFileRef.current = file
+      })
+      .catch(() => {
+        // ignored — we'll just share the link-only payload as fallback
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [product])
 
   useEffect(() => {
     if (!open) return
@@ -57,18 +76,18 @@ export default function ShareButton({ product, className }: Props) {
   async function handlePrimaryClick() {
     if (busy) return
     const data = productShareData(product)
+    const file = storyFileRef.current
 
-    // Mobile: hand off to the OS share sheet immediately, while the user
-    // activation gesture is still alive. We deliberately don't await any
-    // async work first — Safari/iOS revokes activation across awaits, which
-    // is what was making navigator.share silently fail before.
     if (canNativeShare()) {
+      // Prefer sharing the story-card image when it's ready and the OS
+      // supports file shares. No awaits before navigator.share — keeps
+      // the user-activation gesture alive on Safari/iOS.
+      const payload: ShareData =
+        file && canNativeShare({ files: [file] })
+          ? { files: [file], title: data.title, text: data.caption }
+          : { title: data.title, text: data.text, url: data.url }
       try {
-        await navigator.share({
-          title: data.title,
-          text: data.text,
-          url: data.url,
-        })
+        await navigator.share(payload)
         return
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return
