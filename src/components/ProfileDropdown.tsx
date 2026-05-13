@@ -13,9 +13,10 @@ interface Props {
    * outside of the provider, this keeps the badge meaningful.
    */
   unreadCountFallback?: number
+  isAdmin?: boolean
 }
 
-export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0 }: Props) {
+export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, isAdmin = false }: Props) {
   const liveUnreadCount = useUnreadCount()
   const unreadCount = liveUnreadCount ?? unreadCountFallback
   const [open, setOpen] = useState(false)
@@ -56,6 +57,21 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0 }: 
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50">
+          {isAdmin && (
+            <>
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-amber-50 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#F5B800" stroke="none" aria-hidden="true">
+                  <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
+                </svg>
+                Dashboard admin
+              </Link>
+              <div className="my-1 border-t border-gray-100" />
+            </>
+          )}
           <Link
             href="/perfil"
             onClick={() => setOpen(false)}

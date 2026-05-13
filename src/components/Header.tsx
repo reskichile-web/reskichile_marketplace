@@ -58,7 +58,7 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
             {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -95,7 +95,7 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} />
+                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
               </>
             )}
           </div>

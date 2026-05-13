@@ -71,49 +71,47 @@ export default function MobileMenu({ isAdmin }: Props) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-4">
-              {isAdmin ? (
-                <div className="space-y-1">
-                  <Link href="/admin" onClick={() => setOpen(false)} className="block py-3 text-sm font-medium hover:text-brand-500">
-                    Panel de administración
-                  </Link>
-                  <form action="/auth/logout" method="POST">
-                    <button type="submit" className="block py-3 text-sm font-medium hover:text-brand-500 w-full text-left">
-                      Salir
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <>
-                  {/* Vender */}
-                  <Link
-                    href="/vender"
-                    onClick={() => setOpen(false)}
-                    className="pressable block w-full text-center bg-brand-500 text-white font-bold text-sm py-3 rounded-lg hover:bg-brand-600 transition-colors mb-5"
-                  >
-                    Vender
-                  </Link>
-
-                  {/* Categories */}
-                  <div className="border-t border-gray-100 pt-4">
-                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Categorías</p>
-                    <div className="space-y-0.5">
-                      <Link href="/catalogo" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium hover:text-brand-500">
-                        Todo
-                      </Link>
-                      {CATEGORIES.map(cat => (
-                        <Link
-                          key={cat.key}
-                          href={`/catalogo?product_type=${cat.key}`}
-                          onClick={() => setOpen(false)}
-                          className="block py-2 text-sm text-gray-600 font-bold hover:text-brand-500"
-                        >
-                          {cat.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full text-center bg-gray-900 text-white font-bold text-sm py-3 rounded-lg hover:bg-gray-800 transition-colors mb-3"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#F5B800" stroke="none" aria-hidden="true">
+                    <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
+                  </svg>
+                  Dashboard admin
+                </Link>
               )}
+
+              {/* Vender */}
+              <Link
+                href="/vender"
+                onClick={() => setOpen(false)}
+                className="pressable block w-full text-center bg-brand-500 text-white font-bold text-sm py-3 rounded-lg hover:bg-brand-600 transition-colors mb-5"
+              >
+                Vender
+              </Link>
+
+              {/* Categories */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Categorías</p>
+                <div className="space-y-0.5">
+                  <Link href="/catalogo" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium hover:text-brand-500">
+                    Todo
+                  </Link>
+                  {CATEGORIES.map(cat => (
+                    <Link
+                      key={cat.key}
+                      href={`/catalogo?product_type=${cat.key}`}
+                      onClick={() => setOpen(false)}
+                      className="block py-2 text-sm text-gray-600 font-bold hover:text-brand-500"
+                    >
+                      {cat.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             </div>
           </motion.div>
         </>
