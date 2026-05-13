@@ -2,23 +2,25 @@ import { reclaimListingsUrl } from '@/lib/owner'
 
 interface Props {
   className?: string
+  isLoggedIn?: boolean
 }
 
-export default function ClaimListingsPrompt({ className }: Props) {
+export default function ClaimListingsPrompt({ className, isLoggedIn = false }: Props) {
+  const href = isLoggedIn ? reclaimListingsUrl() : '/auth/login?redirect=/perfil'
+  const external = isLoggedIn
+
   return (
-    <p
-      className={`whitespace-nowrap overflow-hidden text-[clamp(10px,3vw,14px)] text-gray-600 leading-relaxed ${className || ''}`}
-    >
-      ¿Reski publicó un producto tuyo?{' '}
+    <div className={`text-center ${className || ''}`}>
+      <p className="text-[clamp(11px,2.6vw,14px)] font-semibold tracking-wide uppercase text-gray-600">
+        ¿Reski publicó un producto tuyo?
+      </p>
       <a
-        href={reclaimListingsUrl()}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-brand-500 underline underline-offset-2 hover:text-brand-600"
+        href={href}
+        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+        className="mt-1 inline-block text-[clamp(11px,2.6vw,14px)] text-brand-500 underline underline-offset-2 hover:text-brand-600"
       >
-        Crea tu cuenta o vinculalo a la que ya tienes
+        Vincúlalo a tu cuenta
       </a>
-      .
-    </p>
+    </div>
   )
 }

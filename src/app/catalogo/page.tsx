@@ -52,6 +52,9 @@ export default async function CatalogPage({ searchParams }: Props) {
   const fij = searchParams.fij || ''
   const conexion = (searchParams.conexion || '').split(',').filter(Boolean)
 
+  const { data: { user: currentUser } } = await supabase.auth.getUser()
+  const isLoggedIn = !!currentUser
+
   let query = supabase
     .from('products')
     .select('*, product_images(*)')
@@ -140,7 +143,7 @@ export default async function CatalogPage({ searchParams }: Props) {
         <p className="mt-1.5 max-w-2xl text-sm text-gray-500 leading-relaxed">
           Equipo de montaña usado, directo de quien lo usó.
         </p>
-        <ClaimListingsPrompt className="mt-3 max-w-2xl" />
+        <ClaimListingsPrompt className="mt-4 max-w-2xl mx-auto md:mx-0" isLoggedIn={isLoggedIn} />
       </div>
 
       <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">

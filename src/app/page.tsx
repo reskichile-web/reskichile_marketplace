@@ -5,7 +5,6 @@ import Link from 'next/link'
 import RotatingWord from '@/components/RotatingWord'
 import CategoriesSection from '@/components/home/CategoriesSection'
 import ProductsSection from '@/components/home/ProductsSection'
-import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProductGridSkeleton } from '@/components/skeletons/ProductCardSkeleton'
 
@@ -113,7 +112,6 @@ export default function HomePage() {
             <span>Publicar equipo</span>
           </Link>
         </div>
-        <ClaimListingsPrompt className="mt-6 md:mt-7 text-center md:text-left" />
         </div>
       </section>
 
