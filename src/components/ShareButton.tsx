@@ -57,41 +57,27 @@ export default function ShareButton({ product, className }: Props) {
   async function handlePrimaryClick() {
     if (busy) return
     const data = productShareData(product)
-    // Drop the link into the clipboard FIRST, while the user-activation
-    // gesture is still alive. The await on generateStoryCard below would
-    // otherwise consume it on Safari and silently fail the copy.
-    void copyToClipboard(data.url)
-    setBusy(true)
-    try {
-      const file = await generateStoryCard(product)
 
-      // Mobile-first: hand the story card to the OS share sheet so the
-      // user can pick IG, WhatsApp, Mensajes, etc.
-      if (canNativeShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: data.title,
-            text: data.caption,
-          } as ShareData)
-          setToast({ kind: 'ok', text: 'Link del producto copiado.' })
-          setBusy(false)
-          return
-        } catch (err) {
-          if ((err as Error)?.name === 'AbortError') {
-            setBusy(false)
-            return
-          }
-          // fall through to dropdown if the OS share fails for some reason
-        }
+    // Mobile: hand off to the OS share sheet immediately, while the user
+    // activation gesture is still alive. We deliberately don't await any
+    // async work first — Safari/iOS revokes activation across awaits, which
+    // is what was making navigator.share silently fail before.
+    if (canNativeShare()) {
+      try {
+        await navigator.share({
+          title: data.title,
+          text: data.text,
+          url: data.url,
+        })
+        return
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return
+        // unexpected failure — fall through to dropdown
       }
-
-      // Desktop / no native share: open the dropdown of targets.
-      setOpen(true)
-    } catch {
-      setToast({ kind: 'err', text: 'No se pudo preparar la imagen.' })
     }
-    setBusy(false)
+
+    // Desktop / no native share: open the dropdown of targets.
+    setOpen(true)
   }
 
   async function runTarget(t: ShareTarget) {
