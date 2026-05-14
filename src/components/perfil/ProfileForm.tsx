@@ -91,6 +91,7 @@ export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave
     setAvatarUrl(urlWithCache)
     setUploadingAvatar(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
+    router.refresh()
   }
 
   async function handleAvatarDelete() {
@@ -102,6 +103,7 @@ export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave
     setAvatarUrl(null)
     setUploadingAvatar(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
+    router.refresh()
   }
 
   async function handleSubmit(e: React.FormEvent) {

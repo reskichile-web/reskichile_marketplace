@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 
@@ -15,11 +14,17 @@ const NAV_ITEMS = [
   { label: 'Mercado', href: '/admin/finanzas' },
 ]
 
-export default function AdminNav() {
+interface Props {
+  userName: string
+  role: string
+  avatarUrl: string | null
+}
+
+export default function AdminNav({ userName, role, avatarUrl }: Props) {
   const pathname = usePathname()
-  const [userInitial, setUserInitial] = useState<string>('A')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const initial = (userName || 'A').charAt(0).toUpperCase()
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -31,23 +36,6 @@ export default function AdminNav() {
     }
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
-
-  useEffect(() => {
-    async function loadUser() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('name, email')
-          .eq('id', user.id)
-          .single()
-        const name = profile?.name || profile?.email?.split('@')[0] || 'Admin'
-        setUserInitial(name.charAt(0).toUpperCase())
-      }
-    }
-    loadUser()
-  }, [])
 
   const sidebar = (
     <AnimatePresence>
@@ -176,17 +164,25 @@ export default function AdminNav() {
             {/* Separator */}
             <div className="h-5 w-px bg-gray-200" />
 
-            {/* User profile — avatar + admin badge, no name */}
-            <Link href="/perfil" className="flex items-center gap-2 group">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-xs shadow-sm group-hover:shadow transition-shadow">
-                {userInitial}
-              </div>
-              <div className="flex items-center gap-1">
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="#F5B800" stroke="none">
-                  <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
-                </svg>
-                <span className="text-[10px] font-bold tracking-widest uppercase leading-tight" style={{ color: '#F5B800' }}>
-                  admin
+            {/* User profile — avatar + name + role */}
+            <Link href="/perfil" className="flex items-center gap-2.5 group">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="w-9 h-9 rounded-full object-cover border-2 border-transparent group-hover:border-brand-200 transition-colors"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-medium">
+                  {initial}
+                </div>
+              )}
+              <div className="flex flex-col leading-tight">
+                <span className="text-xs font-medium text-gray-800 group-hover:text-brand-500 transition-colors">
+                  {userName}
+                </span>
+                <span className="text-[10px] font-light italic text-gray-400">
+                  {role}
                 </span>
               </div>
             </Link>
