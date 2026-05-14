@@ -22,11 +22,12 @@ interface UserWithProducts {
   email_deliverable: boolean | null
 }
 
-// "Acceso pendiente" covers two situations:
-//   - imported user that hasn't redeemed an invite link yet (must_change_password)
-//   - self-signup user that hasn't confirmed their email yet (email_confirmed_at null)
-function isPendingAccess(u: { must_change_password: boolean; email_confirmed_at: string | null }) {
-  return u.must_change_password || u.email_confirmed_at === null
+// "Acceso pendiente" = imported user that hasn't redeemed an invite link yet.
+// Email confirmation status is shown as a separate icon — it must not flip this
+// badge, because legacy users predate the confirmation requirement and have
+// email_confirmed_at = null even though their account works normally.
+function isPendingAccess(u: { must_change_password: boolean }) {
+  return u.must_change_password
 }
 
 interface UserDetailResponse {
@@ -474,7 +475,7 @@ export default function UsuariosPage() {
                       ) : isPendingAccess(user) ? (
                         <span
                           className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700"
-                          title={user.email_confirmed_at === null && !user.must_change_password ? 'Correo no confirmado' : 'Sin contraseña definida'}
+                          title="Sin contraseña definida"
                         >
                           Acceso pendiente
                         </span>
@@ -622,9 +623,7 @@ function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; 
               ? 'Inactivo'
               : user.must_change_password
                 ? 'Acceso pendiente (sin contraseña)'
-                : user.email_confirmed_at === null
-                  ? 'Acceso pendiente (correo no confirmado)'
-                  : 'Activo'
+                : 'Activo'
           }
         />
         <DetailRow
