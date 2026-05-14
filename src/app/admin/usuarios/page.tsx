@@ -18,6 +18,15 @@ interface UserWithProducts {
   created_at: string
   avatar_url: string | null
   product_count: number
+  email_confirmed_at: string | null
+  email_deliverable: boolean | null
+}
+
+// "Acceso pendiente" covers two situations:
+//   - imported user that hasn't redeemed an invite link yet (must_change_password)
+//   - self-signup user that hasn't confirmed their email yet (email_confirmed_at null)
+function isPendingAccess(u: { must_change_password: boolean; email_confirmed_at: string | null }) {
+  return u.must_change_password || u.email_confirmed_at === null
 }
 
 interface UserDetailResponse {
@@ -308,30 +317,12 @@ export default function UsuariosPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-
       const { data: { user: authUser } } = await supabase.auth.getUser()
       setCurrentUserId(authUser?.id ?? null)
 
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('id, email, name, phone, instagram, is_admin, must_change_password, keep, created_at, avatar_url')
-        .order('created_at', { ascending: false })
-
-      const { data: products } = await supabase
-        .from('products')
-        .select('seller_id')
-
-      const productCounts: Record<string, number> = {}
-      products?.forEach(p => {
-        productCounts[p.seller_id] = (productCounts[p.seller_id] || 0) + 1
-      })
-
-      const merged = (usersData || []).map(u => ({
-        ...u,
-        product_count: productCounts[u.id] || 0,
-      }))
-
-      setUsers(merged)
+      const res = await fetch('/api/admin/users')
+      const data = await res.json()
+      setUsers(data.users || [])
       setLoading(false)
     }
     load()
@@ -344,9 +335,10 @@ export default function UsuariosPage() {
 
   const filtered = useMemo(() => {
     return users.filter(u => {
-      if (filter === 'active' && (u.keep !== true || u.must_change_password)) return false
+      const pending = isPendingAccess(u)
+      if (filter === 'active' && (u.keep !== true || pending)) return false
       if (filter === 'inactive' && u.keep !== false) return false
-      if (filter === 'pending_access' && (!u.must_change_password || u.keep === false)) return false
+      if (filter === 'pending_access' && (!pending || u.keep === false)) return false
       if (search) {
         const q = search.toLowerCase()
         const match = [u.email, u.name, u.phone].filter(Boolean).join(' ').toLowerCase()
@@ -358,9 +350,9 @@ export default function UsuariosPage() {
 
   const stats = useMemo(() => ({
     total: users.length,
-    active: users.filter(u => u.keep === true && !u.must_change_password).length,
+    active: users.filter(u => u.keep === true && !isPendingAccess(u)).length,
     inactive: users.filter(u => u.keep === false).length,
-    pendingAccess: users.filter(u => u.must_change_password && u.keep !== false).length,
+    pendingAccess: users.filter(u => isPendingAccess(u) && u.keep !== false).length,
   }), [users])
 
   if (loading) return <AdminTableSkeleton />
@@ -452,7 +444,10 @@ export default function UsuariosPage() {
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-gray-500 truncate block">{user.email}</span>
+                          <span className="text-xs text-gray-500 truncate flex items-center gap-1">
+                            <span className="truncate">{user.email}</span>
+                            <EmailHealthIcon user={user} />
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -476,9 +471,12 @@ export default function UsuariosPage() {
                         <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
                           Inactivo
                         </span>
-                      ) : user.must_change_password ? (
-                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700">
-                          Sin acceso
+                      ) : isPendingAccess(user) ? (
+                        <span
+                          className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700"
+                          title={user.email_confirmed_at === null && !user.must_change_password ? 'Correo no confirmado' : 'Sin contraseña definida'}
+                        >
+                          Acceso pendiente
                         </span>
                       ) : (
                         <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-700">
@@ -545,6 +543,38 @@ function Avatar({ url, name, size = 36 }: { url: string | null; name: string | n
   )
 }
 
+// Visual indicator next to the email address. Three states:
+//   - confirmed (user clicked the OTP/confirm link)  → solid green check
+//   - deliverable (domain has MX records) but unconfirmed → outline gray check
+//   - undeliverable (no MX records — typo or fake)  → red warning
+function EmailHealthIcon({ user }: { user: UserWithProducts }) {
+  if (user.email_confirmed_at) {
+    return (
+      <svg className="w-3.5 h-3.5 text-green-600 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <title>Correo confirmado por el usuario</title>
+        <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1 14.4l-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4-7 7z" />
+      </svg>
+    )
+  }
+  if (user.email_deliverable === false) {
+    return (
+      <svg className="w-3.5 h-3.5 text-red-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+        <title>Dominio sin servidor de correo — probablemente inválido</title>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+    )
+  }
+  if (user.email_deliverable === true) {
+    return (
+      <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+        <title>Dominio válido, pero el usuario aún no confirmó</title>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+    )
+  }
+  return null
+}
+
 function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; isSelf: boolean; onDeleted: () => void }) {
   const [detail, setDetail] = useState<UserDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -591,8 +621,10 @@ function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; 
             user.keep === false
               ? 'Inactivo'
               : user.must_change_password
-                ? 'Sin acceso (sin contraseña)'
-                : 'Activo'
+                ? 'Acceso pendiente (sin contraseña)'
+                : user.email_confirmed_at === null
+                  ? 'Acceso pendiente (correo no confirmado)'
+                  : 'Activo'
           }
         />
         <DetailRow
@@ -715,8 +747,7 @@ function DangerZone({ user, isSelf, productCount, onDeleted }: { user: UserWithP
   }
 
   return (
-    <div className="border-t border-red-100 pt-4 mt-4">
-      <h4 className="text-xs uppercase tracking-widest text-red-500 font-bold mb-2">Zona de peligro</h4>
+    <div className="border-t border-gray-100 pt-4 mt-4">
       <div className="flex items-start justify-between gap-4">
         <p className="text-xs text-gray-500">
           Eliminar este usuario borra su cuenta, sus publicaciones ({productCount}) y todas sus conversaciones. No se puede deshacer.
