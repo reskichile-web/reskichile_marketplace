@@ -1,22 +1,14 @@
 import Link from 'next/link'
-import { headers } from 'next/headers'
 import { getAuthUser } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
-import AdminNav from './AdminNav'
 import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 
 export default async function Header() {
   const { user, isAdmin, avatarUrl } = await getAuthUser()
-  const pathname = headers().get('x-pathname') || ''
-  const inAdminDashboard = pathname.startsWith('/admin')
-
-  // Admin dashboard gets its own dedicated navbar; everything else uses
-  // the regular header below.
-  if (isAdmin && inAdminDashboard) return <AdminNav />
 
   let unreadCount = 0
   if (user) {
