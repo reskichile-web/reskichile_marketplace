@@ -9,13 +9,29 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
 }
 
-function bodyToHtml(body: string): string {
+const LOGO_URL = 'https://reskichile.cl/logo.svg'
+
+function bodyToHtml(body: string, productImageUrl?: string): string {
   const escaped = escapeHtml(body)
   const withBold = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   const paragraphs = withBold
     .split(/\n\n+/)
     .map(p => `<p style="margin:0 0 14px 0;">${p.replace(/\n/g, '<br>')}</p>`)
     .join('')
+
+  // Two-column body when a product image is supplied. Falls back to a
+  // single column otherwise (used by the generic "invite to ReskiChile" flow).
+  const bodyInner = productImageUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+        <tr>
+          <td valign="top" style="padding-right:18px;font-size:15px;">${paragraphs}</td>
+          <td valign="top" width="160" style="width:160px;">
+            <img src="${escapeHtml(productImageUrl)}" alt="" width="160"
+              style="display:block;width:160px;height:auto;border-radius:8px;border:0;outline:none;text-decoration:none;" />
+          </td>
+        </tr>
+      </table>`
+    : `<div style="font-size:15px;">${paragraphs}</div>`
 
   return `<!DOCTYPE html>
 <html>
@@ -38,11 +54,20 @@ function bodyToHtml(body: string): string {
 </head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.55;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+  <!-- Header band with logo -->
+  <tr>
+    <td style="padding:14px 20px;border-bottom:1px solid #eef2f7;text-align:left;">
+      <a href="https://reskichile.cl" style="text-decoration:none;">
+        <img src="${LOGO_URL}" alt="ReskiChile" height="28"
+          style="display:inline-block;height:28px;width:auto;border:0;outline:none;text-decoration:none;" />
+      </a>
+    </td>
+  </tr>
   <!-- Body: adapts to theme -->
   <tr>
     <td style="padding:32px 20px;">
-      <div style="max-width:560px;margin:0 auto;font-size:15px;">
-        ${paragraphs}
+      <div style="max-width:620px;margin:0 auto;">
+        ${bodyInner}
       </div>
     </td>
   </tr>
@@ -76,7 +101,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { to, subject, body } = await request.json()
+  const { to, subject, body, productImageUrl } = await request.json()
 
   if (!to || !subject || !body) {
     return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
@@ -87,7 +112,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'GMAIL_APP_PASSWORD no configurado en .env.local' }, { status: 500 })
   }
 
-  const html = bodyToHtml(body)
+  const html = bodyToHtml(body, typeof productImageUrl === 'string' ? productImageUrl : undefined)
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',

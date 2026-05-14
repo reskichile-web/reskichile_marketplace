@@ -655,10 +655,18 @@ Sebastián`
     setSending(true)
     setSendStatus('idle')
     try {
+      const productImageUrl = (product.product_images || [])
+        .slice()
+        .sort((a, b) => a.order - b.order)[0]?.url
       const res = await fetch('/api/admin/contact-seller', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: seller.email, subject: emailSubject, body: emailBodyDraft }),
+        body: JSON.stringify({
+          to: seller.email,
+          subject: emailSubject,
+          body: emailBodyDraft,
+          productImageUrl,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al enviar')
