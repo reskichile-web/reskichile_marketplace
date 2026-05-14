@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { redirectAfterAuth } from '@/lib/auth-redirect'
 
 const PASSWORD_MIN = 6
 
@@ -93,8 +94,7 @@ export default function AccesoPage() {
 
     // Redirect after brief delay
     setTimeout(() => {
-      router.push('/')
-      router.refresh()
+      redirectAfterAuth(supabase, router)
     }, 2000)
   }
 

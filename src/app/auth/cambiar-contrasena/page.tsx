@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { redirectAfterAuth } from '@/lib/auth-redirect'
 import Spinner from '@/components/Spinner'
 import OtpInput from '@/components/OtpInput'
 
@@ -46,7 +47,7 @@ export default function ChangePasswordPage() {
         .single()
 
       if (!profile?.must_change_password) {
-        router.push('/')
+        await redirectAfterAuth(supabase, router)
         return
       }
 
@@ -118,8 +119,7 @@ export default function ChangePasswordPage() {
 
     setStep('success')
     setTimeout(() => {
-      router.push('/')
-      router.refresh()
+      redirectAfterAuth(supabase, router)
     }, 1500)
   }
 

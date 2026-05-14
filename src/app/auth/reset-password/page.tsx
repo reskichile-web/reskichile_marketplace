@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { redirectAfterAuth } from '@/lib/auth-redirect'
 import Spinner from '@/components/Spinner'
 
 const PASSWORD_MIN = 6
@@ -64,8 +65,7 @@ export default function ResetPasswordPage() {
         .eq('id', user.id)
     }
 
-    router.push('/')
-    router.refresh()
+    await redirectAfterAuth(supabase, router)
   }
 
   if (checking) return (

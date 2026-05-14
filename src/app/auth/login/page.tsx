@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { redirectAfterAuth } from '@/lib/auth-redirect'
 import PopupMessage from '@/components/PopupMessage'
 
 export default function LoginPage() {
@@ -49,12 +50,12 @@ export default function LoginPage() {
       return
     }
 
-    // Check profile flags
+    // Force-change-password takes precedence over the standard redirect.
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const { data: profile } = await supabase
         .from('users')
-        .select('is_admin, must_change_password')
+        .select('must_change_password')
         .eq('id', user.id)
         .single()
 
@@ -63,16 +64,9 @@ export default function LoginPage() {
         router.refresh()
         return
       }
-
-      if (profile?.is_admin) {
-        router.push('/admin')
-        router.refresh()
-        return
-      }
     }
 
-    router.push(redirect)
-    router.refresh()
+    await redirectAfterAuth(supabase, router, redirect)
   }
 
   return (
