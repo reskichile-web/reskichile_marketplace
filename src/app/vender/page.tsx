@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, REGIONS } from '@/lib/constants'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
+import OtpInput from '@/components/OtpInput'
+import Spinner from '@/components/Spinner'
 import PopupMessage from '@/components/PopupMessage'
 import BrandInput from '@/components/BrandInput'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
@@ -108,6 +110,8 @@ export default function SellPage() {
   const [popup, setPopup] = useState<{ message: string; type: 'error' | 'warning' } | null>(null)
   const [publishPhase, setPublishPhase] = useState<'compressing' | 'uploading' | 'creating' | 'success' | null>(null)
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
+  // Per-image compression progress shown on the grid's "Agregar" tile
+  const [compressing, setCompressing] = useState<{ current: number; total: number } | null>(null)
 
   // Form data
   const [productType, setProductType] = useState('')
@@ -126,8 +130,10 @@ export default function SellPage() {
   // Preferences (saved on the users row for logged-in sellers; ignored
   // for anon publishes since there's no users record yet).
   const [hidePhone, setHidePhone] = useState(false)
-  const [notifyChatEmail, setNotifyChatEmail] = useState(true)
-  const [notifyRemindersEmail, setNotifyRemindersEmail] = useState(true)
+  // Chat-email notifications default on; not surfaced in the publish form
+  // (managed later in profile preferences). Still persisted on the users row.
+  const [notifyChatEmail] = useState(true)
+  const [notifyRemindersEmail] = useState(true)
   const [termsAccepted, setTermsAccepted] = useState(false)
 
   // Auth (for non-logged-in users)
@@ -141,7 +147,8 @@ export default function SellPage() {
   const [authPassword, setAuthPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [otpStep, setOtpStep] = useState(false)
-  const [otpCode, setOtpCode] = useState('')
+  const [otpError, setOtpError] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -149,11 +156,16 @@ export default function SellPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setIsLoggedIn(!!user)
-
-      // Fetch existing brands
     }
     check()
   }, [])
+
+  // Resend OTP cooldown tick
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
 
   const imageItems: ImageItem[] = images.map((_, i) => ({
     id: `img-${i}`,
@@ -283,6 +295,14 @@ export default function SellPage() {
     const slug = buildProductSlug(brand.trim(), model.trim() || null, product.id)
     await supabase.from('products').update({ slug }).eq('id', product.id)
 
+    // Notify the seller their product entered review. Fire-and-forget: a failed
+    // email must never block or delay publishing.
+    fetch('/api/email/product-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: product.id }),
+    }).catch(() => {})
+
     // Upload images
     setPublishPhase('uploading')
     setUploadProgress({ current: 0, total: images.length })
@@ -360,6 +380,7 @@ export default function SellPage() {
 
     setLoading(false)
     setOtpStep(true)
+    setResendCooldown(60)
   }
 
   async function handleAnonPublish() {
@@ -432,17 +453,18 @@ export default function SellPage() {
     await handlePublish()
   }
 
-  async function handleOtpVerify() {
+  async function handleOtpComplete(code: string) {
+    setOtpError(false)
     setLoading(true)
     const supabase = createClient()
     const { error, data } = await supabase.auth.verifyOtp({
       email: authEmail.trim().toLowerCase(),
-      token: otpCode,
+      token: code,
       type: 'signup',
     })
 
     if (error) {
-      setFieldErrors({ otp: 'Código incorrecto' })
+      setOtpError(true)
       setLoading(false)
       return
     }
@@ -460,6 +482,20 @@ export default function SellPage() {
 
     // Publish with the new user
     await handlePublish(data.user?.id)
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0) return
+    const supabase = createClient()
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: authEmail.trim().toLowerCase(),
+    })
+    if (error) {
+      setPopup({ message: 'No pudimos reenviar el código. Intenta nuevamente.', type: 'error' })
+      return
+    }
+    setResendCooldown(60)
   }
 
   // ─── RENDER ───
@@ -711,13 +747,22 @@ export default function SellPage() {
                 setPopup({ message: `Máximo ${MAX_IMAGES} fotos`, type: 'error' })
                 return
               }
-              const compressed = await Promise.all(
-                files.map(f => imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true }))
-              )
-              const next = [...images, ...compressed]
-              setImages(next)
-              setPreviews(next.map(f => URL.createObjectURL(f)))
+              try {
+                setCompressing({ current: 0, total: files.length })
+                const compressed: File[] = []
+                for (const f of files) {
+                  const result = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true })
+                  compressed.push(result)
+                  setCompressing(prev => ({ current: (prev?.current ?? 0) + 1, total: files.length }))
+                }
+                const next = [...images, ...compressed]
+                setImages(next)
+                setPreviews(next.map(f => URL.createObjectURL(f)))
+              } finally {
+                setCompressing(null)
+              }
             }}
+            compressing={compressing}
           />
 
           {/* Preferences (logged-in sellers). The user-level prefs
@@ -735,28 +780,6 @@ export default function SellPage() {
                 />
                 <span className="text-sm text-gray-800">
                   Ocultar mi número de WhatsApp en mis publicaciones
-                </span>
-              </label>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifyChatEmail}
-                  onChange={e => setNotifyChatEmail(e.target.checked)}
-                  className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                />
-                <span className="text-sm text-gray-800">
-                  Recibir avisos por correo de mensajes en el chat
-                </span>
-              </label>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifyRemindersEmail}
-                  onChange={e => setNotifyRemindersEmail(e.target.checked)}
-                  className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                />
-                <span className="text-sm text-gray-800">
-                  Recibir recordatorios automáticos por correo
                 </span>
               </label>
             </div>
@@ -1026,37 +1049,72 @@ export default function SellPage() {
         </div>
       )}
 
-      {/* ─── OTP Verification ─── */}
+      {/* ─── OTP Verification (mismo diseño que /auth/registro) ─── */}
       {step === 'auth' && otpStep && (
-        <div className="space-y-5 text-center">
-          <div className="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto">
-            <svg className="w-7 h-7 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-8">
+            {/* Animated envelope icon */}
+            <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-5 animate-bounce-slow">
+              <svg className="w-8 h-8 text-brand-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+              </svg>
+            </div>
+            <h1 className="font-body text-2xl font-black text-gray-900">Verifica tu email</h1>
+            <p className="text-sm text-gray-500 mt-2">
+              Enviamos un código de 6 dígitos a
+            </p>
+            <p className="text-sm font-semibold text-gray-900 mt-1">{authEmail}</p>
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-amber-500 animate-pulse">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v5M12 8h.01" />
+              </svg>
+              <p className="text-xs font-medium">
+                Si no lo ves en tu bandeja, <span className="font-bold">REVISAR SPAM</span>
+              </p>
+            </div>
           </div>
-          <h2 className="font-body text-xl font-bold">Verifica tu email</h2>
-          <p className="text-sm text-gray-500">Enviamos un código a <strong>{authEmail}</strong></p>
 
-          <div>
-            <input
-              type="text"
-              value={otpCode}
-              onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setFieldErrors(prev => { const n = {...prev}; delete n.otp; return n }) }}
-              className={`w-48 mx-auto block text-center text-2xl tracking-[0.5em] border rounded-lg px-3 py-3 font-mono ${fieldErrors.otp ? 'border-red-400' : ''}`}
-              placeholder="000000"
-              maxLength={6}
+          {/* OTP Input */}
+          <div className="mb-6">
+            <OtpInput
+              onComplete={handleOtpComplete}
+              disabled={loading}
+              error={otpError}
             />
-            {fieldErrors.otp && <p className="text-xs text-red-500 mt-2">{fieldErrors.otp}</p>}
           </div>
 
-          <button
-            type="button"
-            onClick={handleOtpVerify}
-            disabled={loading || otpCode.length < 6}
-            className="w-full max-w-xs mx-auto block bg-brand-500 text-white py-3 rounded-lg font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Verificando...' : 'Verificar y publicar'}
-          </button>
+          {/* Status */}
+          {loading && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Spinner size="sm" />
+              <span className="text-sm text-gray-500">Verificando y publicando...</span>
+            </div>
+          )}
+
+          {otpError && (
+            <p className="text-center text-sm text-red-500 mb-4">
+              Código incorrecto. Intenta de nuevo.
+            </p>
+          )}
+
+          {/* Resend */}
+          <div className="text-center">
+            <p className="text-xs text-gray-400 mb-1">¿No recibiste el código?</p>
+            {resendCooldown > 0 ? (
+              <p className="text-xs text-gray-400">
+                Reenviar en <span className="font-mono font-bold text-gray-600">{resendCooldown}s</span>
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResend}
+                className="text-xs text-brand-500 hover:underline font-medium"
+              >
+                Reenviar código
+              </button>
+            )}
+          </div>
         </div>
       )}
 

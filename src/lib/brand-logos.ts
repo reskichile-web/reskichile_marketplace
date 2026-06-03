@@ -1,7 +1,18 @@
-// Brand logo mapping — ski/snow brands with public logo URLs
-// Using Clearbit Logo API (free, no key needed) + manual overrides
+// Brand logo mapping — ski/snow brands.
+//
+// Logos are CURATED and self-hosted under public/brand-logos/<slug>.png. We no
+// longer hit a third-party favicon service at runtime: Google's favicon endpoint
+// returns a generic globe (HTTP 200) for brands it doesn't know — e.g. Lippi —
+// which an <img onError> can't detect, so the globe leaked into the UI in prod.
+// Self-hosted files give real logos and, when missing, return null (nothing
+// renders) instead of a globe.
+//
+// BRAND_DOMAINS below is the canonical brand→domain reference used by the
+// fetch script (scripts/fetch-brand-logos.mjs) to (re)download logos. To add a
+// brand: add it here + to brand-suggestions, run the script, then add its slug
+// to CURATED_LOGOS (the script prints the up-to-date set).
 
-const BRAND_DOMAINS: Record<string, string> = {
+export const BRAND_DOMAINS: Record<string, string> = {
   // Ski brands
   'salomon': 'salomon.com',
   'atomic': 'atomic.com',
@@ -84,7 +95,7 @@ const BRAND_DOMAINS: Record<string, string> = {
   'montec': 'montecwear.com',
   'dope snow': 'dopesnow.com',
   'dope': 'dopesnow.com',
-  'lippi': 'lippi.cl',
+  'lippi': 'lippioutdoor.com',
 
   // Accessories
   'leki': 'leki.com',
@@ -103,13 +114,41 @@ const BRAND_DOMAINS: Record<string, string> = {
   'reusch': 'reusch.com',
 }
 
+// Slugs that have a curated file in public/brand-logos/. Keep in sync with that
+// folder — scripts/fetch-brand-logos.mjs prints this exact set after a run.
+const CURATED_LOGOS = new Set<string>([
+  '4frnt', '686', 'anon', 'arbor', 'arcteryx', 'armada', 'atomic', 'bca',
+  'black-crows', 'black-diamond', 'bolle', 'burton', 'capita', 'columbia',
+  'dakine', 'dalbello', 'dc', 'decathlon', 'deuter', 'dope', 'dope-snow', 'dps',
+  'dynafit', 'dynastar', 'faction', 'fischer', 'flux', 'full-tilt', 'giro',
+  'gnu', 'gopro', 'head', 'helly-hansen', 'jones', 'k2', 'lange', 'leki',
+  'lib-tech', 'line', 'lippi', 'look', 'mammut', 'marker', 'moment', 'montec',
+  'never-summer', 'nitro', 'nordica', 'norr-na', 'norrona', 'north-face',
+  'oakley', 'ortovox', 'osprey', 'patagonia', 'picture', 'poc', 'reusch',
+  'ride', 'rome', 'rossignol', 'salomon', 'scarpa', 'scott', 'smith', 'spy',
+  'sweet-protection', 'tecnica', 'the-north-face', 'thirtytwo', 'tyrolia',
+  'union', 'vans', 'volcom', 'volkl', 'wedze',
+])
+
+// Brand display name → filename slug. Must match the slugify() in the fetch
+// script: lowercase, strip accents, drop apostrophes, non-alphanumerics → '-'.
+export function brandSlug(brand: string): string {
+  return brand
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // völkl → volkl
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 export function getBrandLogoUrl(brand: string): string | null {
-  const key = brand.toLowerCase().trim()
-  const domain = BRAND_DOMAINS[key]
-  if (!domain) return null
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+  const slug = brandSlug(brand)
+  if (!CURATED_LOGOS.has(slug)) return null
+  return `/brand-logos/${slug}.png`
 }
 
 export function hasBrandLogo(brand: string): boolean {
-  return brand.toLowerCase().trim() in BRAND_DOMAINS
+  return CURATED_LOGOS.has(brandSlug(brand))
 }

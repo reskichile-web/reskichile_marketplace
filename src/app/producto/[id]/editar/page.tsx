@@ -35,7 +35,6 @@ const GENERO_ESQUI_OPTIONS: { value: string; label: string }[] = [
   { value: 'hombre', label: 'Hombre' },
   { value: 'mujer', label: 'Mujer' },
   { value: 'junior', label: 'Junior' },
-  { value: 'nino', label: 'Niño' },
 ]
 
 function InlineField({ label, value, onSave, type = 'text', options, hasError }: {

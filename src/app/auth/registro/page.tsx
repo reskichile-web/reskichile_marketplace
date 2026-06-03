@@ -6,8 +6,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
 import PopupMessage from '@/components/PopupMessage'
-import Spinner from '@/components/Spinner'
 import PhoneInput from '@/components/PhoneInput'
+import AuthLoadingOverlay from '@/components/AuthLoadingOverlay'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -153,6 +153,13 @@ export default function RegisterPage() {
     }
 
     setResendCooldown(60)
+  }
+
+  // ─── Celebratory overlay: while verifying the code and on success ───
+  // Same instance stays mounted across both so the dots morph into the
+  // green check + confetti (mirrors the publish-product flow).
+  if (verifying || step === 'success') {
+    return <AuthLoadingOverlay phase={step === 'success' ? 'success' : 'verifying'} />
   }
 
   // ─── Step: Form ───
@@ -311,8 +318,12 @@ export default function RegisterPage() {
             Enviamos un código de 6 dígitos a
           </p>
           <p className="text-sm font-semibold text-gray-900 mt-1">{email}</p>
-          <div className="mt-4 mx-auto max-w-xs px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
-            <p className="text-xs text-amber-800">
+          <div className="mt-4 flex items-center justify-center gap-1.5 text-amber-500 animate-pulse">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v5M12 8h.01" />
+            </svg>
+            <p className="text-xs font-medium">
               Si no lo ves en tu bandeja, <span className="font-bold">REVISAR SPAM</span>
             </p>
           </div>
@@ -327,14 +338,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        {/* Status */}
-        {verifying && (
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Spinner size="sm" />
-            <span className="text-sm text-gray-500">Verificando...</span>
-          </div>
-        )}
-
+        {/* Status — verifying shows the full-screen AuthLoadingOverlay instead */}
         {otpError && (
           <p className="text-center text-sm text-red-500 mb-4">
             Código incorrecto. Intenta de nuevo.
@@ -374,19 +378,7 @@ export default function RegisterPage() {
     )
   }
 
-  // ─── Step: Success ───
-  return (
-    <div className="max-w-md mx-auto px-4 pt-8 md:pt-16 pb-16">
-      <div className="text-center">
-        <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
-          <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h1 className="font-body text-2xl font-black text-gray-900 mb-2">Cuenta creada</h1>
-        <p className="text-sm text-gray-500">Redirigiendo...</p>
-      </div>
-    </div>
-  )
+  // ─── Step: Success (handled by the early-return AuthLoadingOverlay above) ───
+  return <AuthLoadingOverlay phase="success" />
 }
 

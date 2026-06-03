@@ -1,0 +1,231 @@
+// Shared HTML email chrome + the automated templates. All ReSkiChile mail
+// shares the celeste header (white logo) + celeste footer, dark-mode safe.
+import { OWNER_WHATSAPP } from '@/lib/owner'
+import { CONDITIONS, PRODUCT_TYPES } from '@/lib/constants'
+
+// PNG hosted on the Supabase public bucket — Gmail/Outlook don't render SVG,
+// and the bucket URL is live without waiting for a site deploy.
+const LOGO_URL =
+  'https://kdehuccekavwhhuvvogf.supabase.co/storage/v1/object/public/product-images/email/reski-logo-white.png'
+const WHATSAPP_ICON =
+  'https://kdehuccekavwhhuvvogf.supabase.co/storage/v1/object/public/product-images/email/whatsapp.png'
+const MAIL_ICON =
+  'https://kdehuccekavwhhuvvogf.supabase.co/storage/v1/object/public/product-images/email/mail.png'
+// White checkmark with square caps — same glyph as the app's success overlay
+// (AuthLoadingOverlay path "M5 13l4 4L19 7"). PNG so the straight edges render
+// identically everywhere (the unicode ✓ is curvy and varies by client).
+const CHECK_ICON =
+  'https://kdehuccekavwhhuvvogf.supabase.co/storage/v1/object/public/product-images/email/check-white.png'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://reskichile.cl'
+const SUPPORT_EMAIL = 'reskichile@gmail.com'
+const BRAND = '#2674c0' // azul ReSkiChile para los correos
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function layout(bodyHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Force light: never let the client invert to dark mode -->
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<style>
+  :root { color-scheme: only light; supported-color-schemes: only light; }
+  body, .reski-wrap, .reski-body { background-color:#ffffff !important; }
+  /* Product card uses a fluid hybrid layout: it stacks by default (so the CTA
+     is never clipped in clients that ignore media queries — Gmail app, Outlook),
+     and this query only upgrades the stacked image to full-bleed where supported. */
+  @media (max-width:480px) {
+    .pc-img { max-width:100% !important; height:auto !important;
+              border-radius:12px 12px 0 0 !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.55;">
+<table role="presentation" class="reski-wrap" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#ffffff" style="border-collapse:collapse;background-color:#ffffff;">
+  <!-- Header band: celeste with centered white logo -->
+  <tr>
+    <td bgcolor="${BRAND}" style="background-color:${BRAND};padding:24px 20px;text-align:center;">
+      <a href="${SITE_URL}" style="text-decoration:none;">
+        <img src="${LOGO_URL}" alt="ReSkiChile" height="42"
+          style="display:inline-block;height:42px;width:auto;border:0;outline:none;text-decoration:none;" />
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td class="reski-body" bgcolor="#ffffff" style="background-color:#ffffff;padding:32px 20px;">
+      <div style="max-width:620px;margin:0 auto;font-size:15px;color:#1f2937;">
+        ${bodyHtml}
+      </div>
+    </td>
+  </tr>
+  <!-- Footer band -->
+  <tr>
+    <td bgcolor="${BRAND}" style="background-color:${BRAND};padding:18px 20px;text-align:center;font-size:13px;">
+      <a href="${SITE_URL}" style="color:#ffffff;text-decoration:none;font-weight:600;">reskichile.cl</a>
+      <span style="color:#ffffff;">&nbsp;·&nbsp;</span>
+      <a href="https://instagram.com/reskichile" style="color:#ffffff;text-decoration:none;font-weight:600;">@reskichile</a>
+    </td>
+  </tr>
+</table>
+</body></html>`
+}
+
+/** Primary celeste button. */
+function formatCLP(n: number): string {
+  return '$' + n.toLocaleString('es-CL')
+}
+
+/** Success tick matching the app's success overlay exactly: a green-500
+ *  (#22c55e) circle with the white square-edged checkmark (CHECK_ICON). The
+ *  circle is a <td bgcolor> so it survives clients that strip backgrounds, and
+ *  the check is a transparent PNG centered inside it. */
+function successTick(): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="right" style="margin:0;">
+    <tr>
+      <td width="38" height="38" align="center" valign="middle" bgcolor="#22c55e"
+        style="width:38px;height:38px;background-color:#22c55e;border-radius:50%;text-align:center;">
+        <img src="${CHECK_ICON}" width="22" height="22" alt="✓" style="display:block;margin:0 auto;border:0;" />
+      </td>
+    </tr>
+  </table>`
+}
+
+/** Responsive product card via fluid hybrid (see imgCol comment below). Desktop:
+ *  image left, details right; narrow screens stack with no media-query reliance.
+ *  The success tick sits top-right of the details column on every width. */
+function productCard(p: ApprovedProduct): string {
+  const title = productTitle(p.brand, p.model)
+  const url = `${SITE_URL}${p.path}`
+  const detail = [CONDITIONS[p.condition], PRODUCT_TYPES[p.productType]].filter(Boolean).join(' · ')
+  // Full-width block button — reliable across all clients, no media query needed.
+  const cta = `<a href="${url}" style="display:block;width:100%;box-sizing:border-box;padding:14px 0;font-size:13px;font-weight:700;letter-spacing:0.02em;color:#ffffff;background-color:${BRAND};text-decoration:none;text-align:center;">VER PRODUCTO</a>`
+
+  // Fluid hybrid: the image + body are inline-block columns that sit side by side
+  // when there's room (desktop) and wrap to stacked when the screen is narrow —
+  // WITHOUT relying on media-query support. The MSO comments give Outlook a real
+  // two-cell table since it ignores inline-block. Outer font-size:0 kills the gap.
+  const imgCol = p.imageUrl
+    ? `<!--[if mso]><td width="170" valign="top"><![endif]-->
+       <div style="display:inline-block;vertical-align:top;width:100%;max-width:170px;font-size:0;line-height:0;">
+         <img class="pc-img" src="${escapeHtml(p.imageUrl)}" width="170" alt="${escapeHtml(title)}"
+           style="display:block;width:100%;max-width:170px;height:170px;object-fit:cover;border:0;outline:none;text-decoration:none;" />
+       </div>
+       <!--[if mso]></td><td valign="top"><![endif]-->`
+    : '<!--[if mso]><td valign="top"><![endif]-->'
+
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+    style="border-collapse:separate;border:1px solid #eef2f7;border-radius:12px;overflow:hidden;margin:6px 0 12px;">
+    <tr>
+      <td style="padding:0;font-size:0;">
+        <!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><![endif]-->
+        ${imgCol}
+        <div style="display:inline-block;vertical-align:top;width:100%;max-width:430px;">
+          <div style="padding:18px 20px;font-size:15px;line-height:1.5;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+              <tr>
+                <td valign="top" style="padding:0;">
+                  <p style="margin:0 0 5px;font-size:16px;font-weight:700;color:#1f2937;">${escapeHtml(title)}</p>
+                  <p style="margin:0;font-size:19px;font-weight:800;color:${BRAND};">${formatCLP(p.price)}</p>
+                </td>
+                <td valign="top" align="right" width="36" style="padding:0 0 0 10px;">${successTick()}</td>
+              </tr>
+            </table>
+            ${detail ? `<p style="margin:8px 0 14px;font-size:13px;color:#6b7280;">${escapeHtml(detail)}</p>` : '<div style="height:14px;"></div>'}
+            ${cta}
+          </div>
+        </div>
+        <!--[if mso]></td></tr></table><![endif]-->
+      </td>
+    </tr>
+  </table>`
+}
+
+/** Small, light "¿Tienes alguna duda?" block with WhatsApp + email buttons.
+ *  The WhatsApp link is a wa.me button so the number is never shown as text. */
+function contactBlock(): string {
+  const waMsg = encodeURIComponent('Hola, tengo una consulta sobre ReSkiChile.')
+  const waUrl = `https://wa.me/${OWNER_WHATSAPP}?text=${waMsg}`
+  const mailUrl = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Consulta — ReSkiChile')}`
+  // Bulletproof button: the fill colour lives on the <td bgcolor>, not the <a>,
+  // so clients that strip backgrounds off inline links (Gmail/Apple Mail) keep
+  // the green — otherwise the white WhatsApp glyph would vanish on white.
+  const link = 'display:inline-block;font-size:12px;font-weight:600;text-decoration:none;padding:9px 16px;'
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin-top:26px;">
+    <tr><td align="center" style="padding-top:16px;border-top:1px solid #eef2f7;text-align:center;">
+      <p style="margin:0 0 11px 0;font-size:13px;color:#9ca3af;">¿Tienes alguna duda?</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-block;vertical-align:middle;margin:0 4px;">
+        <tr><td bgcolor="#25D366" style="background-color:#25D366;">
+          <a href="${waUrl}" style="${link}color:#ffffff;"><img src="${WHATSAPP_ICON}" width="14" height="14" alt="" style="vertical-align:-2px;margin-right:6px;border:0;" />WhatsApp</a>
+        </td></tr>
+      </table>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-block;vertical-align:middle;margin:0 4px;">
+        <tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e5e7eb;">
+          <a href="${mailUrl}" style="${link}color:#6b7280;"><img src="${MAIL_ICON}" width="15" height="15" alt="" style="vertical-align:-3px;margin-right:6px;border:0;" />Escríbenos</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>`
+}
+
+/** Display title for a product, e.g. "Rossignol Experience 88". */
+export function productTitle(brand: string, model: string | null): string {
+  return [brand, model].filter(Boolean).join(' ').trim() || 'tu producto'
+}
+
+function greeting(name: string | null): string {
+  const who = name ? `¡Hola ${escapeHtml(name)}!` : '¡Hola!'
+  return `<strong>${who}</strong>`
+}
+
+// ─── Template: producto en revisión ──────────────────────────────────────────
+
+export interface BuiltEmail {
+  subject: string
+  html: string
+  text: string
+}
+
+export function buildReviewEmail(name: string | null, brand: string, model: string | null): BuiltEmail {
+  const title = productTitle(brand, model)
+  const url = `${SITE_URL}/mis-productos`
+  const subject = 'Tu producto entró en revisión'
+  const html = layout(`
+    <p style="margin:0 0 14px 0;color:#1f2937;">${greeting(name)}</p>
+    <p style="margin:0 0 14px 0;color:#1f2937;">Recibimos tu publicación de <strong>${escapeHtml(title)}</strong> y ya entró en revisión. Nuestro equipo la revisará pronto y te avisaremos apenas esté aprobada y visible en el catálogo. Puedes revisar el estado de tu producto <a href="${url}" style="color:${BRAND};font-weight:600;text-decoration:underline;">aquí</a>.</p>
+    <p style="margin:0 0 14px 0;color:#1f2937;">Gracias por vender en ReSkiChile. ❄️</p>
+    ${contactBlock()}
+  `)
+  const text = `${name ? `Hola ${name},` : 'Hola,'}\n\nRecibimos tu publicación de ${title} y ya entró en revisión. Te avisaremos apenas esté aprobada y visible en el catálogo.\n\nRevisa el estado de tu producto aquí: ${url}\n\n¿Dudas? WhatsApp: https://wa.me/${OWNER_WHATSAPP} · Correo: ${SUPPORT_EMAIL}\n\nGracias por vender en ReSkiChile.`
+  return { subject, html, text }
+}
+
+// ─── Template: producto aprobado ─────────────────────────────────────────────
+
+export interface ApprovedProduct {
+  brand: string
+  model: string | null
+  price: number
+  condition: string
+  productType: string
+  imageUrl: string | null
+  path: string
+}
+
+export function buildApprovedEmail(name: string | null, p: ApprovedProduct): BuiltEmail {
+  const title = productTitle(p.brand, p.model)
+  const url = `${SITE_URL}${p.path}`
+  const subject = '¡Tu producto fue aprobado!'
+  const html = layout(`
+    <p style="margin:0 0 14px 0;color:#1f2937;">${greeting(name)}</p>
+    <p style="margin:0 0 20px 0;color:#1f2937;">¡Buenas noticias! Tu publicación fue aprobada y ya está visible en el catálogo de ReSkiChile. Revisa tu producto <a href="${url}" style="color:${BRAND};font-weight:600;text-decoration:underline;">aquí</a>.</p>
+    ${productCard(p)}
+    ${contactBlock()}
+  `)
+  const text = `${name ? `Hola ${name},` : 'Hola,'}\n\nTu publicación de ${title} (${formatCLP(p.price)}) fue aprobada y ya está visible en el catálogo.\n\nRevisa tu producto aquí: ${url}\n\n¿Dudas? WhatsApp: https://wa.me/${OWNER_WHATSAPP} · Correo: ${SUPPORT_EMAIL}\n\nReSkiChile`
+  return { subject, html, text }
+}

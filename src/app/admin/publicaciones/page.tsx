@@ -169,7 +169,20 @@ export default function PublicacionesPage() {
   }
 
   async function handleApprove(productId: string) {
-    await handleStatusChange(productId, 'approved', { rejection_reason: null })
+    // Approval goes through a server route (not the client update) so it can
+    // send the "producto aprobado" email server-side. Keep the optimistic UI.
+    const prevProducts = products
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, status: 'approved', rejection_reason: null } as AdminProduct : p))
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/approve`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Error al aprobar')
+      }
+    } catch (e) {
+      setProducts(prevProducts)
+      alert('Error al aprobar: ' + (e instanceof Error ? e.message : 'desconocido'))
+    }
   }
 
   async function handleReject(productId: string) {

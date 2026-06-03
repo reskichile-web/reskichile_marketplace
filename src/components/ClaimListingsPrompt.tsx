@@ -10,14 +10,14 @@ export default function ClaimListingsPrompt({ className, isLoggedIn = false }: P
   const external = isLoggedIn
 
   return (
-    <div className={`text-center ${className || ''}`}>
-      <p className="text-[clamp(11px,2.6vw,14px)] font-semibold tracking-wide uppercase text-gray-600">
+    <div className={`flex flex-col items-center gap-0.5 text-center md:flex-row md:items-baseline md:justify-start md:gap-2 md:text-left ${className || ''}`}>
+      <p className="text-[11px] font-normal tracking-wide uppercase text-gray-400">
         ¿Reski publicó un producto tuyo?
       </p>
       <a
         href={href}
         {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        className="mt-1 inline-block text-[clamp(11px,2.6vw,14px)] text-brand-500 underline underline-offset-2 hover:text-brand-600"
+        className="text-[11px] text-brand-500 underline underline-offset-2 hover:text-brand-600 whitespace-nowrap"
       >
         Vincúlalo a tu cuenta
       </a>

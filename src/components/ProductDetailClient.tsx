@@ -35,6 +35,52 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
   const images = (product.product_images || []).sort((a, b) => a.order - b.order)
   const isOwner = userId === product.seller_id
   const canEdit = isOwner || isAdmin
+
+  // Frontend state validation: only an approved listing is publicly visible, so
+  // sharing/copying it makes sense only when approved. Admins always keep the
+  // share tools. For an owner viewing their own not-yet-approved listing we
+  // show a friendly status card instead (the raw "pending" status is never
+  // surfaced to the user — admins still see the real status elsewhere).
+  const isApproved = product.status === 'approved'
+  const showShareTools = isApproved || isAdmin
+  const ownerStatusCard: Record<string, { title: string; body: string; tone: 'pending' | 'rejected' | 'neutral' }> = {
+    pending: {
+      title: 'En revisión',
+      body: 'Tu publicación está siendo revisada por nuestro equipo. Te avisaremos por correo apenas la aprobemos y quede visible en el catálogo.',
+      tone: 'pending',
+    },
+    missing_photos: {
+      title: 'Faltan fotos',
+      body: 'Necesitamos al menos 3 fotos para revisar tu publicación. Edítala para agregarlas y la revisaremos.',
+      tone: 'pending',
+    },
+    draft: {
+      title: 'Borrador',
+      body: 'Esta publicación todavía no se ha enviado a revisión.',
+      tone: 'neutral',
+    },
+    rejected: {
+      title: 'Publicación no aprobada',
+      body: product.rejection_reason || 'Tu publicación no fue aprobada. Edítala y vuelve a enviarla a revisión.',
+      tone: 'rejected',
+    },
+    sold: {
+      title: 'Vendido',
+      body: 'Esta publicación está marcada como vendida y ya no aparece en el catálogo.',
+      tone: 'neutral',
+    },
+    archived: {
+      title: 'Archivada',
+      body: 'Esta publicación está archivada y no aparece en el catálogo.',
+      tone: 'neutral',
+    },
+  }
+  const statusCard = ownerStatusCard[product.status]
+  const cardTone = {
+    pending: { wrap: 'bg-amber-50 border-amber-200', icon: 'text-amber-500', title: 'text-amber-900', body: 'text-amber-800' },
+    rejected: { wrap: 'bg-red-50 border-red-200', icon: 'text-red-500', title: 'text-red-900', body: 'text-red-700' },
+    neutral: { wrap: 'bg-gray-50 border-gray-200', icon: 'text-gray-400', title: 'text-gray-900', body: 'text-gray-600' },
+  }
   const title = [product.brand, product.model].filter(Boolean).join(' ')
   const attrFields = PRODUCT_ATTRIBUTES[product.product_type] || []
   const attrs = (product.attributes || {}) as Record<string, unknown>
@@ -256,13 +302,29 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
             </div>
           )}
 
-          {/* Share + Copy. Share fires the OS sheet (mobile) or a
-              dropdown (desktop). Copy is a dedicated one-tap clipboard
-              shortcut for the product URL. */}
-          <div className="mt-3 flex items-stretch gap-2">
-            <ShareButton product={product} className="flex-1" />
-            <CopyLinkButton product={product} className="w-12" />
-          </div>
+          {/* Share + Copy when the listing is publicly visible (approved) or
+              when an admin is viewing. Otherwise the owner sees a friendly
+              status card instead — you can't share a listing that isn't live. */}
+          {showShareTools ? (
+            <div className="mt-3 flex items-stretch gap-2">
+              <ShareButton product={product} className="flex-1" />
+              <CopyLinkButton product={product} className="w-12" />
+            </div>
+          ) : statusCard ? (
+            <div className={`mt-3 rounded-xl border p-4 flex items-start gap-3 ${cardTone[statusCard.tone].wrap}`}>
+              <svg className={`w-5 h-5 shrink-0 mt-0.5 ${cardTone[statusCard.tone].icon}`} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                {statusCard.tone === 'rejected' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.008M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3.75 2.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                )}
+              </svg>
+              <div>
+                <p className={`font-semibold text-sm ${cardTone[statusCard.tone].title}`}>{statusCard.title}</p>
+                <p className={`text-sm mt-1 leading-relaxed ${cardTone[statusCard.tone].body}`}>{statusCard.body}</p>
+              </div>
+            </div>
+          ) : null}
 
           {canEdit && (
             <Link

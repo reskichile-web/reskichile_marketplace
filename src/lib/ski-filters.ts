@@ -12,7 +12,6 @@ export const GENERO_OPTIONS: { value: string; label: string }[] = [
   { value: 'hombre', label: 'Hombre' },
   { value: 'mujer', label: 'Mujer' },
   { value: 'junior', label: 'Junior' },
-  { value: 'nino', label: 'Niño' },
 ]
 
 export interface Bucket {
