@@ -410,6 +410,30 @@ CREATE TRIGGER messages_guard_update_columns
   BEFORE UPDATE ON public.messages
   FOR EACH ROW EXECUTE FUNCTION public.guard_messages_update();
 
+-- Chat email notification dedupe/cooldown. One row per recipient/conversation
+-- tracks the last automatic email sent, so a burst of messages does not turn
+-- into one email per message.
+CREATE TABLE public.chat_email_notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  conversation_id UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
+  recipient_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  last_message_id UUID REFERENCES public.messages(id) ON DELETE SET NULL,
+  last_sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (conversation_id, recipient_id)
+);
+
+CREATE INDEX chat_email_notifications_recipient_idx
+  ON public.chat_email_notifications (recipient_id, last_sent_at DESC);
+
+ALTER TABLE public.chat_email_notifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY chat_email_notifications_admin_all ON public.chat_email_notifications
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND is_admin = TRUE)
+  );
+
 -- Aggregates "last message" + "unread count" per conversation in one round
 -- trip — used by /mensajes and /perfil to avoid scanning every message body.
 CREATE OR REPLACE FUNCTION public.conversations_overview()

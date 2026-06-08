@@ -187,14 +187,17 @@ export default function ChatRoom({ conversationId: initialConversationId, draftP
     setDraft('')
     stickToBottomRef.current = true
 
-    const { error } = await supabase.from('messages').insert({
-      id: tempId,
-      conversation_id: convId!,
-      sender_id: myId,
-      body,
+    const res = await fetch('/api/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: tempId,
+        conversation_id: convId!,
+        body,
+      }),
     })
 
-    if (error) {
+    if (!res.ok) {
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m))
       )

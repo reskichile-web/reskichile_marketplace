@@ -229,3 +229,83 @@ export function buildApprovedEmail(name: string | null, p: ApprovedProduct): Bui
   const text = `${name ? `Hola ${name},` : 'Hola,'}\n\nTu publicación de ${title} (${formatCLP(p.price)}) fue aprobada y ya está visible en el catálogo.\n\nRevisa tu producto aquí: ${url}\n\n¿Dudas? WhatsApp: https://wa.me/${OWNER_WHATSAPP} · Correo: ${SUPPORT_EMAIL}\n\nReSkiChile`
   return { subject, html, text }
 }
+
+// ─── Template: nuevo mensaje de chat ────────────────────────────────────────
+
+export interface ChatMessageEmail {
+  conversationId: string
+  senderName: string | null
+  recipientName: string | null
+  messageBody: string
+  productTitle: string | null
+  productImageUrl: string | null
+}
+
+function messagePreview(body: string): string {
+  const cleaned = body.replace(/\s+/g, ' ').trim()
+  return cleaned.length > 220 ? `${cleaned.slice(0, 217)}...` : cleaned
+}
+
+function chatBubble(p: ChatMessageEmail): string {
+  const sender = p.senderName?.trim() || 'Usuario de ReSkiChile'
+  const product = p.productTitle?.trim()
+  const body = escapeHtml(messagePreview(p.messageBody)).replace(/\n/g, '<br>')
+  const productLine = product
+    ? `<p style="margin:0 0 10px;font-size:13px;color:#6b7280;">Sobre <strong style="color:#374151;">${escapeHtml(product)}</strong></p>`
+    : ''
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+    style="border-collapse:separate;border:1px solid #e5edf6;border-radius:14px;background-color:#f8fbff;margin:18px 0 18px;">
+    <tr>
+      <td style="padding:18px 18px 16px;">
+        ${productLine}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td width="46" valign="top" style="padding:0 12px 0 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="46" height="46" bgcolor="#eef2f7" style="border-collapse:separate;background-color:#eef2f7;border-radius:50%;">
+                <tr>
+                  <td width="46" height="46" align="center" valign="middle" style="width:46px;height:46px;text-align:center;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:0 auto;">
+                      <tr>
+                        <td align="center" style="padding:8px 0 2px;">
+                          <span style="display:block;width:13px;height:13px;background-color:#94a3b8;border-radius:50%;font-size:0;line-height:0;">&nbsp;</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:1px 0 0;">
+                          <span style="display:block;width:24px;height:12px;background-color:#94a3b8;border-radius:12px 12px 6px 6px;font-size:0;line-height:0;">&nbsp;</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td valign="top" align="left" style="padding:0;text-align:left;">
+              <p style="margin:0 0 7px;font-size:13px;font-weight:700;color:${BRAND};text-align:left;">${escapeHtml(sender)}</p>
+              <div style="display:inline-block;max-width:100%;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:0 14px 14px 14px;padding:12px 14px;font-size:15px;line-height:1.5;color:#1f2937;text-align:left;">
+                ${body}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>`
+}
+
+export function buildChatMessageEmail(p: ChatMessageEmail): BuiltEmail {
+  const sender = p.senderName?.trim() || 'Alguien'
+  const url = `${SITE_URL}/mensajes/${p.conversationId}`
+  const subject = p.productTitle
+    ? `${sender} te escribió por ${p.productTitle}`
+    : `${sender} te envió un mensaje`
+  const html = layout(`
+    <p style="margin:0 0 14px 0;color:#1f2937;">${greeting(p.recipientName)}</p>
+    <p style="margin:0 0 14px 0;color:#1f2937;">Tienes un nuevo mensaje en ReSkiChile.</p>
+    ${chatBubble(p)}
+    <a href="${url}" style="display:block;width:100%;box-sizing:border-box;padding:14px 0;font-size:13px;font-weight:700;letter-spacing:0.02em;color:#ffffff;background-color:${BRAND};text-decoration:none;text-align:center;">RESPONDER MENSAJE</a>
+    ${contactBlock()}
+  `)
+  const text = `${p.recipientName ? `Hola ${p.recipientName},` : 'Hola,'}\n\n${sender} te envió un mensaje${p.productTitle ? ` sobre ${p.productTitle}` : ''}:\n\n"${messagePreview(p.messageBody)}"\n\nRespóndelo aquí: ${url}\n\nReSkiChile`
+  return { subject, html, text }
+}
