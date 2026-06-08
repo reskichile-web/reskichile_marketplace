@@ -303,7 +303,13 @@ export function buildChatMessageEmail(p: ChatMessageEmail): BuiltEmail {
     <p style="margin:0 0 14px 0;color:#1f2937;">${greeting(p.recipientName)}</p>
     <p style="margin:0 0 14px 0;color:#1f2937;">Tienes un nuevo mensaje en ReSkiChile.</p>
     ${chatBubble(p)}
-    <a href="${url}" style="display:block;width:100%;box-sizing:border-box;padding:14px 0;font-size:13px;font-weight:700;letter-spacing:0.02em;color:#ffffff;background-color:${BRAND};text-decoration:none;text-align:center;">RESPONDER MENSAJE</a>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:20px auto 0;">
+      <tr>
+        <td align="center" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid ${BRAND};">
+          <a href="${url}" style="display:inline-block;padding:13px 30px;font-size:13px;font-weight:700;letter-spacing:0.02em;color:${BRAND};text-decoration:none;text-align:center;">RESPONDER MENSAJE</a>
+        </td>
+      </tr>
+    </table>
     ${contactBlock()}
   `)
   const text = `${p.recipientName ? `Hola ${p.recipientName},` : 'Hola,'}\n\n${sender} te envió un mensaje${p.productTitle ? ` sobre ${p.productTitle}` : ''}:\n\n"${messagePreview(p.messageBody)}"\n\nRespóndelo aquí: ${url}\n\nReSkiChile`
