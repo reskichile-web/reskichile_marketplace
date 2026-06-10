@@ -430,7 +430,7 @@ export default function UsuariosPage() {
             <tr className="border-b bg-gray-50/50 text-left text-gray-500">
               <th className="px-5 py-3 font-medium">Usuario</th>
               <th className="px-5 py-3 font-medium hidden sm:table-cell">Teléfono</th>
-              <th className="px-5 py-3 font-medium hidden md:table-cell">Fecha</th>
+              <th className="px-5 py-3 font-medium hidden md:table-cell">Último ingreso</th>
               <th className="px-5 py-3 font-medium text-center">Publicaciones</th>
               <th className="px-5 py-3 font-medium">Estado</th>
               {showInviteCol && <th className="px-5 py-3 font-medium">Invitación</th>}
@@ -482,8 +482,8 @@ export default function UsuariosPage() {
                     <td className="px-5 py-3 hidden sm:table-cell text-gray-600">
                       {user.phone || '—'}
                     </td>
-                    <td className="px-5 py-3 hidden md:table-cell text-gray-500">
-                      {new Date(user.created_at).toLocaleDateString('es-CL')}
+                    <td className="px-5 py-3 hidden md:table-cell text-gray-500 whitespace-nowrap">
+                      {user.last_activity ? fmtDateTime(user.last_activity) : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-5 py-3 text-center">
                       {user.product_count > 0 ? (
