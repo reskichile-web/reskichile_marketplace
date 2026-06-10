@@ -104,8 +104,8 @@ function activityLabel(e: ActivityRow): string {
   return e.event_type
 }
 
-// White card with a hairline black border — admin KPI/branding style
-const CARD = 'bg-white rounded-xl border-[0.5px] border-gray-900'
+// White card with the standard admin border
+const CARD = 'bg-white rounded-xl border border-gray-200'
 
 export default function MetricasPage() {
   const [days, setDays] = useState<14 | 30>(14)
