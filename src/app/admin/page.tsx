@@ -189,28 +189,24 @@ export default function AdminHomePage() {
       label: 'Total publicaciones',
       value: stats.total,
       color: 'text-brand-500',
-      iconBg: 'bg-brand-50 text-brand-500',
       icon: <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />,
     },
     {
       label: 'Pendientes',
       value: pending.length,
       color: 'text-yellow-600',
-      iconBg: 'bg-yellow-50 text-yellow-500',
       icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />,
     },
     {
       label: 'Aprobados',
       value: stats.approved,
       color: 'text-green-600',
-      iconBg: 'bg-green-50 text-green-500',
       icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
     },
     {
       label: 'Vendidos',
       value: stats.sold,
       color: 'text-brand-500',
-      iconBg: 'bg-brand-50 text-brand-500',
       icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z" />,
     },
   ]
@@ -226,16 +222,14 @@ export default function AdminHomePage() {
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         {cards.map((card) => (
-          <div key={card.label} className={`${CARD} p-5`}>
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{card.label}</p>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${card.iconBg}`}>
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                  {card.icon}
-                </svg>
-              </div>
+          <div key={card.label} className={`${CARD} p-5 flex items-center gap-4`}>
+            <svg className="w-8 h-8 text-gray-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              {card.icon}
+            </svg>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">{card.label}</p>
+              <p className={`text-3xl font-black ${card.color}`}>{card.value}</p>
             </div>
-            <p className={`text-3xl font-black mt-1 ${card.color}`}>{card.value}</p>
           </div>
         ))}
       </div>
