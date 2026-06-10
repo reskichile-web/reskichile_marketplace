@@ -107,7 +107,7 @@ export default function AdminHomePage() {
       if (seen.has(key)) continue
       seen.add(key)
       unique.push(v)
-      if (unique.length === 10) break
+      if (unique.length === 25) break
     }
     setVisits(unique)
     setLoading(false)
@@ -338,7 +338,7 @@ export default function AdminHomePage() {
               Aún no hay visitas registradas.
             </p>
           ) : (
-            <ul className="divide-y divide-gray-50">
+            <ul className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
               {visits.map(v => {
                 const who = v.users?.name || 'Anónimo'
                 const where = [v.city, v.country].filter(Boolean).join(', ')

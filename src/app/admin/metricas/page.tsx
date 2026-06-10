@@ -47,10 +47,13 @@ interface CategoryRow {
   product_views: number
 }
 
-interface ClickRow {
-  name: string
+interface ClickEvent {
+  id: number
+  event_name: string | null
   category: string | null
-  clicks: number
+  created_at: string
+  users: { name: string | null } | null
+  products: { brand: string | null; model: string | null } | null
 }
 
 interface TopProductRow {
@@ -112,7 +115,7 @@ export default function MetricasPage() {
   const [loading, setLoading] = useState(true)
   const [daily, setDaily] = useState<DailyRow[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
-  const [clicks, setClicks] = useState<ClickRow[]>([])
+  const [clicks, setClicks] = useState<ClickEvent[]>([])
   const [topProducts, setTopProducts] = useState<TopProductRow[]>([])
   const [activity, setActivity] = useState<ActivityRow[]>([])
 
@@ -124,7 +127,12 @@ export default function MetricasPage() {
       const [dailyRes, catRes, clickRes, topRes, actRes] = await Promise.all([
         supabase.rpc('admin_daily_visits', { p_days: days }),
         supabase.rpc('admin_category_views', { p_days: days }),
-        supabase.rpc('admin_landing_clicks', { p_days: days }),
+        supabase
+          .from('events')
+          .select('id, event_name, category, created_at, users(name), products(brand, model)')
+          .eq('event_type', 'click')
+          .order('created_at', { ascending: false })
+          .limit(50),
         supabase.rpc('admin_top_products', { p_days: days, p_limit: 10 }),
         supabase
           .from('events')
@@ -136,7 +144,7 @@ export default function MetricasPage() {
       if (cancelled) return
       setDaily((dailyRes.data as DailyRow[]) || [])
       setCategories((catRes.data as CategoryRow[]) || [])
-      setClicks((clickRes.data as ClickRow[]) || [])
+      setClicks((clickRes.data as unknown as ClickEvent[]) || [])
       setTopProducts((topRes.data as TopProductRow[]) || [])
       setActivity((actRes.data as unknown as ActivityRow[]) || [])
       setLoading(false)
@@ -279,25 +287,33 @@ export default function MetricasPage() {
           )}
         </div>
 
-        {/* Landing clicks */}
-        <div className={`${CARD} p-5`}>
-          <h2 className="text-sm font-bold text-gray-900 mb-5">Clicks en la landing</h2>
+        {/* Landing clicks — recent history, scrolls after a few rows */}
+        <div className={`${CARD} overflow-hidden`}>
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-bold text-gray-900">Clicks en la landing</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Historial de los últimos clicks</p>
+          </div>
           {clicks.length === 0 ? (
-            <p className="text-sm text-gray-400 py-6 text-center">Sin clicks registrados todavía.</p>
+            <p className="text-sm text-gray-400 py-8 text-center">Sin clicks registrados todavía.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
-              {clicks.map((c, i) => (
-                <div key={i} className="flex items-center justify-between py-2.5">
-                  <span className="text-sm font-medium text-gray-700">
-                    {CLICK_LABELS[c.name] || c.name}
-                    {c.category && (
-                      <span className="text-xs text-gray-400 ml-1.5">{PRODUCT_TYPES[c.category] || c.category}</span>
-                    )}
-                  </span>
-                  <span className="text-base font-black text-brand-500">{c.clicks}</span>
-                </div>
-              ))}
-            </div>
+            <ul className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+              {clicks.map(c => {
+                const productTitle = [c.products?.brand, c.products?.model].filter(Boolean).join(' ')
+                const detail = productTitle || (c.category ? PRODUCT_TYPES[c.category] || c.category : null)
+                return (
+                  <li key={c.id} className="px-5 py-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {CLICK_LABELS[c.event_name ?? ''] || c.event_name}
+                        {detail && <span className="ml-1.5 text-xs font-normal text-gray-400">{detail}</span>}
+                      </p>
+                      <p className="text-[11px] text-gray-400 truncate">{c.users?.name || 'Anónimo'}</p>
+                    </div>
+                    <span className="text-[10px] text-gray-400 shrink-0 whitespace-nowrap">{timeAgo(c.created_at)}</span>
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </div>
       </div>
