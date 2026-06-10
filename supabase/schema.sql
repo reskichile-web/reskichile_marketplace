@@ -669,3 +669,21 @@ REVOKE ALL ON FUNCTION public.admin_user_last_activity() FROM anon;
 GRANT EXECUTE ON FUNCTION public.admin_user_last_activity() TO authenticated;
 
 CREATE INDEX IF NOT EXISTS events_user_idx ON public.events (user_id) WHERE user_id IS NOT NULL;
+
+-- ============================================================
+-- PRODUCT SEARCH (pg_trgm + unaccent)
+-- ============================================================
+-- products.search_text: normalized (lower+unaccent) concat of brand, model,
+-- type synonyms (ES/EN), condition, description, attributes and location,
+-- maintained by the products_search_text_sync trigger. Searched by the
+-- search_products() RPC (SECURITY INVOKER — public sees approved only):
+-- strict mode requires every query word to match (substring or trigram
+-- fuzzy); relaxed mode (frontend fallback) accepts any word. Matches on
+-- brand/model/type rank above description/attribute-only matches.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+ALTER TABLE public.products ADD COLUMN search_text TEXT;
+CREATE INDEX products_search_trgm_idx ON public.products USING gin (search_text gin_trgm_ops);
+-- Full definitions of product_type_synonyms(), products_search_text_sync()
+-- and search_products(q, max_results, relaxed) live in the migrations
+-- 'product_search' and 'search_products_primary_boost'.

@@ -113,6 +113,17 @@ token, marks the payment `approved`/`rejected`, and on success moves the product
 `draft → pending` (into the admin review queue). Note: the `payments` table is **not** in
 `schema.sql` — it exists in the live DB only.
 
+### Product search
+
+`SearchBar` (header) does live search via the `search_products(q, max_results, relaxed)`
+RPC: pg_trgm + unaccent over `products.search_text` (normalized concat of brand, model,
+type synonyms ES/EN, condition, description, attributes, location — maintained by the
+`products_search_text_sync` trigger). Strict mode requires every word to match
+(substring or fuzzy); the frontend falls back to `relaxed: true` so something always
+shows. Brand/model/type matches outrank description-only matches. SECURITY INVOKER —
+anon only sees approved products. Type synonyms live in `product_type_synonyms()` (SQL);
+update it when adding a product type.
+
 ### Observability (first-party analytics)
 
 All events flow through `track()` in `src/lib/track.ts` → `POST /api/track` →
