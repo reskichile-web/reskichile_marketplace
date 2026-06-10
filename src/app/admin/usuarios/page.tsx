@@ -115,7 +115,7 @@ Equipo ReSkiChile`
   function buildEmailBody(link: string): string {
     return `${greeting}
 
-Te damos la bienvenida a *ReSkiChile*.
+Te damos la bienvenida a ReSkiChile.
 
 Como publicaste con nosotros la temporada pasada y aún tienes productos activos, nos dimos el trabajo de crearte una cuenta para que puedas seguir gestionándolos sin volver a registrarte.
 
@@ -123,9 +123,9 @@ Para terminar el registro solo falta que definas tu contraseña:
 
 ${link}
 
-El link es seguro y único para ti — no lo compartas con nadie. Expira en 7 días.
+El link es seguro y único para ti, no lo compartas con nadie. Expira en 7 días.
 
-Cualquier duda, respondé este correo.
+Cualquier duda, responde este correo.
 
 Saludos,
 Equipo ReSkiChile`
