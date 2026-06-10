@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import RecentMessagesCard from '@/components/admin/RecentMessagesCard'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -373,6 +374,9 @@ export default function MetricasPage() {
           )}
         </div>
       </div>
+
+      {/* Recent chat activity */}
+      <RecentMessagesCard className="mt-6" />
     </div>
   )
 }

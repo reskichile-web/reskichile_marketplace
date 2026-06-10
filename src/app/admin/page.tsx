@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import AdminDashboardSkeleton from '@/components/skeletons/AdminDashboardSkeleton'
 import Spinner from '@/components/Spinner'
+import RecentMessagesCard from '@/components/admin/RecentMessagesCard'
 
 interface PendingProduct {
   id: string
@@ -366,6 +367,9 @@ export default function AdminHomePage() {
           )}
         </div>
       </div>
+
+      {/* Recent chat activity */}
+      <RecentMessagesCard className="mt-6" />
 
       {/* Rejection modal */}
       {rejectingId && (

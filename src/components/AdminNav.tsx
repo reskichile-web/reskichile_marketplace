@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: 'Inicio', href: '/admin' },
   { label: 'Publicaciones', href: '/admin/publicaciones' },
   { label: 'Usuarios', href: '/admin/usuarios' },
+  { label: 'Chats', href: '/admin/chats' },
   { label: 'Mercado', href: '/admin/finanzas' },
   { label: 'Métricas', href: '/admin/metricas' },
 ]
