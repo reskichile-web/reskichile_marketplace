@@ -10,7 +10,7 @@ export default function ClaimListingsPrompt({ className, isLoggedIn = false }: P
   const external = isLoggedIn
 
   return (
-    <div className={`flex flex-col items-center gap-0.5 text-center md:flex-row md:items-baseline md:justify-start md:gap-2 md:text-left ${className || ''}`}>
+    <div className={`flex flex-col items-center justify-center gap-0.5 text-center md:flex-row md:items-baseline md:gap-2 ${className || ''}`}>
       <p className="text-[11px] font-normal tracking-wide uppercase text-gray-400">
         ¿Reski publicó un producto tuyo?
       </p>

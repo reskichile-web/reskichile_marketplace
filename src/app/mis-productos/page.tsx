@@ -170,7 +170,10 @@ export default async function MyProductsPage() {
                     <h2 className={`font-body font-medium truncate pr-8 ${titleCls}`}>{title}</h2>
                     <p className={`font-body text-lg font-semibold mt-1 ${priceCls}`}>${product.price.toLocaleString('es-CL')}</p>
                     <p className={`text-xs truncate ${subCls}`}>
-                      {CONDITIONS[product.condition]} · {product.region} · {viewCounts.get(product.id) ?? 0} {(viewCounts.get(product.id) ?? 0) === 1 ? 'visita' : 'visitas'}
+                      {CONDITIONS[product.condition]} · {product.region} ·{' '}
+                      <span className="font-semibold text-gray-700">
+                        {viewCounts.get(product.id) ?? 0} {(viewCounts.get(product.id) ?? 0) === 1 ? 'visita' : 'visitas'}
+                      </span>
                     </p>
                   </div>
                 </div>

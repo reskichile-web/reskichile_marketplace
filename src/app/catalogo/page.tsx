@@ -143,7 +143,6 @@ export default async function CatalogPage({ searchParams }: Props) {
         <p className="mt-1.5 max-w-2xl text-sm text-gray-500 leading-relaxed">
           Equipo de montaña usado, directo de quien lo usó.
         </p>
-        <ClaimListingsPrompt className="mt-4 max-w-2xl mx-auto md:mx-0" isLoggedIn={isLoggedIn} />
       </div>
 
       <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
@@ -248,6 +247,11 @@ export default async function CatalogPage({ searchParams }: Props) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Claim-your-listings prompt — page footer, centered */}
+      <div className="mt-10 md:mt-12 border-t border-gray-100 pt-6">
+        <ClaimListingsPrompt isLoggedIn={isLoggedIn} />
       </div>
     </div>
   )
