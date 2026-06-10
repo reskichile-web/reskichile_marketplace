@@ -236,11 +236,17 @@ export default function AdminHomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2 space-y-6">
         {/* Pending review queue */}
-        <div className={`lg:col-span-2 ${CARD} overflow-hidden`}>
+        <div className={`${CARD} overflow-hidden`}>
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
-              <h2 className="font-body text-lg font-bold text-gray-900">Pendientes de revisión</h2>
+              <h2 className="font-body text-lg font-bold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-gray-900 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 019 9v.375M10.125 2.25A3.375 3.375 0 0113.5 5.625v1.5c0 .621.504 1.125 1.125 1.125h1.5a3.375 3.375 0 013.375 3.375M9 15l2.25 2.25L15 12" />
+                </svg>
+                Pendientes de revisión
+              </h2>
               <p className="text-xs text-gray-500 mt-0.5">{pending.length} publicaciones esperando aprobación</p>
             </div>
             <Link href="/admin/publicaciones" className="text-sm text-brand-500 hover:underline shrink-0">
@@ -320,11 +326,21 @@ export default function AdminHomePage() {
           )}
         </div>
 
+        {/* Recent chat activity — below the pending queue */}
+        <RecentMessagesCard />
+        </div>
+
         {/* Recent unique visitors */}
         <div className={`${CARD} overflow-hidden`}>
           <div className="px-5 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
-              <h2 className="font-body text-lg font-bold text-gray-900">Últimas visitas</h2>
+              <h2 className="font-body text-lg font-bold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-gray-900 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Últimas visitas
+              </h2>
               <Link href="/admin/metricas" className="text-xs text-brand-500 hover:underline shrink-0">
                 Ver métricas
               </Link>
@@ -367,9 +383,6 @@ export default function AdminHomePage() {
           )}
         </div>
       </div>
-
-      {/* Recent chat activity */}
-      <RecentMessagesCard className="mt-6" />
 
       {/* Rejection modal */}
       {rejectingId && (

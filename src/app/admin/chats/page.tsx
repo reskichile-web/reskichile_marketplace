@@ -168,7 +168,7 @@ function ChatsContent() {
                           </p>
                         )}
                       </div>
-                      <span className="text-[10px] text-gray-400 shrink-0">
+                      <span className="text-xs text-gray-400 shrink-0">
                         {c.last_message_at ? timeAgo(c.last_message_at) : ''}
                       </span>
                     </button>

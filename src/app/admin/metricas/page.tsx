@@ -310,7 +310,7 @@ export default function MetricasPage() {
                       </p>
                       <p className="text-[11px] text-gray-400 truncate">{c.users?.name || 'Anónimo'}</p>
                     </div>
-                    <span className="text-[10px] text-gray-400 shrink-0 whitespace-nowrap">{timeAgo(c.created_at)}</span>
+                    <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">{timeAgo(c.created_at)}</span>
                   </li>
                 )
               })}
