@@ -24,6 +24,7 @@ interface RecentVisit {
   created_at: string
   country: string | null
   city: string | null
+  visitor_id: string | null
   users: { name: string | null } | null
 }
 
@@ -32,6 +33,7 @@ interface Stats {
   approved: number
   sold: number
   visitsToday: number
+  uniquesToday: number
 }
 
 function timeAgo(iso: string): string {
@@ -45,8 +47,19 @@ function timeAgo(iso: string): string {
   return `hace ${days} d`
 }
 
+// "9 jun · 18:43" — compact Reski-style date+time
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }).replace('.', '')
+  const time = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+  return `${date} · ${time}`
+}
+
+// White card with a hairline black border — admin KPI/branding style
+const CARD = 'bg-white rounded-xl border-[0.5px] border-gray-900'
+
 export default function AdminHomePage() {
-  const [stats, setStats] = useState<Stats>({ total: 0, approved: 0, sold: 0, visitsToday: 0 })
+  const [stats, setStats] = useState<Stats>({ total: 0, approved: 0, sold: 0, visitsToday: 0, uniquesToday: 0 })
   const [pending, setPending] = useState<PendingProduct[]>([])
   const [visits, setVisits] = useState<RecentVisit[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,10 +69,8 @@ export default function AdminHomePage() {
 
   const load = useCallback(async () => {
     const supabase = createClient()
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
 
-    const [totalRes, approvedRes, soldRes, pendingRes, visitsRes, visitsTodayRes] = await Promise.all([
+    const [totalRes, approvedRes, soldRes, pendingRes, visitsRes, todayRes] = await Promise.all([
       supabase.from('products').select('id', { count: 'exact', head: true }),
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'sold'),
@@ -68,27 +79,37 @@ export default function AdminHomePage() {
         .select('id, product_type, brand, model, price, created_at, users(name, email), product_images(url, order)')
         .eq('status', 'pending')
         .order('created_at', { ascending: true }),
+      // Wide window so we can dedupe down to the most recent UNIQUE visitors
       supabase
         .from('events')
-        .select('id, path, created_at, country, city, users(name)')
+        .select('id, path, created_at, country, city, visitor_id, users(name)')
         .eq('event_type', 'pageview')
         .order('created_at', { ascending: false })
-        .limit(12),
-      supabase
-        .from('events')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_type', 'pageview')
-        .gte('created_at', startOfDay.toISOString()),
+        .limit(80),
+      supabase.rpc('admin_daily_visits', { p_days: 1 }),
     ])
 
+    const todayRow = (todayRes.data as { visits: number; uniques: number }[] | null)?.at(-1)
     setStats({
       total: totalRes.count ?? 0,
       approved: approvedRes.count ?? 0,
       sold: soldRes.count ?? 0,
-      visitsToday: visitsTodayRes.count ?? 0,
+      visitsToday: Number(todayRow?.visits ?? 0),
+      uniquesToday: Number(todayRow?.uniques ?? 0),
     })
     setPending((pendingRes.data as unknown as PendingProduct[]) || [])
-    setVisits((visitsRes.data as unknown as RecentVisit[]) || [])
+
+    // Most recent view per unique visitor
+    const seen = new Set<string>()
+    const unique: RecentVisit[] = []
+    for (const v of ((visitsRes.data as unknown as RecentVisit[]) || [])) {
+      const key = v.visitor_id ?? `row-${v.id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      unique.push(v)
+      if (unique.length === 10) break
+    }
+    setVisits(unique)
     setLoading(false)
   }, [])
 
@@ -164,10 +185,34 @@ export default function AdminHomePage() {
   if (loading) return <AdminDashboardSkeleton />
 
   const cards = [
-    { label: 'Total publicaciones', value: stats.total, color: 'text-gray-900', bg: 'bg-gray-50' },
-    { label: 'Pendientes', value: pending.length, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Aprobados', value: stats.approved, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Vendidos', value: stats.sold, color: 'text-brand-600', bg: 'bg-brand-50' },
+    {
+      label: 'Total publicaciones',
+      value: stats.total,
+      color: 'text-brand-500',
+      iconBg: 'bg-brand-50 text-brand-500',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />,
+    },
+    {
+      label: 'Pendientes',
+      value: pending.length,
+      color: 'text-yellow-600',
+      iconBg: 'bg-yellow-50 text-yellow-500',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />,
+    },
+    {
+      label: 'Aprobados',
+      value: stats.approved,
+      color: 'text-green-600',
+      iconBg: 'bg-green-50 text-green-500',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+    },
+    {
+      label: 'Vendidos',
+      value: stats.sold,
+      color: 'text-brand-500',
+      iconBg: 'bg-brand-50 text-brand-500',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z M6 6h.008v.008H6V6z" />,
+    },
   ]
 
   return (
@@ -181,16 +226,23 @@ export default function AdminHomePage() {
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         {cards.map((card) => (
-          <div key={card.label} className={`${card.bg} rounded-xl p-5`}>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{card.label}</p>
-            <p className={`text-3xl font-black mt-2 ${card.color}`}>{card.value}</p>
+          <div key={card.label} className={`${CARD} p-5`}>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{card.label}</p>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${card.iconBg}`}>
+                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  {card.icon}
+                </svg>
+              </div>
+            </div>
+            <p className={`text-3xl font-black mt-1 ${card.color}`}>{card.value}</p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Pending review queue */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className={`lg:col-span-2 ${CARD} overflow-hidden`}>
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h2 className="font-body text-lg font-bold text-gray-900">Pendientes de revisión</h2>
@@ -273,11 +325,18 @@ export default function AdminHomePage() {
           )}
         </div>
 
-        {/* Recent visits */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-body text-lg font-bold text-gray-900">Últimas visitas</h2>
-            <span className="text-xs text-gray-400">{stats.visitsToday} hoy</span>
+        {/* Recent unique visitors */}
+        <div className={`${CARD} overflow-hidden`}>
+          <div className="px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <h2 className="font-body text-lg font-bold text-gray-900">Últimas visitas</h2>
+              <Link href="/admin/metricas" className="text-xs text-brand-500 hover:underline shrink-0">
+                Ver métricas
+              </Link>
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {stats.visitsToday} {stats.visitsToday === 1 ? 'vista' : 'vistas'} · {stats.uniquesToday} {stats.uniquesToday === 1 ? 'único' : 'únicos'} hoy
+            </p>
           </div>
 
           {visits.length === 0 ? (
@@ -290,16 +349,22 @@ export default function AdminHomePage() {
                 const who = v.users?.name || 'Anónimo'
                 const where = [v.city, v.country].filter(Boolean).join(', ')
                 return (
-                  <li key={v.id} className="px-5 py-2.5">
-                    <Link href={v.path} className="block text-sm font-medium text-gray-800 hover:text-brand-500 truncate" title={v.path}>
-                      {v.path}
-                    </Link>
-                    <p className="text-xs text-gray-400 truncate">
-                      {who}
-                      {where && <><span className="mx-1 text-gray-300">·</span>{where}</>}
-                      <span className="mx-1 text-gray-300">·</span>
-                      {timeAgo(v.created_at)}
-                    </p>
+                  <li key={v.id} className="px-5 py-2.5 flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${v.users?.name ? 'bg-brand-50 text-brand-500' : 'bg-gray-100 text-gray-400'}`}>
+                      {who.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {who}
+                        {where && <span className="ml-1.5 text-xs font-normal text-gray-400">{where}</span>}
+                      </p>
+                      <Link href={v.path} className="block text-xs text-gray-400 hover:text-brand-500 truncate" title={v.path}>
+                        {v.path}
+                      </Link>
+                    </div>
+                    <span className="text-[10px] text-gray-400 shrink-0 text-right leading-tight whitespace-nowrap">
+                      {fmtDateTime(v.created_at)}
+                    </span>
                   </li>
                 )
               })}

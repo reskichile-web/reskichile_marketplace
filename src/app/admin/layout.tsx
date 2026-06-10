@@ -14,6 +14,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
       <AdminNav userName={userName ?? 'Admin'} role={role} avatarUrl={avatarUrl} />
+      {/* Spacer for the fixed nav (h-20) so content never slides under it */}
+      <div className="h-20" />
       {children}
     </>
   )

@@ -20,13 +20,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     admin.auth.admin.getUserById(params.id),
     admin
       .from('products')
-      .select('id, brand, model, status, price, sale_price, slug, created_at, product_type')
+      .select('id, brand, model, status, price, sale_price, slug, created_at, product_type, product_images(url, order)')
       .eq('seller_id', params.id)
       .order('created_at', { ascending: false }),
     admin
       .from('conversations')
-      .select('id', { count: 'exact', head: true })
-      .or(`buyer_id.eq.${params.id},seller_id.eq.${params.id}`),
+      .select('id, created_at, last_message_at, buyer:users!buyer_id(name), seller:users!seller_id(name), products(id, brand, model, slug, product_type, product_images(url, order))')
+      .or(`buyer_id.eq.${params.id},seller_id.eq.${params.id}`)
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .limit(20),
     admin
       .from('password_invites')
       .select('slug, expires_at, used_at, created_at, opened_at')
@@ -40,14 +42,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         last_sign_in_at: authUser.last_sign_in_at ?? null,
         email_confirmed_at: authUser.email_confirmed_at ?? null,
         created_at: authUser.created_at ?? null,
-        providers: (authUser.app_metadata?.providers as string[] | undefined) ?? [],
       }
     : null
 
   return NextResponse.json({
     auth,
     products: productsRes.data ?? [],
-    conversations_count: convsRes.count ?? 0,
+    conversations: convsRes.data ?? [],
     invites: invitesRes.data ?? [],
   })
 }

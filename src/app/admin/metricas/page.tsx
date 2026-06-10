@@ -5,6 +5,34 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import {
+  GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
+  GiSkier, GiWinterGloves, GiMonclerJacket,
+  GiArmoredPants, GiLightBackpack,
+  GiDuffelBag, GiMountaintop, GiFullMotorcycleHelmet,
+  GiProtectionGlasses, GiRadarSweep, GiPhotoCamera,
+} from 'react-icons/gi'
+import { FaSkiingNordic } from 'react-icons/fa'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TYPE_ICONS: Record<string, any> = {
+  esquis: GiSkis,
+  snowboards: GiSnowboard,
+  botas_esqui: GiSkiBoot,
+  botas_snowboard: GiWalkingBoot,
+  bastones: GiSkier,
+  cascos: GiFullMotorcycleHelmet,
+  guantes: GiWinterGloves,
+  fijaciones: FaSkiingNordic,
+  parkas: GiMonclerJacket,
+  pantalones: GiArmoredPants,
+  antiparras: GiProtectionGlasses,
+  mochilas: GiLightBackpack,
+  bolsos: GiDuffelBag,
+  equipo_avalanchas: GiRadarSweep,
+  camaras_accion: GiPhotoCamera,
+  otros: GiMountaintop,
+}
 
 interface DailyRow {
   day: string // YYYY-MM-DD (America/Santiago)
@@ -15,6 +43,8 @@ interface DailyRow {
 interface CategoryRow {
   category: string
   views: number
+  catalog_views: number
+  product_views: number
 }
 
 interface ClickRow {
@@ -74,6 +104,9 @@ function activityLabel(e: ActivityRow): string {
   return e.event_type
 }
 
+// White card with a hairline black border — admin KPI/branding style
+const CARD = 'bg-white rounded-xl border-[0.5px] border-gray-900'
+
 export default function MetricasPage() {
   const [days, setDays] = useState<14 | 30>(14)
   const [loading, setLoading] = useState(true)
@@ -131,16 +164,16 @@ export default function MetricasPage() {
   // Sum of daily uniques (a returning visitor counts once per day, not once per period)
   const totalUniques = daily.reduce((s, d) => s + Number(d.uniques), 0)
   const maxVisits = Math.max(...chartDays.map(d => Number(d.visits)), 1)
-  const maxCat = Math.max(...categories.map(c => Number(c.views)), 1)
+  const totalCatViews = categories.reduce((s, c) => s + Number(c.views), 0)
   const maxClicks = Math.max(...clicks.map(c => Number(c.clicks)), 1)
 
   if (loading) return <AdminTableSkeleton />
 
-  const cards = [
-    { label: 'Visitas hoy', value: Number(todayRow?.visits ?? 0), color: 'text-gray-900', bg: 'bg-gray-50' },
-    { label: 'Únicos hoy', value: Number(todayRow?.uniques ?? 0), color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: `Visitas ${days}d`, value: totalVisits, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: `Únicos ${days}d (suma diaria)`, value: totalUniques, color: 'text-purple-600', bg: 'bg-purple-50' },
+  const kpis = [
+    { label: 'Visitas hoy', value: Number(todayRow?.visits ?? 0) },
+    { label: 'Únicos hoy', value: Number(todayRow?.uniques ?? 0) },
+    { label: `Visitas ${days}d`, value: totalVisits },
+    { label: `Únicos ${days}d`, value: totalUniques },
   ]
 
   return (
@@ -164,18 +197,18 @@ export default function MetricasPage() {
         </div>
       </div>
 
-      {/* Stat cards */}
+      {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {cards.map(card => (
-          <div key={card.label} className={`${card.bg} rounded-xl p-5`}>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{card.label}</p>
-            <p className={`text-3xl font-black mt-2 ${card.color}`}>{card.value}</p>
+        {kpis.map(kpi => (
+          <div key={kpi.label} className={`${CARD} p-5`}>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
+            <p className="text-3xl font-black mt-2 text-brand-500">{kpi.value}</p>
           </div>
         ))}
       </div>
 
       {/* Daily visits chart */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
+      <div className={`${CARD} p-5 mb-8`}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-bold text-gray-900">Visitas diarias</h2>
           <div className="flex items-center gap-3 text-[10px] text-gray-400">
@@ -183,7 +216,7 @@ export default function MetricasPage() {
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand-500 inline-block" /> Únicos</span>
           </div>
         </div>
-        <div className="flex items-end gap-1 h-40">
+        <div className="flex items-end gap-1 h-40 pt-8">
           {chartDays.map(d => {
             const visits = Number(d.visits)
             const uniques = Number(d.uniques)
@@ -191,12 +224,17 @@ export default function MetricasPage() {
             const hUniques = (uniques / maxVisits) * 100
             const [, m, dd] = d.day.split('-')
             return (
-              <div
-                key={d.day}
-                className="flex-1 h-full flex flex-col justify-end relative group"
-                title={`${dd}/${m}: ${visits} visitas · ${uniques} únicos`}
-              >
-                <div className="relative w-full rounded-t bg-brand-100" style={{ height: `${Math.max(hVisits, visits > 0 ? 3 : 1)}%` }}>
+              <div key={d.day} className="flex-1 h-full flex flex-col justify-end relative group">
+                {/* Hover tooltip */}
+                <div className="hidden group-hover:flex flex-col items-center absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 pointer-events-none">
+                  <div className="bg-gray-900 text-white text-[10px] leading-relaxed rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg text-center">
+                    <span className="block font-bold">{dd}/{m}</span>
+                    <span className="block">{visits} {visits === 1 ? 'vista' : 'vistas'}</span>
+                    <span className="block text-brand-300">{uniques} {uniques === 1 ? 'único' : 'únicos'}</span>
+                  </div>
+                  <div className="w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
+                </div>
+                <div className="relative w-full rounded-t bg-brand-100 group-hover:bg-brand-200 transition-colors" style={{ height: `${Math.max(hVisits, visits > 0 ? 3 : 1)}%` }}>
                   <div className="absolute bottom-0 left-0 right-0 rounded-t bg-brand-500" style={{ height: `${visits > 0 ? (hUniques / Math.max(hVisits, 1)) * 100 : 0}%` }} />
                 </div>
                 <span className="text-[9px] text-gray-400 text-center mt-1 truncate">{dd}/{m}</span>
@@ -207,30 +245,43 @@ export default function MetricasPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
-        {/* Category views */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h2 className="text-sm font-bold text-gray-900 mb-5">Vistas por categoría</h2>
+        {/* Category views — icon rows with catalog/product split + share */}
+        <div className={`${CARD} p-5`}>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-bold text-gray-900">Vistas por categoría</h2>
+            {totalCatViews > 0 && <span className="text-xs text-gray-400">{totalCatViews} en total</span>}
+          </div>
           {categories.length === 0 ? (
             <p className="text-sm text-gray-400 py-6 text-center">Sin datos todavía.</p>
           ) : (
-            <div className="space-y-3">
-              {categories.map(c => (
-                <div key={c.category}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">{PRODUCT_TYPES[c.category] || c.category}</span>
-                    <span className="text-sm font-black text-gray-900">{c.views}</span>
+            <div className="divide-y divide-gray-50">
+              {categories.map(c => {
+                const Icon = TYPE_ICONS[c.category] || GiMountaintop
+                const share = totalCatViews > 0 ? Math.round((Number(c.views) / totalCatViews) * 100) : 0
+                return (
+                  <div key={c.category} className="flex items-center gap-3 py-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
+                      <Icon className="w-5 h-5 text-brand-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{PRODUCT_TYPES[c.category] || c.category}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {Number(c.catalog_views)} en catálogo · {Number(c.product_views)} en productos
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-base font-black text-brand-500 leading-tight">{c.views}</p>
+                      <p className="text-[10px] text-gray-400">{share}% del total</p>
+                    </div>
                   </div>
-                  <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(Number(c.views) / maxCat) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
 
         {/* Landing clicks */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className={`${CARD} p-5`}>
           <h2 className="text-sm font-bold text-gray-900 mb-5">Clicks en la landing</h2>
           {clicks.length === 0 ? (
             <p className="text-sm text-gray-400 py-6 text-center">Sin clicks registrados todavía.</p>
@@ -245,7 +296,7 @@ export default function MetricasPage() {
                         <span className="text-xs text-gray-400 ml-1.5">{PRODUCT_TYPES[c.category] || c.category}</span>
                       )}
                     </span>
-                    <span className="text-sm font-black text-gray-900">{c.clicks}</span>
+                    <span className="text-sm font-black text-brand-500">{c.clicks}</span>
                   </div>
                   <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
                     <div className="h-full rounded-full bg-gray-900" style={{ width: `${(Number(c.clicks) / maxClicks) * 100}%` }} />
@@ -259,7 +310,7 @@ export default function MetricasPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Top products */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className={`${CARD} overflow-hidden`}>
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="text-sm font-bold text-gray-900">Top productos por visitas</h2>
           </div>
@@ -278,7 +329,7 @@ export default function MetricasPage() {
                           {title}
                         </Link>
                       </td>
-                      <td className="px-5 py-2.5 text-right font-black text-gray-900">{p.views}</td>
+                      <td className="px-5 py-2.5 text-right font-black text-brand-500">{p.views}</td>
                     </tr>
                   )
                 })}
@@ -288,7 +339,7 @@ export default function MetricasPage() {
         </div>
 
         {/* Activity feed */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className={`${CARD} overflow-hidden`}>
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="text-sm font-bold text-gray-900">Actividad reciente</h2>
             <p className="text-xs text-gray-400 mt-0.5">Logins, registros e invitaciones abiertas</p>
