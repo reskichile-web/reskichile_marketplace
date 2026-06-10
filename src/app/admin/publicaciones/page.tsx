@@ -327,7 +327,7 @@ export default function PublicacionesPage() {
                 <th className="pb-2 pr-4 font-medium">Producto</th>
                 <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Precio</th>
                 <th className="pb-2 pr-4 font-medium hidden md:table-cell">Vendedor</th>
-                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Días publicado</th>
+                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Tiempo</th>
                 <th className="pb-2 pr-4 font-medium">Estado</th>
                 <th className="pb-2 font-medium">Acciones</th>
               </tr>
@@ -344,7 +344,7 @@ export default function PublicacionesPage() {
                 return (
                   <React.Fragment key={product.id}>
                     <tr className={`border-b hover:bg-gray-50 cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`} onClick={() => setExpandedId(isExpanded ? null : product.id)}>
-                      <td className="py-3 pr-4">
+                      <td className="py-3.5 pr-5">
                         <div className="flex items-center gap-3">
                           <svg className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -372,27 +372,29 @@ export default function PublicacionesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 pr-4 hidden sm:table-cell font-medium text-brand-500">
+                      <td className="py-3.5 pr-5 hidden sm:table-cell font-medium text-brand-500">
                         ${product.price.toLocaleString('es-CL')}
                       </td>
-                      <td className="py-3 pr-4 hidden md:table-cell text-gray-600">
+                      <td className="py-3.5 pr-5 hidden md:table-cell text-gray-600">
                         {isAnon ? (
                           <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">Sin Usuario Creado</span>
-                        ) : seller}
+                        ) : (
+                          <span className="block max-w-[150px] truncate" title={seller}>{seller}</span>
+                        )}
                       </td>
-                      <td className="py-3 pr-4 hidden md:table-cell text-gray-600">
+                      <td className="py-3.5 pr-5 hidden md:table-cell text-gray-600">
                         {['approved', 'sold', 'archived'].includes(product.status) ? (
                           <span className="font-medium">{product.days_published} {product.days_published === 1 ? 'día' : 'días'}</span>
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
                       </td>
-                      <td className="py-3 pr-4">
+                      <td className="py-3.5 pr-5">
                         <span className={`text-xs px-2 py-1 rounded ${STATUS_COLORS[product.status] || ''}`}>
                           {PRODUCT_STATUSES[product.status] || product.status}
                         </span>
                       </td>
-                      <td className="py-3" onClick={e => e.stopPropagation()}>
+                      <td className="py-3.5" onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1.5">
                           {product.status === 'pending' && (
                             <>
