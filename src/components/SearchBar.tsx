@@ -69,6 +69,7 @@ export default function SearchBar() {
       return
     }
     setSearching(true)
+    setOpen(true) // dropdown opens immediately with a minimal spinner
     const id = ++requestId.current
     const timer = setTimeout(async () => {
       const supabase = createClient()
@@ -123,7 +124,11 @@ export default function SearchBar() {
 
   const resultsPanel = (
     <div className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
-      {results.length === 0 ? (
+      {searching ? (
+        <div className="flex items-center justify-center py-3">
+          <span className="w-4 h-4 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />
+        </div>
+      ) : results.length === 0 ? (
         <div className="px-4 py-6 text-center">
           <p className="text-sm text-gray-500">Sin resultados para «{query.trim()}»</p>
           <Link href="/catalogo" onClick={close} className="inline-block mt-2 text-xs text-brand-500 hover:underline">
@@ -194,9 +199,7 @@ export default function SearchBar() {
     </div>
   )
 
-  const searchIcon = searching ? (
-    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-brand-300 border-t-brand-600 rounded-full animate-spin" />
-  ) : (
+  const searchIcon = (
     <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
     </svg>
