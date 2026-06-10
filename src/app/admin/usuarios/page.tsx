@@ -22,6 +22,7 @@ interface UserWithProducts {
   product_count: number
   email_confirmed_at: string | null
   email_deliverable: boolean | null
+  last_activity: string | null
 }
 
 // "Acceso pendiente" = imported user that hasn't redeemed an invite link yet.
