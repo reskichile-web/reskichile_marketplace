@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
-import RecentMessagesCard from '@/components/admin/RecentMessagesCard'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -110,6 +109,28 @@ function activityLabel(e: ActivityRow): string {
 
 // White card with the standard admin border
 const CARD = 'bg-white rounded-xl border border-gray-200'
+
+// Standard metric section: emphasized header + fixed-height scrollable body
+// so every card in a row keeps the same, tidy size.
+function SectionCard({ title, subtitle, right, children }: {
+  title: string
+  subtitle?: string
+  right?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className={`${CARD} overflow-hidden`}>
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-body text-base font-black text-gray-900 tracking-tight">{title}</h2>
+          {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+        </div>
+        {right}
+      </div>
+      <div className="h-80 overflow-y-auto">{children}</div>
+    </div>
+  )
+}
 
 export default function MetricasPage() {
   const [days, setDays] = useState<14 | 30>(14)
@@ -218,7 +239,7 @@ export default function MetricasPage() {
       {/* Daily visits chart */}
       <div className={`${CARD} p-5 mb-8`}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-bold text-gray-900">Visitas diarias</h2>
+          <h2 className="font-body text-base font-black text-gray-900 tracking-tight">Visitas diarias</h2>
           <div className="flex items-center gap-3 text-[10px] text-gray-400">
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand-100 inline-block" /> Visitas</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand-500 inline-block" /> Únicos</span>
@@ -252,17 +273,17 @@ export default function MetricasPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Category views — icon rows with catalog/product split + share */}
-        <div className={`${CARD} p-5`}>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-bold text-gray-900">Vistas por categoría</h2>
-            {totalCatViews > 0 && <span className="text-xs text-gray-400">{totalCatViews} en total</span>}
-          </div>
+        <SectionCard
+          title="Vistas por categoría"
+          subtitle="Catálogo y páginas de producto"
+          right={totalCatViews > 0 ? <span className="text-xs text-gray-400 shrink-0">{totalCatViews} en total</span> : undefined}
+        >
           {categories.length === 0 ? (
-            <p className="text-sm text-gray-400 py-6 text-center">Sin datos todavía.</p>
+            <p className="text-sm text-gray-400 py-10 text-center">Sin datos todavía.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="px-5 divide-y divide-gray-50">
               {categories.map(c => {
                 const Icon = TYPE_ICONS[c.category] || GiMountaintop
                 const share = totalCatViews > 0 ? Math.round((Number(c.views) / totalCatViews) * 100) : 0
@@ -286,18 +307,14 @@ export default function MetricasPage() {
               })}
             </div>
           )}
-        </div>
+        </SectionCard>
 
-        {/* Landing clicks — recent history, scrolls after a few rows */}
-        <div className={`${CARD} overflow-hidden`}>
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">Clicks en la landing</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Historial de los últimos clicks</p>
-          </div>
+        {/* Landing clicks — recent history */}
+        <SectionCard title="Clicks en la landing" subtitle="Historial de los últimos clicks">
           {clicks.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center">Sin clicks registrados todavía.</p>
+            <p className="text-sm text-gray-400 py-10 text-center">Sin clicks registrados todavía.</p>
           ) : (
-            <ul className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+            <ul className="divide-y divide-gray-50">
               {clicks.map(c => {
                 const productTitle = [c.products?.brand, c.products?.model].filter(Boolean).join(' ')
                 const detail = productTitle || (c.category ? PRODUCT_TYPES[c.category] || c.category : null)
@@ -316,24 +333,19 @@ export default function MetricasPage() {
               })}
             </ul>
           )}
-        </div>
-      </div>
+        </SectionCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Top products */}
-        <div className={`${CARD} overflow-hidden`}>
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">Top productos por visitas</h2>
-          </div>
+        <SectionCard title="Top productos por visitas" subtitle={`Más vistos en ${days} días`}>
           {topProducts.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center">Sin vistas de producto todavía.</p>
+            <p className="text-sm text-gray-400 py-10 text-center">Sin vistas de producto todavía.</p>
           ) : (
             <table className="w-full text-sm">
               <tbody>
                 {topProducts.map((p, i) => {
                   const title = [p.brand, p.model].filter(Boolean).join(' ') || 'Sin título'
                   return (
-                    <tr key={p.product_id} className="border-b last:border-0 hover:bg-gray-50">
+                    <tr key={p.product_id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                       <td className="px-5 py-2.5 w-8 text-gray-300 font-black">{i + 1}</td>
                       <td className="px-2 py-2.5">
                         <Link href={`/producto/${p.slug || p.product_id}`} className="font-medium text-gray-900 hover:text-brand-500">
@@ -347,16 +359,12 @@ export default function MetricasPage() {
               </tbody>
             </table>
           )}
-        </div>
+        </SectionCard>
 
         {/* Activity feed */}
-        <div className={`${CARD} overflow-hidden`}>
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">Actividad reciente</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Logins, registros e invitaciones abiertas</p>
-          </div>
+        <SectionCard title="Actividad reciente" subtitle="Logins, registros e invitaciones abiertas">
           {activity.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center">Sin actividad registrada todavía.</p>
+            <p className="text-sm text-gray-400 py-10 text-center">Sin actividad registrada todavía.</p>
           ) : (
             <ul className="divide-y divide-gray-50">
               {activity.map(e => (
@@ -372,11 +380,8 @@ export default function MetricasPage() {
               ))}
             </ul>
           )}
-        </div>
+        </SectionCard>
       </div>
-
-      {/* Recent chat activity */}
-      <RecentMessagesCard className="mt-6" />
     </div>
   )
 }
