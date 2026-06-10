@@ -223,7 +223,7 @@ export default function AdminHomePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         {cards.map((card) => (
           <div key={card.label} className={`${CARD} p-5 flex items-center gap-4`}>
-            <svg className="w-8 h-8 text-brand-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <svg className={`w-8 h-8 shrink-0 ${card.color}`} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               {card.icon}
             </svg>
             <div className="min-w-0">
