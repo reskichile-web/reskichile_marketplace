@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 import { track } from '@/lib/track'
 
-const AI_CATEGORIES = new Set(['esquis'])
+// Temporarily hidden: add 'esquis' back to re-enable the "Descubre tu esquí (IA)" button
+const AI_CATEGORIES = new Set<string>([])
 
 interface Props {
   type: string
