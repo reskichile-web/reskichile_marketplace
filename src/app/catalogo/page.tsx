@@ -138,9 +138,9 @@ export default async function CatalogPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-4 md:pt-6 pb-24">
-      <div className="mb-4 md:mb-6">
-        <h1 className="font-body font-black text-3xl md:text-4xl tracking-tight text-brand-400">{title}</h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-gray-500 leading-relaxed">
+      <div className="pt-2 md:pt-4 mb-8 md:mb-10">
+        <h1 className="font-body font-black text-4xl md:text-5xl tracking-tight text-brand-400">{title}</h1>
+        <p className="mt-2.5 max-w-2xl text-sm md:text-base text-gray-500 leading-relaxed">
           Equipo de montaña usado, directo de quien lo usó.
         </p>
       </div>
