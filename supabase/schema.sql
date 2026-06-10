@@ -91,8 +91,20 @@ CREATE TABLE public.products (
   )),
   rejection_reason TEXT,
   terms_accepted BOOLEAN DEFAULT FALSE,
+  -- Inventory aging: days the product has been published. Incremented for
+  -- 'approved' products by the pg_cron job 'increment-days-published'
+  -- (daily, '0 4 * * *' UTC = medianoche Chile); freezes on sold/archived.
+  days_published INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Nightly inventory-aging tick (see days_published above)
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+SELECT cron.schedule(
+  'increment-days-published',
+  '0 4 * * *',
+  $$UPDATE public.products SET days_published = days_published + 1 WHERE status = 'approved'$$
 );
 
 -- ATTRIBUTES JSONB examples per product_type:

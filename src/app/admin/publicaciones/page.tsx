@@ -17,6 +17,7 @@ interface AdminProduct {
   sale_price: number | null
   status: string
   created_at: string
+  days_published: number
   seller_id: string
   condition: string
   region: string
@@ -124,7 +125,7 @@ export default function PublicacionesPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('products')
-      .select('id, product_type, brand, model, price, sale_price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, anon_contact, users(name, email, phone), product_images(url, order)')
+      .select('id, product_type, brand, model, price, sale_price, status, created_at, days_published, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, anon_contact, users(name, email, phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
     const list = (data as unknown as AdminProduct[]) || []
@@ -326,7 +327,7 @@ export default function PublicacionesPage() {
                 <th className="pb-2 pr-4 font-medium">Producto</th>
                 <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Precio</th>
                 <th className="pb-2 pr-4 font-medium hidden md:table-cell">Vendedor</th>
-                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Fecha</th>
+                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Días publicado</th>
                 <th className="pb-2 pr-4 font-medium">Estado</th>
                 <th className="pb-2 font-medium">Acciones</th>
               </tr>
@@ -358,7 +359,7 @@ export default function PublicacionesPage() {
                             </div>
                           )}
                           <div>
-                            <span className="block md:hidden text-[10px] text-gray-400">
+                            <span className="block text-[10px] font-semibold text-gray-500">
                               {new Date(product.created_at).toLocaleDateString('es-CL')} · {viewCounts[product.id] ?? 0} vistas
                             </span>
                             <span className="font-medium">{title}</span>
@@ -379,9 +380,12 @@ export default function PublicacionesPage() {
                           <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">Sin Usuario Creado</span>
                         ) : seller}
                       </td>
-                      <td className="py-3 pr-4 hidden md:table-cell text-gray-500">
-                        {new Date(product.created_at).toLocaleDateString('es-CL')}
-                        <span className="block text-xs text-gray-400">{viewCounts[product.id] ?? 0} vistas</span>
+                      <td className="py-3 pr-4 hidden md:table-cell text-gray-600">
+                        {['approved', 'sold', 'archived'].includes(product.status) ? (
+                          <span className="font-medium">{product.days_published} {product.days_published === 1 ? 'día' : 'días'}</span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`text-xs px-2 py-1 rounded ${STATUS_COLORS[product.status] || ''}`}>

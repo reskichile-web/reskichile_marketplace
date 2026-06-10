@@ -33,6 +33,7 @@ export interface Product {
   status: ProductStatus
   rejection_reason: string | null
   terms_accepted: boolean
+  days_published: number
   created_at: string
   updated_at: string
 }
