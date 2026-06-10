@@ -29,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       .or(`buyer_id.eq.${params.id},seller_id.eq.${params.id}`),
     admin
       .from('password_invites')
-      .select('slug, expires_at, used_at, created_at')
+      .select('slug, expires_at, used_at, created_at, opened_at')
       .eq('user_id', params.id)
       .order('created_at', { ascending: false }),
   ])

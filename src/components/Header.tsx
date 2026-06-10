@@ -50,7 +50,7 @@ export default async function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
             {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={user.email} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -73,7 +73,7 @@ export default async function Header() {
                 </Link>
               </>
             )}
-            <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-2.5 rounded-sm hover:bg-brand-600 transition-colors font-nav">
+            <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-1.5 rounded-none hover:bg-brand-600 transition-colors font-nav">
               Vender
             </Link>
             {user && (
@@ -87,7 +87,7 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} />
+                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={user.email} />
               </>
             )}
           </div>

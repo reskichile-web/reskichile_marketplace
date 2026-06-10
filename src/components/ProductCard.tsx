@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { PRODUCT_TYPES } from '@/lib/constants'
+import { track } from '@/lib/track'
 
 interface Props {
   id: string
@@ -13,9 +14,11 @@ interface Props {
   mainImageUrl?: string
   secondImageUrl?: string
   badge?: string
+  /** When set, clicking the card beacons a 'click' event with this name (e.g. 'product_card' on the landing) */
+  trackClickAs?: string
 }
 
-export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl, badge }: Props) {
+export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl, badge, trackClickAs }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -26,6 +29,9 @@ export default function ProductCard({ id, slug, title, productType, price, mainI
       className="group pressable-subtle"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => {
+        if (trackClickAs) track({ type: 'click', name: trackClickAs, product_id: id, category: productType })
+      }}
     >
       <div className="relative aspect-[4/5] bg-gray-50 overflow-hidden">
         {badge && (

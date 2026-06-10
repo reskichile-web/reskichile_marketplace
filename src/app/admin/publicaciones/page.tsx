@@ -110,6 +110,7 @@ function EditableSalePrice({
 
 export default function PublicacionesPage() {
   const [products, setProducts] = useState<AdminProduct[]>([])
+  const [viewCounts, setViewCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
@@ -126,8 +127,20 @@ export default function PublicacionesPage() {
       .select('id, product_type, brand, model, price, sale_price, status, created_at, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, anon_contact, users(name, email, phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
-    setProducts((data as unknown as AdminProduct[]) || [])
+    const list = (data as unknown as AdminProduct[]) || []
+    setProducts(list)
     setLoading(false)
+
+    // Private view counters — the RPC returns every row for admins,
+    // including listings without a registered owner.
+    if (list.length) {
+      const { data: counts } = await supabase.rpc('product_view_counts', {
+        p_ids: list.map(p => p.id),
+      })
+      const map: Record<string, number> = {}
+      for (const row of counts ?? []) map[row.product_id] = Number(row.views)
+      setViewCounts(map)
+    }
   }, [])
 
   useEffect(() => {
@@ -365,6 +378,7 @@ export default function PublicacionesPage() {
                       </td>
                       <td className="py-3 pr-4 hidden md:table-cell text-gray-500">
                         {new Date(product.created_at).toLocaleDateString('es-CL')}
+                        <span className="block text-xs text-gray-400">{viewCounts[product.id] ?? 0} vistas</span>
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`text-xs px-2 py-1 rounded ${STATUS_COLORS[product.status] || ''}`}>
@@ -455,6 +469,10 @@ export default function PublicacionesPage() {
                                 <div>
                                   <span className="font-bold text-gray-700">Precio</span>
                                   <p className="font-light text-brand-500">${product.price.toLocaleString('es-CL')}</p>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-gray-700">Visitas</span>
+                                  <p className="font-light">{viewCounts[product.id] ?? 0}</p>
                                 </div>
                                 <div>
                                   <span className="font-bold text-gray-700">Precio de venta</span>

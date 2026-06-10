@@ -54,6 +54,7 @@ interface UserDetailResponse {
     expires_at: string
     used_at: string | null
     created_at: string
+    opened_at: string | null
   }>
 }
 
@@ -697,16 +698,19 @@ function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; 
               <div className="space-y-1">
                 {detail.invites.map(inv => {
                   const expired = new Date(inv.expires_at).getTime() < Date.now()
-                  const state = inv.used_at ? 'usado' : expired ? 'expirado' : 'activo'
+                  const state = inv.used_at ? 'usado' : expired ? 'expirado' : inv.opened_at ? 'abierto' : 'activo'
                   return (
                     <div key={inv.slug} className="flex items-center gap-3 text-xs">
                       <code className="bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-700">{inv.slug}</code>
                       <span className={`text-[10px] uppercase tracking-wider font-bold ${
-                        state === 'usado' ? 'text-gray-400' : state === 'expirado' ? 'text-red-500' : 'text-green-600'
+                        state === 'usado' ? 'text-gray-400' : state === 'expirado' ? 'text-red-500' : state === 'abierto' ? 'text-amber-600' : 'text-green-600'
                       }`}>
                         {state}
                       </span>
                       <span className="text-gray-400">creado {new Date(inv.created_at).toLocaleDateString('es-CL')}</span>
+                      {inv.opened_at && (
+                        <span className="text-gray-400">· abierto {new Date(inv.opened_at).toLocaleDateString('es-CL')}</span>
+                      )}
                     </div>
                   )
                 })}

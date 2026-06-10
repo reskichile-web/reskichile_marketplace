@@ -5,6 +5,7 @@ import { getAuthUser } from '@/lib/auth'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductDetailClient from '@/components/ProductDetailClient'
+import TrackProductView from '@/components/TrackProductView'
 
 interface Props {
   params: { id: string }
@@ -65,12 +66,29 @@ export default async function ProductDetailPage({ params }: Props) {
     sellerHidePhone = hideRes === true
   }
 
+  // Private view counter: owner and admin see it; their own visits never
+  // count (the tracker only renders for third-party viewers).
+  const isOwner = user != null && user.id === product.seller_id
+  let viewCount: number | null = null
+  if (isOwner || isAdmin) {
+    const { data: counts } = await supabase.rpc('product_view_counts', {
+      p_ids: [product.id],
+    })
+    viewCount = counts?.[0]?.views ?? 0
+  }
+
   return (
-    <ProductDetailClient
-      product={product}
-      userId={user?.id ?? null}
-      isAdmin={isAdmin}
-      sellerHidePhone={sellerHidePhone}
-    />
+    <>
+      {!isOwner && !isAdmin && (
+        <TrackProductView productId={product.id} category={product.product_type} />
+      )}
+      <ProductDetailClient
+        product={product}
+        userId={user?.id ?? null}
+        isAdmin={isAdmin}
+        sellerHidePhone={sellerHidePhone}
+        viewCount={viewCount}
+      />
+    </>
   )
 }

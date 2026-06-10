@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { redirectAfterAuth } from '@/lib/auth-redirect'
+import { track } from '@/lib/track'
 import PopupMessage from '@/components/PopupMessage'
 
 export default function LoginPage() {
@@ -49,6 +50,8 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
+
+    track({ type: 'login' })
 
     // Force-change-password takes precedence over the standard redirect.
     const { data: { user } } = await supabase.auth.getUser()

@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
+import { track } from '@/lib/track'
 
 const AI_CATEGORIES = new Set(['esquis'])
 
@@ -92,14 +93,14 @@ export default function CategoryCard({ type, label, image, imagePosition, darkOv
               className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6 space-y-2"
               onClick={e => e.stopPropagation()}
             >
-              <Link href={`/catalogo?product_type=${type}`} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
+              <Link href={`/catalogo?product_type=${type}`} onClick={() => track({ type: 'click', name: 'category_marketplace', category: type })} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
                 Marketplace
               </Link>
-              <Link href="/vender" className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
+              <Link href="/vender" onClick={() => track({ type: 'click', name: 'category_vender', category: type })} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
                 Vender
               </Link>
               {hasAI && (
-                <Link href={`/descubre?type=${type}`} className="flex items-center justify-center gap-1 md:gap-2 w-full bg-white text-gray-900 font-bold text-[9px] md:text-sm py-1 md:py-2.5 rounded md:rounded-lg hover:bg-brand-500 hover:text-white transition-colors">
+                <Link href={`/descubre?type=${type}`} onClick={() => track({ type: 'click', name: 'category_descubre', category: type })} className="flex items-center justify-center gap-1 md:gap-2 w-full bg-white text-gray-900 font-bold text-[9px] md:text-sm py-1 md:py-2.5 rounded md:rounded-lg hover:bg-brand-500 hover:text-white transition-colors">
                   <svg className="w-2.5 h-2.5 md:w-4 md:h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 00.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-2.47 2.47a2.25 2.25 0 00-.659 1.59v1.19a.75.75 0 01-.75.75h-6.24a.75.75 0 01-.75-.75v-1.19a2.25 2.25 0 00-.659-1.59L5 14.5m14 0V17a2 2 0 01-2 2H7a2 2 0 01-2-2v-2.5" />
                   </svg>

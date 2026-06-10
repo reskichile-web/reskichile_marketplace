@@ -8,6 +8,7 @@ import OtpInput from '@/components/OtpInput'
 import PopupMessage from '@/components/PopupMessage'
 import PhoneInput from '@/components/PhoneInput'
 import AuthLoadingOverlay from '@/components/AuthLoadingOverlay'
+import { track } from '@/lib/track'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -129,6 +130,8 @@ export default function RegisterPage() {
         phone: fullPhone,
       }, { onConflict: 'id' })
     }
+
+    track({ type: 'signup' })
 
     setStep('success')
 

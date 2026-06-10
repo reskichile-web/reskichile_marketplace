@@ -113,6 +113,25 @@ token, marks the payment `approved`/`rejected`, and on success moves the product
 `draft → pending` (into the admin review queue). Note: the `payments` table is **not** in
 `schema.sql` — it exists in the live DB only.
 
+### Observability (first-party analytics)
+
+All events flow through `track()` in `src/lib/track.ts` → `POST /api/track` →
+`public.events` (service-role insert; bot UAs filtered, `/admin` + `/api` paths ignored,
+anonymous `rv_id` visitor cookie, geo from Vercel `x-vercel-ip-*` headers — null in dev,
+**admin sessions are never recorded**). Event types: `pageview` (PageViewTracker in root
+layout; on `/catalogo` it also reports the `product_type` search param as `category`),
+`product_view` (TrackProductView — rendered by `/producto/[id]` only when the viewer is
+neither owner nor admin, so self-views never count), `click` (landing: TrackedLink hero
+CTAs, CategoryCard links, ProductCard `trackClickAs`), `login`/`signup` (auth pages +
+`invite_redeem` server-side), `invite_open` (TrackInviteOpen on `/i/[slug]`; also stamps
+`password_invites.opened_at`).
+
+Reads: SELECT on `events` is admin-only RLS. Private per-product counters go through the
+`product_view_counts(uuid[])` SECURITY DEFINER RPC (owner-or-admin), shown in
+`/producto/[id]`, `/mis-productos` and `/admin/publicaciones`. `/admin/metricas`
+aggregates via SECURITY INVOKER RPCs (`admin_daily_visits`, `admin_category_views`,
+`admin_landing_clicks`, `admin_top_products`). No third-party analytics.
+
 ### Email
 
 Transactional email goes through nodemailer + Gmail SMTP (`service: 'gmail'`, user

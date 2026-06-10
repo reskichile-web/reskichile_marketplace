@@ -46,6 +46,15 @@ export async function POST(request: Request) {
   await admin.from('password_invites').update({ used_at: new Date().toISOString() }).eq('slug', slug)
   await admin.from('users').update({ must_change_password: false }).eq('id', invite.user_id)
 
+  // Analytics: an invite redemption is an activation (no visitor cookie here)
+  await admin.from('events').insert({
+    event_type: 'signup',
+    event_name: 'invite_redeem',
+    path: `/i/${slug}`,
+    user_id: invite.user_id,
+    visitor_id: null,
+  })
+
   // Return email so the client can sign in to set its own cookies
   const { data: profile } = await admin
     .from('users')

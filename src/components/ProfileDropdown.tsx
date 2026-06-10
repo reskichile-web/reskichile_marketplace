@@ -14,9 +14,10 @@ interface Props {
    */
   unreadCountFallback?: number
   isAdmin?: boolean
+  email?: string | null
 }
 
-export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, isAdmin = false }: Props) {
+export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, isAdmin = false, email }: Props) {
   const liveUnreadCount = useUnreadCount()
   const unreadCount = liveUnreadCount ?? unreadCountFallback
   const [open, setOpen] = useState(false)
@@ -57,6 +58,14 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, is
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50">
+          {email && (
+            <>
+              <p className="px-4 py-2 text-xs text-gray-500 truncate" title={email}>
+                {email}
+              </p>
+              <div className="my-1 border-t border-gray-100" />
+            </>
+          )}
           {isAdmin && (
             <>
               <Link

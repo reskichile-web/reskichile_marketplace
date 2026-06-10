@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { Suspense } from 'react'
 import { Montserrat, Outfit, Space_Grotesk } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
@@ -8,6 +9,7 @@ import Footer from '@/components/Footer'
 import LayoutChrome from '@/components/LayoutChrome'
 import ScrollToTop from '@/components/ScrollToTop'
 import NavigationProgress from '@/components/NavigationProgress'
+import PageViewTracker from '@/components/PageViewTracker'
 import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
@@ -71,6 +73,9 @@ export default function RootLayout({
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
         <NavigationProgress />
         <ScrollToTop />
+        <Suspense fallback={null}>
+          <PageViewTracker />
+        </Suspense>
         <LayoutChrome
           header={<StickyHeader><Header /></StickyHeader>}
           footer={<Footer />}

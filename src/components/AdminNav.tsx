@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { label: 'Publicaciones', href: '/admin/publicaciones' },
   { label: 'Usuarios', href: '/admin/usuarios' },
   { label: 'Mercado', href: '/admin/finanzas' },
+  { label: 'Métricas', href: '/admin/metricas' },
 ]
 
 interface Props {

@@ -269,6 +269,7 @@ export default function ProductBrowser({ products }: Props) {
                       price={product.price}
                       mainImageUrl={sorted[0]?.url}
                       secondImageUrl={sorted[1]?.url}
+                      trackClickAs="product_card"
                     />
                   </StaggerItem>
                 )

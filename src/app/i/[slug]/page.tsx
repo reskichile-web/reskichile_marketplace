@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import RedeemInviteForm from './RedeemInviteForm'
+import TrackInviteOpen from '@/components/TrackInviteOpen'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +60,7 @@ export default async function InviteRedeemPage({ params }: Props) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">
+      <TrackInviteOpen slug={params.slug} />
       <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
         <h1 className="font-body text-2xl font-black text-gray-900">
           {firstName ? `Bienvenido, ${firstName}` : 'Bienvenido a ReSkiChile'}

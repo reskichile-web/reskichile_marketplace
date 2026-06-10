@@ -1,76 +1,171 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { PRODUCT_TYPES } from '@/lib/constants'
 import AdminDashboardSkeleton from '@/components/skeletons/AdminDashboardSkeleton'
+import Spinner from '@/components/Spinner'
 
-interface Stats {
-  total: number
-  pending: number
-  approved: number
-  rejected: number
-  sold: number
-}
-
-interface RecentProduct {
+interface PendingProduct {
   id: string
+  product_type: string
   brand: string
   model: string | null
   price: number
-  status: string
   created_at: string
+  users: { name: string | null; email: string } | null
+  product_images: { url: string; order: number }[]
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  approved: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  missing_photos: 'bg-orange-100 text-orange-700',
-  sold: 'bg-brand-100 text-brand-700',
+interface RecentVisit {
+  id: number
+  path: string
+  created_at: string
+  country: string | null
+  city: string | null
+  users: { name: string | null } | null
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-  missing_photos: 'Faltan fotos',
-  sold: 'Vendido',
+interface Stats {
+  total: number
+  approved: number
+  sold: number
+  visitsToday: number
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diff / 60_000)
+  if (min < 1) return 'ahora'
+  if (min < 60) return `hace ${min} min`
+  const hrs = Math.floor(min / 60)
+  if (hrs < 24) return `hace ${hrs} h`
+  const days = Math.floor(hrs / 24)
+  return `hace ${days} d`
 }
 
 export default function AdminHomePage() {
-  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0, rejected: 0, sold: 0 })
-  const [recent, setRecent] = useState<RecentProduct[]>([])
+  const [stats, setStats] = useState<Stats>({ total: 0, approved: 0, sold: 0, visitsToday: 0 })
+  const [pending, setPending] = useState<PendingProduct[]>([])
+  const [visits, setVisits] = useState<RecentVisit[]>([])
   const [loading, setLoading] = useState(true)
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    const supabase = createClient()
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+
+    const [totalRes, approvedRes, soldRes, pendingRes, visitsRes, visitsTodayRes] = await Promise.all([
+      supabase.from('products').select('id', { count: 'exact', head: true }),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'sold'),
+      supabase
+        .from('products')
+        .select('id, product_type, brand, model, price, created_at, users(name, email), product_images(url, order)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('events')
+        .select('id, path, created_at, country, city, users(name)')
+        .eq('event_type', 'pageview')
+        .order('created_at', { ascending: false })
+        .limit(12),
+      supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_type', 'pageview')
+        .gte('created_at', startOfDay.toISOString()),
+    ])
+
+    setStats({
+      total: totalRes.count ?? 0,
+      approved: approvedRes.count ?? 0,
+      sold: soldRes.count ?? 0,
+      visitsToday: visitsTodayRes.count ?? 0,
+    })
+    setPending((pendingRes.data as unknown as PendingProduct[]) || [])
+    setVisits((visitsRes.data as unknown as RecentVisit[]) || [])
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('products')
-        .select('id, brand, model, price, status, created_at')
-        .order('created_at', { ascending: false })
-
-      if (data) {
-        setStats({
-          total: data.length,
-          pending: data.filter(p => p.status === 'pending').length,
-          approved: data.filter(p => p.status === 'approved').length,
-          rejected: data.filter(p => p.status === 'rejected').length,
-          sold: data.filter(p => p.status === 'sold').length,
-        })
-        setRecent(data.slice(0, 5))
-      }
-      setLoading(false)
-    }
     load()
-  }, [])
+  }, [load])
+
+  async function handleApprove(productId: string) {
+    // Same server route as /admin/publicaciones — sends the approval email.
+    const prev = pending
+    setPending(p => p.filter(x => x.id !== productId))
+    setStats(s => ({ ...s, approved: s.approved + 1 }))
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/approve`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Error al aprobar')
+      }
+    } catch (e) {
+      setPending(prev)
+      setStats(s => ({ ...s, approved: s.approved - 1 }))
+      alert('Error al aprobar: ' + (e instanceof Error ? e.message : 'desconocido'))
+    }
+  }
+
+  async function handleReject(productId: string) {
+    if (!rejectionReason.trim()) {
+      alert('Ingresa un motivo de rechazo')
+      return
+    }
+    const prev = pending
+    setPending(p => p.filter(x => x.id !== productId))
+    setRejectingId(null)
+    const reason = rejectionReason
+    setRejectionReason('')
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('products')
+      .update({ status: 'rejected', rejection_reason: reason })
+      .eq('id', productId)
+    if (error) {
+      setPending(prev)
+      alert('Error al rechazar: ' + error.message)
+    }
+  }
+
+  async function handleDelete(productId: string) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.')) return
+    setDeletingId(productId)
+    const supabase = createClient()
+
+    const product = pending.find(p => p.id === productId)
+    if (product?.product_images?.length) {
+      const paths = product.product_images
+        .map(img => img.url.split('/product-images/')[1])
+        .filter(Boolean)
+        .map(p => decodeURIComponent(p))
+      if (paths.length) await supabase.storage.from('product-images').remove(paths)
+    }
+
+    await supabase.from('product_images').delete().eq('product_id', productId)
+    const { error } = await supabase.from('products').delete().eq('id', productId)
+    setDeletingId(null)
+    if (error) {
+      alert('Error al eliminar: ' + error.message)
+      return
+    }
+    setPending(p => p.filter(x => x.id !== productId))
+    setStats(s => ({ ...s, total: s.total - 1 }))
+  }
 
   if (loading) return <AdminDashboardSkeleton />
 
   const cards = [
     { label: 'Total publicaciones', value: stats.total, color: 'text-gray-900', bg: 'bg-gray-50' },
-    { label: 'Pendientes', value: stats.pending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { label: 'Pendientes', value: pending.length, color: 'text-yellow-600', bg: 'bg-yellow-50' },
     { label: 'Aprobados', value: stats.approved, color: 'text-green-600', bg: 'bg-green-50' },
     { label: 'Vendidos', value: stats.sold, color: 'text-brand-600', bg: 'bg-brand-50' },
   ]
@@ -93,91 +188,150 @@ export default function AdminHomePage() {
         ))}
       </div>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-        <Link href="/admin/publicaciones" className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all group">
-          <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand-500 group-hover:bg-brand-100 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Pending review queue */}
+        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-body text-lg font-bold text-gray-900">Pendientes de revisión</h2>
+              <p className="text-xs text-gray-500 mt-0.5">{pending.length} publicaciones esperando aprobación</p>
+            </div>
+            <Link href="/admin/publicaciones" className="text-sm text-brand-500 hover:underline shrink-0">
+              Ver todas
+            </Link>
           </div>
-          <div>
-            <p className="font-semibold text-sm text-gray-900">Gestionar publicaciones</p>
-            <p className="text-xs text-gray-500">{stats.pending} pendientes de revisión</p>
-          </div>
-        </Link>
 
-        <Link href="/vender" className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all group">
-          <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center text-green-500 group-hover:bg-green-100 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <div>
-            <p className="font-semibold text-sm text-gray-900">Publicar producto</p>
-            <p className="text-xs text-gray-500">Crear nueva publicación</p>
-          </div>
-        </Link>
-
-        <Link href="/admin/finanzas" className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all group">
-          <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center text-purple-500 group-hover:bg-purple-100 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-            </svg>
-          </div>
-          <div>
-            <p className="font-semibold text-sm text-gray-900">Finanzas</p>
-            <p className="text-xs text-gray-500">Ver métricas y reportes</p>
-          </div>
-        </Link>
-      </div>
-
-      {/* Recent products */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-body text-lg font-bold text-gray-900">Últimas publicaciones</h2>
-          <Link href="/admin/publicaciones" className="text-sm text-brand-500 hover:underline">
-            Ver todas
-          </Link>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50/50 text-left text-gray-500">
-                <th className="px-5 py-3 font-medium">Producto</th>
-                <th className="px-5 py-3 font-medium hidden sm:table-cell">Precio</th>
-                <th className="px-5 py-3 font-medium hidden md:table-cell">Fecha</th>
-                <th className="px-5 py-3 font-medium">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((product) => {
+          {pending.length === 0 ? (
+            <div className="px-5 py-12 text-center">
+              <div className="mx-auto w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-500">No hay publicaciones pendientes. Todo al día.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {pending.map(product => {
                 const title = [product.brand, product.model].filter(Boolean).join(' ')
+                const seller = product.users?.name || product.users?.email || 'Sin Usuario Creado'
+                const image = (product.product_images || []).slice().sort((a, b) => a.order - b.order)[0]
                 return (
-                  <tr key={product.id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="px-5 py-3">
-                      <Link href={`/producto/${product.id}`} className="font-medium text-gray-900 hover:text-brand-500">
-                        {title}
+                  <li key={product.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image.url} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm text-gray-900 truncate">
+                          {title}
+                          <span className="ml-2 text-xs font-normal text-gray-400">{PRODUCT_TYPES[product.product_type] || product.product_type}</span>
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          <span className="font-medium text-brand-500">${product.price.toLocaleString('es-CL')}</span>
+                          <span className="mx-1.5 text-gray-300">·</span>
+                          {seller}
+                          <span className="mx-1.5 text-gray-300">·</span>
+                          {timeAgo(product.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1.5 shrink-0 flex-wrap">
+                      <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
+                        Aprobar
+                      </button>
+                      <button onClick={() => setRejectingId(product.id)} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700">
+                        Rechazar
+                      </button>
+                      <Link href={`/producto/${product.id}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-brand-500 text-white px-3 py-1.5 rounded hover:bg-brand-600">
+                        Ver
                       </Link>
-                    </td>
-                    <td className="px-5 py-3 hidden sm:table-cell font-medium text-brand-500">
-                      ${product.price.toLocaleString('es-CL')}
-                    </td>
-                    <td className="px-5 py-3 hidden md:table-cell text-gray-500">
-                      {new Date(product.created_at).toLocaleDateString('es-CL')}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[product.status] || 'bg-gray-100 text-gray-600'}`}>
-                        {STATUS_LABELS[product.status] || product.status}
-                      </span>
-                    </td>
-                  </tr>
+                      <Link href={`/producto/${product.id}/editar`} className="text-xs border px-3 py-1.5 rounded hover:bg-gray-100">
+                        Editar
+                      </Link>
+                      <button onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded hover:bg-red-50 disabled:opacity-50 flex items-center gap-1">
+                        {deletingId === product.id ? (
+                          <>
+                            <Spinner size="sm" color="brand" />
+                            Eliminando
+                          </>
+                        ) : 'Eliminar'}
+                      </button>
+                    </div>
+                  </li>
                 )
               })}
-            </tbody>
-          </table>
+            </ul>
+          )}
+        </div>
+
+        {/* Recent visits */}
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="font-body text-lg font-bold text-gray-900">Últimas visitas</h2>
+            <span className="text-xs text-gray-400">{stats.visitsToday} hoy</span>
+          </div>
+
+          {visits.length === 0 ? (
+            <p className="px-5 py-10 text-sm text-gray-400 text-center">
+              Aún no hay visitas registradas.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-50">
+              {visits.map(v => {
+                const who = v.users?.name || 'Anónimo'
+                const where = [v.city, v.country].filter(Boolean).join(', ')
+                return (
+                  <li key={v.id} className="px-5 py-2.5">
+                    <Link href={v.path} className="block text-sm font-medium text-gray-800 hover:text-brand-500 truncate" title={v.path}>
+                      {v.path}
+                    </Link>
+                    <p className="text-xs text-gray-400 truncate">
+                      {who}
+                      {where && <><span className="mx-1 text-gray-300">·</span>{where}</>}
+                      <span className="mx-1 text-gray-300">·</span>
+                      {timeAgo(v.created_at)}
+                    </p>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       </div>
+
+      {/* Rejection modal */}
+      {rejectingId && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="font-medium mb-3">Motivo de rechazo</h3>
+            <input
+              type="text"
+              value={rejectionReason}
+              onChange={e => setRejectionReason(e.target.value)}
+              placeholder="Escribe el motivo..."
+              className="w-full border rounded px-3 py-2 text-sm mb-3"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setRejectingId(null); setRejectionReason('') }} className="border px-4 py-2 rounded text-sm">
+                Cancelar
+              </button>
+              <button onClick={() => handleReject(rejectingId)} className="bg-red-600 text-white px-4 py-2 rounded text-sm">
+                Rechazar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
