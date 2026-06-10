@@ -165,7 +165,6 @@ export default function MetricasPage() {
   const totalUniques = daily.reduce((s, d) => s + Number(d.uniques), 0)
   const maxVisits = Math.max(...chartDays.map(d => Number(d.visits)), 1)
   const totalCatViews = categories.reduce((s, c) => s + Number(c.views), 0)
-  const maxClicks = Math.max(...clicks.map(c => Number(c.clicks)), 1)
 
   if (loading) return <AdminTableSkeleton />
 
@@ -286,21 +285,16 @@ export default function MetricasPage() {
           {clicks.length === 0 ? (
             <p className="text-sm text-gray-400 py-6 text-center">Sin clicks registrados todavía.</p>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-gray-50">
               {clicks.map((c, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">
-                      {CLICK_LABELS[c.name] || c.name}
-                      {c.category && (
-                        <span className="text-xs text-gray-400 ml-1.5">{PRODUCT_TYPES[c.category] || c.category}</span>
-                      )}
-                    </span>
-                    <span className="text-sm font-black text-brand-500">{c.clicks}</span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-gray-900" style={{ width: `${(Number(c.clicks) / maxClicks) * 100}%` }} />
-                  </div>
+                <div key={i} className="flex items-center justify-between py-2.5">
+                  <span className="text-sm font-medium text-gray-700">
+                    {CLICK_LABELS[c.name] || c.name}
+                    {c.category && (
+                      <span className="text-xs text-gray-400 ml-1.5">{PRODUCT_TYPES[c.category] || c.category}</span>
+                    )}
+                  </span>
+                  <span className="text-base font-black text-brand-500">{c.clicks}</span>
                 </div>
               ))}
             </div>
