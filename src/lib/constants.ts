@@ -143,7 +143,6 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
   ],
   botas_esqui: [
     GENERO_FIELD,
-    { key: 'tipo_esqui', label: 'Tipo de esquí', type: 'multiselect', required: false, choices: TIPO_ESQUI_CHOICES },
     { key: 'flex', label: 'Flex', type: 'text', required: true, placeholder: 'Ej: 100' },
     { key: 'talla_mondo', label: 'Talla (Mondo)', type: 'text', required: false, placeholder: 'Ej: 26.5' },
     { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: true, placeholder: 'Ej: 30.5' },

@@ -136,7 +136,6 @@ SELECT cron.schedule(
 --   "talla_mondo": "26.5",
 --   "talla_cm": "30.5",
 --   "incluye_pines": false,                       -- bota randonnée (pines)
---   "tipo_esqui": ["all_mountain"],               -- clasificación tipo de esquí
 --   "genero": ["hombre"],                          -- array: hombre | mujer | junior
 --   "color": "negro/rojo"
 -- }
