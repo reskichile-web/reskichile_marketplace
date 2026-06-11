@@ -23,24 +23,33 @@ interface Props {
 }
 
 /**
- * Compact attribute editor used by the /vender form (all fields optional
- * there — required validation only applies in the full edit form).
+ * Attribute editor used by the /vender form. Mirrors the styling of the
+ * rest of the product form (labels text-sm font-medium, inputs px-3
+ * py-2.5 rounded-lg, selection chips border-2 + brand-50). All fields are
+ * optional here — required validation only applies in the full edit form.
  */
 export default function AttributeFieldsEditor({ fields, values, onChange }: Props) {
   if (fields.length === 0) return null
 
+  const chipCls = (selected: boolean) =>
+    `px-3 py-2.5 rounded-lg border-2 text-sm whitespace-nowrap transition-all ${
+      selected
+        ? 'border-brand-500 bg-brand-50 text-brand-500 font-medium'
+        : 'border-gray-100 text-gray-500 hover:border-gray-300'
+    }`
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       {fields.map(field => {
         if (field.type === 'multiselect') {
           const current = Array.isArray(values[field.key]) ? (values[field.key] as string[]) : []
           return (
             <div key={field.key}>
-              <span className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1.5">
+              <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                 {field.label}
                 {field.info && <InfoTip text={field.info} />}
-              </span>
-              <div className="flex flex-wrap gap-1.5">
+              </label>
+              <div className="flex flex-wrap gap-2">
                 {(field.choices || []).map(opt => {
                   const selected = current.includes(opt.value)
                   return (
@@ -53,11 +62,7 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
                           : [...current, opt.value]
                         onChange(field.key, next)
                       }}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                        selected
-                          ? 'bg-brand-500 text-white border-brand-500'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                      }`}
+                      className={chipCls(selected)}
                     >
                       {opt.label}
                     </button>
@@ -71,22 +76,18 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
         if (field.type === 'boolean') {
           const val = values[field.key]
           return (
-            <div key={field.key} className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-1 text-xs font-medium text-gray-600">
+            <div key={field.key}>
+              <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                 {field.label}
                 {field.info && <InfoTip text={field.info} />}
-              </span>
-              <div className="flex gap-1.5">
+              </label>
+              <div className="flex gap-2">
                 {[{ v: true, l: 'Sí' }, { v: false, l: 'No' }].map(({ v, l }) => (
                   <button
                     key={l}
                     type="button"
                     onClick={() => onChange(field.key, val === v ? undefined : v)}
-                    className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                      val === v
-                        ? 'bg-brand-500 text-white border-brand-500'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                    }`}
+                    className={chipCls(val === v)}
                   >
                     {l}
                   </button>
@@ -99,16 +100,16 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
         if (field.type === 'select') {
           return (
             <div key={field.key}>
-              <span className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1">
+              <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                 {field.label}
                 {field.info && <InfoTip text={field.info} />}
-              </span>
+              </label>
               <select
                 value={(values[field.key] as string) || ''}
                 onChange={e => onChange(field.key, e.target.value || undefined)}
-                className="w-full border rounded-lg px-2.5 py-2 text-sm bg-white"
+                className="w-full border rounded-lg px-3 py-2.5 bg-white"
               >
-                <option value="">—</option>
+                <option value="">Sin especificar</option>
                 {(field.options || []).map(o => (
                   <option key={o} value={o}>{o}</option>
                 ))}
@@ -119,16 +120,16 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
 
         return (
           <div key={field.key}>
-            <span className="flex items-center gap-1 text-xs font-medium text-gray-600 mb-1">
+            <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
               {field.label}
               {field.info && <InfoTip text={field.info} />}
-            </span>
+            </label>
             <input
               type={field.type === 'number' ? 'number' : 'text'}
               value={(values[field.key] as string) || ''}
               onChange={e => onChange(field.key, e.target.value || undefined)}
               placeholder={field.placeholder}
-              className="w-full border rounded-lg px-2.5 py-2 text-sm"
+              className="w-full border rounded-lg px-3 py-2.5"
             />
           </div>
         )
