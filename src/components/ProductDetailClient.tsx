@@ -201,8 +201,9 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
                   if (val === undefined || val === '' || val === null) return null
                   if (Array.isArray(val) && val.length === 0) return null
                   const displayVal = formatAttributeValue(field, val)
+                  // "Tipo" (esquís) puede traer varios valores — ancho completo arriba
                   return (
-                    <div key={field.key}>
+                    <div key={field.key} className={field.key === 'tipo' ? 'col-span-2' : ''}>
                       <span className="text-gray-400 text-xs">{field.label}</span>
                       <p className="font-medium text-gray-900">{displayVal}</p>
                     </div>
