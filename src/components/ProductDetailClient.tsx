@@ -11,6 +11,7 @@ import CopyLinkButton from '@/components/CopyLinkButton'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import { createClient } from '@/lib/supabase/client'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, type LucideIcon } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -238,16 +239,35 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
             return (
               <div className="mt-5 rounded-md bg-white border border-gray-200 p-4">
                 <div className="flex items-center gap-2">
+                  {/* Mismo tick animado del éxito de publicar/registro, en celeste */}
+                  <motion.span
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    className="w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center shrink-0"
+                  >
+                    <motion.svg
+                      className="w-2.5 h-2.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth={3.5}
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                    >
+                      <motion.path
+                        d="M5 13l4 4L19 7"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.4, delay: 0.2 }}
+                      />
+                    </motion.svg>
+                  </motion.span>
                   <p className="text-xs font-bold text-brand-500 uppercase tracking-wider">
                     Incluye {subName}
                   </p>
-                  <span className="w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center shrink-0">
-                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </span>
                 </div>
-                <div className="h-px bg-gray-200 w-20 mt-2 mb-3" />
+                <div className="h-px bg-gray-200 w-11/12 mt-2 mb-3" />
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   {subAttrs.map(field => {
                     const val = attrs[field.key]
