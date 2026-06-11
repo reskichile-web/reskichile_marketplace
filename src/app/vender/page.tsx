@@ -152,6 +152,9 @@ export default function SellPage() {
 
   // Auth (for non-logged-in users)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  // Admins may publish with 2 photos; everyone else needs 3
+  const minImages = isAdmin ? 2 : MIN_IMAGES
   const [publishAnon, setPublishAnon] = useState(false)
   const [anonContact, setAnonContact] = useState('')
   const [authMode, setAuthMode] = useState<'register' | 'login'>('register')
@@ -170,6 +173,14 @@ export default function SellPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       setIsLoggedIn(!!user)
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single()
+        setIsAdmin(profile?.is_admin === true)
+      }
     }
     check()
   }, [])
@@ -222,8 +233,8 @@ export default function SellPage() {
       setStep('photos')
       scrollTop()
     } else if (step === 'photos') {
-      if (images.length < MIN_IMAGES) {
-        setPopup({ message: `Debes subir al menos ${MIN_IMAGES} fotos`, type: 'error' })
+      if (images.length < minImages) {
+        setPopup({ message: `Debes subir al menos ${minImages} fotos`, type: 'error' })
         return
       }
       if (!termsAccepted) {
@@ -729,7 +740,7 @@ export default function SellPage() {
       {step === 'photos' && (
         <div className="space-y-5">
           <h2 className="font-body text-xl font-bold mb-2">Fotos de tu producto</h2>
-          <p className="text-sm text-gray-500">Sube al menos {MIN_IMAGES} fotos. La primera será la portada.</p>
+          <p className="text-sm text-gray-500">Sube al menos {minImages} fotos. La primera será la portada.</p>
 
           {/* Description */}
           <div>
