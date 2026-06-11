@@ -566,7 +566,7 @@ export default function SellPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => { setProductType(key); setAttrs({}); setStep('details'); scrollTop() }}
+                onClick={() => { setProductType(key); setAttrs({}); setAttrsOpen(false); setStep('details'); scrollTop() }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${productType === key ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
               >
                 {(() => {
@@ -1198,6 +1198,8 @@ export default function SellPage() {
               onClick={() => {
                 setStep('type')
                 setProductType('')
+                setAttrs({})
+                setAttrsOpen(false)
                 setBrand('')
                 setModel('')
                 setCondition('usado_como_nuevo')
