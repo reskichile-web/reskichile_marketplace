@@ -142,11 +142,11 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
     { key: 'fijaciones_estado', label: 'Estado de las fijaciones', type: 'select', required: false, options: Object.values(CONDITIONS) },
   ],
   botas_esqui: [
-    GENERO_FIELD,
-    { key: 'flex', label: 'Flex', type: 'text', required: true, placeholder: 'Ej: 100' },
     { key: 'talla_mondo', label: 'Talla (Mondo)', type: 'text', required: false, placeholder: 'Ej: 26.5' },
-    { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: true, placeholder: 'Ej: 30.5' },
+    { key: 'flex', label: 'Flex', type: 'text', required: true, placeholder: 'Ej: 100' },
+    GENERO_FIELD,
     { key: 'incluye_pines', label: '¿Incluye pines?', type: 'boolean', required: false, info: 'Conexión para fijaciones de pines de randonée.' },
+    { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: true, placeholder: 'Ej: 30.5' },
     { key: 'color', label: 'Color', type: 'text', required: false },
   ],
   botas_snowboard: [
