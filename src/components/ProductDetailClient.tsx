@@ -10,6 +10,17 @@ import ShareButton from '@/components/ShareButton'
 import CopyLinkButton from '@/components/CopyLinkButton'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import { createClient } from '@/lib/supabase/client'
+import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, type LucideIcon } from 'lucide-react'
+
+// Estado de fijaciones se guarda como label de condición — mismo set de
+// iconos que usa el formulario de venta.
+const CONDITION_LABEL_ICONS: Record<string, LucideIcon> = {
+  [CONDITIONS.usado_aceptable]: Recycle,
+  [CONDITIONS.usado_buen_estado]: CheckCircle2,
+  [CONDITIONS.usado_como_nuevo]: Star,
+  [CONDITIONS.nuevo]: Sparkles,
+  [CONDITIONS.nuevo_sellado]: PackageCheck,
+}
 
 interface Props {
   product: ProductWithImages
@@ -225,10 +236,18 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
             const subName = includesKey.label.replace('Incluye ', '')
 
             return (
-              <div className="mt-5 rounded-xl bg-gradient-to-br from-white to-brand-50 border border-brand-100 p-4">
-                <p className="text-xs font-bold text-brand-500 uppercase tracking-wider mb-3">
-                  Incluye {subName}
-                </p>
+              <div className="mt-5 rounded-md bg-white border border-gray-200 p-4">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold text-brand-500 uppercase tracking-wider">
+                    Incluye {subName}
+                  </p>
+                  <span className="w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center shrink-0">
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                </div>
+                <div className="h-px bg-gray-200 w-20 mt-2 mb-3" />
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   {subAttrs.map(field => {
                     const val = attrs[field.key]
@@ -238,10 +257,14 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
                       .replace(/de las fijaciones|de los fijaciones/gi, '')
                       .replace(/Tipo de conexión/gi, 'Conexion')
                       .trim()
+                    const EstadoIcon = field.key.endsWith('_estado') ? CONDITION_LABEL_ICONS[displayVal] : undefined
                     return (
                       <div key={field.key}>
                         <span className="text-gray-400 text-xs">{shortLabel}</span>
-                        <p className="font-medium text-gray-900">{displayVal}</p>
+                        <p className="font-medium text-gray-900 flex items-center gap-1.5">
+                          {EstadoIcon && <EstadoIcon className="w-4 h-4 shrink-0" />}
+                          {displayVal}
+                        </p>
                       </div>
                     )
                   })}
