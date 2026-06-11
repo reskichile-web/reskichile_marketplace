@@ -68,14 +68,10 @@ export default async function ProductDetailPage({ params }: Props) {
 
   // Private view counter: owner and admin see it; their own visits never
   // count (the tracker only renders for third-party viewers).
+  // TEMPORARILY HIDDEN — views keep being recorded; to re-enable, restore
+  // the product_view_counts RPC call here (counter still shows in /admin).
   const isOwner = user != null && user.id === product.seller_id
-  let viewCount: number | null = null
-  if (isOwner || isAdmin) {
-    const { data: counts } = await supabase.rpc('product_view_counts', {
-      p_ids: [product.id],
-    })
-    viewCount = counts?.[0]?.views ?? 0
-  }
+  const viewCount: number | null = null
 
   return (
     <>
