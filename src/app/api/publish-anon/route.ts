@@ -24,6 +24,16 @@ export async function POST(request: NextRequest) {
     const comuna = formData.get('comuna') as string | null
     const anon_contact = formData.get('anon_contact') as string
 
+    // Optional attributes JSON from the publish form
+    let attributes: Record<string, unknown> = {}
+    try {
+      const raw = formData.get('attributes') as string | null
+      const parsed = raw ? JSON.parse(raw) : null
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) attributes = parsed
+    } catch {
+      // ignore malformed attributes — never block a publish over them
+    }
+
     if (!product_type || !brand || !condition || !price || !region || !anon_contact) {
       return NextResponse.json({ error: 'Campos obligatorios faltantes' }, { status: 400 })
     }
@@ -42,6 +52,7 @@ export async function POST(request: NextRequest) {
         region,
         comuna: comuna?.trim() || '',
         anon_contact: anon_contact.trim(),
+        attributes,
         status: 'pending',
         terms_accepted: true,
       })

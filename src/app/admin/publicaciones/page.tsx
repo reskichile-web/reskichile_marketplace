@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES } from '@/lib/constants'
+import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
 import { phoneToWhatsApp } from '@/lib/phone'
@@ -513,7 +513,7 @@ export default function PublicacionesPage() {
                                     {Object.entries(attrs).map(([key, value]) => (
                                       <div key={key}>
                                         <span className="font-bold text-gray-700">{key.replace(/_/g, ' ')}</span>
-                                        <p className="font-light">{String(value)}</p>
+                                        <p className="font-light">{formatAttributeValue((PRODUCT_ATTRIBUTES[product.product_type] || []).find(f => f.key === key), value)}</p>
                                       </div>
                                     ))}
                                   </div>
@@ -886,8 +886,9 @@ function buildInstagramText(product: AdminProduct): string {
   if (product.attributes && typeof product.attributes === 'object') {
     for (const [key, value] of Object.entries(product.attributes)) {
       if (value === undefined || value === null || value === '') continue
+      if (Array.isArray(value) && value.length === 0) continue
       const label = labelMap[key] || key.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase())
-      const display = value === true ? 'Sí' : value === false ? 'No' : String(value)
+      const display = formatAttributeValue(attrDefs.find(a => a.key === key), value)
       lines.push(`${label}: ${display}`)
     }
   }

@@ -72,14 +72,55 @@ export const ITEMS_PER_PAGE = 12
 export interface AttributeField {
   key: string
   label: string
-  type: 'text' | 'number' | 'select' | 'boolean'
+  type: 'text' | 'number' | 'select' | 'boolean' | 'multiselect'
   required: boolean
   options?: string[]
+  /** multiselect: stored values are slugs (value), shown as label */
+  choices?: { value: string; label: string }[]
   placeholder?: string
+  /** Short tooltip shown next to the label via a tiny info icon */
+  info?: string
+}
+
+// Género multi-selección — mismo modelo que esquís (arrays de slugs en
+// attributes.genero, compatible con el filtro del catálogo).
+export const GENERO_CHOICES: { value: string; label: string }[] = [
+  { value: 'hombre', label: 'Hombre' },
+  { value: 'mujer', label: 'Mujer' },
+  { value: 'junior', label: 'Junior' },
+]
+
+export const TIPO_ESQUI_CHOICES: { value: string; label: string }[] = [
+  { value: 'race', label: 'Race' },
+  { value: 'pista', label: 'Pista' },
+  { value: 'all_mountain', label: 'All mountain' },
+  { value: 'freeride', label: 'Freeride' },
+  { value: 'powder', label: 'Powder' },
+  { value: 'freestyle', label: 'Freestyle' },
+  { value: 'touring', label: 'Touring' },
+]
+
+const GENERO_FIELD: AttributeField = {
+  key: 'genero', label: 'Género', type: 'multiselect', required: false, choices: GENERO_CHOICES,
+}
+
+// Human-readable attribute value: booleans → Sí/No, multiselect arrays →
+// labels joined. Use everywhere an attribute value is displayed.
+export function formatAttributeValue(field: AttributeField | undefined, value: unknown): string {
+  if (value === true) return 'Sí'
+  if (value === false) return 'No'
+  if (Array.isArray(value)) {
+    return value
+      .map(v => field?.choices?.find(c => c.value === v)?.label ?? String(v).replace(/_/g, ' '))
+      .join(', ')
+  }
+  return String(value)
 }
 
 export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
   esquis: [
+    { key: 'tipo', label: 'Tipo', type: 'multiselect', required: false, choices: TIPO_ESQUI_CHOICES },
+    GENERO_FIELD,
     { key: 'largo_cm', label: 'Largo (cm)', type: 'number', required: false, placeholder: 'Ej: 170' },
     { key: 'ancho_mm', label: 'Ancho (mm)', type: 'number', required: false, placeholder: 'Ej: 88' },
     { key: 'radio_giro_m', label: 'Radio de giro (m)', type: 'number', required: false, placeholder: 'Ej: 16' },
@@ -90,6 +131,7 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
     { key: 'fijaciones_estado', label: 'Estado de las fijaciones', type: 'select', required: false, options: Object.values(CONDITIONS) },
   ],
   snowboards: [
+    GENERO_FIELD,
     { key: 'largo', label: 'Largo del snowboard', type: 'text', required: true, placeholder: 'Ej: 155' },
     { key: 'ancho', label: 'Ancho del snowboard', type: 'text', required: false, placeholder: 'Ej: 25' },
     { key: 'camber', label: 'Camber', type: 'select', required: false, options: CAMBER_TYPES },
@@ -100,64 +142,75 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
     { key: 'fijaciones_estado', label: 'Estado de las fijaciones', type: 'select', required: false, options: Object.values(CONDITIONS) },
   ],
   botas_esqui: [
+    GENERO_FIELD,
+    { key: 'tipo_esqui', label: 'Tipo de esquí', type: 'multiselect', required: false, choices: TIPO_ESQUI_CHOICES },
     { key: 'flex', label: 'Flex', type: 'text', required: true, placeholder: 'Ej: 100' },
     { key: 'talla_mondo', label: 'Talla (Mondo)', type: 'text', required: false, placeholder: 'Ej: 26.5' },
     { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: true, placeholder: 'Ej: 30.5' },
-    { key: 'tipo_conexion_fijacion', label: 'Tipo de conexión a la fijación', type: 'select', required: true, options: TIPO_CONEXION_BOTAS_ESQUI },
-    { key: 'sexo', label: 'Sexo', type: 'select', required: true, options: SEXOS },
+    { key: 'incluye_pines', label: '¿Incluye pines?', type: 'boolean', required: false, info: 'Conexión para fijaciones de pines de randonée.' },
     { key: 'color', label: 'Color', type: 'text', required: false },
   ],
   botas_snowboard: [
     { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: true, placeholder: 'Ej: 28' },
     { key: 'tipo_conexion_fijacion', label: 'Tipo de conexión a la fijación', type: 'select', required: true, options: TIPO_CONEXION_BOTAS_SNOWBOARD },
     { key: 'color', label: 'Color', type: 'text', required: false },
-    { key: 'sexo', label: 'Sexo', type: 'select', required: true, options: SEXOS },
+    GENERO_FIELD,
   ],
   bastones: [
+    GENERO_FIELD,
     { key: 'largo', label: 'Largo', type: 'text', required: true, placeholder: 'Ej: 120' },
     { key: 'telescopicos', label: 'Bastones telescópicos', type: 'boolean', required: false },
   ],
   cascos: [
+    GENERO_FIELD,
     { key: 'color', label: 'Color', type: 'text', required: true },
     { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: false, placeholder: 'Ej: 56' },
     { key: 'talla', label: 'Talla', type: 'select', required: false, options: TALLAS_ACCESORIOS },
   ],
   guantes: [
     { key: 'talla', label: 'Talla', type: 'select', required: false, options: TALLAS_ACCESORIOS },
-    { key: 'sexo', label: 'Sexo', type: 'select', required: true, options: SEXOS },
+    GENERO_FIELD,
   ],
   fijaciones: [
+    GENERO_FIELD,
     { key: 'tipo_conexion', label: 'Tipo de conexión', type: 'select', required: true, options: TIPO_CONEXION_SKI },
   ],
   parkas: [
     { key: 'tipo_aislacion', label: 'Tipo de aislación', type: 'select', required: true, options: TIPO_AISLACION },
-    { key: 'sexo', label: 'Sexo', type: 'select', required: true, options: SEXOS },
+    GENERO_FIELD,
     { key: 'talla', label: 'Talla', type: 'select', required: true, options: TALLAS_ROPA },
   ],
   pantalones: [
     { key: 'tipo_aislacion', label: 'Tipo de aislación', type: 'select', required: true, options: TIPO_AISLACION },
-    { key: 'sexo', label: 'Sexo', type: 'select', required: true, options: SEXOS },
+    GENERO_FIELD,
     { key: 'talla', label: 'Talla', type: 'select', required: false, options: TALLAS_ROPA },
     { key: 'talla_numero', label: 'Talla (Número)', type: 'text', required: false, placeholder: 'Ej: 42' },
   ],
   antiparras: [
+    GENERO_FIELD,
     { key: 'lente_intercambiable', label: 'Lente intercambiable', type: 'boolean', required: true },
     { key: 'talla', label: 'Talla', type: 'select', required: false, options: TALLAS_ACCESORIOS },
   ],
   mochilas: [
+    GENERO_FIELD,
     { key: 'capacidad_litros', label: 'Capacidad (Litros)', type: 'text', required: true, placeholder: 'Ej: 40' },
     { key: 'compartimiento_avalancha', label: 'Compartimiento para equipo de avalancha', type: 'boolean', required: true },
   ],
   bolsos: [
+    GENERO_FIELD,
     { key: 'capacidad_litros', label: 'Capacidad (Litros)', type: 'text', required: true, placeholder: 'Ej: 120' },
     { key: 'tiene_ruedas', label: 'Tiene ruedas', type: 'boolean', required: true },
     { key: 'largo', label: 'Largo', type: 'text', required: false },
   ],
   equipo_avalanchas: [
+    GENERO_FIELD,
     { key: 'tipo_equipo', label: 'Tipo de equipo', type: 'select', required: true, options: TIPO_EQUIPO_AVALANCHAS },
   ],
   camaras_accion: [
+    GENERO_FIELD,
     { key: 'tipo_grabacion', label: 'Tipo de grabación', type: 'select', required: true, options: TIPO_GRABACION },
   ],
-  otros: [],
+  otros: [
+    GENERO_FIELD,
+  ],
 }

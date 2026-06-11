@@ -135,8 +135,9 @@ SELECT cron.schedule(
 --   "flex": "100",
 --   "talla_mondo": "26.5",
 --   "talla_cm": "30.5",
---   "tipo_conexion_fijacion": "alpina",           -- alpina | randonnee
---   "sexo": "hombre",                             -- hombre | mujer | unisex
+--   "incluye_pines": false,                       -- bota randonnée (pines)
+--   "tipo_esqui": ["all_mountain"],               -- clasificación tipo de esquí
+--   "genero": ["hombre"],                          -- array: hombre | mujer | junior
 --   "color": "negro/rojo"
 -- }
 --
@@ -144,7 +145,7 @@ SELECT cron.schedule(
 --   "talla_cm": "28",
 --   "tipo_conexion_fijacion": "comun",            -- comun | step_on
 --   "color": "negro",
---   "sexo": "hombre"
+--   "genero": ["hombre"]
 -- }
 --
 -- bastones: {
@@ -160,18 +161,18 @@ SELECT cron.schedule(
 --
 -- guantes: {
 --   "talla": "L",                                 -- XS | S | M | L | XL
---   "sexo": "hombre"
+--   "genero": ["hombre"]
 -- }
 --
 -- parkas: {
 --   "tipo_aislacion": "pluma",                    -- pluma | termica | cortaviento
---   "sexo": "mujer",
+--   "genero": ["mujer"],
 --   "talla": "M"                                  -- XS | S | M | L | XL | XXL
 -- }
 --
 -- pantalones: {
 --   "tipo_aislacion": "termica",
---   "sexo": "hombre",
+--   "genero": ["hombre"],
 --   "talla": "L",                                 -- XS | S | M | L | XL | XXL
 --   "talla_numero": "42"
 -- }

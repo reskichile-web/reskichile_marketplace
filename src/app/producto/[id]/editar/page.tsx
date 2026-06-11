@@ -16,26 +16,11 @@ import {
   PRODUCT_ATTRIBUTES,
   type AttributeField,
 } from '@/lib/constants'
+import { InfoTip } from '@/components/AttributeFieldsEditor'
 
 const ACCEPTED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 const ACCEPTED_LABEL = 'JPG, PNG o WebP'
 const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
-
-const TIPO_ESQUI_OPTIONS: { value: string; label: string }[] = [
-  { value: 'race', label: 'Race' },
-  { value: 'pista', label: 'Pista' },
-  { value: 'all_mountain', label: 'All mountain' },
-  { value: 'freeride', label: 'Freeride' },
-  { value: 'powder', label: 'Powder' },
-  { value: 'freestyle', label: 'Freestyle' },
-  { value: 'touring', label: 'Touring' },
-]
-
-const GENERO_ESQUI_OPTIONS: { value: string; label: string }[] = [
-  { value: 'hombre', label: 'Hombre' },
-  { value: 'mujer', label: 'Mujer' },
-  { value: 'junior', label: 'Junior' },
-]
 
 function InlineField({ label, value, onSave, type = 'text', options, hasError }: {
   label: string
@@ -582,13 +567,14 @@ export default function EditProductPage() {
             <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-3">
               Atributos de {PRODUCT_TYPES[form.product_type]}
             </p>
-            {form.product_type === 'esquis' && (
-              <>
-                <div className="mb-4">
-                  <span className="text-xs text-gray-400">Tipo (puedes elegir varios)</span>
+            {/* Multiselect attributes (chips) — full width above the grid */}
+            {currentAttributes.filter(a => a.type === 'multiselect').map(attr => {
+              const current = Array.isArray(attributes[attr.key]) ? (attributes[attr.key] as string[]) : []
+              return (
+                <div key={attr.key} className="mb-4">
+                  <span className="text-xs text-gray-400">{attr.label} (puedes elegir varios)</span>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {TIPO_ESQUI_OPTIONS.map(opt => {
-                      const current = Array.isArray(attributes.tipo) ? (attributes.tipo as string[]) : []
+                    {(attr.choices || []).map(opt => {
                       const selected = current.includes(opt.value)
                       return (
                         <button
@@ -598,7 +584,7 @@ export default function EditProductPage() {
                             const next = selected
                               ? current.filter(v => v !== opt.value)
                               : [...current, opt.value]
-                            updateAttribute('tipo', next)
+                            updateAttribute(attr.key, next)
                           }}
                           className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                             selected
@@ -612,38 +598,10 @@ export default function EditProductPage() {
                     })}
                   </div>
                 </div>
-                <div className="mb-4">
-                  <span className="text-xs text-gray-400">Género (puedes elegir varios)</span>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {GENERO_ESQUI_OPTIONS.map(opt => {
-                      const current = Array.isArray(attributes.genero) ? (attributes.genero as string[]) : []
-                      const selected = current.includes(opt.value)
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => {
-                            const next = selected
-                              ? current.filter(v => v !== opt.value)
-                              : [...current, opt.value]
-                            updateAttribute('genero', next)
-                          }}
-                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                            selected
-                              ? 'bg-brand-500 text-white border-brand-500'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
+              )
+            })}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {currentAttributes.map(attr => {
+              {currentAttributes.filter(a => a.type !== 'multiselect').map(attr => {
                 if (attr.type === 'boolean') {
                   const val = attributes[attr.key]
                   return (
@@ -655,6 +613,7 @@ export default function EditProductPage() {
                     >
                       <span className="flex items-center gap-1 text-xs text-gray-400">
                         {attr.label}
+                        {attr.info && <InfoTip text={attr.info} />}
                         <svg className="w-2.5 h-2.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>

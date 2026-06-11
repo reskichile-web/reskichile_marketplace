@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
+import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS, formatAttributeValue, type AttributeField } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductGallery from '@/components/ProductGallery'
 import ShareButton from '@/components/ShareButton'
@@ -185,7 +185,13 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
 
           {/* Main attributes (non-sub-product) */}
           {(() => {
-            const mainAttrs = attrFields.filter(f => !f.key.startsWith('incluye_') && !f.key.startsWith('fijaciones_'))
+            // An "incluye_X" boolean only spawns the sub-product card when
+            // there are X_* fields (e.g. incluye_fijaciones → fijaciones_*).
+            // Plain booleans like incluye_pines render as normal attributes.
+            const hasSubFields = (f: AttributeField) =>
+              attrFields.some(s => s.key.startsWith(f.key.replace('incluye_', '') + '_'))
+            const mainAttrs = attrFields.filter(f =>
+              !(f.key.startsWith('incluye_') && hasSubFields(f)) && !f.key.startsWith('fijaciones_'))
             const hasValues = mainAttrs.some(f => attrs[f.key] !== undefined && attrs[f.key] !== '' && attrs[f.key] !== null)
             if (!hasValues) return null
             return (
@@ -193,7 +199,8 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
                 {mainAttrs.map(field => {
                   const val = attrs[field.key]
                   if (val === undefined || val === '' || val === null) return null
-                  const displayVal = typeof val === 'boolean' ? (val ? 'Si' : 'No') : String(val)
+                  if (Array.isArray(val) && val.length === 0) return null
+                  const displayVal = formatAttributeValue(field, val)
                   return (
                     <div key={field.key}>
                       <span className="text-gray-400 text-xs">{field.label}</span>
@@ -207,7 +214,9 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
 
           {/* Sub-product card (e.g. bindings included) */}
           {(() => {
-            const includesKey = attrFields.find(f => f.key.startsWith('incluye_') && f.type === 'boolean')
+            const includesKey = attrFields.find(f =>
+              f.key.startsWith('incluye_') && f.type === 'boolean' &&
+              attrFields.some(s => s.key.startsWith(f.key.replace('incluye_', '') + '_')))
             if (!includesKey || !attrs[includesKey.key]) return null
 
             const subPrefix = includesKey.key.replace('incluye_', '')
@@ -223,7 +232,7 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
                   {subAttrs.map(field => {
                     const val = attrs[field.key]
                     if (val === undefined || val === '' || val === null) return null
-                    const displayVal = typeof val === 'boolean' ? (val ? 'Si' : 'No') : String(val)
+                    const displayVal = formatAttributeValue(field, val)
                     const shortLabel = field.label
                       .replace(/de las fijaciones|de los fijaciones/gi, '')
                       .replace(/Tipo de conexión/gi, 'Conexion')

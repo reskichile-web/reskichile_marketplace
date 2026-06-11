@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_TYPES, CONDITIONS, PRODUCT_ATTRIBUTES } from '@/lib/constants'
+import { PRODUCT_TYPES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
 
 interface SearchResult {
   id: string
@@ -32,7 +32,8 @@ function attributeSummary(r: SearchResult): string {
   for (const def of defs) {
     const value = attrs[def.key]
     if (value === undefined || value === null || value === '' || typeof value === 'boolean') continue
-    parts.push(`${def.label}: ${String(value)}`)
+    if (Array.isArray(value) && value.length === 0) continue
+    parts.push(`${def.label}: ${formatAttributeValue(def, value)}`)
     if (parts.length === 2) break
   }
   return parts.join(' · ')

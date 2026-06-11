@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_TYPES, REGIONS } from '@/lib/constants'
+import { PRODUCT_TYPES, REGIONS, PRODUCT_ATTRIBUTES } from '@/lib/constants'
+import AttributeFieldsEditor from '@/components/AttributeFieldsEditor'
 import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
 import OtpInput from '@/components/OtpInput'
 import Spinner from '@/components/Spinner'
@@ -124,12 +125,25 @@ export default function SellPage() {
   const [region, setRegion] = useState('')
   const [comuna, setComuna] = useState('')
   const [description, setDescription] = useState('')
+  const [attrs, setAttrs] = useState<Record<string, unknown>>({})
+  const [attrsOpen, setAttrsOpen] = useState(false)
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
 
   // Preferences (saved on the users row for logged-in sellers; ignored
   // for anon publishes since there's no users record yet).
   const [hidePhone, setHidePhone] = useState(false)
+
+  // Attributes ready to persist: drop empties so the JSONB stays clean
+  function cleanedAttributes(): Record<string, unknown> {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === undefined || v === null || v === '') continue
+      if (Array.isArray(v) && v.length === 0) continue
+      out[k] = v
+    }
+    return out
+  }
   // Chat-email notifications default on; not surfaced in the publish form
   // (managed later in profile preferences). Still persisted on the users row.
   const [notifyChatEmail] = useState(true)
@@ -278,6 +292,7 @@ export default function SellPage() {
         price: priceInt,
         region,
         comuna: comuna.trim() || '',
+        attributes: cleanedAttributes(),
         status: 'pending',
         terms_accepted: true,
       })
@@ -402,6 +417,7 @@ export default function SellPage() {
     formData.append('region', region)
     formData.append('comuna', comuna.trim())
     formData.append('anon_contact', anonContact.trim())
+    formData.append('attributes', JSON.stringify(cleanedAttributes()))
     images.forEach(file => formData.append('images', file))
 
     try {
@@ -539,7 +555,7 @@ export default function SellPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => { setProductType(key); setStep('details'); scrollTop() }}
+                onClick={() => { setProductType(key); setAttrs({}); setStep('details'); scrollTop() }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${productType === key ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
               >
                 {(() => {
@@ -764,6 +780,33 @@ export default function SellPage() {
             }}
             compressing={compressing}
           />
+
+          {/* Optional attributes — small collapsible dropdown */}
+          {(PRODUCT_ATTRIBUTES[productType] || []).length > 0 && (
+            <div className="border rounded-xl bg-gray-50/50 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAttrsOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 py-3"
+              >
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Atributos del producto (opcional)
+                </span>
+                <svg className={`w-4 h-4 text-gray-400 transition-transform ${attrsOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              {attrsOpen && (
+                <div className="px-4 pb-4">
+                  <AttributeFieldsEditor
+                    fields={PRODUCT_ATTRIBUTES[productType] || []}
+                    values={attrs}
+                    onChange={(key, value) => setAttrs(prev => ({ ...prev, [key]: value }))}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Preferences (logged-in sellers). The user-level prefs
               (hide_phone, notify_*) only persist when there's a users
