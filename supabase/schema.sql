@@ -95,6 +95,14 @@ CREATE TABLE public.products (
   -- 'approved' products by the pg_cron job 'increment-days-published'
   -- (daily, '0 4 * * *' UTC = medianoche Chile); freezes on sold/archived.
   days_published INTEGER NOT NULL DEFAULT 0,
+  -- Sale metadata (set when a seller marks the product sold; cleared on undo).
+  -- sale_price already existed; these capture how/when it sold for market refs.
+  sale_price INTEGER,
+  sold_at TIMESTAMPTZ,
+  sold_channel TEXT,            -- 'reski' | 'otro_medio' | 'otro'
+  sold_speed TEXT,             -- 'rapido' | 'normal' | 'baje_precio'
+  -- Last "¿lo vendiste?" reminder timestamp (30-day cron; re-reminds >30d).
+  sale_reminder_sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -106,6 +114,19 @@ SELECT cron.schedule(
   '0 4 * * *',
   $$UPDATE public.products SET days_published = days_published + 1 WHERE status = 'approved'$$
 );
+
+-- One-time tokens for emailed one-click actions (undo sale, confirm sale,
+-- still-available). Service-role only (RLS on, no policies); single-use.
+CREATE TABLE public.product_action_tokens (
+  token TEXT PRIMARY KEY,
+  product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  action TEXT NOT NULL CHECK (action IN ('undo_sale', 'confirm_sold', 'still_available')),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '45 days'),
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX product_action_tokens_product_idx ON public.product_action_tokens (product_id);
+ALTER TABLE public.product_action_tokens ENABLE ROW LEVEL SECURITY;
 
 -- ATTRIBUTES JSONB examples per product_type:
 --

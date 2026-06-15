@@ -5,6 +5,7 @@ import { PRODUCT_TYPES, CONDITIONS } from '@/lib/constants'
 import EmptyState from '@/components/illustrations/EmptyState'
 import ProductStatusBlock from '@/components/ProductStatusBlock'
 import DeleteProductButton from '@/components/DeleteProductButton'
+import MarkSoldButton from '@/components/MarkSoldButton'
 
 export default async function MyProductsPage() {
   const { user } = await getAuthUser()
@@ -196,6 +197,14 @@ export default async function MyProductsPage() {
                     >
                       Ver
                     </Link>
+                    {status === 'approved' && (
+                      <MarkSoldButton
+                        productId={product.id}
+                        productTitle={title || 'tu producto'}
+                        listedPrice={product.price}
+                        variant="list"
+                      />
+                    )}
                     {showEdit && (
                       <Link href={`/producto/${product.id}/editar`} className="w-20 text-center text-xs bg-brand-500 text-white py-1.5 rounded font-medium hover:bg-brand-600">
                         Editar

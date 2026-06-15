@@ -9,6 +9,7 @@ import ProductGallery from '@/components/ProductGallery'
 import ShareButton from '@/components/ShareButton'
 import CopyLinkButton from '@/components/CopyLinkButton'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
+import MarkSoldButton from '@/components/MarkSoldButton'
 import { createClient } from '@/lib/supabase/client'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -393,6 +394,18 @@ export default function ProductDetailClient({ product, userId, isAdmin, sellerHi
               </div>
             </div>
           ) : null}
+
+          {/* Owner marks their own live listing sold — above Edit */}
+          {isOwner && product.status === 'approved' && (
+            <div className="mt-3">
+              <MarkSoldButton
+                productId={product.id}
+                productTitle={title}
+                listedPrice={product.price}
+                variant="detail"
+              />
+            </div>
+          )}
 
           {canEdit && (
             <Link

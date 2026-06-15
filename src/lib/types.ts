@@ -34,6 +34,10 @@ export interface Product {
   rejection_reason: string | null
   terms_accepted: boolean
   days_published: number
+  sale_price: number | null
+  sold_at: string | null
+  sold_channel: string | null
+  sold_speed: string | null
   created_at: string
   updated_at: string
 }

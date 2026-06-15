@@ -145,10 +145,27 @@ aggregates via SECURITY INVOKER RPCs (`admin_daily_visits`, `admin_category_view
 
 ### Email
 
-Transactional email goes through nodemailer + Gmail SMTP (`service: 'gmail'`, user
-`reskichile@gmail.com`, auth via `GMAIL_APP_PASSWORD`) — see
-`src/app/api/admin/contact-seller/route.ts`. `RESEND_API_KEY` is also present in env.
-User-facing email opt-outs live on `users.notify_chat_email` / `notify_reminders_email`.
+Automated transactional email goes through **Resend** via `sendEmail()` in
+`src/lib/email/send.ts` (from `noreply@reskichile.cl`, `RESEND_API_KEY`). Templates live in
+`src/lib/email/templates.ts` (shared celeste `layout()` + `contactBlock()`; senders:
+review, approved, chat, sale, sale-reminder, internal-notice). The only Gmail-SMTP sender
+(nodemailer, `GMAIL_APP_PASSWORD`) is the admin's manual `contact-seller` route. User-facing
+opt-outs live on `users.notify_chat_email` / `notify_reminders_email` (currently only chat
+honors them).
+
+### Sold flow & 30-day reminder
+
+Sellers mark their own listing sold via `MarkSoldButton` (mis-productos + product detail) →
+`POST /api/products/[id]/sold` → `markProductSold()` in `src/lib/sold.ts`: sets
+`status=sold` + `sale_price`/`sold_channel`/`sold_speed`/`sold_at`, mints a single-use
+**undo** token in `product_action_tokens`, and emails the seller (BCC `reskichile@gmail.com`)
+with an undo button. Undo is only reachable from the email — not the site UI. Emailed
+one-click links land on scanner-safe pages under `/p/*` (`/p/venta/deshacer/[token]`,
+`/p/vendi/[token]`, `/p/disponible/[token]`) that render on GET and mutate only on the
+button's POST (mirrors the `/i/[slug]` invite pattern). A Vercel cron
+(`/api/cron/sale-reminders`, daily, guarded by `CRON_SECRET`) emails the "¿lo vendiste?"
+reminder to listings with `days_published >= 30`, re-reminding every ~30 days; "Sí" →
+confirm-sold token, "No, sigue disponible" → notifies the team + resets the clock.
 
 ### App layout & routing
 

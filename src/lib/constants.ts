@@ -68,6 +68,23 @@ export const TIPO_GRABACION = ['360', 'Normal']
 
 export const ITEMS_PER_PAGE = 12
 
+// "Mark as sold" flow — all optional. Stored on products.sold_channel /
+// products.sold_speed. Labels reused in the modal, emails and admin.
+export const SOLD_CHANNELS: { value: string; label: string }[] = [
+  { value: 'reski', label: 'Por ReSkiChile' },
+  { value: 'otro_medio', label: 'Por otro medio (Yapo, IG, conocido)' },
+  { value: 'otro', label: 'Otro' },
+]
+export const SOLD_SPEEDS: { value: string; label: string }[] = [
+  { value: 'rapido', label: 'Se vendió rápido' },
+  { value: 'normal', label: 'Tomó su tiempo' },
+  { value: 'baje_precio', label: 'Tuve que bajar el precio' },
+]
+export const SOLD_CHANNEL_LABELS: Record<string, string> =
+  Object.fromEntries(SOLD_CHANNELS.map(c => [c.value, c.label]))
+export const SOLD_SPEED_LABELS: Record<string, string> =
+  Object.fromEntries(SOLD_SPEEDS.map(s => [s.value, s.label]))
+
 // Definición de qué campos específicos tiene cada tipo de producto
 export interface AttributeField {
   key: string

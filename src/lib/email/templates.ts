@@ -315,3 +315,148 @@ export function buildChatMessageEmail(p: ChatMessageEmail): BuiltEmail {
   const text = `${p.recipientName ? `Hola ${p.recipientName},` : 'Hola,'}\n\n${sender} te envió un mensaje${p.productTitle ? ` sobre ${p.productTitle}` : ''}:\n\n"${messagePreview(p.messageBody)}"\n\nRespóndelo aquí: ${url}\n\nReSkiChile`
   return { subject, html, text }
 }
+
+// ─── Helpers: CTA buttons (primary celeste / outline) ────────────────────────
+
+function ctaPrimary(url: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:8px auto;">
+    <tr><td align="center" bgcolor="${BRAND}" style="background-color:${BRAND};">
+      <a href="${url}" style="display:inline-block;padding:13px 30px;font-size:13px;font-weight:700;letter-spacing:0.02em;color:#ffffff;text-decoration:none;text-align:center;">${escapeHtml(label)}</a>
+    </td></tr>
+  </table>`
+}
+
+function ctaOutline(url: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:8px auto;">
+    <tr><td align="center" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #d1d5db;">
+      <a href="${url}" style="display:inline-block;padding:12px 28px;font-size:13px;font-weight:700;letter-spacing:0.02em;color:#6b7280;text-decoration:none;text-align:center;">${escapeHtml(label)}</a>
+    </td></tr>
+  </table>`
+}
+
+// ─── Template: venta registrada (al vendedor, BCC equipo) ────────────────────
+
+export interface SaleEmail {
+  name: string | null
+  brand: string
+  model: string | null
+  listedPrice: number
+  salePrice: number | null
+  channelLabel: string | null
+  speedLabel: string | null
+  imageUrl: string | null
+  productPath: string
+  undoPath: string   // /p/venta/deshacer/[token]
+}
+
+export function buildSaleEmail(p: SaleEmail): BuiltEmail {
+  const title = productTitle(p.brand, p.model)
+  const undoUrl = `${SITE_URL}${p.undoPath}`
+  const subject = `¡Felicitaciones por tu venta! · ${title}`
+
+  const detailRows: string[] = []
+  detailRows.push(`<tr><td style="padding:4px 0;font-size:14px;color:#6b7280;">Publicado en</td><td style="padding:4px 0;font-size:14px;color:#1f2937;text-align:right;font-weight:600;">${formatCLP(p.listedPrice)}</td></tr>`)
+  if (p.salePrice != null) {
+    detailRows.push(`<tr><td style="padding:4px 0;font-size:14px;color:#6b7280;">Vendido en</td><td style="padding:4px 0;font-size:14px;color:${BRAND};text-align:right;font-weight:800;">${formatCLP(p.salePrice)}</td></tr>`)
+  }
+  if (p.channelLabel) {
+    detailRows.push(`<tr><td style="padding:4px 0;font-size:14px;color:#6b7280;">Canal</td><td style="padding:4px 0;font-size:14px;color:#1f2937;text-align:right;">${escapeHtml(p.channelLabel)}</td></tr>`)
+  }
+  if (p.speedLabel) {
+    detailRows.push(`<tr><td style="padding:4px 0;font-size:14px;color:#6b7280;">Venta</td><td style="padding:4px 0;font-size:14px;color:#1f2937;text-align:right;">${escapeHtml(p.speedLabel)}</td></tr>`)
+  }
+
+  const imgBlock = p.imageUrl
+    ? `<img src="${escapeHtml(p.imageUrl)}" width="64" height="64" alt="" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:10px;border:0;" />`
+    : ''
+
+  const html = layout(`
+    <p style="margin:0 0 14px 0;color:#1f2937;">${greeting(p.name)}</p>
+    <p style="margin:0 0 18px 0;color:#1f2937;">Registramos la venta de <strong>${escapeHtml(title)}</strong>. ¡Felicitaciones y gracias por vender en ReSkiChile! 🎉</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;border:1px solid #eef2f7;border-radius:12px;margin:0 0 20px;">
+      <tr>
+        <td valign="top" width="64" style="padding:16px 0 16px 16px;">${imgBlock}</td>
+        <td valign="top" style="padding:16px 16px 16px 14px;">
+          <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#1f2937;">${escapeHtml(title)}</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">${detailRows.join('')}</table>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 6px 0;font-size:13px;color:#9ca3af;text-align:center;">¿Te equivocaste? Puedes deshacer la venta y volver a publicarlo:</p>
+    ${ctaOutline(undoUrl, 'Deshacer venta')}
+    ${contactBlock()}
+  `)
+
+  const lines = [
+    p.name ? `Hola ${p.name},` : 'Hola,',
+    '',
+    `Registramos la venta de ${title}. ¡Felicitaciones!`,
+    `Publicado en: ${formatCLP(p.listedPrice)}`,
+    p.salePrice != null ? `Vendido en: ${formatCLP(p.salePrice)}` : '',
+    p.channelLabel ? `Canal: ${p.channelLabel}` : '',
+    p.speedLabel ? `Venta: ${p.speedLabel}` : '',
+    '',
+    `¿Te equivocaste? Deshacer la venta: ${undoUrl}`,
+    '',
+    'ReSkiChile',
+  ].filter(Boolean)
+  return { subject, html, text: lines.join('\n') }
+}
+
+// ─── Template: recordatorio 30 días "¿lo vendiste?" ──────────────────────────
+
+export interface SaleReminderEmail {
+  name: string | null
+  brand: string
+  model: string | null
+  price: number
+  imageUrl: string | null
+  daysPublished: number
+  soldPath: string        // /p/vendi/[token]
+  availablePath: string   // /p/disponible/[token]
+}
+
+export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
+  const title = productTitle(p.brand, p.model)
+  const soldUrl = `${SITE_URL}${p.soldPath}`
+  const availUrl = `${SITE_URL}${p.availablePath}`
+  const subject = `¿Vendiste tu ${title}?`
+
+  const imgBlock = p.imageUrl
+    ? `<img src="${escapeHtml(p.imageUrl)}" width="64" height="64" alt="" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:10px;border:0;" />`
+    : ''
+
+  const html = layout(`
+    <p style="margin:0 0 14px 0;color:#1f2937;">${greeting(p.name)}</p>
+    <p style="margin:0 0 18px 0;color:#1f2937;">Tu publicación de <strong>${escapeHtml(title)}</strong> lleva ${p.daysPublished} días en ReSkiChile. ¿Ya la vendiste? Cuéntanos con un toque:</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;border:1px solid #eef2f7;border-radius:12px;margin:0 0 22px;">
+      <tr>
+        <td valign="top" width="64" style="padding:16px 0 16px 16px;">${imgBlock}</td>
+        <td valign="middle" style="padding:16px 16px 16px 14px;">
+          <p style="margin:0 0 4px;font-size:16px;font-weight:700;color:#1f2937;">${escapeHtml(title)}</p>
+          <p style="margin:0;font-size:15px;font-weight:800;color:${BRAND};">${formatCLP(p.price)}</p>
+        </td>
+      </tr>
+    </table>
+    ${ctaPrimary(soldUrl, 'Sí, ya la vendí')}
+    ${ctaOutline(availUrl, 'No, sigue disponible')}
+    ${contactBlock()}
+  `)
+
+  const text = `${p.name ? `Hola ${p.name},` : 'Hola,'}\n\nTu publicación de ${title} lleva ${p.daysPublished} días en ReSkiChile. ¿Ya la vendiste?\n\nSí, ya la vendí: ${soldUrl}\nNo, sigue disponible: ${availUrl}\n\nReSkiChile`
+  return { subject, html, text }
+}
+
+// ─── Template: aviso interno simple (al equipo) ──────────────────────────────
+
+export function buildInternalNotice(title: string, rows: { label: string; value: string }[]): BuiltEmail {
+  const body = rows
+    .map(r => `<tr><td style="padding:5px 0;font-size:14px;color:#6b7280;">${escapeHtml(r.label)}</td><td style="padding:5px 0;font-size:14px;color:#1f2937;text-align:right;font-weight:600;">${escapeHtml(r.value)}</td></tr>`)
+    .join('')
+  const html = layout(`
+    <p style="margin:0 0 16px 0;font-size:17px;font-weight:800;color:#1f2937;">${escapeHtml(title)}</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">${body}</table>
+  `)
+  const text = `${title}\n\n${rows.map(r => `${r.label}: ${r.value}`).join('\n')}`
+  return { subject: title, html, text }
+}
