@@ -25,6 +25,9 @@ interface Props {
   successBody: string
   /** Show channel/speed/price inputs (the "Sí, lo vendí" flow) */
   withSaleForm?: boolean
+  /** Secondary "¿te equivocaste?" link to the opposite action's page */
+  altHref?: string
+  altLabel?: string
 }
 
 function formatCLP(n: number) {
@@ -33,7 +36,7 @@ function formatCLP(n: number) {
 
 export default function ActionTokenPage({
   token, endpoint, product, title, subtitle, buttonLabel, buttonTone,
-  successTitle, successBody, withSaleForm,
+  successTitle, successBody, withSaleForm, altHref, altLabel,
 }: Props) {
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -170,6 +173,18 @@ export default function ActionTokenPage({
             </>
           ) : buttonLabel}
         </button>
+
+        {altHref && altLabel && (
+          <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-400 mb-2">¿Te equivocaste?</p>
+            <a
+              href={altHref}
+              className="inline-block w-full text-center py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              {altLabel}
+            </a>
+          </div>
+        )}
       </div>
     </div>
   )

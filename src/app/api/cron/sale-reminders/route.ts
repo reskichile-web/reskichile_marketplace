@@ -61,14 +61,14 @@ export async function GET(request: Request) {
     const imageUrl = images.slice().sort((a, b) => a.order - b.order)[0]?.url ?? null
 
     const { subject, html, text } = buildSaleReminderEmail({
-      name: seller?.name ?? null,
       brand: p.brand,
       model: p.model,
       price: p.price,
       imageUrl,
-      daysPublished: p.days_published,
-      soldPath: `/p/vendi/${confirmToken}`,
-      availablePath: `/p/disponible/${availableToken}`,
+      // Each link carries the sibling token (?alt=) so its page can offer the
+      // opposite choice ("¿te equivocaste?") without re-minting tokens.
+      soldPath: `/p/vendi/${confirmToken}?alt=${availableToken}`,
+      availablePath: `/p/disponible/${availableToken}?alt=${confirmToken}`,
     })
 
     const res = await sendEmail({ to: recipient, subject, html, text })

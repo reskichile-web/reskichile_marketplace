@@ -142,7 +142,7 @@ export default async function MyProductsPage() {
                 ? 'bg-white text-red-600 border border-red-200 hover:bg-red-50'
                 : isArchived
                   ? 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                  : 'bg-gray-900 text-white hover:bg-gray-800'
+                  : 'bg-brand-500 text-white hover:bg-brand-600'
 
             return (
               <div key={product.id} className={`relative border rounded-lg p-4 overflow-hidden ${cardCls}`}>
@@ -197,6 +197,11 @@ export default async function MyProductsPage() {
                     >
                       Ver
                     </Link>
+                    {showEdit && (
+                      <Link href={`/producto/${product.id}/editar`} className="w-20 text-center text-xs bg-gray-900 text-white py-1.5 rounded font-medium hover:bg-gray-800">
+                        Editar
+                      </Link>
+                    )}
                     {status === 'approved' && (
                       <MarkSoldButton
                         productId={product.id}
@@ -204,11 +209,6 @@ export default async function MyProductsPage() {
                         listedPrice={product.price}
                         variant="list"
                       />
-                    )}
-                    {showEdit && (
-                      <Link href={`/producto/${product.id}/editar`} className="w-20 text-center text-xs bg-brand-500 text-white py-1.5 rounded font-medium hover:bg-brand-600">
-                        Editar
-                      </Link>
                     )}
                     <DeleteProductButton
                       productId={product.id}

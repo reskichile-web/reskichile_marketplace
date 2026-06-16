@@ -318,19 +318,34 @@ export function buildChatMessageEmail(p: ChatMessageEmail): BuiltEmail {
 
 // ─── Helpers: CTA buttons (primary celeste / outline) ────────────────────────
 
-function ctaPrimary(url: string, label: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:8px auto;">
-    <tr><td align="center" bgcolor="${BRAND}" style="background-color:${BRAND};">
-      <a href="${url}" style="display:inline-block;padding:13px 30px;font-size:13px;font-weight:700;letter-spacing:0.02em;color:#ffffff;text-decoration:none;text-align:center;">${escapeHtml(label)}</a>
-    </td></tr>
-  </table>`
-}
-
 function ctaOutline(url: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:8px auto;">
     <tr><td align="center" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #d1d5db;">
       <a href="${url}" style="display:inline-block;padding:12px 28px;font-size:13px;font-weight:700;letter-spacing:0.02em;color:#6b7280;text-decoration:none;text-align:center;">${escapeHtml(label)}</a>
     </td></tr>
+  </table>`
+}
+
+/** Two equal-width buttons side by side (primary celeste + outline). Fixed cell
+ *  widths so both render the same size across clients. */
+function ctaTwoUp(primaryUrl: string, primaryLabel: string, outlineUrl: string, outlineLabel: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:10px auto 4px;">
+    <tr>
+      <td style="padding:0 5px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+          <tr><td align="center" bgcolor="${BRAND}" width="150" style="width:150px;background-color:${BRAND};">
+            <a href="${primaryUrl}" style="display:block;padding:14px 8px;font-size:12px;font-weight:700;letter-spacing:0.02em;color:#ffffff;text-decoration:none;text-align:center;">${escapeHtml(primaryLabel)}</a>
+          </td></tr>
+        </table>
+      </td>
+      <td style="padding:0 5px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+          <tr><td align="center" bgcolor="#ffffff" width="150" style="width:150px;background-color:#ffffff;border:1px solid #d1d5db;">
+            <a href="${outlineUrl}" style="display:block;padding:13px 8px;font-size:12px;font-weight:700;letter-spacing:0.02em;color:#6b7280;text-decoration:none;text-align:center;">${escapeHtml(outlineLabel)}</a>
+          </td></tr>
+        </table>
+      </td>
+    </tr>
   </table>`
 }
 
@@ -406,12 +421,10 @@ export function buildSaleEmail(p: SaleEmail): BuiltEmail {
 // ─── Template: recordatorio 30 días "¿lo vendiste?" ──────────────────────────
 
 export interface SaleReminderEmail {
-  name: string | null
   brand: string
   model: string | null
   price: number
   imageUrl: string | null
-  daysPublished: number
   soldPath: string        // /p/vendi/[token]
   availablePath: string   // /p/disponible/[token]
 }
@@ -427,8 +440,8 @@ export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
     : ''
 
   const html = layout(`
-    <p style="margin:0 0 14px 0;color:#1f2937;">${greeting(p.name)}</p>
-    <p style="margin:0 0 18px 0;color:#1f2937;">Tu publicación de <strong>${escapeHtml(title)}</strong> lleva ${p.daysPublished} días en ReSkiChile. ¿Ya la vendiste? Cuéntanos con un toque:</p>
+    <p style="margin:0 0 14px 0;color:#1f2937;"><strong>¡Hola!</strong></p>
+    <p style="margin:0 0 18px 0;color:#1f2937;">Tu publicación de <strong>${escapeHtml(title)}</strong> sigue en ReSkiChile. ¿Ya la vendiste? Cuéntanos con un toque:</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;border:1px solid #eef2f7;border-radius:12px;margin:0 0 22px;">
       <tr>
         <td valign="top" width="64" style="padding:16px 0 16px 16px;">${imgBlock}</td>
@@ -438,12 +451,11 @@ export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
         </td>
       </tr>
     </table>
-    ${ctaPrimary(soldUrl, 'Sí, ya la vendí')}
-    ${ctaOutline(availUrl, 'No, sigue disponible')}
+    ${ctaTwoUp(soldUrl, 'Sí, ya la vendí', availUrl, 'No, sigue disponible')}
     ${contactBlock()}
   `)
 
-  const text = `${p.name ? `Hola ${p.name},` : 'Hola,'}\n\nTu publicación de ${title} lleva ${p.daysPublished} días en ReSkiChile. ¿Ya la vendiste?\n\nSí, ya la vendí: ${soldUrl}\nNo, sigue disponible: ${availUrl}\n\nReSkiChile`
+  const text = `Hola,\n\nTu publicación de ${title} sigue en ReSkiChile. ¿Ya la vendiste?\n\nSí, ya la vendí: ${soldUrl}\nNo, sigue disponible: ${availUrl}\n\nReSkiChile`
   return { subject, html, text }
 }
 

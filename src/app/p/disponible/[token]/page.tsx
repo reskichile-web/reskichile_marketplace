@@ -4,9 +4,21 @@ import InvalidTokenNotice from '@/components/InvalidTokenNotice'
 
 export const dynamic = 'force-dynamic'
 
-export default async function StillAvailablePage({ params }: { params: { token: string } }) {
+export default async function StillAvailablePage({
+  params,
+  searchParams,
+}: {
+  params: { token: string }
+  searchParams: { alt?: string }
+}) {
   const view = await loadActionToken(params.token, 'still_available')
   if (view.state !== 'valid' || !view.product) return <InvalidTokenNotice state={view.state} />
+
+  // Sibling token → "Sí, ya la vendí" page (round-trips back here via ?alt).
+  const alt = searchParams.alt
+  const altProps = alt
+    ? { altHref: `/p/vendi/${alt}?alt=${params.token}`, altLabel: 'Sí, ya la vendí' }
+    : {}
 
   return (
     <ActionTokenPage
@@ -19,6 +31,7 @@ export default async function StillAvailablePage({ params }: { params: { token: 
       buttonTone="brand"
       successTitle="¡Gracias!"
       successBody="Avisamos a nuestro equipo que tu producto sigue disponible. Te recordaremos más adelante."
+      {...altProps}
     />
   )
 }
