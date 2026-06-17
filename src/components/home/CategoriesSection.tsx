@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createPublicServerClient } from '@/lib/supabase/server'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import CategoryCard from '@/components/CategoryCard'
 
@@ -21,7 +21,8 @@ const CATEGORY_IMAGES: Record<string, string> = {
 }
 
 export default async function CategoriesSection() {
-  const supabase = createServerSupabaseClient()
+  // Anonymous (no-cookie) client so the home page stays ISR-cacheable.
+  const supabase = createPublicServerClient()
 
   const { data: allProducts } = await supabase
     .from('products')

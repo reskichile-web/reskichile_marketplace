@@ -8,6 +8,9 @@ import { redirectAfterAuth } from '@/lib/auth-redirect'
 import { track } from '@/lib/track'
 import PopupMessage from '@/components/PopupMessage'
 
+// Reads ?redirect and is fully interactive — never statically prerendered.
+export const dynamic = 'force-dynamic'
+
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()

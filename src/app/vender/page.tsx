@@ -1,18 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, REGIONS, PRODUCT_ATTRIBUTES } from '@/lib/constants'
 import AttributeFieldsEditor from '@/components/AttributeFieldsEditor'
-import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
+import { type ImageItem } from '@/components/SortableImageGrid'
 import OtpInput from '@/components/OtpInput'
 import Spinner from '@/components/Spinner'
 import PopupMessage from '@/components/PopupMessage'
 import BrandInput from '@/components/BrandInput'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
-import imageCompression from 'browser-image-compression'
 import PublishLoadingOverlay from '@/components/PublishLoadingOverlay'
+
+// Drag-and-drop photo grid pulls in dnd-kit (~30 KB); only needed once the user
+// reaches the photos step, so code-split it out of the initial page bundle.
+const SortableImageGrid = dynamic(() => import('@/components/SortableImageGrid'), {
+  ssr: false,
+  loading: () => <div className="h-32 rounded-lg bg-gray-50 animate-pulse" />,
+})
 import { buildImagePath } from '@/lib/storage-utils'
 import { buildProductSlug } from '@/lib/slug-utils'
 import {
@@ -776,6 +783,8 @@ export default function SellPage() {
               }
               try {
                 setCompressing({ current: 0, total: files.length })
+                // Load the compressor on demand (~25 KB) instead of at page load.
+                const { default: imageCompression } = await import('browser-image-compression')
                 const compressed: File[] = []
                 for (const f of files) {
                   const result = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true })

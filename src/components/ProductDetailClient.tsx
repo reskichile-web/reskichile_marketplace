@@ -11,6 +11,7 @@ import CopyLinkButton from '@/components/CopyLinkButton'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import MarkSoldButton from '@/components/MarkSoldButton'
 import { createClient } from '@/lib/supabase/client'
+import { useViewer } from '@/lib/use-session-auth'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -26,15 +27,17 @@ const CONDITION_LABEL_ICONS: Record<string, LucideIcon> = {
 
 interface Props {
   product: ProductWithImages
-  userId: string | null
-  isAdmin: boolean
   sellerHidePhone: boolean
   /** Private view counter — non-null only when the viewer is owner or admin */
   viewCount?: number | null
 }
 
-export default function ProductDetailClient({ product, userId, isAdmin, sellerHidePhone, viewCount = null }: Props) {
+export default function ProductDetailClient({ product, sellerHidePhone, viewCount = null }: Props) {
   const router = useRouter()
+  // Viewer identity resolved client-side so the page can be ISR-cached. Until it
+  // loads, userId is null → the public view renders; owner/admin controls appear
+  // once the session resolves.
+  const { userId, isAdmin } = useViewer()
   const [contacting, setContacting] = useState(false)
   const [chatOpening, setChatOpening] = useState(false)
   const [hidePhone, setHidePhone] = useState(sellerHidePhone)

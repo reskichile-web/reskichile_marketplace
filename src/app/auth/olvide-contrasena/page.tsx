@@ -7,6 +7,9 @@ import Spinner from '@/components/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
 
+// Interactive reset flow that reads query params — never statically prerendered.
+export const dynamic = 'force-dynamic'
+
 const PASSWORD_MIN = 6
 
 type Step = 'email' | 'otp' | 'password' | 'success'

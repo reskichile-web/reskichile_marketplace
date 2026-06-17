@@ -1,28 +1,24 @@
+'use client'
+
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { getAuthUser } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { useSessionAuth } from '@/lib/use-session-auth'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
 import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 
-export default async function Header() {
-  const { user, isAdmin, avatarUrl } = await getAuthUser()
-
-  let unreadCount = 0
-  if (user) {
-    const supabase = createServerSupabaseClient()
-    const { count } = await supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .is('read_at', null)
-      .neq('sender_id', user.id)
-    unreadCount = count ?? 0
-  }
+// Client component on purpose: it reads the auth session in the browser so the
+// surrounding pages stay ISR-cacheable (no server-side cookies()). The static
+// shell (logo, search, nav, "Vender") renders identically for everyone; the
+// login/avatar area hydrates once the session resolves. The eternal-login cookie
+// is untouched — middleware still refreshes it on every request.
+export default function Header() {
+  const { userId, email, isAdmin, avatarUrl, unreadCount } = useSessionAuth()
 
   return (
-    <ChatProvider userId={user?.id ?? null} initialUnreadCount={unreadCount}>
+    <ChatProvider userId={userId} initialUnreadCount={unreadCount}>
     <header className="bg-white shadow-sm">
       {/* Preload avatar image for instant display */}
       {avatarUrl && (
@@ -49,8 +45,8 @@ export default async function Header() {
           {/* Right actions — mobile */}
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
-            {user ? (
-              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={user.email} />
+            {userId ? (
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -62,7 +58,7 @@ export default async function Header() {
 
           {/* Right actions — desktop */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            {!user && (
+            {!userId && (
               <>
                 <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
                   Iniciar sesion
@@ -76,7 +72,7 @@ export default async function Header() {
             <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-1.5 rounded-none hover:bg-brand-600 transition-colors font-nav">
               Vender
             </Link>
-            {user && (
+            {userId && (
               <>
                 <Link
                   href="/mis-productos"
@@ -87,7 +83,7 @@ export default async function Header() {
                   </svg>
                   Mis productos
                 </Link>
-                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={user.email} />
+                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />
               </>
             )}
           </div>
@@ -98,7 +94,9 @@ export default async function Header() {
       {/* Category nav — desktop only */}
       <div className="hidden md:block">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <CategoryNav />
+          <Suspense fallback={null}>
+            <CategoryNav />
+          </Suspense>
         </div>
       </div>
     </header>

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/send'
 import { buildApprovedEmail } from '@/lib/email/templates'
+import { revalidateProduct } from '@/lib/revalidate'
 import { NextResponse } from 'next/server'
 
 // Admin approves a product. This is the source of truth for the transition,
@@ -50,6 +51,9 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
+
+  // The listing just became publicly visible — refresh its cached page + home.
+  revalidateProduct({ id: product.id, slug: product.slug })
 
   // Only email on a genuine pending → approved transition, and only when the
   // seller has an account email (anon listings have no inbox to notify).

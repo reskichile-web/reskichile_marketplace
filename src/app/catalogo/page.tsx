@@ -1,7 +1,7 @@
 export const revalidate = 30
 
 import type { Metadata } from 'next'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createPublicServerClient } from '@/lib/supabase/server'
 import CatalogSidebar from '@/components/CatalogSidebar'
 import CatalogMobileFilterButton from '@/components/CatalogMobileFilterButton'
 import CatalogSortSelect from '@/components/CatalogSortSelect'
@@ -35,7 +35,10 @@ interface Props {
 }
 
 export default async function CatalogPage({ searchParams }: Props) {
-  const supabase = createServerSupabaseClient()
+  // Anonymous client (no cookies, no getUser round trip) — the catalog only
+  // shows approved products, and login state is resolved client-side by
+  // ClaimListingsPrompt. Note: this page is dynamic anyway (it reads searchParams).
+  const supabase = createPublicServerClient()
 
   const types = (searchParams.product_type || '').split(',').filter(Boolean)
   const conditions = (searchParams.condition || '').split(',').filter(Boolean)
@@ -51,9 +54,6 @@ export default async function CatalogPage({ searchParams }: Props) {
   const ancho = (searchParams.ancho || '').split(',').filter(Boolean)
   const fij = searchParams.fij || ''
   const conexion = (searchParams.conexion || '').split(',').filter(Boolean)
-
-  const { data: { user: currentUser } } = await supabase.auth.getUser()
-  const isLoggedIn = !!currentUser
 
   let query = supabase
     .from('products')
@@ -251,7 +251,7 @@ export default async function CatalogPage({ searchParams }: Props) {
 
       {/* Claim-your-listings prompt — page footer, centered */}
       <div className="mt-10 md:mt-12 border-t border-gray-100 pt-6">
-        <ClaimListingsPrompt isLoggedIn={isLoggedIn} />
+        <ClaimListingsPrompt />
       </div>
     </div>
   )

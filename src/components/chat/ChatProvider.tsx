@@ -29,18 +29,21 @@ interface Props {
 }
 
 /**
- * One global Realtime listener for the entire app, mounted once in the header.
+ * Realtime chat listener — scoped to the messages area only.
  *
- * Responsibilities (free-tier-friendly: a single channel, never spawned
- * elsewhere):
+ * The unread badge is always visible (the header SSR seeds it and it re-seeds on
+ * every navigation), but the persistent Realtime WebSocket is **only opened
+ * while the user is on a `/mensajes` route**. Browsing the rest of the site no
+ * longer holds a socket open or runs a bootstrap query.
+ *
+ * Responsibilities while on /mensajes:
  *
  * 1. Keep an accurate live unread-message count, exposed via {@link useUnreadCount}.
- *    The header SSR seeds the count; on mount we re-fetch the unread ids so
- *    decrements stay exact even when the SSR snapshot is stale.
- * 2. Mark `delivered_at` on incoming messages whose recipient is online but
- *    not on the conversation page (so the sender's "Entregado" check appears).
- * 3. Debounced router.refresh() when the user is on /mensajes so the SSR list
- *    re-renders shortly after a new message arrives.
+ *    On entry we re-fetch the unread ids so decrements stay exact.
+ * 2. Mark `delivered_at` on incoming messages (so the sender's "Entregado" check
+ *    appears) while the recipient is in the messages area.
+ * 3. Debounced router.refresh() when on the /mensajes list so it re-renders
+ *    shortly after a new message arrives.
  */
 export default function ChatProvider({
   userId,
@@ -49,6 +52,7 @@ export default function ChatProvider({
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const onMessages = pathname?.startsWith('/mensajes') ?? false
   const pathRef = useRef(pathname)
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const unreadIdsRef = useRef<Set<string>>(new Set())
@@ -58,13 +62,15 @@ export default function ChatProvider({
     pathRef.current = pathname
   }, [pathname])
 
-  // Reseed when SSR sends a new initial count (e.g. after router.refresh).
+  // Reseed when SSR sends a new initial count (e.g. after router.refresh or a
+  // navigation that re-renders the header). Keeps the badge fresh without a socket.
   useEffect(() => {
     setUnreadCount(initialUnreadCount)
   }, [initialUnreadCount])
 
   useEffect(() => {
-    if (!userId) return
+    // Only hold a Realtime connection open while in the messages area.
+    if (!userId || !onMessages) return
     const supabase = createClient()
     let cancelled = false
 
@@ -146,7 +152,7 @@ export default function ChatProvider({
       if (refreshTimer.current) clearTimeout(refreshTimer.current)
       supabase.removeChannel(channel)
     }
-  }, [userId, router])
+  }, [userId, onMessages, router])
 
   return (
     <ChatContext.Provider value={{ unreadCount }}>

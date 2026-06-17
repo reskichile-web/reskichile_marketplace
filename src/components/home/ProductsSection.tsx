@@ -1,8 +1,9 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createPublicServerClient } from '@/lib/supabase/server'
 import ProductBrowser from '@/components/ProductBrowser'
 
 export default async function ProductsSection() {
-  const supabase = createServerSupabaseClient()
+  // Anonymous (no-cookie) client so the home page stays ISR-cacheable.
+  const supabase = createPublicServerClient()
 
   const { data: products } = await supabase
     .from('products')

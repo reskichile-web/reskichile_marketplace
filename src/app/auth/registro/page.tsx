@@ -10,6 +10,9 @@ import PhoneInput from '@/components/PhoneInput'
 import AuthLoadingOverlay from '@/components/AuthLoadingOverlay'
 import { track } from '@/lib/track'
 
+// Reads ?redirect / invite params and is fully interactive — never prerendered.
+export const dynamic = 'force-dynamic'
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const PASSWORD_MIN = 6

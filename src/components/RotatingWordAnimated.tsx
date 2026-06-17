@@ -1,0 +1,50 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { EASE_OUT_EXPO } from '@/lib/animations'
+import { WORDS } from './RotatingWordStatic'
+
+// framer-motion lives here so it ships in its own chunk: only fast connections
+// load it (see RotatingWord dispatcher). Slow / save-data render the static word.
+export default function RotatingWordAnimated() {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex(prev => (prev + 1) % WORDS.length)
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [])
+
+  const letters = useMemo(() => WORDS[index].split(''), [index])
+
+  return (
+    <span className="inline-flex overflow-hidden align-bottom text-brand-500 [text-shadow:none]">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={WORDS[index]}
+          className="inline-flex"
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
+        >
+          {letters.map((letter, i) => (
+            <motion.span
+              key={`${WORDS[index]}-${i}`}
+              className="inline-block origin-bottom"
+              exit={{ scaleY: 0 }}
+              transition={{
+                duration: 0.2,
+                delay: i * 0.025,
+                ease: [0.76, 0, 0.24, 1],
+              }}
+            >
+              {letter}
+            </motion.span>
+          ))}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  )
+}

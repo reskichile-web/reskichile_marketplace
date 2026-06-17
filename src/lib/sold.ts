@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { buildSaleEmail, buildInternalNotice } from '@/lib/email/templates'
 import { SOLD_CHANNEL_LABELS, SOLD_SPEED_LABELS } from '@/lib/constants'
+import { revalidateProduct } from '@/lib/revalidate'
 
 const SUPPORT_EMAIL = 'reskichile@gmail.com'
 const TOKEN_ALPHABET = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -67,6 +68,9 @@ export async function markProductSold(
 
   if (updErr) return { ok: false, error: updErr.message }
 
+  // Sold → no longer in the public catalog; refresh its cached page + home.
+  revalidateProduct({ id: product.id, slug: product.slug })
+
   // Mint a single-use undo token (45-day default expiry from the table).
   const token = generateToken()
   await admin.from('product_action_tokens').insert({
@@ -115,7 +119,7 @@ export async function markProductSold(
 
 /** Reverts a sale: back to approved, clears sale metadata. */
 export async function undoProductSale(admin: SupabaseClient, productId: string): Promise<SoldResult> {
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from('products')
     .update({
       status: 'approved',
@@ -125,6 +129,10 @@ export async function undoProductSale(admin: SupabaseClient, productId: string):
       sold_at: null,
     })
     .eq('id', productId)
+    .select('id, slug')
+    .single()
   if (error) return { ok: false, error: error.message }
+  // Back in the catalog — refresh its cached page + home.
+  revalidateProduct({ id: productId, slug: (updated?.slug as string | null) ?? null })
   return { ok: true }
 }

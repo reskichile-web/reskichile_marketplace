@@ -71,7 +71,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, outfit.variable, spaceGrotesk.variable)}>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
-        <NavigationProgress />
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         <ScrollToTop />
         <Suspense fallback={null}>
           <PageViewTracker />

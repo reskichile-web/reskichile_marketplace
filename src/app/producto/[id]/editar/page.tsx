@@ -1,13 +1,19 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import imageCompression from 'browser-image-compression'
 import PageLoader from '@/components/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
-import SortableImageGrid, { type ImageItem } from '@/components/SortableImageGrid'
+import { type ImageItem } from '@/components/SortableImageGrid'
 import BrandInput from '@/components/BrandInput'
+
+// dnd-kit (~30 KB) only matters once the photos section renders — code-split it.
+const SortableImageGrid = dynamic(() => import('@/components/SortableImageGrid'), {
+  ssr: false,
+  loading: () => <div className="h-32 rounded-lg bg-gray-50 animate-pulse" />,
+})
 import { buildImagePath } from '@/lib/storage-utils'
 import {
   PRODUCT_TYPES,
@@ -319,8 +325,9 @@ export default function EditProductPage() {
         }
       }
 
-      // Compress all (originals + converted)
+      // Compress all (originals + converted). Load the compressor on demand (~25 KB).
       const allToCompress = [...valid, ...convertedFromHeic]
+      const { default: imageCompression } = await import('browser-image-compression')
       const compressed: File[] = []
       for (const file of allToCompress) {
         const result = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true })
@@ -431,6 +438,10 @@ export default function EditProductPage() {
       })
       return
     }
+
+    // Purge the public ISR cache so the edit is visible immediately instead of
+    // after the revalidate window.
+    await fetch(`/api/products/${params.id}/revalidate`, { method: 'POST' }).catch(() => {})
 
     router.push(`/producto/${params.id}`)
   }

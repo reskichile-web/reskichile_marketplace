@@ -3,6 +3,9 @@
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
+// Reads the payment status/token from the query — must never be cached.
+export const dynamic = 'force-dynamic'
+
 export default function PaymentResultPage() {
   const searchParams = useSearchParams()
   const status = searchParams.get('status')

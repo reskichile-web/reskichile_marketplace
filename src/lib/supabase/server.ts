@@ -31,6 +31,27 @@ export function createServerSupabaseClient() {
   )
 }
 
+/**
+ * Anonymous server client that does NOT read request cookies. Use it for
+ * fetching public data (approved products, categories) in pages we want to be
+ * ISR-cacheable — calling cookies() anywhere in a render forces it dynamic, so
+ * public reads must avoid the cookie-bound client. RLS still applies as the
+ * anonymous role (which sees only approved products).
+ */
+export function createPublicServerClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get() { return undefined },
+        set() {},
+        remove() {},
+      },
+    }
+  )
+}
+
 export function createServiceRoleClient() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

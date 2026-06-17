@@ -1,24 +1,61 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getAuthUser } from '@/lib/auth'
+import { cache } from 'react'
+import { createPublicServerClient } from '@/lib/supabase/server'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
 import ProductDetailClient from '@/components/ProductDetailClient'
+import ProductFallback from '@/components/ProductFallback'
 import TrackProductView from '@/components/TrackProductView'
+
+// ISR: approved product pages are cached at the edge and refreshed periodically.
+// Non-approved listings take a dynamic (per-viewer) path below, so they're never
+// cached — see the fallback in the page component.
+export const revalidate = 120
 
 interface Props {
   params: { id: string }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Pre-render approved product pages at build so they're served as cached ISR
+// pages. Listings approved later are generated on-demand and cached per
+// `revalidate` (dynamicParams defaults to true). Uses slug URLs when available.
+export async function generateStaticParams() {
+  const supabase = createPublicServerClient()
+  const { data } = await supabase
+    .from('products')
+    .select('id, slug')
+    .eq('status', 'approved')
+    .limit(1000)
+  return (data ?? []).map((p) => ({ id: (p.slug as string | null) || (p.id as string) }))
+}
+
+// Approved product fetch via the anonymous (no-cookie) client so the render
+// stays cacheable. Deduped per request and shared with generateMetadata.
+const getApprovedProduct = cache(async (idOrSlug: string) => {
+  const supabase = createPublicServerClient()
+  const query = supabase.from('products').select('*, product_images(*)').eq('status', 'approved')
+  const { data } = UUID_RE.test(idOrSlug)
+    ? await query.eq('id', idOrSlug).maybeSingle()
+    : await query.eq('slug', idOrSlug).maybeSingle()
+  return data as unknown as ProductWithImages | null
+})
+
+async function getSellerHidePhone(
+  supabase: ReturnType<typeof createPublicServerClient>,
+  sellerId: string | null
+): Promise<boolean> {
+  if (!sellerId) return false
+  // SECURITY DEFINER RPC — viewer-independent (the seller's own flag), so it's
+  // safe to read with the anonymous client and keep the page cacheable.
+  const { data } = await supabase.rpc('is_seller_phone_hidden', { p_seller: sellerId })
+  return data === true
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
-    const supabase = createServerSupabaseClient()
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)
-    const query = supabase.from('products').select('brand, model, price, product_type, product_images(url, order)')
-    const { data: product } = isUuid
-      ? await query.eq('id', params.id).single()
-      : await query.eq('slug', params.id).single()
+    const product = await getApprovedProduct(params.id)
 
     if (!product) return { title: 'Producto - ReskiChile' }
 
@@ -41,49 +78,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductDetailPage({ params }: Props) {
-  const supabase = createServerSupabaseClient()
-  const { user, isAdmin } = await getAuthUser()
+  // Cacheable path: approved product fetched anonymously (no cookies touched),
+  // so this render is ISR-cached at the edge.
+  const product = await getApprovedProduct(params.id)
 
-  // Support both UUID and slug
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)
-  const query = supabase.from('products').select('*, product_images(*)')
-  const { data } = isUuid
-    ? await query.eq('id', params.id).single()
-    : await query.eq('slug', params.id).single()
-
-  if (!data) notFound()
-
-  const product = data as unknown as ProductWithImages
-
-  // Whether the seller has opted to hide their WhatsApp number on this listing.
-  // Pulled via SECURITY DEFINER RPC because RLS on users blocks reading the
-  // flag directly from the client. Defaults to false on any error.
-  let sellerHidePhone = false
-  if (product.seller_id) {
-    const { data: hideRes } = await supabase.rpc('is_seller_phone_hidden', {
-      p_seller: product.seller_id,
-    })
-    sellerHidePhone = hideRes === true
+  // Not approved (or missing) → hand off to a client fallback that re-fetches
+  // with the viewer's session (RLS). This keeps the route cookie-free, so the
+  // common approved case stays cached, while owners can still see their own
+  // pending/draft/sold listings.
+  if (!product) {
+    return <ProductFallback idOrSlug={params.id} />
   }
 
-  // Private view counter: owner and admin see it; their own visits never
-  // count (the tracker only renders for third-party viewers).
-  // TEMPORARILY HIDDEN — views keep being recorded; to re-enable, restore
-  // the product_view_counts RPC call here (counter still shows in /admin).
-  const isOwner = user != null && user.id === product.seller_id
-  const viewCount: number | null = null
+  const sellerHidePhone = await getSellerHidePhone(createPublicServerClient(), product.seller_id)
 
   return (
     <>
-      {!isOwner && !isAdmin && (
-        <TrackProductView productId={product.id} category={product.product_type} />
-      )}
+      <TrackProductView
+        productId={product.id}
+        category={product.product_type}
+        sellerId={product.seller_id}
+      />
       <ProductDetailClient
         product={product}
-        userId={user?.id ?? null}
-        isAdmin={isAdmin}
         sellerHidePhone={sellerHidePhone}
-        viewCount={viewCount}
+        viewCount={null}
       />
     </>
   )
