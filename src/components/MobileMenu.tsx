@@ -1,22 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { EASE_OUT_EXPO } from '@/lib/animations'
+import dynamic from 'next/dynamic'
 
-const CATEGORIES = [
-  { key: 'esquis', label: 'Esquís' },
-  { key: 'snowboards', label: 'Snowboards' },
-  { key: 'botas_esqui', label: 'Botas Esquí' },
-  { key: 'botas_snowboard', label: 'Botas Snow' },
-  { key: 'cascos', label: 'Cascos' },
-  { key: 'antiparras', label: 'Antiparras' },
-  { key: 'parkas', label: 'Parkas' },
-  { key: 'pantalones', label: 'Pantalones' },
-  { key: 'fijaciones', label: 'Fijaciones' },
-]
+// The drawer (framer-motion) loads in its own chunk only after the first open,
+// so framer-motion stays out of every page's initial bundle. The button below
+// is plain SVG (no animation library) and renders instantly.
+const MobileMenuDrawer = dynamic(() => import('./MobileMenuDrawer'), { ssr: false })
 
 interface Props {
   isAdmin: boolean
@@ -24,142 +14,32 @@ interface Props {
 
 export default function MobileMenu({ isAdmin }: Props) {
   const [open, setOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => { setMounted(true) }, [])
+  const [everOpened, setEverOpened] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
+    document.body.style.overflow = open ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [open])
-
-  const sidebar = (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/40 z-[9998]"
-            onClick={() => setOpen(false)}
-          />
-
-          {/* Sidebar — left side */}
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-            className="fixed top-0 left-0 bottom-0 w-72 bg-white z-[9999] shadow-2xl flex flex-col"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 h-[60px] border-b border-gray-100">
-              <span className="font-body font-black text-lg">Menú</span>
-              <button onClick={() => setOpen(false)} className="p-1">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full text-center bg-gray-900 text-white font-bold text-sm py-3 rounded-lg hover:bg-gray-800 transition-colors mb-3"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#F5B800" stroke="none" aria-hidden="true">
-                    <path d="M12 1L9 7l-7 1 5 5-1.5 7L12 17l6.5 3L17 13l5-5-7-1z" />
-                  </svg>
-                  Dashboard admin
-                </Link>
-              )}
-
-              {/* Vender */}
-              <Link
-                href="/vender"
-                onClick={() => setOpen(false)}
-                className="pressable block w-full text-center bg-brand-500 text-white font-bold text-sm py-3 rounded-none hover:bg-brand-600 transition-colors mb-5"
-              >
-                Vender
-              </Link>
-
-              {/* Categories */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Categorías</p>
-                <div className="space-y-0.5">
-                  <Link href="/catalogo" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium hover:text-brand-500">
-                    Todo
-                  </Link>
-                  {CATEGORIES.map(cat => (
-                    <Link
-                      key={cat.key}
-                      href={`/catalogo?product_type=${cat.key}`}
-                      onClick={() => setOpen(false)}
-                      className="block py-2 text-sm text-gray-600 font-bold hover:text-brand-500"
-                    >
-                      {cat.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  )
 
   return (
     <div className="md:hidden">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(o => !o); setEverOpened(true) }}
         className="p-1"
         aria-label="Menú"
       >
-        <AnimatePresence mode="wait">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           {open ? (
-            <motion.svg
-              key="arrow"
-              initial={{ opacity: 0, rotate: -90 }}
-              animate={{ opacity: 1, rotate: 0 }}
-              exit={{ opacity: 0, rotate: 90 }}
-              transition={{ duration: 0.2 }}
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </motion.svg>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           ) : (
-            <motion.svg
-              key="burger"
-              initial={{ opacity: 0, rotate: 90 }}
-              animate={{ opacity: 1, rotate: 0 }}
-              exit={{ opacity: 0, rotate: -90 }}
-              transition={{ duration: 0.2 }}
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </motion.svg>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           )}
-        </AnimatePresence>
+        </svg>
       </button>
 
-      {mounted && createPortal(sidebar, document.body)}
+      {/* Mounted after first open so the drawer chunk (framer-motion) only loads
+          on demand; kept mounted afterward so enter/exit animations still play. */}
+      {everOpened && <MobileMenuDrawer open={open} isAdmin={isAdmin} onClose={() => setOpen(false)} />}
     </div>
   )
 }

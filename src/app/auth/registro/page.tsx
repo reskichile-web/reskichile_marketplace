@@ -1,17 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import nextDynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
 import PopupMessage from '@/components/PopupMessage'
 import PhoneInput from '@/components/PhoneInput'
-import AuthLoadingOverlay from '@/components/AuthLoadingOverlay'
 import { track } from '@/lib/track'
 
 // Reads ?redirect / invite params and is fully interactive — never prerendered.
 export const dynamic = 'force-dynamic'
+
+// Full-screen overlay shown only while verifying / on success — framer-motion
+// loads on demand instead of in the form's initial bundle.
+const AuthLoadingOverlay = nextDynamic(() => import('@/components/AuthLoadingOverlay'), { ssr: false })
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

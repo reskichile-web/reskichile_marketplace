@@ -12,7 +12,9 @@ import Spinner from '@/components/Spinner'
 import PopupMessage from '@/components/PopupMessage'
 import BrandInput from '@/components/BrandInput'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
-import PublishLoadingOverlay from '@/components/PublishLoadingOverlay'
+
+// Full-screen overlay shown only during publish — framer-motion loads on demand.
+const PublishLoadingOverlay = dynamic(() => import('@/components/PublishLoadingOverlay'), { ssr: false })
 
 // Drag-and-drop photo grid pulls in dnd-kit (~30 KB); only needed once the user
 // reaches the photos step, so code-split it out of the initial page bundle.
