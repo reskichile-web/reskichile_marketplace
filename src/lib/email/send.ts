@@ -19,6 +19,8 @@ export interface SendEmailInput {
   html: string
   text?: string
   replyTo?: string
+  /** Carbon copy — visible to all recipients. */
+  cc?: string | string[]
   /** Blind copy — hidden from the `to` recipient. */
   bcc?: string | string[]
 }
@@ -56,6 +58,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         html: input.html,
         text: input.text,
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+        ...(input.cc ? { cc: input.cc } : {}),
         ...(input.bcc ? { bcc: input.bcc } : {}),
       }),
     })

@@ -40,9 +40,16 @@ export async function POST(request: Request) {
     .single()
 
   const { subject, html, text } = buildReviewEmail(profile?.name ?? null, product.brand, product.model)
-  // Blind copy to the ReSkiChile inbox so the team sees every new submission.
-  // BCC is invisible to the seller. Only on the review email, per request.
-  const result = await sendEmail({ to: user.email!, subject, html, text, bcc: 'reskichile@gmail.com' })
+  // Copy every new submission to Sebastián and keep the team inbox on blind copy.
+  // Only the immediate post-publication review email gets these copies.
+  const result = await sendEmail({
+    to: user.email!,
+    cc: 'sebastian.derpsch@gmail.com',
+    bcc: 'reskichile@gmail.com',
+    subject,
+    html,
+    text,
+  })
 
   if (!result.ok) {
     console.error('[product-review] email failed:', result.error)
