@@ -199,7 +199,6 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <span className="font-medium text-gray-700 whitespace-nowrap">{privateViewCount} visitas</span>
-                <span className="text-gray-400">· visible solo para el dueño y administradores</span>
               </div>
             )}
           </div>
