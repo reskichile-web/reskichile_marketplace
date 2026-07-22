@@ -69,7 +69,7 @@ export default function ProductFallback({ idOrSlug }: { idOrSlug: string }) {
         category={state.product.product_type}
         sellerId={state.product.seller_id}
       />
-      <ProductDetailClient product={state.product} sellerHidePhone={state.hidePhone} viewCount={null} />
+      <ProductDetailClient product={state.product} sellerHidePhone={state.hidePhone} />
     </>
   )
 }

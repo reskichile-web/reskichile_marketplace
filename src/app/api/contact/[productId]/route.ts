@@ -45,7 +45,7 @@ export async function POST(
   // Get product with seller info
   const { data: product } = await supabase
     .from('products')
-    .select('id, brand, model, seller_id, anon_contact, status')
+    .select('id, slug, brand, model, product_type, seller_id, anon_contact, status')
     .eq('id', params.productId)
     .eq('status', 'approved')
     .single()
@@ -61,14 +61,14 @@ export async function POST(
   // Resolve the registered seller's phone or, for legacy/anonymous listings,
   // the contact stored directly on the product. There is deliberately no
   // fallback number: WhatsApp must always target this listing's seller.
+  const service = createServiceRoleClient()
   let phone: string | null = null
 
   if (product.seller_id) {
     // Cross-user profile fields are private under RLS, so a buyer cannot read
     // the seller's phone with their own session. This server-only lookup uses
     // the service role after the buyer and approved product were validated.
-    const admin = createServiceRoleClient()
-    const { data: seller } = await admin
+    const { data: seller } = await service
       .from('users')
       .select('phone, hide_phone')
       .eq('id', product.seller_id)
@@ -104,6 +104,37 @@ export async function POST(
     `Hola, te contacto por "${productName}" en ReskiChile`
   )
   const url = `https://wa.me/${phone}?text=${message}`
+
+  // This is the authoritative WhatsApp handoff: validation passed and a real
+  // seller number was resolved. Store it here (rather than as a client beacon)
+  // so the admin feed and metrics never miss it during the external redirect.
+  // Admin activity remains excluded, consistently with the rest of analytics.
+  const { data: buyerProfile } = await service
+    .from('users')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+
+  if (!buyerProfile?.is_admin) {
+    const cityRaw = request.headers.get('x-vercel-ip-city')
+    let city: string | null = null
+    if (cityRaw) {
+      try { city = decodeURIComponent(cityRaw) } catch { city = cityRaw }
+    }
+
+    await service.from('events').insert({
+      event_type: 'click',
+      event_name: 'whatsapp_contact',
+      path: `/producto/${product.slug || product.id}`,
+      category: product.product_type,
+      product_id: product.id,
+      user_id: user.id,
+      referrer: request.headers.get('referer')?.slice(0, 500) || null,
+      user_agent: request.headers.get('user-agent')?.slice(0, 300) || null,
+      country: request.headers.get('x-vercel-ip-country'),
+      city,
+    })
+  }
 
   return NextResponse.json({ url })
 }

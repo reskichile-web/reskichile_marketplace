@@ -35,6 +35,8 @@ export const PRODUCT_STATUSES: Record<string, string> = {
   archived: 'Archivado',
 }
 
+export const VIEW_COUNT_VISIBILITY_THRESHOLD = 50
+
 export const REGIONS: string[] = [
   'Arica y Parinacota',
   'Tarapacá',

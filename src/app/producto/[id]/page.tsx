@@ -102,7 +102,6 @@ export default async function ProductDetailPage({ params }: Props) {
       <ProductDetailClient
         product={product}
         sellerHidePhone={sellerHidePhone}
-        viewCount={null}
       />
     </>
   )

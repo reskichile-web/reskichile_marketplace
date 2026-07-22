@@ -19,7 +19,7 @@ export async function GET() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const [convsRes, messagesRes] = await Promise.all([
+  const [convsRes, messagesRes, whatsappRes] = await Promise.all([
     admin
       .from('conversations')
       .select(`
@@ -42,11 +42,22 @@ export async function GET() {
       `)
       .order('created_at', { ascending: false })
       .limit(20),
+    admin
+      .from('events')
+      .select(`
+        id, created_at,
+        users(name, email),
+        products(id, brand, model, slug)
+      `)
+      .eq('event_type', 'click')
+      .eq('event_name', 'whatsapp_contact')
+      .order('created_at', { ascending: false })
+      .limit(20),
   ])
 
-  if (convsRes.error || messagesRes.error) {
+  if (convsRes.error || messagesRes.error || whatsappRes.error) {
     return NextResponse.json(
-      { error: convsRes.error?.message || messagesRes.error?.message },
+      { error: convsRes.error?.message || messagesRes.error?.message || whatsappRes.error?.message },
       { status: 500 }
     )
   }
@@ -54,5 +65,6 @@ export async function GET() {
   return NextResponse.json({
     conversations: convsRes.data ?? [],
     recent_messages: messagesRes.data ?? [],
+    recent_whatsapp_clicks: whatsappRes.data ?? [],
   })
 }

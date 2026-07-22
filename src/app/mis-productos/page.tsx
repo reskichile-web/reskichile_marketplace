@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth'
 import Link from 'next/link'
-import { PRODUCT_TYPES, CONDITIONS } from '@/lib/constants'
+import { PRODUCT_TYPES, CONDITIONS, VIEW_COUNT_VISIBILITY_THRESHOLD } from '@/lib/constants'
 import EmptyState from '@/components/illustrations/EmptyState'
 import ProductStatusBlock from '@/components/ProductStatusBlock'
 import DeleteProductButton from '@/components/DeleteProductButton'
@@ -22,9 +22,18 @@ export default async function MyProductsPage() {
     .eq('seller_id', user.id)
     .order('created_at', { ascending: false })
 
-  // Private view counters TEMPORARILY HIDDEN — views keep being recorded.
-  // To re-enable: fetch product_view_counts here and restore the "visitas"
-  // span in the card sub-line (counter still shows in /admin/publicaciones).
+  // The RPC returns counts only for this owner (or an admin). Surface social
+  // proof once a listing reaches the threshold; lower counts stay hidden.
+  const viewCounts: Record<string, number> = {}
+  if (products?.length) {
+    const { data: counts } = await supabase.rpc('product_view_counts', {
+      p_ids: products.map(product => product.id),
+    })
+    for (const row of counts ?? []) {
+      const count = Number(row.views)
+      if (count >= VIEW_COUNT_VISIBILITY_THRESHOLD) viewCounts[row.product_id] = count
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 min-h-screen pt-10 md:pt-14 pb-20">
@@ -167,6 +176,7 @@ export default async function MyProductsPage() {
                     <p className={`font-body text-lg font-semibold mt-1 ${priceCls}`}>${product.price.toLocaleString('es-CL')}</p>
                     <p className={`text-xs truncate ${subCls}`}>
                       {CONDITIONS[product.condition]} · {product.region}
+                      {viewCounts[product.id] != null && ` · ${viewCounts[product.id]} visitas`}
                     </p>
                   </div>
                 </div>

@@ -56,6 +56,18 @@ interface ClickEvent {
   products: { brand: string | null; model: string | null } | null
 }
 
+interface WhatsappEvent {
+  id: number
+  created_at: string
+  users: { name: string | null; email: string | null } | null
+  products: {
+    id: string
+    brand: string | null
+    model: string | null
+    slug: string | null
+  } | null
+}
+
 interface TopProductRow {
   product_id: string
   brand: string | null
@@ -138,6 +150,8 @@ export default function MetricasPage() {
   const [daily, setDaily] = useState<DailyRow[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [clicks, setClicks] = useState<ClickEvent[]>([])
+  const [whatsappClicks, setWhatsappClicks] = useState<WhatsappEvent[]>([])
+  const [whatsappCount, setWhatsappCount] = useState(0)
   const [topProducts, setTopProducts] = useState<TopProductRow[]>([])
   const [activity, setActivity] = useState<ActivityRow[]>([])
 
@@ -146,13 +160,23 @@ export default function MetricasPage() {
     async function load() {
       setLoading(true)
       const supabase = createClient()
-      const [dailyRes, catRes, clickRes, topRes, actRes] = await Promise.all([
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+      const [dailyRes, catRes, clickRes, whatsappRes, topRes, actRes] = await Promise.all([
         supabase.rpc('admin_daily_visits', { p_days: days }),
         supabase.rpc('admin_category_views', { p_days: days }),
         supabase
           .from('events')
           .select('id, event_name, category, created_at, users(name), products(brand, model)')
           .eq('event_type', 'click')
+          .neq('event_name', 'whatsapp_contact')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('events')
+          .select('id, created_at, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
+          .eq('event_type', 'click')
+          .eq('event_name', 'whatsapp_contact')
+          .gte('created_at', since)
           .order('created_at', { ascending: false })
           .limit(50),
         supabase.rpc('admin_top_products', { p_days: days, p_limit: 10 }),
@@ -167,6 +191,8 @@ export default function MetricasPage() {
       setDaily((dailyRes.data as DailyRow[]) || [])
       setCategories((catRes.data as CategoryRow[]) || [])
       setClicks((clickRes.data as unknown as ClickEvent[]) || [])
+      setWhatsappClicks((whatsappRes.data as unknown as WhatsappEvent[]) || [])
+      setWhatsappCount(whatsappRes.count ?? 0)
       setTopProducts((topRes.data as TopProductRow[]) || [])
       setActivity((actRes.data as unknown as ActivityRow[]) || [])
       setLoading(false)
@@ -203,6 +229,7 @@ export default function MetricasPage() {
     { label: 'Únicos hoy', value: Number(todayRow?.uniques ?? 0) },
     { label: `Visitas ${days}d`, value: totalVisits },
     { label: `Únicos ${days}d`, value: totalUniques },
+    { label: `WhatsApp ${days}d`, value: whatsappCount, color: 'text-green-600' },
   ]
 
   return (
@@ -227,11 +254,11 @@ export default function MetricasPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
         {kpis.map(kpi => (
           <div key={kpi.label} className={`${CARD} p-5`}>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-            <p className="text-3xl font-black mt-2 text-brand-500">{kpi.value}</p>
+            <p className={`text-3xl font-black mt-2 ${kpi.color || 'text-brand-500'}`}>{kpi.value}</p>
           </div>
         ))}
       </div>
@@ -274,6 +301,49 @@ export default function MetricasPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* WhatsApp intent — successful handoffs to a seller number */}
+        <SectionCard
+          title="Contactos por WhatsApp"
+          subtitle={`Clics efectivos durante los últimos ${days} días`}
+          right={<span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-black text-green-700 shrink-0">{whatsappCount} en total</span>}
+        >
+          {whatsappClicks.length === 0 ? (
+            <p className="text-sm text-gray-400 py-10 text-center">Sin contactos por WhatsApp en este período.</p>
+          ) : (
+            <ul className="divide-y divide-gray-50">
+              {whatsappClicks.map(click => {
+                const product = [click.products?.brand, click.products?.model]
+                  .filter(Boolean).join(' ') || 'Producto eliminado'
+                const who = click.users?.name || click.users?.email || 'Anónimo'
+                const href = click.products
+                  ? `/producto/${click.products.slug || click.products.id}`
+                  : '/admin/publicaciones'
+                return (
+                  <li key={click.id} className="px-5 py-2.5 bg-green-50/40 hover:bg-green-50 transition-colors">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-green-100 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">{who}</p>
+                          <Link
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-[11px] font-medium text-green-700 hover:underline truncate"
+                          >
+                            Contactó por {product}
+                          </Link>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">{timeAgo(click.created_at)}</span>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </SectionCard>
+
         {/* Category views — icon rows with catalog/product split + share */}
         <SectionCard
           title="Vistas por categoría"
