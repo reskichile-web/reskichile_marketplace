@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { phoneToWhatsApp } from '@/lib/phone'
 
@@ -42,12 +42,10 @@ export async function POST(
     )
   }
 
-  const FALLBACK_PHONE = '56964880714'
-
   // Get product with seller info
   const { data: product } = await supabase
     .from('products')
-    .select('id, brand, model, seller_id, status')
+    .select('id, brand, model, seller_id, anon_contact, status')
     .eq('id', params.productId)
     .eq('status', 'approved')
     .single()
@@ -60,12 +58,17 @@ export async function POST(
     return NextResponse.json({ error: 'No puedes contactarte a ti mismo' }, { status: 400 })
   }
 
-  // Get seller phone — fallback to ReskiChile number if no seller, no phone,
-  // or the stored phone can't be normalized into a WhatsApp-ready string.
-  let phone = FALLBACK_PHONE
+  // Resolve the registered seller's phone or, for legacy/anonymous listings,
+  // the contact stored directly on the product. There is deliberately no
+  // fallback number: WhatsApp must always target this listing's seller.
+  let phone: string | null = null
 
   if (product.seller_id) {
-    const { data: seller } = await supabase
+    // Cross-user profile fields are private under RLS, so a buyer cannot read
+    // the seller's phone with their own session. This server-only lookup uses
+    // the service role after the buyer and approved product were validated.
+    const admin = createServiceRoleClient()
+    const { data: seller } = await admin
       .from('users')
       .select('phone, hide_phone')
       .eq('id', product.seller_id)
@@ -83,6 +86,16 @@ export async function POST(
 
     const wa = phoneToWhatsApp(seller?.phone)
     if (wa) phone = wa
+  } else {
+    const wa = phoneToWhatsApp(product.anon_contact)
+    if (wa) phone = wa
+  }
+
+  if (!phone) {
+    return NextResponse.json(
+      { error: 'Esta publicación no tiene un número de WhatsApp válido' },
+      { status: 422 }
+    )
   }
 
   // Build WhatsApp URL with pre-filled message

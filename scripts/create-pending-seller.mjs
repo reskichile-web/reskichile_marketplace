@@ -105,6 +105,7 @@ async function getOrCreateUser({ supabase, email, name, phone, instagram }) {
       email,
       password: generateTempPassword(),
       email_confirm: true,
+      user_metadata: { name: name || email.split('@')[0] },
     })
     if (error) throw new Error(`Error creando auth user ${email}: ${error.message}`)
     userId = data.user.id
@@ -114,7 +115,7 @@ async function getOrCreateUser({ supabase, email, name, phone, instagram }) {
   const profile = {
     id: userId,
     email,
-    name: name || null,
+    name: name || email.split('@')[0],
     phone: phone || null,
     instagram: normalizeInstagram(instagram),
     must_change_password: true,

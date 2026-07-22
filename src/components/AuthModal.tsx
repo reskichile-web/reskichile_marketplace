@@ -209,6 +209,7 @@ function LoginForm({ onSuccess, onSwitch, onForgot }: { onSuccess: () => void; o
 
 function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch: () => void }) {
   const router = useRouter()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -220,6 +221,7 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
     const trimmedEmail = email.trim().toLowerCase()
     const trimmedPhone = phone.trim()
 
+    if (!name.trim()) return 'Ingresa tu nombre'
     if (!trimmedEmail) return 'Ingresa tu email'
     if (!EMAIL_REGEX.test(trimmedEmail)) return 'Ingresa un email válido'
     if (!trimmedPhone) return 'Ingresa tu número de teléfono'
@@ -245,7 +247,10 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { name: name.trim() },
+      },
     })
 
     if (error) {
@@ -264,6 +269,7 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
       await supabase.from('users').upsert({
         id: data.user.id,
         email: data.user.email,
+        name: name.trim(),
         phone: phone.trim(),
       }, { onConflict: 'id' })
     }
@@ -281,6 +287,19 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Nombre *</label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="Tu nombre"
+            autoComplete="name"
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-1">Email</label>
           <input

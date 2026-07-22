@@ -59,7 +59,10 @@ const results = await Promise.allSettled(
     anon.auth.signUp({
       email,
       password: 'TestPass123',
-      options: { emailRedirectTo: 'https://reskichile.cl/auth/callback' },
+      options: {
+        emailRedirectTo: 'https://reskichile.cl/auth/callback',
+        data: { name: email.split('@')[0] },
+      },
     }).then(({ data, error }) => ({ email, data, error }))
   )
 )

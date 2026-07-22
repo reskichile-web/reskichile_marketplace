@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { buildImagePath } from '@/lib/storage-utils'
 import { buildProductSlug } from '@/lib/slug-utils'
+import { normalizeStoredPhone } from '@/lib/phone'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +23,8 @@ export async function POST(request: NextRequest) {
     const price = formData.get('price') as string
     const region = formData.get('region') as string
     const comuna = formData.get('comuna') as string | null
-    const anon_contact = formData.get('anon_contact') as string
+    const anonContactRaw = formData.get('anon_contact') as string
+    const anon_contact = normalizeStoredPhone(anonContactRaw)
 
     // Optional attributes JSON from the publish form
     let attributes: Record<string, unknown> = {}
@@ -34,8 +36,12 @@ export async function POST(request: NextRequest) {
       // ignore malformed attributes — never block a publish over them
     }
 
-    if (!product_type || !brand || !condition || !price || !region || !anon_contact) {
+    if (!product_type || !brand || !condition || !price || !region) {
       return NextResponse.json({ error: 'Campos obligatorios faltantes' }, { status: 400 })
+    }
+
+    if (!anon_contact) {
+      return NextResponse.json({ error: 'Número de WhatsApp inválido' }, { status: 400 })
     }
 
     // Insert product

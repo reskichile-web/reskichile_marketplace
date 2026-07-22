@@ -11,6 +11,7 @@ import OtpInput from '@/components/OtpInput'
 import Spinner from '@/components/Spinner'
 import PopupMessage from '@/components/PopupMessage'
 import BrandInput from '@/components/BrandInput'
+import PhoneInput from '@/components/PhoneInput'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
 
 // Full-screen overlay shown only during publish — framer-motion loads on demand.
@@ -24,6 +25,7 @@ const SortableImageGrid = dynamic(() => import('@/components/SortableImageGrid')
 })
 import { buildImagePath } from '@/lib/storage-utils'
 import { buildProductSlug } from '@/lib/slug-utils'
+import { normalizeStoredPhone } from '@/lib/phone'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -167,6 +169,7 @@ export default function SellPage() {
   const [publishAnon, setPublishAnon] = useState(false)
   const [anonContact, setAnonContact] = useState('')
   const [authMode, setAuthMode] = useState<'register' | 'login'>('register')
+  const [authName, setAuthName] = useState('')
   const [authEmail, setAuthEmail] = useState('')
   const [authPhone, setAuthPhone] = useState('')
   const [authCountryCode, setAuthCountryCode] = useState('+56')
@@ -284,6 +287,28 @@ export default function SellPage() {
       return
     }
 
+    // Accounts created before phone became mandatory may not have one. Check
+    // again at publish time so every new registered listing has WhatsApp.
+    const { data: sellerProfile, error: sellerProfileError } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('id', uid)
+      .single()
+
+    if (sellerProfileError) {
+      setPopup({ message: 'No pudimos verificar tu teléfono. Intenta nuevamente.', type: 'error' })
+      setLoading(false)
+      setPublishPhase(null)
+      return
+    }
+
+    if (!normalizeStoredPhone(sellerProfile?.phone)) {
+      setPopup({ message: 'Agrega un número de WhatsApp válido en tu perfil antes de publicar.', type: 'warning' })
+      setLoading(false)
+      setPublishPhase(null)
+      return
+    }
+
     setPublishPhase('creating')
     const priceInt = parseInt(price)
 
@@ -375,6 +400,7 @@ export default function SellPage() {
 
   async function handleAuthSubmit() {
     const errors: Record<string, string> = {}
+    if (!authName.trim()) errors.authName = 'Obligatorio'
     if (!authEmail.trim()) errors.authEmail = 'Obligatorio'
     const digits = authPhone.replace(/\D/g, '')
     if (!digits || digits.length !== 9 || !digits.startsWith('9')) errors.authPhone = '9 XXXX XXXX'
@@ -391,7 +417,10 @@ export default function SellPage() {
     const { data, error } = await supabase.auth.signUp({
       email: authEmail.trim().toLowerCase(),
       password: authPassword,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { name: authName.trim() },
+      },
     })
 
     if (error) {
@@ -419,8 +448,9 @@ export default function SellPage() {
   }
 
   async function handleAnonPublish() {
-    if (!anonContact.trim()) {
-      setFieldErrors({ anonContact: 'Ingresa al menos un dato de contacto' })
+    const normalizedPhone = normalizeStoredPhone(anonContact)
+    if (!normalizedPhone) {
+      setFieldErrors({ anonContact: 'Ingresa un número de WhatsApp válido' })
       return
     }
     setFieldErrors({})
@@ -436,7 +466,7 @@ export default function SellPage() {
     formData.append('price', price)
     formData.append('region', region)
     formData.append('comuna', comuna.trim())
-    formData.append('anon_contact', anonContact.trim())
+    formData.append('anon_contact', normalizedPhone)
     formData.append('attributes', JSON.stringify(cleanedAttributes()))
     images.forEach(file => formData.append('images', file))
 
@@ -512,6 +542,7 @@ export default function SellPage() {
       await supabase.from('users').upsert({
         id: data.user.id,
         email: data.user.email,
+        name: authName.trim(),
         phone: fullPhone,
       }, { onConflict: 'id' })
     }
@@ -928,15 +959,20 @@ export default function SellPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Correo, teléfono o Instagram *</label>
-                  <input
-                    type="text"
-                    value={anonContact}
-                    onChange={e => { setAnonContact(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.anonContact; return n }) }}
-                    className={`w-full border rounded-lg px-3 py-2.5 text-sm ${fieldErrors.anonContact ? 'border-red-400' : ''}`}
-                    placeholder="Ej: tu@email.com, +56912345678 o @usuario"
+                  <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
+                  <PhoneInput
+                    required
+                    error={fieldErrors.anonContact || null}
+                    onChange={full => {
+                      setAnonContact(full)
+                      setFieldErrors(prev => { const n = {...prev}; delete n.anonContact; return n })
+                    }}
+                    inputClassName="text-sm py-2.5"
+                    selectClassName="py-2.5"
                   />
-                  {fieldErrors.anonContact && <p className="text-xs text-red-500 mt-1">{fieldErrors.anonContact}</p>}
+                  {!fieldErrors.anonContact && (
+                    <p className="text-xs text-gray-500 mt-1">Los compradores te contactarán a este número.</p>
+                  )}
                 </div>
 
                 <div className="flex gap-3">
@@ -1021,6 +1057,19 @@ export default function SellPage() {
           ) : (
             <>
               <p className="text-sm text-gray-500">Tu producto se publicará automáticamente al verificar tu cuenta.</p>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  value={authName}
+                  onChange={e => { setAuthName(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.authName; return n }) }}
+                  className={`w-full border rounded-lg px-3 py-2.5 ${fieldErrors.authName ? 'border-red-400' : ''}`}
+                  placeholder="Tu nombre"
+                  autoComplete="name"
+                />
+                {fieldErrors.authName && <p className="text-xs text-red-500 mt-1">{fieldErrors.authName}</p>}
+              </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1">Email *</label>

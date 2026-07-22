@@ -355,6 +355,7 @@ async function main() {
         email: emailLower,
         password: tempPassword,
         email_confirm: true,
+        user_metadata: { name: name || emailLower.split('@')[0] },
       })
       if (authError) {
         console.error(`❌ Fila ${rowNum}: error creando auth user ${email}: ${authError.message}`)
@@ -370,7 +371,7 @@ async function main() {
     await supabase.from('users').upsert({
       id: userId,
       email: emailLower,
-      name: name || null,
+      name: name || emailLower.split('@')[0],
       phone: phone || null,
       instagram: instagram ? instagram.replace(/^@/, '') : null,
     }, { onConflict: 'id', ignoreDuplicates: false })

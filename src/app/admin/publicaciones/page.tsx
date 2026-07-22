@@ -27,7 +27,7 @@ interface AdminProduct {
   rejection_reason: string | null
   attributes: Record<string, unknown> | null
   anon_contact: string | null
-  users: { name: string | null; email: string; phone: string | null } | null
+  users: { name: string | null; email: string; phone: string | null; hide_phone: boolean } | null
   product_images: { url: string; order: number }[]
 }
 
@@ -125,7 +125,7 @@ export default function PublicacionesPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('products')
-      .select('id, product_type, brand, model, price, sale_price, status, created_at, days_published, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, anon_contact, users(name, email, phone), product_images(url, order)')
+      .select('id, product_type, brand, model, price, sale_price, status, created_at, days_published, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, anon_contact, users(name, email, phone, hide_phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
     const list = (data as unknown as AdminProduct[]) || []
@@ -561,6 +561,24 @@ export default function PublicacionesPage() {
                                           <p className="font-light">{product.users.phone}</p>
                                         </div>
                                       )}
+                                      <div>
+                                        <span className="font-bold text-gray-700">WhatsApp público</span>
+                                        <p className="mt-0.5">
+                                          {product.users?.hide_phone ? (
+                                            <span className="inline-flex text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium">
+                                              No comparte
+                                            </span>
+                                          ) : product.users?.phone ? (
+                                            <span className="inline-flex text-xs px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium">
+                                              Comparte
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">
+                                              Sin teléfono
+                                            </span>
+                                          )}
+                                        </p>
+                                      </div>
                                       <div>
                                         <span className="font-bold text-gray-700">Ubicación</span>
                                         <p className="font-light">{product.region}{product.comuna ? `, ${product.comuna}` : ''}</p>

@@ -219,7 +219,6 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
     { key: 'largo', label: 'Largo', type: 'text', required: false },
   ],
   equipo_avalanchas: [
-    GENERO_FIELD,
     { key: 'tipo_equipo', label: 'Tipo de equipo', type: 'select', required: true, options: TIPO_EQUIPO_AVALANCHAS },
   ],
   camaras_accion: [

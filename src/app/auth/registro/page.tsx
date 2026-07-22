@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState<Step>('form')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState(searchParams.get('email') || '')
   // fullPhone is the international format produced by PhoneInput, e.g. "+56912345678"
   const [fullPhone, setFullPhone] = useState('')
@@ -60,6 +61,7 @@ export default function RegisterPage() {
   function validate(): boolean {
     const errors: Record<string, string> = {}
     const trimmedEmail = email.trim().toLowerCase()
+    if (!name.trim()) errors.name = 'Este campo es obligatorio'
     if (!trimmedEmail) errors.email = 'Este campo es obligatorio'
     else if (!EMAIL_REGEX.test(trimmedEmail)) errors.email = 'Ingresa un email válido'
     if (!fullPhone) errors.phone = 'Este campo es obligatorio'
@@ -84,7 +86,10 @@ export default function RegisterPage() {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { name: name.trim() },
+      },
     })
 
     if (error) {
@@ -126,14 +131,13 @@ export default function RegisterPage() {
       return
     }
 
-    // Now we have a session — save user profile with generic name
+    // Now we have a session — save the required profile name.
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      const genericName = `user${Math.floor(Math.random() * 90000) + 10000}`
       await supabase.from('users').upsert({
         id: user.id,
         email: user.email,
-        name: genericName,
+        name: name.trim(),
         phone: fullPhone,
       }, { onConflict: 'id' })
     }
@@ -183,6 +187,19 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nombre *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => { setName(e.target.value); setFieldErrors(prev => { const n = {...prev}; delete n.name; return n }) }}
+              className={`w-full border rounded px-3 py-2 ${fieldErrors.name ? 'border-red-400' : ''}`}
+              placeholder="Tu nombre"
+              autoComplete="name"
+            />
+            {fieldErrors.name && <p className="text-xs text-red-500 mt-1">{fieldErrors.name}</p>}
+          </div>
+
           {/* Email */}
           <div>
             <label className="block text-sm font-medium mb-1">Email *</label>
@@ -391,4 +408,3 @@ export default function RegisterPage() {
   // ─── Step: Success (handled by the early-return AuthLoadingOverlay above) ───
   return <AuthLoadingOverlay phase="success" />
 }
-
