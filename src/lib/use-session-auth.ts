@@ -26,10 +26,10 @@ const ANON: SessionAuth = {
 }
 
 /**
- * Reads the auth session on the client so public pages can stay statically/ISR
- * rendered (no server-side cookies()). getSession() is a local cookie read (no
- * network); only when a session exists do we fetch the profile + unread count.
- * Re-runs on auth state changes (login/logout in another tab, token refresh).
+ * Subscribes to the browser session so public pages can stay statically/ISR
+ * rendered (no server-side cookies()). Persisted identity is published as soon
+ * as Supabase emits its initial local session; profile and unread metadata load
+ * independently afterward. Repeated startup/token events are deduplicated.
  */
 export function useSessionAuth(): SessionAuth {
   const [state, setState] = useState<SessionAuth>(ANON)
@@ -37,39 +37,146 @@ export function useSessionAuth(): SessionAuth {
   useEffect(() => {
     const supabase = createClient()
     let active = true
+    let initialized = false
+    let currentUserId: string | null = null
+    let generation = 0
+    let profileLoadedFor: string | null = null
+    let unreadLoadedFor: string | null = null
+    let profileRequest: { userId: string; generation: number } | null = null
+    let unreadRequest: { userId: string; generation: number } | null = null
+    const deferred = new Set<ReturnType<typeof setTimeout>>()
 
-    async function load(user: { id: string; email?: string | null } | null) {
-      if (!user) {
-        if (active) setState({ ...ANON, loading: false })
-        return
-      }
-      const [{ data: profile }, { count }] = await Promise.all([
-        supabase.from('users').select('is_admin, avatar_url, name').eq('id', user.id).single(),
-        supabase
-          .from('messages')
-          .select('id', { count: 'exact', head: true })
-          .is('read_at', null)
-          .neq('sender_id', user.id),
-      ])
-      if (!active) return
-      setState({
-        userId: user.id,
-        email: user.email ?? null,
-        isAdmin: profile?.is_admin ?? false,
-        avatarUrl: profile?.avatar_url ?? null,
-        name: profile?.name ?? null,
-        unreadCount: count ?? 0,
-        loading: false,
+    function defer(task: () => Promise<void>) {
+      const timer = setTimeout(() => {
+        deferred.delete(timer)
+        void task()
+      }, 0)
+      deferred.add(timer)
+    }
+
+    function isCurrent(userId: string, requestGeneration: number) {
+      return active && currentUserId === userId && generation === requestGeneration
+    }
+
+    function loadProfile(userId: string, force = false) {
+      if (profileRequest?.userId === userId) return
+      if (!force && profileLoadedFor === userId) return
+
+      const request = { userId, generation }
+      profileRequest = request
+
+      // Supabase recommends deferring database work outside the auth callback.
+      defer(async () => {
+        try {
+          if (!isCurrent(userId, request.generation)) return
+          const { data: profile, error } = await supabase
+            .from('users')
+            .select('is_admin, avatar_url, name')
+            .eq('id', userId)
+            .single()
+
+          if (error || !isCurrent(userId, request.generation)) return
+          profileLoadedFor = userId
+          setState((previous) => previous.userId === userId
+            ? {
+                ...previous,
+                isAdmin: profile?.is_admin ?? false,
+                avatarUrl: profile?.avatar_url ?? null,
+                name: profile?.name ?? null,
+              }
+            : previous)
+        } finally {
+          if (profileRequest === request) profileRequest = null
+        }
       })
     }
 
-    supabase.auth.getSession().then(({ data }) => load(data.session?.user ?? null))
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      load(session?.user ?? null)
+    function loadUnreadCount(userId: string, force = false) {
+      if (unreadRequest?.userId === userId) return
+      if (!force && unreadLoadedFor === userId) return
+
+      const request = { userId, generation }
+      unreadRequest = request
+
+      defer(async () => {
+        try {
+          if (!isCurrent(userId, request.generation)) return
+          const { count, error } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .is('read_at', null)
+            .neq('sender_id', userId)
+
+          if (error || !isCurrent(userId, request.generation)) return
+          unreadLoadedFor = userId
+          setState((previous) => previous.userId === userId
+            ? { ...previous, unreadCount: count ?? 0 }
+            : previous)
+        } finally {
+          if (unreadRequest === request) unreadRequest = null
+        }
+      })
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return
+      const user = session?.user ?? null
+
+      if (!user) {
+        if (!initialized || currentUserId !== null) {
+          generation += 1
+          currentUserId = null
+          profileLoadedFor = null
+          unreadLoadedFor = null
+          profileRequest = null
+          unreadRequest = null
+          setState({ ...ANON, loading: false })
+        }
+        initialized = true
+        return
+      }
+
+      const sameUser = initialized && currentUserId === user.id
+      if (!sameUser) {
+        generation += 1
+        currentUserId = user.id
+        profileLoadedFor = null
+        unreadLoadedFor = null
+        profileRequest = null
+        unreadRequest = null
+      }
+      initialized = true
+
+      // Identity comes directly from the persisted session and must not wait
+      // for profile or message queries. Preserve already-enriched data when the
+      // same session emits INITIAL_SESSION / SIGNED_IN again.
+      setState((previous) => {
+        const email = user.email ?? null
+        if (sameUser && previous.email === email && !previous.loading) return previous
+        return {
+          userId: user.id,
+          email,
+          isAdmin: sameUser ? previous.isAdmin : false,
+          avatarUrl: sameUser ? previous.avatarUrl : null,
+          name: sameUser ? previous.name : null,
+          unreadCount: sameUser ? previous.unreadCount : 0,
+          loading: false,
+        }
+      })
+
+      loadProfile(user.id, event === 'USER_UPDATED')
+
+      // A later SIGNED_IN can represent a refocused tab. Refresh only the
+      // unread badge in that case; initial SIGNED_IN + INITIAL_SESSION events
+      // share the same in-flight request and therefore stay deduplicated.
+      const refreshUnread = sameUser && event === 'SIGNED_IN' && unreadLoadedFor === user.id
+      loadUnreadCount(user.id, refreshUnread)
     })
 
     return () => {
       active = false
+      deferred.forEach((timer) => clearTimeout(timer))
+      deferred.clear()
       sub.subscription.unsubscribe()
     }
   }, [])

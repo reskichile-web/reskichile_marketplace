@@ -12,6 +12,7 @@
 # local design previews and generated review artifacts
 /outputs/
 /prototypes/
+/public/IG-POSTS-REFERENCES/
 
 # next.js
 /.next/

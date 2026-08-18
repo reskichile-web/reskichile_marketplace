@@ -69,10 +69,16 @@
   max-width: 590px;
   margin: 0;
   color: #10151d;
-  font-size: clamp(43px, 3.4vw, 54px);
+  font-size: clamp(34px, 3.8vw, 54px);
   font-weight: 900;
   line-height: 1.04;
   letter-spacing: -0.048em;
+}
+
+@media (min-width: 821px) {
+  .titleLead {
+    white-space: nowrap;
+  }
 }
 
 .rotatingLine {
@@ -113,6 +119,7 @@
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  white-space: nowrap;
   text-decoration: none;
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
@@ -138,10 +145,6 @@
   .frame {
     width: calc(100% - 48px);
     gap: 24px;
-  }
-
-  .title {
-    font-size: clamp(38px, 4.4vw, 43px);
   }
 
   .copy {
@@ -190,17 +193,18 @@
 
   .actions {
     width: 100%;
-    align-items: stretch;
+    align-items: center;
+    justify-content: center;
     gap: 10px;
     margin-top: 26px;
   }
 
   .button {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     min-width: 0;
     height: 50px;
-    padding: 0 16px;
-    font-size: 12px;
+    padding: 0 clamp(10px, 3.2vw, 16px);
+    font-size: clamp(10px, 3vw, 12px);
   }
 
   .photo {
@@ -210,31 +214,59 @@
 
 @media (max-width: 460px) {
   .hero {
-    height: 780px;
+    height: 480px;
+    background:
+      linear-gradient(to bottom, transparent 0%, rgb(255 255 255 / 18%) 48%, rgb(255 255 255 / 72%) 78%, #ffffff 100%),
+      url('/images/hero-mobile.jpeg') center top / cover no-repeat;
   }
 
   .content {
     width: 100%;
-    padding-top: 34px;
+    padding-top: 80px;
   }
 
   .title {
-    font-size: clamp(34px, 10.5vw, 44px);
+    font-size: clamp(39px, 12vw, 50px);
+    line-height: 1.12;
+    transform: translateY(-16px);
   }
 
   .copy {
-    margin-top: 18px;
+    position: relative;
+    isolation: isolate;
+    margin-top: 22px;
     font-size: 15px;
   }
 
+  .copy::before {
+    position: absolute;
+    z-index: -1;
+    inset: -10px -14px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 58%);
+    filter: blur(14px);
+    content: '';
+    pointer-events: none;
+  }
+
   .actions {
-    flex-direction: column;
-    margin-top: 22px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 48px;
   }
 
   .button {
-    width: 100%;
-    flex: none;
+    width: auto;
+    flex: 0 1 auto;
+    height: 48px;
+    gap: 8px;
+    padding: 0 clamp(9px, 3vw, 14px);
+  }
+
+  .button svg {
+    width: clamp(17px, 4.8vw, 20px);
+    height: clamp(17px, 4.8vw, 20px);
   }
 }
 

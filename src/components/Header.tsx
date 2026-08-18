@@ -3,7 +3,9 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { PackageOpen } from 'lucide-react'
 import { useSessionAuth } from '@/lib/use-session-auth'
+import SellTagIcon from './SellTagIcon'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
@@ -17,7 +19,7 @@ import SkiRackCartLink from './SkiRackCartLink'
 // login/avatar area hydrates once the session resolves. The eternal-login cookie
 // is untouched — middleware still refreshes it on every request.
 export default function Header() {
-  const { userId, email, isAdmin, avatarUrl, unreadCount } = useSessionAuth()
+  const { userId, email, isAdmin, avatarUrl, unreadCount, loading } = useSessionAuth()
   const pathname = usePathname()
   const showSkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
 
@@ -50,7 +52,9 @@ export default function Header() {
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
             {showSkiRackCart && <SkiRackCartLink />}
-            {userId ? (
+            {loading ? (
+              <span className="h-9 w-10 shrink-0 rounded-full bg-gray-100" aria-hidden="true" />
+            ) : userId ? (
               <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />
             ) : (
               <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
@@ -63,7 +67,14 @@ export default function Header() {
 
           {/* Right actions — desktop */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            {!userId && (
+            <Link href="/vender" className="pressable inline-flex h-9 items-center justify-center gap-1.5 bg-brand-500 px-5 text-sm text-white transition-colors hover:bg-brand-600 font-nav">
+              <SellTagIcon className="h-4 w-4" />
+              Vender
+            </Link>
+            {loading && (
+              <span className="h-9 w-[198px] shrink-0 rounded-sm bg-gray-100" aria-hidden="true" />
+            )}
+            {!loading && !userId && (
               <>
                 <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
                   Iniciar sesion
@@ -74,19 +85,14 @@ export default function Header() {
                 </Link>
               </>
             )}
-            <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-1.5 rounded-none hover:bg-brand-600 transition-colors font-nav">
-              Vender
-            </Link>
             {showSkiRackCart && <SkiRackCartLink />}
-            {userId && (
+            {!loading && userId && (
               <>
                 <Link
                   href="/mis-productos"
-                  className="pressable inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 text-sm px-4 py-2.5 rounded-sm hover:border-brand-300 hover:text-brand-500 transition-colors font-nav"
+                  className="pressable inline-flex h-9 items-center gap-2 rounded-sm border border-brand-200 bg-white px-4 text-sm text-brand-600 transition-colors hover:border-brand-300 hover:bg-brand-50 font-nav"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
+                  <PackageOpen className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                   Mis productos
                 </Link>
                 <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />

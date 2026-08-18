@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 import { track } from '@/lib/track'
+import SellTagIcon from './SellTagIcon'
 
 // Temporarily hidden: add 'esquis' back to re-enable the "Descubre tu esquí (IA)" button
 const AI_CATEGORIES = new Set<string>([])
@@ -98,7 +99,8 @@ export default function CategoryCardAnimated({ type, label, image, imagePosition
               <Link href={`/catalogo?product_type=${type}`} onClick={() => track({ type: 'click', name: 'category_marketplace', category: type })} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
                 Marketplace
               </Link>
-              <Link href="/vender" onClick={() => track({ type: 'click', name: 'category_vender', category: type })} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
+              <Link href="/vender" onClick={() => track({ type: 'click', name: 'category_vender', category: type })} className="flex items-center gap-1.5 text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
+                <SellTagIcon className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 Vender
               </Link>
               {hasAI && (

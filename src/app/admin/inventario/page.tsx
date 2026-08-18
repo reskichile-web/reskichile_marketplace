@@ -19,6 +19,8 @@ const ORIGINS = [
   { code: 'los_angeles', label: 'Los Ángeles' },
 ] as const
 
+const PRODUCT_ORDER = ['madera', 'filamento'] as const
+
 export default function AdminInventoryPage() {
   const [products, setProducts] = useState<RackInventoryProduct[]>([])
   const [draft, setDraft] = useState<Record<string, string>>({})
@@ -27,8 +29,14 @@ export default function AdminInventoryPage() {
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
 
   const applyData = useCallback((data: RackInventoryResponse) => {
-    setProducts(data.products)
-    setDraft(Object.fromEntries(data.products.flatMap(product => (
+    const orderedProducts = [...data.products].sort((a, b) => {
+      const aIndex = PRODUCT_ORDER.indexOf(a.slug as (typeof PRODUCT_ORDER)[number])
+      const bIndex = PRODUCT_ORDER.indexOf(b.slug as (typeof PRODUCT_ORDER)[number])
+      return (aIndex === -1 ? PRODUCT_ORDER.length : aIndex) - (bIndex === -1 ? PRODUCT_ORDER.length : bIndex)
+    })
+
+    setProducts(orderedProducts)
+    setDraft(Object.fromEntries(orderedProducts.flatMap(product => (
       product.variants.map(variant => [variant.inventoryId, String(variant.stockOnHand)])
     ))))
   }, [])
@@ -122,8 +130,7 @@ export default function AdminInventoryPage() {
               >
                 <div className="flex min-w-0 flex-col justify-between py-1">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{product.material}</p>
-                    <h2 className="mt-1 font-body text-xl font-black">{product.name}</h2>
+                    <h2 className="font-body text-xl font-black">{product.name}</h2>
                     <p className="mt-1 text-sm font-semibold text-brand-500">{money.format(product.priceClp)}</p>
                   </div>
                   <span className={`mt-5 w-fit rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${available === 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>

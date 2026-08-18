@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronDown, X, SlidersHorizontal } from 'lucide-react'
+import { Check, ChevronDown, X, SlidersHorizontal } from 'lucide-react'
 import CatalogSidebar from './CatalogSidebar'
 import type { SkiCounts } from '@/lib/ski-filters'
 import { PRODUCT_TYPES } from '@/lib/constants'
@@ -32,6 +32,8 @@ export default function CatalogMobileFilterButton(props: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const categoryMenuRef = useRef<HTMLDivElement>(null)
   const selectedCategory =
     props.selectedProductTypes.length === 1 ? props.selectedProductTypes[0] : ''
   const [category, setCategory] = useState(selectedCategory)
@@ -62,8 +64,30 @@ export default function CatalogMobileFilterButton(props: Props) {
     setCategory(selectedCategory)
   }, [selectedCategory])
 
+  useEffect(() => {
+    if (!categoryOpen) return
+
+    function closeCategoryMenu(event: PointerEvent) {
+      if (!categoryMenuRef.current?.contains(event.target as Node)) {
+        setCategoryOpen(false)
+      }
+    }
+
+    function closeCategoryMenuWithKeyboard(event: KeyboardEvent) {
+      if (event.key === 'Escape') setCategoryOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeCategoryMenu)
+    document.addEventListener('keydown', closeCategoryMenuWithKeyboard)
+    return () => {
+      document.removeEventListener('pointerdown', closeCategoryMenu)
+      document.removeEventListener('keydown', closeCategoryMenuWithKeyboard)
+    }
+  }, [categoryOpen])
+
   function changeCategory(value: string) {
     setCategory(value)
+    setCategoryOpen(false)
 
     const params = new URLSearchParams(searchParams.toString())
     if (value) params.set('product_type', value)
@@ -118,29 +142,63 @@ export default function CatalogMobileFilterButton(props: Props) {
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-            <div className="shrink-0 border-b border-brand-100 bg-brand-50/70 px-5 py-4">
-              <label
-                htmlFor="mobile-catalog-category"
+            <div className="shrink-0 border-b border-gray-100 bg-white px-5 py-4">
+              <p
+                id="mobile-catalog-category-label"
                 className="mb-2 block text-[11px] font-body font-bold uppercase tracking-[0.16em] text-brand-600"
               >
                 Categoría
-              </label>
-              <div className="relative">
-                <select
+              </p>
+              <div ref={categoryMenuRef} className="relative">
+                <button
                   id="mobile-catalog-category"
-                  value={category}
-                  onChange={(event) => changeCategory(event.target.value)}
-                  className="h-12 w-full appearance-none rounded-md border-2 border-brand-400 bg-white pl-4 pr-11 font-body text-base font-bold text-gray-900 shadow-sm outline-none transition-colors focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
+                  type="button"
+                  aria-labelledby="mobile-catalog-category-label mobile-catalog-category-value"
+                  aria-haspopup="listbox"
+                  aria-expanded={categoryOpen}
+                  aria-controls="mobile-catalog-category-options"
+                  onClick={() => setCategoryOpen(current => !current)}
+                  className="flex h-12 w-full items-center justify-between rounded-xl border-2 border-brand-400 bg-white pl-4 pr-3 text-left font-body text-base font-bold text-gray-900 shadow-sm outline-none transition-colors hover:border-brand-500 focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
                 >
-                  <option value="">Todas las categorías</option>
-                  {Object.entries(PRODUCT_TYPES).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-500"
-                  aria-hidden="true"
-                />
+                  <span id="mobile-catalog-category-value" className="truncate">
+                    {category ? PRODUCT_TYPES[category] : 'Todas las categorías'}
+                  </span>
+                  <ChevronDown
+                    className={`ml-3 h-5 w-5 shrink-0 text-brand-500 transition-transform ${categoryOpen ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {categoryOpen && (
+                  <div
+                    id="mobile-catalog-category-options"
+                    role="listbox"
+                    aria-labelledby="mobile-catalog-category-label"
+                    className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 max-h-[min(52vh,22rem)] overflow-y-auto overscroll-contain rounded-xl border border-gray-200 bg-white p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.18)]"
+                  >
+                    {[['', 'Todas las categorías'], ...Object.entries(PRODUCT_TYPES)].map(([value, label]) => {
+                      const selected = category === value
+                      return (
+                        <button
+                          key={value || 'all'}
+                          type="button"
+                          role="option"
+                          data-category-value={value || 'all'}
+                          aria-selected={selected}
+                          onClick={() => changeCategory(value)}
+                          className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left font-body text-[15px] transition-colors ${
+                            selected
+                              ? 'bg-brand-50 font-bold text-brand-600'
+                              : 'font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-950'
+                          }`}
+                        >
+                          <span>{label}</span>
+                          {selected && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-5">

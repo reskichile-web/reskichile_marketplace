@@ -71,10 +71,10 @@ export default function LayoutChrome({ header, footer, children }: Props) {
       {!isAdminRoute && (
         <div className={isFullscreenChatRoute ? 'hidden md:block' : 'contents'}>
           {header}
-          <div className="h-[95px] md:h-[130px]" />
+          <div className="h-[60px] md:h-[130px]" />
         </div>
       )}
-      <main className={`flex-1 ${isFullscreenChatRoute || isAdminRoute ? '' : 'min-h-[calc(100vh-95px)] md:min-h-[calc(100vh-130px)]'}`}>
+      <main className={`flex-1 ${isFullscreenChatRoute || isAdminRoute ? '' : 'min-h-[calc(100vh-60px)] md:min-h-[calc(100vh-130px)]'}`}>
         {children}
       </main>
       {!isAdminRoute && (
