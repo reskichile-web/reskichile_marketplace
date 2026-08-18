@@ -1,5 +1,16 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Documentación del proyecto
+
+- [Plan maestro de integración Webpay Plus](./docs/webpay/README.md)
+- [Auditoría del mock y nota sobre Supabase](./docs/webpay/current-state-audit.md)
+- [Arquitectura técnica Webpay](./docs/webpay/architecture.md)
+- [Investigación y diseño de despachos](./docs/webpay/shipping-research.md)
+- [Pruebas de sandbox Webpay](./docs/webpay/sandbox-runbook.md)
+- [Checklist de seguridad Webpay](./docs/webpay/security-checklist.md)
+- [Instalación controlada de Webpay sandbox](./docs/webpay/installation.md)
+- [Mapa HTML horizontal del esquema y flujo Webpay](./docs/webpay/schema-visual.html)
+
 ## Getting Started
 
 First, run the development server:
@@ -14,7 +25,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:4173](http://localhost:4173) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

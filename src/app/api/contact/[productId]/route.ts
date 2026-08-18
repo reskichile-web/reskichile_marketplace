@@ -26,8 +26,9 @@ function isRateLimited(userId: string): boolean {
 
 export async function POST(
   request: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
+  const { productId } = await params
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -46,7 +47,7 @@ export async function POST(
   const { data: product } = await supabase
     .from('products')
     .select('id, slug, brand, model, product_type, seller_id, anon_contact, status')
-    .eq('id', params.productId)
+    .eq('id', productId)
     .eq('status', 'approved')
     .single()
 

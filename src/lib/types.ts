@@ -24,7 +24,6 @@ export interface Product {
   brand: string
   model: string | null
   condition: Condition
-  seasons_used: string | null
   description: string | null
   price: number
   region: string
@@ -38,6 +37,12 @@ export interface Product {
   sold_at: string | null
   sold_channel: string | null
   sold_speed: string | null
+  commerce_owned?: boolean
+  shipping_origin_code?: 'los_angeles' | 'las_condes' | null
+  packaged_length_cm?: number | null
+  packaged_width_cm?: number | null
+  packaged_height_cm?: number | null
+  packaged_weight_kg?: number | null
   created_at: string
   updated_at: string
 }

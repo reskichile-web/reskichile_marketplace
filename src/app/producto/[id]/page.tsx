@@ -13,7 +13,7 @@ import TrackProductView from '@/components/TrackProductView'
 export const revalidate = 120
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -55,7 +55,8 @@ async function getSellerHidePhone(
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
-    const product = await getApprovedProduct(params.id)
+    const { id } = await params
+    const product = await getApprovedProduct(id)
 
     if (!product) return { title: 'Producto - ReskiChile' }
 
@@ -78,16 +79,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductDetailPage({ params }: Props) {
+  const { id } = await params
   // Cacheable path: approved product fetched anonymously (no cookies touched),
   // so this render is ISR-cached at the edge.
-  const product = await getApprovedProduct(params.id)
+  const product = await getApprovedProduct(id)
 
   // Not approved (or missing) → hand off to a client fallback that re-fetches
   // with the viewer's session (RLS). This keeps the route cookie-free, so the
   // common approved case stays cached, while owners can still see their own
   // pending/draft/sold listings.
   if (!product) {
-    return <ProductFallback idOrSlug={params.id} />
+    return <ProductFallback idOrSlug={id} />
   }
 
   const sellerHidePhone = await getSellerHidePhone(createPublicServerClient(), product.seller_id)

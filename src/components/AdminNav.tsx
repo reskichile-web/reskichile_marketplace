@@ -2,24 +2,53 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  BarChart3,
+  Boxes,
+  CircleDollarSign,
+  ClipboardCheck,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MessageCircle,
+  PackageOpen,
+  Plus,
+  ShoppingBag,
+  UserRound,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 
-const NAV_ITEMS = [
-  { label: 'Inicio', href: '/admin' },
-  { label: 'Publicaciones', href: '/admin/publicaciones' },
-  { label: 'Usuarios', href: '/admin/usuarios' },
-  { label: 'Chats', href: '/admin/chats' },
-  { label: 'Mercado', href: '/admin/finanzas' },
-  { label: 'Métricas', href: '/admin/metricas' },
+interface AdminLink {
+  label: string
+  href: string
+  icon: LucideIcon
+}
+
+const NAV_ITEMS: AdminLink[] = [
+  { label: 'Inicio', href: '/admin', icon: LayoutDashboard },
+  { label: 'Publicaciones', href: '/admin/publicaciones', icon: ClipboardCheck },
+  { label: 'Inventario', href: '/admin/inventario', icon: Boxes },
+  { label: 'Pedidos', href: '/admin/pedidos', icon: ShoppingBag },
+  { label: 'Usuarios', href: '/admin/usuarios', icon: Users },
+  { label: 'Chats', href: '/admin/chats', icon: MessageCircle },
+  { label: 'Mercado', href: '/admin/finanzas', icon: CircleDollarSign },
+  { label: 'Métricas', href: '/admin/metricas', icon: BarChart3 },
 ]
 
 interface Props {
   userName: string
   role: string
   avatarUrl: string | null
+}
+
+function isCurrentRoute(pathname: string, href: string): boolean {
+  return pathname === href || (href !== '/admin' && pathname.startsWith(`${href}/`))
 }
 
 export default function AdminNav({ userName, role, avatarUrl }: Props) {
@@ -31,176 +60,213 @@ export default function AdminNav({ userName, role, avatarUrl }: Props) {
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    if (sidebarOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
+    document.body.style.overflow = sidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
 
-  const sidebar = (
+  function adminLinks(onNavigate?: () => void) {
+    return NAV_ITEMS.map((item) => {
+      const active = isCurrentRoute(pathname, item.href)
+      const Icon = item.icon
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          aria-current={active ? 'page' : undefined}
+          className={`group flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold transition-colors ${
+            active
+              ? 'bg-brand-500 text-white shadow-sm'
+              : 'text-gray-500 hover:bg-brand-50 hover:text-brand-600'
+          }`}
+        >
+          <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.25 : 1.8} />
+          <span>{item.label}</span>
+        </Link>
+      )
+    })
+  }
+
+  const mobileSidebar = (
     <AnimatePresence>
       {sidebarOpen && (
         <>
-          <motion.div
+          <motion.button
+            type="button"
+            aria-label="Cerrar menú administrativo"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/40 z-[9998]"
+            className="fixed inset-0 z-[9998] bg-black/40 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
-          <motion.div
+          <motion.aside
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
-            className="fixed top-0 left-0 bottom-0 w-72 bg-white z-[9999] shadow-2xl flex flex-col"
+            className="fixed inset-y-0 left-0 z-[9999] flex w-[min(82vw,300px)] flex-col bg-white shadow-2xl md:hidden"
+            aria-label="Navegación administrativa"
           >
-            <div className="flex items-center justify-between px-5 h-[56px] border-b border-gray-100">
-              <span className="font-body font-black text-lg">Admin</span>
-              <button onClick={() => setSidebarOpen(false)} className="p-1">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-gray-100 px-5">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-500">ReskiChile</p>
+                <p className="font-body text-lg font-black text-gray-900">Administración</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Cerrar menú"
+              >
+                <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1">
-              {NAV_ITEMS.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`block px-3 py-2.5 rounded-md text-sm font-medium ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    {item.label}
-                  </Link>
-                )
-              })}
-              <div className="border-t border-gray-100 pt-3 mt-3">
-                <Link href="/vender" onClick={() => setSidebarOpen(false)} className="block w-full text-center bg-brand-500 text-white font-bold text-sm py-2.5 rounded-lg mb-2">
-                  Publicar producto
+
+            <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-5">
+              {adminLinks(() => setSidebarOpen(false))}
+            </nav>
+
+            <div className="shrink-0 border-t border-gray-100 p-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  href="/vender"
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2.5 text-xs font-bold text-white"
+                >
+                  <Plus className="h-4 w-4" /> Publicar
                 </Link>
-                <Link href="/mis-productos" onClick={() => setSidebarOpen(false)} className="block w-full text-center border border-brand-500 text-brand-500 font-bold text-sm py-2.5 rounded-lg mb-3">
-                  Mis productos
+                <Link
+                  href="/mis-productos"
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-brand-200 px-3 py-2.5 text-xs font-bold text-brand-600"
+                >
+                  <PackageOpen className="h-4 w-4" /> Mis productos
+                </Link>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                <Link href="/perfil" onClick={() => setSidebarOpen(false)} className="flex min-w-0 items-center gap-2.5">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500">
+                      {initial}
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-semibold text-gray-700">{userName}</span>
+                    <span className="block text-[10px] text-gray-400">{role}</span>
+                  </span>
                 </Link>
                 <form action="/auth/logout" method="POST">
-                  <button type="submit" className="block py-2 text-sm text-gray-600 hover:text-brand-500 w-full text-left">
-                    Cerrar sesión
+                  <button type="submit" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Cerrar sesión">
+                    <LogOut className="h-5 w-5" strokeWidth={1.7} />
                   </button>
                 </form>
               </div>
             </div>
-          </motion.div>
+          </motion.aside>
         </>
       )}
     </AnimatePresence>
   )
 
   return (
-    <nav className="bg-white shadow-sm fixed top-0 left-0 right-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <div className="flex items-center h-20 gap-6">
-          {/* Left: Logo + mobile burger */}
-          <div className="flex items-center gap-3 shrink-0">
-            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-1" aria-label="Menú">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+    <>
+      <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-gray-100 bg-white shadow-sm md:h-20">
+        <div className="flex h-full items-center">
+          <div className="relative flex h-full w-full items-center border-gray-100 px-4 md:w-60 md:shrink-0 md:border-r md:px-6">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 md:hidden"
+              aria-label="Abrir menú administrativo"
+            >
+              <Menu className="h-6 w-6" />
             </button>
-            <Link href="/" className="shrink-0">
-              <img src="/logo.svg" alt="ReskiChile" className="h-8" />
+
+            <Link href="/" className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0">
+              <img src="/logo.svg" alt="ReskiChile" className="h-11 w-auto md:h-14" />
             </Link>
+
+            <div className="ml-auto flex items-center gap-1 md:hidden">
+              <Link href="/vender" className="rounded-lg p-2 text-brand-500 hover:bg-brand-50" aria-label="Publicar producto">
+                <Plus className="h-5 w-5" strokeWidth={2} />
+              </Link>
+              <Link href="/mis-productos" className="rounded-lg p-2 text-gray-600 hover:bg-gray-100" aria-label="Mis productos">
+                <PackageOpen className="h-5 w-5" strokeWidth={1.8} />
+              </Link>
+            </div>
           </div>
 
-          {/* Center: Nav items — centered between logo and right buttons — desktop only */}
-          <div className="hidden md:flex flex-1 justify-center items-center gap-0.5">
-            {NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`
-                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
-                    ${isActive
-                      ? 'bg-gray-900 text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  {item.label}
-                </Link>
-              )
-            })}
-          </div>
-
-          {/* Spacer for mobile (no nav items shown) */}
-          <div className="flex-1 md:hidden" />
-
-          {/* Right: Publish + user profile — desktop only */}
-          <div className="hidden md:flex items-center gap-4 shrink-0">
+          <div className="hidden h-full min-w-0 flex-1 items-center justify-end gap-3 px-6 md:flex lg:px-8">
             <Link
               href="/vender"
-              className="flex items-center gap-1.5 bg-brand-500 text-white text-xs font-medium px-3.5 py-1.5 rounded-md hover:bg-brand-600 transition-all duration-200 shadow-sm hover:shadow"
+              className="flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-600"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
               Publicar producto
             </Link>
 
             <Link
               href="/mis-productos"
-              className="flex items-center gap-1.5 border border-brand-500 text-brand-500 text-xs font-medium px-3.5 py-1.5 rounded-md hover:bg-brand-50 transition-all duration-200"
+              className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-4 py-2 text-xs font-bold text-brand-600 transition-colors hover:bg-brand-50"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
+              <PackageOpen className="h-4 w-4" strokeWidth={1.8} />
               Mis productos
             </Link>
 
-            {/* Separator */}
-            <div className="h-5 w-px bg-gray-200" />
+            <div className="mx-1 h-7 w-px bg-gray-200" />
 
-            {/* User profile — avatar + name + role */}
-            <Link href="/perfil" className="flex items-center gap-2.5 group">
+            <Link href="/perfil" className="group flex min-w-0 items-center gap-2.5 rounded-lg px-1 py-1">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt=""
-                  className="w-9 h-9 rounded-full object-cover border-2 border-transparent group-hover:border-brand-200 transition-colors"
+                  className="h-9 w-9 rounded-full border-2 border-transparent object-cover transition-colors group-hover:border-brand-200"
                 />
               ) : (
-                <div className="w-9 h-9 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-medium">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
                   {initial}
-                </div>
+                </span>
               )}
-              <div className="flex flex-col leading-tight">
-                <span className="text-xs font-medium text-gray-800 group-hover:text-brand-500 transition-colors">
-                  {userName}
-                </span>
-                <span className="text-[10px] font-light italic text-gray-400">
-                  {role}
-                </span>
-              </div>
+              <span className="hidden min-w-0 flex-col leading-tight lg:flex">
+                <span className="max-w-36 truncate text-xs font-semibold text-gray-800 group-hover:text-brand-500">{userName}</span>
+                <span className="text-[10px] font-light italic text-gray-400">{role}</span>
+              </span>
+              <UserRound className="h-4 w-4 text-gray-300 lg:hidden" strokeWidth={1.6} />
             </Link>
 
-            {/* Logout */}
             <form action="/auth/logout" method="POST">
-              <button type="submit" className="text-gray-300 hover:text-gray-500 transition-colors" title="Cerrar sesión">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
+              <button
+                type="submit"
+                className="rounded-lg p-2 text-gray-300 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                title="Cerrar sesión"
+                aria-label="Cerrar sesión"
+              >
+                <LogOut className="h-5 w-5" strokeWidth={1.7} />
               </button>
             </form>
           </div>
         </div>
-      </div>
-      {mounted && createPortal(sidebar, document.body)}
-    </nav>
+      </header>
+
+      <aside className="fixed bottom-0 left-0 top-20 z-40 hidden w-60 flex-col border-r border-gray-100 bg-white md:flex" aria-label="Navegación administrativa">
+        <div className="px-6 pb-3 pt-7">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-500">Panel</p>
+          <h2 className="mt-1 font-body text-xl font-black text-gray-900">Administración</h2>
+        </div>
+        <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-3">
+          {adminLinks()}
+        </nav>
+        <div className="border-t border-gray-100 px-5 py-4">
+          <p className="truncate text-xs font-semibold text-gray-700">{userName}</p>
+          <p className="mt-0.5 text-[10px] text-gray-400">{role}</p>
+        </div>
+      </aside>
+
+      {mounted && createPortal(mobileSidebar, document.body)}
+    </>
   )
 }

@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReskiChile — mapa de datos y Webpay</title>
+  <style>
+    :root {
+      --paper: #f4f0e7;
+      --paper-deep: #e9e2d5;
+      --ink: #17211b;
+      --muted: #687069;
+      --line: #a7aea7;
+      --green: #1f6a4b;
+      --green-soft: #dcecdf;
+      --blue: #28568f;
+      --blue-soft: #dfe9f4;
+      --orange: #d95f35;
+      --orange-soft: #f5dfd4;
+      --violet: #74518f;
+      --violet-soft: #ebe2f0;
+      --gold: #9a7118;
+      --gold-soft: #f2e7c6;
+      --shadow: 0 14px 30px rgba(31, 42, 34, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(255,255,255,.9), transparent 30rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 32px;
+      padding: 38px 46px 30px;
+      border-bottom: 1px solid rgba(23,33,27,.14);
+    }
+
+    .eyebrow, .domain-label, .step-no, .micro {
+      font-size: 10px;
+      line-height: 1;
+      letter-spacing: .19em;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    h1, h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 500;
+      letter-spacing: -.045em;
+    }
+
+    h1 { margin-top: 10px; font-size: clamp(42px, 6vw, 86px); line-height: .91; }
+    h2 { font-size: clamp(38px, 5vw, 70px); line-height: .95; }
+
+    .header-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 430px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 11px;
+      border: 1px solid rgba(23,33,27,.18);
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .03em;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 30px;
+      padding: 36px 46px 20px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .legend-line { width: 28px; border-top: 2px solid var(--line); }
+    .legend-line.dashed { border-top-style: dashed; }
+    .legend-line.critical { border-color: var(--orange); }
+    .legend-line.commerce { border-color: var(--green); }
+
+    .map-frame {
+      position: relative;
+      margin: 0 22px 58px;
+      border: 1px solid rgba(23,33,27,.18);
+      background: rgba(255,255,255,.42);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .map-toolbar {
+      position: sticky;
+      left: 0;
+      top: 0;
+      z-index: 20;
+      width: max-content;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px;
+      background: rgba(244,240,231,.9);
+      border-right: 1px solid rgba(23,33,27,.12);
+      border-bottom: 1px solid rgba(23,33,27,.12);
+      backdrop-filter: blur(12px);
+    }
+
+    .map-toolbar button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(23,33,27,.18);
+      background: #fff;
+      color: var(--ink);
+      font: 800 16px/1 system-ui, sans-serif;
+      cursor: pointer;
+    }
+
+    .map-toolbar button:hover { background: var(--ink); color: #fff; }
+    .zoom-value { min-width: 52px; text-align: center; font: 750 11px/1 ui-monospace, monospace; }
+
+    .map-scroll {
+      overflow: auto;
+      scrollbar-color: var(--ink) transparent;
+      scrollbar-width: thin;
+    }
+
+    .map-space { position: relative; }
+
+    .schema-stage {
+      --scale: 1;
+      position: relative;
+      width: 4400px;
+      height: 2700px;
+      transform: scale(var(--scale));
+      transform-origin: 0 0;
+      background-image:
+        linear-gradient(rgba(23,33,27,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23,33,27,.035) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .connections {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .edge-path {
+      fill: none;
+      stroke: var(--line);
+      stroke-width: 1.5;
+      opacity: .62;
+      transition: opacity .18s ease, stroke-width .18s ease;
+      marker-end: url(#arrowhead);
+    }
+
+    .edge-path.logical { stroke-dasharray: 7 6; opacity: .48; }
+    .edge-path.critical { stroke: var(--orange); stroke-width: 2.35; opacity: .92; }
+    .edge-path.commerce { stroke: var(--green); stroke-width: 2.2; opacity: .84; }
+
+    .domain {
+      position: absolute;
+      top: 64px;
+      height: 1190px;
+      padding: 48px 18px 18px;
+      border: 1px solid rgba(23,33,27,.13);
+      background: rgba(255,255,255,.38);
+      z-index: 1;
+    }
+
+    .domain::before {
+      content: attr(data-index);
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      color: rgba(23,33,27,.18);
+      font: 500 26px/1 Georgia, serif;
+    }
+
+    .domain-label {
+      position: absolute;
+      top: 20px;
+      left: 18px;
+      color: var(--domain-color, var(--ink));
+    }
+
+    .identity { left: 30px; width: 330px; --domain-color: var(--violet); }
+    .catalog { left: 400px; width: 360px; --domain-color: var(--green); }
+    .chat { left: 800px; width: 360px; --domain-color: var(--blue); }
+    .logistics { left: 1200px; width: 370px; --domain-color: var(--gold); }
+    .orders { left: 1610px; width: 410px; --domain-color: var(--green); }
+    .payments { left: 2060px; width: 410px; --domain-color: var(--orange); }
+    .platform { left: 2510px; width: 410px; --domain-color: var(--blue); }
+
+    /* Free relational atlas: cards are positioned around their actual hubs,
+       while the original domain wrappers keep only color inheritance. */
+    .schema-stage .domain { display: contents; }
+    .schema-stage .domain::before { display: none; }
+    .schema-stage .node-card,
+    .schema-stage .note-tile {
+      position: absolute;
+      width: 350px;
+      margin: 0;
+    }
+
+    .schema-stage .domain-label {
+      z-index: 5;
+      width: max-content;
+      padding: 8px 11px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      background: rgba(244,240,231,.94);
+      box-shadow: 0 6px 18px rgba(23,33,27,.08);
+    }
+
+    .cluster-cloud {
+      position: absolute;
+      z-index: 0;
+      border: 1px dashed color-mix(in srgb, var(--cloud) 42%, transparent);
+      border-radius: 48% 52% 46% 54% / 42% 38% 62% 58%;
+      background: color-mix(in srgb, var(--cloud) 7%, transparent);
+      pointer-events: none;
+    }
+
+    .cloud-identity { left: 38px; top: 265px; width: 910px; height: 1570px; --cloud: var(--violet); }
+    .cloud-catalog { left: 650px; top: 160px; width: 1160px; height: 1570px; --cloud: var(--green); }
+    .cloud-chat { left: 760px; top: 1680px; width: 1220px; height: 930px; --cloud: var(--blue); }
+    .cloud-logistics { left: 1570px; top: 45px; width: 1060px; height: 690px; --cloud: var(--gold); }
+    .cloud-orders { left: 1450px; top: 675px; width: 1480px; height: 1260px; --cloud: var(--green); }
+    .cloud-payments { left: 2520px; top: 90px; width: 1780px; height: 1890px; --cloud: var(--orange); }
+    .cloud-platform { left: 3200px; top: 1500px; width: 1110px; height: 1040px; --cloud: var(--blue); }
+
+    .atlas-spine {
+      position: absolute;
+      z-index: 1;
+      left: 90px;
+      top: 795px;
+      width: 4170px;
+      height: 620px;
+      border-top: 1px solid rgba(23,33,27,.13);
+      border-bottom: 1px solid rgba(23,33,27,.13);
+      background: linear-gradient(90deg, rgba(116,81,143,.035), rgba(31,106,75,.055) 45%, rgba(217,95,53,.055));
+      transform: skewY(-1.2deg);
+      pointer-events: none;
+    }
+
+    .atlas-spine::before {
+      content: "IDENTIDAD   →   CATÁLOGO   →   ORDEN   →   PAGO   →   AUDITORÍA";
+      position: absolute;
+      top: -25px;
+      left: 18px;
+      color: rgba(23,33,27,.35);
+      font: 800 9px/1 ui-monospace, monospace;
+      letter-spacing: .17em;
+      transform: skewY(1.2deg);
+    }
+
+    .identity .domain-label { left: 70px; top: 300px; }
+    .catalog .domain-label { left: 980px; top: 175px; }
+    .chat .domain-label { left: 820px; top: 1740px; }
+    .logistics .domain-label { left: 1790px; top: 70px; }
+    .orders .domain-label { left: 1850px; top: 740px; }
+    .payments .domain-label { left: 2840px; top: 115px; }
+    .platform .domain-label { left: 3640px; top: 1550px; }
+
+    #auth-users { left: 110px; top: 980px; width: 310px; }
+    #users { left: 515px; top: 940px; width: 370px; }
+    #user-role-events { left: 95px; top: 390px; width: 350px; }
+    #password-invites { left: 120px; top: 1580px; width: 345px; }
+
+    #products { left: 1070px; top: 855px; width: 410px; }
+    #product-images { left: 1080px; top: 285px; width: 350px; }
+    #product-action-tokens { left: 1450px; top: 390px; width: 365px; }
+    #events { left: 700px; top: 1460px; width: 370px; }
+    #ski-rack-products { left: 1060px; top: 1190px; width: 410px; }
+    #ski-rack-inventory { left: 1110px; top: 1510px; width: 410px; }
+    #ski-rack-adjustments { left: 1510px; top: 1545px; width: 390px; }
+
+    #conversations { left: 1080px; top: 1810px; width: 380px; }
+    #messages { left: 1510px; top: 1990px; width: 370px; }
+    #chat-email-notifications { left: 1010px; top: 2260px; width: 410px; }
+    .chat .note-tile { left: 1490px; top: 2360px; width: 390px; }
+
+    #shipping-origins { left: 1690px; top: 155px; width: 370px; }
+    #shipping-zones { left: 2150px; top: 105px; width: 350px; }
+    #shipping-rates { left: 2070px; top: 420px; width: 390px; }
+    .logistics .note-tile { left: 1655px; top: 495px; width: 330px; }
+
+    #orders { left: 2110px; top: 875px; width: 450px; }
+    #order-items { left: 1600px; top: 815px; width: 380px; }
+    #inventory-reservations { left: 1640px; top: 1295px; width: 410px; }
+    #shipping-quotes { left: 2180px; top: 1530px; width: 410px; }
+    #promotion-redemptions { left: 2600px; top: 515px; width: 390px; }
+
+    #promotions { left: 2720px; top: 175px; width: 370px; }
+    #payment-attempts { left: 2900px; top: 865px; width: 455px; }
+    #payment-events { left: 3485px; top: 765px; width: 390px; }
+    #refunds { left: 3910px; top: 965px; width: 390px; }
+    #checkout-rate-limits { left: 2780px; top: 1740px; width: 390px; }
+
+    #storage-buckets { left: 470px; top: 175px; width: 350px; }
+    #storage-objects { left: 690px; top: 480px; width: 360px; }
+    #service-role { left: 3740px; top: 1700px; width: 390px; }
+    #realtime { left: 1530px; top: 2450px; width: 390px; }
+    #cron { left: 3290px; top: 1670px; width: 390px; }
+    .platform .note-tile:last-child { left: 3740px; top: 2180px; width: 390px; }
+
+    .node-card {
+      position: relative;
+      z-index: 4;
+      margin-bottom: 14px;
+      border: 1px solid rgba(23,33,27,.19);
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 7px 16px rgba(32,43,35,.07);
+      transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
+    }
+
+    .node-card:hover, .node-card.linked {
+      transform: translateY(-2px);
+      box-shadow: 0 13px 28px rgba(32,43,35,.15);
+    }
+
+    .node-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 39px;
+      padding: 9px 11px;
+      color: #fff;
+      background: var(--domain-color, var(--ink));
+    }
+
+    .node-head code {
+      font: 800 13px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: -.025em;
+    }
+
+    .node-kind {
+      flex: none;
+      padding: 3px 6px;
+      border: 1px solid rgba(255,255,255,.4);
+      border-radius: 999px;
+      font-size: 8px;
+      line-height: 1;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+      padding: 6px 10px 8px;
+      font: 600 10.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #465048;
+    }
+
+    .field {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr) auto;
+      align-items: center;
+      min-height: 19px;
+      border-bottom: 1px solid rgba(23,33,27,.055);
+    }
+
+    .field:last-child { border-bottom: 0; }
+    .key { font-size: 7px; letter-spacing: .06em; font-weight: 900; }
+    .pk { color: var(--orange); }
+    .fk { color: var(--blue); }
+    .type { color: #9ca29d; font-size: 8.5px; }
+    .muted-field { color: #939a94; }
+
+    .stage.focus .node-card:not(.linked) { opacity: .2; }
+    .stage.focus .edge-path:not(.active) { opacity: .035; }
+    .stage.focus .edge-path.active { opacity: 1; stroke-width: 3; }
+
+    .note-tile {
+      position: relative;
+      z-index: 4;
+      display: grid;
+      place-items: center;
+      min-height: 88px;
+      padding: 14px;
+      border: 1px dashed rgba(23,33,27,.32);
+      background: rgba(255,255,255,.42);
+      text-align: center;
+      color: var(--muted);
+      font: 750 10px/1.5 ui-monospace, monospace;
+      letter-spacing: .04em;
+    }
+
+    .webpay-section {
+      padding: 52px 0 72px;
+      background: var(--ink);
+      color: #f8f4eb;
+    }
+
+    .webpay-section .section-head { padding-top: 0; }
+    .webpay-section .pill { color: #f8f4eb; background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.2); }
+
+    .flow-frame {
+      margin: 0 22px;
+      border: 1px solid rgba(255,255,255,.17);
+      background: #111914;
+      box-shadow: 0 25px 60px rgba(0,0,0,.28);
+      overflow: auto;
+    }
+
+    .webpay-stage {
+      position: relative;
+      width: 2760px;
+      height: 760px;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .flow-card {
+      position: absolute;
+      z-index: 4;
+      width: 230px;
+      min-height: 124px;
+      padding: 17px 17px 15px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: #f7f3ea;
+      color: var(--ink);
+      box-shadow: 0 14px 30px rgba(0,0,0,.23);
+    }
+
+    .flow-card.provider { background: var(--orange); color: white; border-color: #ffb293; }
+    .flow-card.data { background: var(--green); color: white; border-color: #76b99b; }
+    .flow-card.recovery { background: #f1ce71; color: #2c2616; border-color: #ffe4a2; }
+    .flow-card.browser { background: #e5edf7; border-color: #8aa7ca; }
+
+    .flow-card h3 {
+      margin: 8px 0 9px;
+      font: 850 16px/1.05 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: -.035em;
+    }
+
+    .flow-card p {
+      margin: 0;
+      font-size: 10px;
+      line-height: 1.45;
+      font-weight: 700;
+      opacity: .72;
+    }
+
+    .flow-card .step-no { opacity: .58; }
+
+    .webpay-stage .edge-path { stroke: rgba(255,255,255,.48); opacity: .9; marker-end: url(#arrowhead-light); }
+    .webpay-stage .edge-path.critical { stroke: #ff8054; }
+    .webpay-stage .edge-path.success { stroke: #59d29a; stroke-width: 2.6; }
+    .webpay-stage .edge-path.recovery-edge { stroke: #f1ce71; stroke-width: 2; stroke-dasharray: 8 6; }
+
+    .flow-rail {
+      position: absolute;
+      z-index: 3;
+      top: 42px;
+      left: 40px;
+      right: 40px;
+      display: flex;
+      justify-content: space-between;
+      color: rgba(255,255,255,.36);
+    }
+
+    .flow-rail span { font: 800 9px/1 ui-monospace, monospace; letter-spacing: .15em; }
+
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(160px, 1fr));
+      gap: 1px;
+      margin: 28px 22px 0;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.14);
+    }
+
+    .rule {
+      min-height: 130px;
+      padding: 19px;
+      background: #111914;
+    }
+
+    .rule strong { display: block; margin: 9px 0 8px; font-size: 13px; }
+    .rule p { margin: 0; color: rgba(255,255,255,.58); font-size: 11px; line-height: 1.5; }
+    .rule .micro { color: #f1ce71; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 30px;
+      padding: 28px 46px;
+      border-top: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.46);
+      font-size: 10px;
+      letter-spacing: .05em;
+    }
+
+    @media (max-width: 900px) {
+      header { grid-template-columns: 1fr; }
+      .header-meta, .legend { justify-content: flex-start; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      .rules-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+    }
+
+    @media print {
+      @page { size: A3 landscape; margin: 8mm; }
+      body { background: white; }
+      header, .section-head { padding-left: 0; padding-right: 0; }
+      .map-frame, .flow-frame { margin-left: 0; margin-right: 0; box-shadow: none; overflow: visible; }
+      .map-toolbar { display: none; }
+      .schema-stage { transform: scale(.3); transform-origin: 0 0; }
+      .map-space { height: 810px !important; width: 1320px !important; }
+      .webpay-section { break-before: page; }
+      .rules-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="eyebrow">ReskiChile · arquitectura de datos</div>
+      <h1>El esquema,<br>de punta a punta.</h1>
+    </div>
+    <div class="header-meta">
+      <span class="pill">26 tablas</span>
+      <span class="pill">PostgreSQL + Supabase</span>
+      <span class="pill">schema.sql + migraciones locales</span>
+      <span class="pill">17 · 08 · 2026</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="schema-title">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">01 · mapa relacional</div>
+        <h2 id="schema-title">Todos los nodos.</h2>
+      </div>
+      <div class="legend" aria-label="Leyenda">
+        <span><i class="legend-line"></i> FK real</span>
+        <span><i class="legend-line dashed"></i> vínculo lógico / política</span>
+        <span><i class="legend-line commerce"></i> producto / orden / stock</span>
+        <span><i class="legend-line critical"></i> camino financiero</span>
+        <span><b class="key pk">PK</b> primaria</span>
+        <span><b class="key fk">FK</b> foránea</span>
+      </div>
+    </div>
+
+    <div class="map-frame">
+      <div class="map-toolbar" aria-label="Controles del mapa">
+        <button type="button" data-zoom="out" aria-label="Alejar">−</button>
+        <span class="zoom-value">55%</span>
+        <button type="button" data-zoom="in" aria-label="Acercar">+</button>
+        <button type="button" data-zoom="reset" aria-label="Restablecer">↺</button>
+        <span class="micro" style="margin-left:8px;color:var(--muted)">Pasa el cursor por un nodo</span>
+      </div>
+      <div class="map-scroll">
+        <div class="map-space">
+          <div class="schema-stage stage" id="schema-stage">
+            <svg class="connections" aria-hidden="true">
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                  <path d="M0,0 L8,4 L0,8 Z" fill="context-stroke"></path>
+                </marker>
+              </defs>
+            </svg>
+
+            <div class="cluster-cloud cloud-identity"></div>
+            <div class="cluster-cloud cloud-catalog"></div>
+            <div class="cluster-cloud cloud-chat"></div>
+            <div class="cluster-cloud cloud-logistics"></div>
+            <div class="cluster-cloud cloud-orders"></div>
+            <div class="cluster-cloud cloud-payments"></div>
+            <div class="cluster-cloud cloud-platform"></div>
+            <div class="atlas-spine"></div>
+
+            <div class="domain identity" data-index="01">
+              <div class="domain-label">Identidad & acceso</div>
+              <article class="node-card" id="auth-users">
+                <div class="node-head"><code>auth.users</code><span class="node-kind">Supabase</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>email</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>raw_user_meta_data</span><span class="type">jsonb</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="users">
+                <div class="node-head"><code>public.users</code><span class="node-kind">RLS</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK/FK</b><span>id → auth.users</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>email · name · phone</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>instagram · avatar_url</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>hide_phone</span><span class="type">bool</span></div>
+                  <div class="field"><b></b><span>notify_*_email</span><span class="type">bool</span></div>
+                  <div class="field"><b></b><span>must_change_password</span><span class="type">bool</span></div>
+                  <div class="field"><b></b><span class="muted-field">is_admin · keep</span><span class="type">locked</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="user-role-events">
+                <div class="node-head"><code>user_role_events</code><span class="node-kind">audit</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">bigint</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>user_id → auth.users</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>changed_by → auth.users</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>old_is_admin → new_is_admin</span><span class="type">bool</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="password-invites">
+                <div class="node-head"><code>password_invites</code><span class="node-kind">private</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>slug</span><span class="type">text</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>user_id → auth.users</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>expires_at · used_at</span><span class="type">time</span></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="domain catalog" data-index="02">
+              <div class="domain-label">Catálogo & inventario</div>
+              <article class="node-card" id="products">
+                <div class="node-head"><code>products</code><span class="node-kind">RLS</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>seller_id → users</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>shipping_origin_code</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>brand · model · type</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>price · condition · status</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>attributes</span><span class="type">jsonb</span></div>
+                  <div class="field"><b></b><span>commerce_owned</span><span class="type">bool</span></div>
+                  <div class="field"><b></b><span>packaged_* dimensions</span><span class="type">numeric</span></div>
+                  <div class="field"><b></b><span>sold_at · sold_channel</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="product-images">
+                <div class="node-head"><code>product_images</code><span class="node-kind">public</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>product_id → products</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>url · order</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="product-action-tokens">
+                <div class="node-head"><code>product_action_tokens</code><span class="node-kind">private</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>token</span><span class="type">text</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>product_id → products</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>action · expires_at · used_at</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="events">
+                <div class="node-head"><code>events</code><span class="node-kind">analytics</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">bigint</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>product_id → products</span><span class="type">uuid?</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>user_id → users</span><span class="type">uuid?</span></div>
+                  <div class="field"><b></b><span>event_type · event_name</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>path · visitor_id · location</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="ski-rack-products">
+                <div class="node-head"><code>ski_rack_products</code><span class="node-kind">server</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id · slug</span><span class="type">uuid/text</span></div>
+                  <div class="field"><b></b><span>name · material · price_clp</span><span class="type">snapshot src</span></div>
+                  <div class="field"><b></b><span>packaged 10 × 10 × 20 cm</span><span class="type">numeric</span></div>
+                  <div class="field"><b></b><span>physical weight 0,5 kg provisional</span><span class="type">numeric</span></div>
+                  <div class="field"><b></b><span>active</span><span class="type">bool</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="ski-rack-inventory">
+                <div class="node-head"><code>ski_rack_inventory</code><span class="node-kind">stock</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>rack_product_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>shipping_origin_code</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>size S/M/L · stock_on_hand = 5</span><span class="type">unique triple</span></div>
+                  <div class="field"><b></b><span>available = stock − holds</span><span class="type">derived</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="ski-rack-adjustments">
+                <div class="node-head"><code>ski_rack_inventory_adjustments</code><span class="node-kind">audit</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">bigint</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>inventory_id · admin_user_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>previous_stock → new_stock</span><span class="type">int</span></div>
+                  <div class="field"><b></b><span>reason · created_at</span><span class="type">audit</span></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="domain chat" data-index="03">
+              <div class="domain-label">Conversaciones</div>
+              <article class="node-card" id="conversations">
+                <div class="node-head"><code>conversations</code><span class="node-kind">realtime</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>product_id → products</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>buyer_id → users</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>seller_id → users</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>last_message_at</span><span class="type">time</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="messages">
+                <div class="node-head"><code>messages</code><span class="node-kind">realtime</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>conversation_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>sender_id → users</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>body</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>delivered_at · read_at</span><span class="type">time</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="chat-email-notifications">
+                <div class="node-head"><code>chat_email_notifications</code><span class="node-kind">dedupe</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>conversation_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>recipient_id → users</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>last_message_id</span><span class="type">uuid?</span></div>
+                  <div class="field"><b></b><span>last_sent_at</span><span class="type">time</span></div>
+                </div>
+              </article>
+              <div class="note-tile">RLS PARTICIPANTES<br>+ GUARD DE COLUMNAS<br>+ PUBLICACIÓN REALTIME</div>
+            </div>
+
+            <div class="domain logistics" data-index="04">
+              <div class="domain-label">Despacho</div>
+              <article class="node-card" id="shipping-origins">
+                <div class="node-head"><code>shipping_origins</code><span class="node-kind">server</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>code</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>display_name · region</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>commune · coverage_code</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>operational_address</span><span class="type">jsonb</span></div>
+                  <div class="field"><b></b><span>active</span><span class="type">bool</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="shipping-zones">
+                <div class="node-head"><code>shipping_zones</code><span class="node-kind">server</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>name · region · commune</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>delivery_method</span><span class="type">enum</span></div>
+                  <div class="field"><b></b><span>priority · active</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="shipping-rates">
+                <div class="node-head"><code>shipping_rates</code><span class="node-kind">server</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>shipping_origin_code</span><span class="type">text</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>zone_id → shipping_zones</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>service_code · amount_clp</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>min/max_delivery_days</span><span class="type">int</span></div>
+                  <div class="field"><b></b><span>valid_from/until · active</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <div class="note-tile">ORÍGENES ACTUALES<br>LOS ÁNGELES<br>LAS CONDES</div>
+            </div>
+
+            <div class="domain orders" data-index="05">
+              <div class="domain-label">Orden & stock</div>
+              <article class="node-card" id="orders">
+                <div class="node-head"><code>orders</code><span class="node-kind">server</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id · public_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>buyer_user_id → auth.users</span><span class="type">uuid?</span></div>
+                  <div class="field"><b></b><span>order_number</span><span class="type">varchar</span></div>
+                  <div class="field"><b></b><span>buyer_* · shipping_snapshot</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>order/payment/fulfillment_status</span><span class="type">enum</span></div>
+                  <div class="field"><b></b><span>subtotal − discount + shipping</span><span class="type">CLP</span></div>
+                  <div class="field"><b></b><span>total_clp</span><span class="type">CLP</span></div>
+                  <div class="field"><b></b><span>idempotency_key · fingerprint</span><span class="type">hash</span></div>
+                  <div class="field"><b></b><span>guest_access_hash · expires_at</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="order-items">
+                <div class="node-head"><code>order_items</code><span class="node-kind">snapshot</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>order_id · product_id?</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>rack_inventory_id?</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>shipping_origin_code</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>product_name · unit_price_clp</span><span class="type">snapshot</span></div>
+                  <div class="field"><b></b><span>quantity · package_snapshot</span><span class="type">snapshot</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="inventory-reservations">
+                <div class="node-head"><code>inventory_reservations</code><span class="node-kind">fence</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>order_id · product_id?</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>rack_inventory_id?</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>quantity</span><span class="type">1…10</span></div>
+                  <div class="field"><b></b><span>active → processing → terminal</span><span class="type">state</span></div>
+                  <div class="field"><b></b><span>expires/consumed/released_at</span><span class="type">time</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="shipping-quotes">
+                <div class="node-head"><code>shipping_quotes</code><span class="node-kind">snapshot</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>order_id · origin_code</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>source · delivery_method</span><span class="type">enum</span></div>
+                  <div class="field"><b></b><span>destination · service_code</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>amount_clp · state · expires_at</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="promotion-redemptions">
+                <div class="node-head"><code>promotion_redemptions</code><span class="node-kind">hold</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>promotion_id · order_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>buyer_key · state · discount_clp</span><span class="type">mix</span></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="domain payments" data-index="06">
+              <div class="domain-label">Pago & finanzas</div>
+              <article class="node-card" id="promotions">
+                <div class="node-head"><code>promotions</code><span class="node-kind">server</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>environment + code</span><span class="type">unique</span></div>
+                  <div class="field"><b></b><span>discount_type · value</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>limits · starts_at · ends_at</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>active</span><span class="type">bool</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="payment-attempts">
+                <div class="node-head"><code>payment_attempts</code><span class="node-kind">critical</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>order_id → orders</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>provider · environment · state</span><span class="type">enum</span></div>
+                  <div class="field"><b></b><span>amount_clp · buy_order · session_id</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>transbank_token · webpay_url</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>tbk_status · response_code · auth</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>commit_started_at · lease_until</span><span class="type">time</span></div>
+                  <div class="field"><b></b><span>next_reconcile_at · count</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>last_error_code · terminal_at</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="payment-events">
+                <div class="node-head"><code>payment_events</code><span class="node-kind">append</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">bigint</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>attempt_id · order_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b></b><span>event_type · from/to_state</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>actor · correlation_id · metadata</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="refunds">
+                <div class="node-head"><code>refunds</code><span class="node-kind">pending</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>order_id · attempt_id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>admin_user_id → auth.users</span><span class="type">uuid?</span></div>
+                  <div class="field"><b></b><span>amount_clp · state · reason</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>idempotency_key · response</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="checkout-rate-limits">
+                <div class="node-head"><code>checkout_rate_limits</code><span class="node-kind">guard</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>key_hash + window_bucket</span><span class="type">mix</span></div>
+                  <div class="field"><b></b><span>request_count · updated_at</span><span class="type">mix</span></div>
+                </div>
+              </article>
+            </div>
+
+            <div class="domain platform" data-index="07">
+              <div class="domain-label">Plataforma Supabase</div>
+              <article class="node-card" id="storage-buckets">
+                <div class="node-head"><code>storage.buckets</code><span class="node-kind">Supabase</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id = product-images</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>public = true</span><span class="type">bool</span></div>
+                </div>
+              </article>
+              <article class="node-card" id="storage-objects">
+                <div class="node-head"><code>storage.objects</code><span class="node-kind">Supabase</span></div>
+                <div class="fields">
+                  <div class="field"><b class="key pk">PK</b><span>id</span><span class="type">uuid</span></div>
+                  <div class="field"><b class="key fk">FK</b><span>bucket_id → buckets</span><span class="type">text</span></div>
+                  <div class="field"><b></b><span>name · owner · metadata</span><span class="type">mix</span></div>
+                </div>
+              </article>
+              <div class="note-tile" id="service-role">SERVICE_ROLE<br>ÚNICO ESCRITOR<br>DEL DOMINIO FINANCIERO</div>
+              <div class="note-tile" id="realtime">REALTIME<br>conversations + messages</div>
+              <div class="note-tile" id="cron">PG_CRON + PG_NET<br>reconciliación Webpay<br>cada minuto</div>
+              <div class="note-tile">RLS<br>CATÁLOGO + CHAT<br><br>SIN POLICIES PÚBLICAS<br>ÓRDENES + PAGOS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="webpay-section" aria-labelledby="webpay-title">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">02 · secuencia financiera</div>
+        <h2 id="webpay-title">Cómo corre Webpay.</h2>
+      </div>
+      <div class="header-meta">
+        <span class="pill">Webpay Plus normal</span>
+        <span class="pill">tarjeta siempre en Transbank</span>
+        <span class="pill">commit único</span>
+        <span class="pill">status recuperable</span>
+      </div>
+    </div>
+
+    <div class="flow-frame">
+      <div class="webpay-stage stage" id="webpay-stage">
+        <svg class="connections" aria-hidden="true">
+          <defs>
+            <marker id="arrowhead-light" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L8,4 L0,8 Z" fill="context-stroke"></path>
+            </marker>
+          </defs>
+        </svg>
+        <div class="flow-rail"><span>COMPRADOR</span><span>RESKICHILE / NEXT.JS</span><span>SUPABASE</span><span>TRANSBANK</span><span>RECUPERACIÓN</span><span>CIERRE</span></div>
+
+        <article class="flow-card browser" id="wp-cart" style="left:40px;top:235px">
+          <div class="step-no">01 · navegador</div><h3>Carrito</h3><p>IDs de piezas + contacto + destino. Nunca precio ni estado.</p>
+        </article>
+        <article class="flow-card" id="wp-quote" style="left:310px;top:105px">
+          <div class="step-no">02 · POST</div><h3>/checkout/quote</h3><p>Origen exacto · rate limit · payload ≤ 16 KiB.</p>
+        </article>
+        <article class="flow-card" id="wp-create" style="left:310px;top:360px">
+          <div class="step-no">03 · POST</div><h3>/checkout/create</h3><p>Precio, descuento y despacho recalculados en servidor.</p>
+        </article>
+        <article class="flow-card data" id="wp-rpc-create" style="left:590px;top:360px">
+          <div class="step-no">04 · RPC atómica</div><h3>create_checkout</h3><p>order + items + reserva + intento. Todo o nada.</p>
+        </article>
+        <article class="flow-card provider" id="wp-tbk-create" style="left:870px;top:360px">
+          <div class="step-no">05 · SDK oficial</div><h3>Transaction.create</h3><p>buy_order + session_id + amount + return_url.</p>
+        </article>
+        <article class="flow-card provider" id="wp-hosted" style="left:1150px;top:210px">
+          <div class="step-no">06 · transbank.cl</div><h3>Webpay alojado</h3><p>Tarjeta · banco · autenticación. Fuera de ReskiChile.</p>
+        </article>
+        <article class="flow-card browser" id="wp-return" style="left:1430px;top:210px">
+          <div class="step-no">07 · GET / POST</div><h3>/webpay/return</h3><p>token_ws o variante timeout / abort. Máximo 4 KiB.</p>
+        </article>
+        <article class="flow-card data" id="wp-claim" style="left:1710px;top:95px">
+          <div class="step-no">08 · lease</div><h3>claim_processing</h3><p>Un proceso obtiene commit. Duplicados reciben wait/status.</p>
+        </article>
+        <article class="flow-card provider" id="wp-commit" style="left:1710px;top:370px">
+          <div class="step-no">09 · SDK oficial</div><h3>commit / status</h3><p>Commit solo una vez. Después, recuperación por status.</p>
+        </article>
+        <article class="flow-card data" id="wp-finalize" style="left:2010px;top:230px;width:260px">
+          <div class="step-no">10 · RPC atómica</div><h3>finalize_webpay</h3><p>AUTHORIZED + response_code 0 + monto + orden + sesión + stock.</p>
+        </article>
+        <article class="flow-card browser" id="wp-result" style="left:2350px;top:230px">
+          <div class="step-no">11 · cookie privada</div><h3>/checkout/resultado</h3><p>Confirmado · rechazado · verificando. Refresco automático.</p>
+        </article>
+        <article class="flow-card recovery" id="wp-cron" style="left:1430px;top:570px">
+          <div class="step-no">cada minuto</div><h3>Supabase Cron</h3><p>Bearer secreto desde Vault → /cron/payments/reconcile.</p>
+        </article>
+        <article class="flow-card recovery" id="wp-reconcile" style="left:1710px;top:570px">
+          <div class="step-no">sin commit</div><h3>Reconciliador</h3><p>Reclama lease · consulta status · backoff · finaliza.</p>
+        </article>
+      </div>
+    </div>
+
+    <div class="rules-grid">
+      <article class="rule"><div class="micro">Confianza</div><strong>El browser propone.</strong><p>PostgreSQL decide precio, descuento, despacho, disponibilidad y total.</p></article>
+      <article class="rule"><div class="micro">Inventario</div><strong>Talla + origen + reserva.</strong><p>Checkout elige sólo una ubicación capaz de completar todo el carrito.</p></article>
+      <article class="rule"><div class="micro">Idempotencia</div><strong>Un commit máximo.</strong><p>commit_started_at convierte cualquier respuesta incierta en consulta status.</p></article>
+      <article class="rule"><div class="micro">Autorización</div><strong>Coincidencia completa.</strong><p>AUTHORIZED + código 0 + monto + buy_order + session_id + producto retenido.</p></article>
+      <article class="rule"><div class="micro">Kill switch</div><strong>Cierra ventas, no pagos.</strong><p>PAYMENTS_ENABLED=false mantiene callback, resultado y conciliación.</p></article>
+      <article class="rule"><div class="micro">Datos tarjeta</div><strong>Nunca entran al sitio.</strong><p>PAN, CVV y autenticación viven enteramente en Webpay.</p></article>
+    </div>
+
+    <footer>
+      <span>ReskiChile · mapa local preparado para sandbox</span>
+      <span>Supabase remoto pendiente de auditoría MCP y aplicación de migraciones</span>
+    </footer>
+  </section>
+
+  <script>
+    (() => {
+      const schemaEdges = [
+        ['auth-users','users'], ['auth-users','user-role-events'], ['auth-users','password-invites'],
+        ['auth-users','orders','','top',1], ['auth-users','refunds','','top',3],
+        ['users','products'], ['users','conversations'], ['users','messages'],
+        ['users','chat-email-notifications','','bottom',2], ['users','events'],
+        ['products','product-images'], ['products','product-action-tokens'], ['products','events'],
+        ['products','conversations'], ['products','order-items','commerce'], ['products','inventory-reservations','commerce'],
+        ['ski-rack-products','ski-rack-inventory','commerce'], ['ski-rack-inventory','ski-rack-adjustments'],
+        ['ski-rack-inventory','order-items','commerce'], ['ski-rack-inventory','inventory-reservations','commerce'],
+        ['shipping-origins','products'], ['shipping-origins','shipping-rates'],
+        ['shipping-origins','ski-rack-inventory','commerce'],
+        ['shipping-origins','order-items'], ['shipping-origins','shipping-quotes'],
+        ['shipping-zones','shipping-rates'],
+        ['conversations','messages'], ['conversations','chat-email-notifications'],
+        ['messages','chat-email-notifications'],
+        ['orders','order-items','commerce'], ['orders','inventory-reservations','commerce'],
+        ['orders','shipping-quotes'], ['orders','promotion-redemptions'],
+        ['orders','payment-attempts','critical'], ['orders','payment-events','critical'],
+        ['orders','refunds','critical'], ['promotions','promotion-redemptions'],
+        ['payment-attempts','payment-events','critical'], ['payment-attempts','refunds','critical'],
+        ['storage-buckets','storage-objects'], ['product-images','storage-objects','logical'],
+        ['auth-users','storage-objects','logical','top',0], ['service-role','orders','logical','bottom',4],
+        ['service-role','payment-attempts','logical'], ['realtime','conversations','logical','bottom',0],
+        ['realtime','messages','logical','bottom',1], ['cron','payment-attempts','logical']
+      ];
+
+      const webpayEdges = [
+        ['wp-cart','wp-quote'], ['wp-cart','wp-create'], ['wp-quote','wp-create'],
+        ['wp-create','wp-rpc-create','success'], ['wp-rpc-create','wp-tbk-create','critical'],
+        ['wp-tbk-create','wp-hosted','critical'], ['wp-hosted','wp-return','critical'],
+        ['wp-return','wp-claim'], ['wp-claim','wp-commit','critical'],
+        ['wp-commit','wp-finalize','success'], ['wp-finalize','wp-result','success'],
+        ['wp-cron','wp-reconcile','recovery-edge'], ['wp-reconcile','wp-commit','recovery-edge'],
+        ['wp-reconcile','wp-finalize','recovery-edge']
+      ];
+
+      function anchor(node, side, stageRect, scale) {
+        const r = node.getBoundingClientRect();
+        const left = (r.left - stageRect.left) / scale;
+        const top = (r.top - stageRect.top) / scale;
+        const width = r.width / scale;
+        const height = r.height / scale;
+        if (side === 'left') return [left, top + height / 2];
+        if (side === 'right') return [left + width, top + height / 2];
+        if (side === 'top') return [left + width / 2, top];
+        return [left + width / 2, top + height];
+      }
+
+      function pathFor(from, to, stageRect, scale, route = '', lane = 0) {
+        const a = from.getBoundingClientRect();
+        const b = to.getBoundingClientRect();
+        const horizontalGap = Math.abs((a.left + a.width / 2) - (b.left + b.width / 2));
+        const verticalGap = Math.abs((a.top + a.height / 2) - (b.top + b.height / 2));
+
+        if (route === 'top' || route === 'bottom') {
+          const side = route === 'top' ? 'top' : 'bottom';
+          const p1 = anchor(from, side, stageRect, scale);
+          const p2 = anchor(to, side, stageRect, scale);
+          const laneY = route === 'top' ? 28 + lane * 22 : 2670 - lane * 22;
+          const direction = route === 'top' ? -1 : 1;
+          return `M ${p1[0]} ${p1[1]} C ${p1[0]} ${laneY + direction * 40}, ${p1[0]} ${laneY}, ${p1[0] + 40} ${laneY} L ${p2[0] - 40} ${laneY} C ${p2[0]} ${laneY}, ${p2[0]} ${laneY + direction * 40}, ${p2[0]} ${p2[1]}`;
+        }
+
+        if (horizontalGap > verticalGap * .55) {
+          const forward = a.left < b.left;
+          const p1 = anchor(from, forward ? 'right' : 'left', stageRect, scale);
+          const p2 = anchor(to, forward ? 'left' : 'right', stageRect, scale);
+          const bend = Math.max(45, Math.abs(p2[0] - p1[0]) * .42);
+          return `M ${p1[0]} ${p1[1]} C ${p1[0] + (forward ? bend : -bend)} ${p1[1]}, ${p2[0] + (forward ? -bend : bend)} ${p2[1]}, ${p2[0]} ${p2[1]}`;
+        }
+
+        const forward = a.top < b.top;
+        const p1 = anchor(from, forward ? 'bottom' : 'top', stageRect, scale);
+        const p2 = anchor(to, forward ? 'top' : 'bottom', stageRect, scale);
+        const bend = Math.max(32, Math.abs(p2[1] - p1[1]) * .45);
+        return `M ${p1[0]} ${p1[1]} C ${p1[0]} ${p1[1] + (forward ? bend : -bend)}, ${p2[0]} ${p2[1] + (forward ? -bend : bend)}, ${p2[0]} ${p2[1]}`;
+      }
+
+      function draw(stage, edges) {
+        const svg = stage.querySelector('svg.connections');
+        svg.querySelectorAll('.edge-path').forEach(path => path.remove());
+        const scale = Number(getComputedStyle(stage).getPropertyValue('--scale')) || 1;
+        const stageRect = stage.getBoundingClientRect();
+
+        edges.forEach(([fromId, toId, className = '', route = '', lane = 0]) => {
+          const from = document.getElementById(fromId);
+          const to = document.getElementById(toId);
+          if (!from || !to) return;
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', pathFor(from, to, stageRect, scale, route, lane));
+          path.setAttribute('class', `edge-path ${className}`.trim());
+          path.dataset.from = fromId;
+          path.dataset.to = toId;
+          svg.appendChild(path);
+        });
+      }
+
+      const schemaStage = document.getElementById('schema-stage');
+      const webpayStage = document.getElementById('webpay-stage');
+      const mapSpace = document.querySelector('.map-space');
+      const schemaWidth = 4400;
+      const schemaHeight = 2700;
+      let zoom = .55;
+
+      function setZoom(next) {
+        zoom = Math.min(1.15, Math.max(.42, next));
+        schemaStage.style.setProperty('--scale', zoom);
+        mapSpace.style.width = `${schemaWidth * zoom}px`;
+        mapSpace.style.height = `${schemaHeight * zoom}px`;
+        document.querySelector('.zoom-value').textContent = `${Math.round(zoom * 100)}%`;
+        requestAnimationFrame(() => draw(schemaStage, schemaEdges));
+      }
+
+      document.querySelector('[data-zoom="out"]').addEventListener('click', () => setZoom(zoom - .1));
+      document.querySelector('[data-zoom="in"]').addEventListener('click', () => setZoom(zoom + .1));
+      document.querySelector('[data-zoom="reset"]').addEventListener('click', () => setZoom(.55));
+
+      schemaStage.querySelectorAll('.node-card, .note-tile[id]').forEach(node => {
+        node.addEventListener('mouseenter', () => {
+          schemaStage.classList.add('focus');
+          node.classList.add('linked');
+          schemaStage.querySelectorAll('.edge-path').forEach(path => {
+            if (path.dataset.from === node.id || path.dataset.to === node.id) {
+              path.classList.add('active');
+              const otherId = path.dataset.from === node.id ? path.dataset.to : path.dataset.from;
+              document.getElementById(otherId)?.classList.add('linked');
+            }
+          });
+        });
+        node.addEventListener('mouseleave', () => {
+          schemaStage.classList.remove('focus');
+          schemaStage.querySelectorAll('.linked').forEach(item => item.classList.remove('linked'));
+          schemaStage.querySelectorAll('.active').forEach(item => item.classList.remove('active'));
+        });
+      });
+
+      setZoom(.55);
+      draw(webpayStage, webpayEdges);
+      window.addEventListener('resize', () => {
+        draw(schemaStage, schemaEdges);
+        draw(webpayStage, webpayEdges);
+      });
+    })();
+  </script>
+</body>
+</html>

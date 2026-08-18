@@ -40,6 +40,22 @@ interface DailyRow {
   uniques: number
 }
 
+interface ChartRow {
+  key: string
+  label: string
+  visits: number
+  uniques: number
+}
+
+type MetricsPeriod = 'all' | 14 | 30
+
+const HISTORICAL_RPC_DAYS = 36_500
+const PERIODS: Array<{ value: MetricsPeriod; label: string }> = [
+  { value: 'all', label: 'Histórico' },
+  { value: 14, label: '14 días' },
+  { value: 30, label: '30 días' },
+]
+
 interface CategoryRow {
   category: string
   views: number
@@ -145,7 +161,7 @@ function SectionCard({ title, subtitle, right, children }: {
 }
 
 export default function MetricasPage() {
-  const [days, setDays] = useState<14 | 30>(14)
+  const [period, setPeriod] = useState<MetricsPeriod>('all')
   const [loading, setLoading] = useState(true)
   const [daily, setDaily] = useState<DailyRow[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
@@ -160,10 +176,22 @@ export default function MetricasPage() {
     async function load() {
       setLoading(true)
       const supabase = createClient()
-      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+      const rpcDays = period === 'all' ? HISTORICAL_RPC_DAYS : period
+      const since = period === 'all'
+        ? null
+        : new Date(Date.now() - period * 24 * 60 * 60 * 1000).toISOString()
+      let whatsappQuery = supabase
+        .from('events')
+        .select('id, created_at, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
+        .eq('event_type', 'click')
+        .eq('event_name', 'whatsapp_contact')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (since) whatsappQuery = whatsappQuery.gte('created_at', since)
+
       const [dailyRes, catRes, clickRes, whatsappRes, topRes, actRes] = await Promise.all([
-        supabase.rpc('admin_daily_visits', { p_days: days }),
-        supabase.rpc('admin_category_views', { p_days: days }),
+        supabase.rpc('admin_daily_visits', { p_days: rpcDays }),
+        supabase.rpc('admin_category_views', { p_days: rpcDays }),
         supabase
           .from('events')
           .select('id, event_name, category, created_at, users(name), products(brand, model)')
@@ -171,15 +199,8 @@ export default function MetricasPage() {
           .neq('event_name', 'whatsapp_contact')
           .order('created_at', { ascending: false })
           .limit(50),
-        supabase
-          .from('events')
-          .select('id, created_at, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
-          .eq('event_type', 'click')
-          .eq('event_name', 'whatsapp_contact')
-          .gte('created_at', since)
-          .order('created_at', { ascending: false })
-          .limit(50),
-        supabase.rpc('admin_top_products', { p_days: days, p_limit: 10 }),
+        whatsappQuery,
+        supabase.rpc('admin_top_products', { p_days: rpcDays, p_limit: 10 }),
         supabase
           .from('events')
           .select('id, event_type, event_name, path, created_at, users(name)')
@@ -199,37 +220,62 @@ export default function MetricasPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [days])
+  }, [period])
 
-  // Fill missing days with zeros so the chart shows a continuous range
-  const chartDays = useMemo(() => {
-    const byDay = new Map(daily.map(d => [d.day, d]))
-    const out: DailyRow[] = []
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const key = santiagoDay(d)
-      out.push(byDay.get(key) ?? { day: key, visits: 0, uniques: 0 })
+  // A daily chart remains readable for short periods. Historical data is
+  // grouped by month so it can keep growing without producing hundreds of bars.
+  const chartRows = useMemo<ChartRow[]>(() => {
+    if (period === 'all') {
+      const byMonth = new Map<string, ChartRow>()
+      for (const row of daily) {
+        const key = row.day.slice(0, 7)
+        const current = byMonth.get(key) || {
+          key,
+          label: `${key.slice(5, 7)}/${key.slice(2, 4)}`,
+          visits: 0,
+          uniques: 0,
+        }
+        current.visits += Number(row.visits)
+        current.uniques += Number(row.uniques)
+        byMonth.set(key, current)
+      }
+      return Array.from(byMonth.values()).sort((a, b) => a.key.localeCompare(b.key))
+    }
+
+    const byDay = new Map(daily.map(row => [row.day, row]))
+    const out: ChartRow[] = []
+    for (let i = period - 1; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      const key = santiagoDay(date)
+      const row = byDay.get(key)
+      out.push({
+        key,
+        label: `${key.slice(8, 10)}/${key.slice(5, 7)}`,
+        visits: Number(row?.visits ?? 0),
+        uniques: Number(row?.uniques ?? 0),
+      })
     }
     return out
-  }, [daily, days])
+  }, [daily, period])
 
   const today = santiagoDay(new Date())
-  const todayRow = chartDays.find(d => d.day === today)
-  const totalVisits = chartDays.reduce((s, d) => s + Number(d.visits), 0)
+  const todayRow = daily.find(d => d.day === today)
+  const totalVisits = daily.reduce((s, d) => s + Number(d.visits), 0)
   // Sum of daily uniques (a returning visitor counts once per day, not once per period)
   const totalUniques = daily.reduce((s, d) => s + Number(d.uniques), 0)
-  const maxVisits = Math.max(...chartDays.map(d => Number(d.visits)), 1)
+  const maxVisits = Math.max(...chartRows.map(d => Number(d.visits)), 1)
   const totalCatViews = categories.reduce((s, c) => s + Number(c.views), 0)
+  const periodLabel = period === 'all' ? 'histórico' : `últimos ${period} días`
 
   if (loading) return <AdminTableSkeleton />
 
   const kpis = [
     { label: 'Visitas hoy', value: Number(todayRow?.visits ?? 0) },
     { label: 'Únicos hoy', value: Number(todayRow?.uniques ?? 0) },
-    { label: `Visitas ${days}d`, value: totalVisits },
-    { label: `Únicos ${days}d`, value: totalUniques },
-    { label: `WhatsApp ${days}d`, value: whatsappCount, color: 'text-green-600' },
+    { label: period === 'all' ? 'Visitas históricas' : `Visitas ${period}d`, value: totalVisits },
+    { label: period === 'all' ? 'Únicos históricos' : `Únicos ${period}d`, value: totalUniques },
+    { label: period === 'all' ? 'WhatsApp histórico' : `WhatsApp ${period}d`, value: whatsappCount, color: 'text-green-600' },
   ]
 
   return (
@@ -241,13 +287,15 @@ export default function MetricasPage() {
           <p className="text-sm text-gray-500 mt-1">Observabilidad del sitio — sin visitas de admins</p>
         </div>
         <div className="flex gap-1.5">
-          {([14, 30] as const).map(d => (
+          {PERIODS.map(option => (
             <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${days === d ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              key={option.value}
+              type="button"
+              aria-pressed={period === option.value}
+              onClick={() => setPeriod(option.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${period === option.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              {d} días
+              {option.label}
             </button>
           ))}
         </div>
@@ -266,37 +314,40 @@ export default function MetricasPage() {
       {/* Daily visits chart */}
       <div className={`${CARD} p-5 mb-8`}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-body text-base font-black text-gray-900 tracking-tight">Visitas diarias</h2>
+          <h2 className="font-body text-base font-black text-gray-900 tracking-tight">
+            {period === 'all' ? 'Visitas mensuales' : 'Visitas diarias'}
+          </h2>
           <div className="flex items-center gap-3 text-[10px] text-gray-400">
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand-100 inline-block" /> Visitas</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand-500 inline-block" /> Únicos</span>
           </div>
         </div>
-        <div className="flex items-end gap-1 h-40 pt-8">
-          {chartDays.map(d => {
-            const visits = Number(d.visits)
-            const uniques = Number(d.uniques)
-            const hVisits = (visits / maxVisits) * 100
-            const hUniques = (uniques / maxVisits) * 100
-            const [, m, dd] = d.day.split('-')
-            return (
-              <div key={d.day} className="flex-1 h-full flex flex-col justify-end relative group">
-                {/* Hover tooltip */}
-                <div className="hidden group-hover:flex flex-col items-center absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 pointer-events-none">
-                  <div className="bg-gray-900 text-white text-[10px] leading-relaxed rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg text-center">
-                    <span className="block font-bold">{dd}/{m}</span>
-                    <span className="block">{visits} {visits === 1 ? 'vista' : 'vistas'}</span>
-                    <span className="block text-brand-300">{uniques} {uniques === 1 ? 'único' : 'únicos'}</span>
+        <div className="h-40 overflow-x-auto pt-8">
+          <div className={`flex h-full items-end ${period === 'all' ? 'min-w-max gap-3' : 'gap-1'}`}>
+            {chartRows.map(row => {
+              const visits = Number(row.visits)
+              const uniques = Number(row.uniques)
+              const hVisits = (visits / maxVisits) * 100
+              const hUniques = (uniques / maxVisits) * 100
+              return (
+                <div key={row.key} className={`${period === 'all' ? 'w-14 shrink-0' : 'flex-1'} group relative flex h-full flex-col justify-end`}>
+                  {/* Hover tooltip */}
+                  <div className="hidden group-hover:flex flex-col items-center absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 pointer-events-none">
+                    <div className="bg-gray-900 text-white text-[10px] leading-relaxed rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg text-center">
+                      <span className="block font-bold">{row.label}</span>
+                      <span className="block">{visits} {visits === 1 ? 'vista' : 'vistas'}</span>
+                      <span className="block text-brand-300">{uniques} {uniques === 1 ? 'único' : 'únicos'}</span>
+                    </div>
+                    <div className="w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
                   </div>
-                  <div className="w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
+                  <div className="relative w-full rounded-t bg-brand-100 group-hover:bg-brand-200 transition-colors" style={{ height: `${Math.max(hVisits, visits > 0 ? 3 : 1)}%` }}>
+                    <div className="absolute bottom-0 left-0 right-0 rounded-t bg-brand-500" style={{ height: `${visits > 0 ? (hUniques / Math.max(hVisits, 1)) * 100 : 0}%` }} />
+                  </div>
+                  <span className="mt-1 truncate text-center text-[9px] text-gray-400">{row.label}</span>
                 </div>
-                <div className="relative w-full rounded-t bg-brand-100 group-hover:bg-brand-200 transition-colors" style={{ height: `${Math.max(hVisits, visits > 0 ? 3 : 1)}%` }}>
-                  <div className="absolute bottom-0 left-0 right-0 rounded-t bg-brand-500" style={{ height: `${visits > 0 ? (hUniques / Math.max(hVisits, 1)) * 100 : 0}%` }} />
-                </div>
-                <span className="text-[9px] text-gray-400 text-center mt-1 truncate">{dd}/{m}</span>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -304,7 +355,7 @@ export default function MetricasPage() {
         {/* WhatsApp intent — successful handoffs to a seller number */}
         <SectionCard
           title="Contactos por WhatsApp"
-          subtitle={`Clics efectivos durante los últimos ${days} días`}
+          subtitle={`Clics efectivos · ${periodLabel}`}
           right={<span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-black text-green-700 shrink-0">{whatsappCount} en total</span>}
         >
           {whatsappClicks.length === 0 ? (
@@ -406,7 +457,7 @@ export default function MetricasPage() {
         </SectionCard>
 
         {/* Top products */}
-        <SectionCard title="Top productos por visitas" subtitle={`Más vistos en ${days} días`}>
+        <SectionCard title="Top productos por visitas" subtitle={`Más vistos · ${periodLabel}`}>
           {topProducts.length === 0 ? (
             <p className="text-sm text-gray-400 py-10 text-center">Sin vistas de producto todavía.</p>
           ) : (

@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server'
 import { markProductSold } from '@/lib/sold'
 
 // In-app "mark as sold" from the seller's own product (mis-productos / detail).
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -24,7 +25,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: owned } = await admin
     .from('products')
     .select('id, seller_id, status')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
   if (!owned || owned.seller_id !== user.id) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
@@ -33,7 +34,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Esta publicación no se puede marcar como vendida' }, { status: 400 })
   }
 
-  const result = await markProductSold(admin, params.id, {
+  const result = await markProductSold(admin, id, {
     salePrice,
     soldChannel,
     soldSpeed,

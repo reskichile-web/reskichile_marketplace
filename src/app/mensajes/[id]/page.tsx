@@ -8,10 +8,11 @@ import { PRODUCT_TYPES } from '@/lib/constants'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function ChatPage({ params }: Props) {
+  const { id } = await params
   const supabase = createServerSupabaseClient()
   const {
     data: { user },
@@ -21,7 +22,7 @@ export default async function ChatPage({ params }: Props) {
   const { data: conv } = await supabase
     .from('conversations')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
   if (!conv) notFound()
   if (conv.buyer_id !== user.id && conv.seller_id !== user.id) notFound()
@@ -35,7 +36,7 @@ export default async function ChatPage({ params }: Props) {
   await supabase
     .from('messages')
     .update({ delivered_at: now, read_at: now })
-    .eq('conversation_id', params.id)
+    .eq('conversation_id', id)
     .neq('sender_id', user.id)
     .is('read_at', null)
 
@@ -45,7 +46,7 @@ export default async function ChatPage({ params }: Props) {
     supabase
       .from('messages')
       .select('*')
-      .eq('conversation_id', params.id)
+      .eq('conversation_id', id)
       .order('created_at', { ascending: false })
       .limit(100),
     supabase.from('users').select('id, name, avatar_url').eq('id', otherId).single(),
@@ -94,7 +95,7 @@ export default async function ChatPage({ params }: Props) {
 
       {/* Chat */}
       <ChatRoom
-        conversationId={params.id}
+        conversationId={id}
         myId={user.id}
         initialMessages={initialMessages}
       />

@@ -8,11 +8,11 @@
  * Uso: node scripts/restore-users.mjs
  */
 
-import xlsx from 'xlsx'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { readFirstSheetObjects } from './lib/read-xlsx-objects.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -100,9 +100,7 @@ async function main() {
   const excelPath = join(__dirname, 'productos.xlsx')
   console.log(`\n📂 Leyendo Excel: ${excelPath}`)
 
-  const workbook = xlsx.readFile(excelPath)
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' })
+  const rows = await readFirstSheetObjects(excelPath)
   console.log(`✅ ${rows.length} filas en Excel\n`)
 
   // Get orphaned products

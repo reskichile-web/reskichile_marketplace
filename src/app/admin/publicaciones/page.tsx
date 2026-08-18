@@ -7,6 +7,7 @@ import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES, format
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
 import { phoneToWhatsApp } from '@/lib/phone'
+import { daysUntilSaleReminder } from '@/lib/sale-reminder'
 
 interface AdminProduct {
   id: string
@@ -18,11 +19,11 @@ interface AdminProduct {
   status: string
   created_at: string
   days_published: number
+  sale_reminder_sent_at: string | null
   seller_id: string
   condition: string
   region: string
   comuna: string
-  seasons_used: string | null
   description: string | null
   rejection_reason: string | null
   attributes: Record<string, unknown> | null
@@ -125,7 +126,7 @@ export default function PublicacionesPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('products')
-      .select('id, product_type, brand, model, price, sale_price, status, created_at, days_published, seller_id, condition, region, comuna, seasons_used, description, rejection_reason, attributes, anon_contact, users(name, email, phone, hide_phone), product_images(url, order)')
+      .select('id, product_type, brand, model, price, sale_price, status, created_at, days_published, sale_reminder_sent_at, seller_id, condition, region, comuna, description, rejection_reason, attributes, anon_contact, users(name, email, phone, hide_phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
     const list = (data as unknown as AdminProduct[]) || []
@@ -340,6 +341,14 @@ export default function PublicacionesPage() {
                 const isExpanded = expandedId === product.id
                 const images = (product.product_images || []).sort((a, b) => a.order - b.order)
                 const attrs = product.attributes as Record<string, unknown> | null
+                const reminderDaysLeft = daysUntilSaleReminder({
+                  status: product.status,
+                  daysPublished: product.days_published,
+                  lastReminderAt: product.sale_reminder_sent_at,
+                })
+                const hasReminderEmail = Boolean(
+                  product.users?.email || product.anon_contact?.includes('@'),
+                )
 
                 return (
                   <React.Fragment key={product.id}>
@@ -384,7 +393,29 @@ export default function PublicacionesPage() {
                       </td>
                       <td className="py-3.5 pr-5 hidden md:table-cell text-gray-600">
                         {['approved', 'sold', 'archived'].includes(product.status) ? (
-                          <span className="font-medium">{product.days_published} {product.days_published === 1 ? 'día' : 'días'}</span>
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{product.days_published} {product.days_published === 1 ? 'día' : 'días'}</span>
+                            {product.status === 'approved' && reminderDaysLeft !== null && (
+                              hasReminderEmail ? (
+                                <span
+                                  className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-red-500"
+                                  title={product.sale_reminder_sent_at
+                                    ? `Reloj reiniciado el ${new Date(product.sale_reminder_sent_at).toLocaleString('es-CL')}`
+                                    : 'Primer recordatorio al cumplir 30 días publicado'}
+                                >
+                                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v10.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 17.25V6.75z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6l7.2 5.4a1.75 1.75 0 002.1 0L20.25 6" />
+                                  </svg>
+                                  {reminderDaysLeft} {reminderDaysLeft === 1 ? 'día' : 'días'}
+                                </span>
+                              ) : (
+                                <span className="mt-0.5 text-[10px] font-medium text-red-400">
+                                  Sin email para recordatorio
+                                </span>
+                              )
+                            )}
+                          </div>
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
@@ -469,12 +500,6 @@ export default function PublicacionesPage() {
                                   <span className="font-bold text-gray-700">Condición</span>
                                   <p className="font-light">{CONDITIONS[product.condition] || product.condition}</p>
                                 </div>
-                                {product.seasons_used && (
-                                  <div>
-                                    <span className="font-bold text-gray-700">Temporadas</span>
-                                    <p className="font-light">{product.seasons_used}</p>
-                                  </div>
-                                )}
                                 <div>
                                   <span className="font-bold text-gray-700">Precio</span>
                                   <p className="font-light text-brand-500">${product.price.toLocaleString('es-CL')}</p>

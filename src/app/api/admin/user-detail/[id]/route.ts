@@ -2,7 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -17,22 +18,22 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   )
 
   const [authRes, productsRes, convsRes, invitesRes] = await Promise.all([
-    admin.auth.admin.getUserById(params.id),
+    admin.auth.admin.getUserById(id),
     admin
       .from('products')
       .select('id, brand, model, status, price, sale_price, slug, created_at, product_type, product_images(url, order)')
-      .eq('seller_id', params.id)
+      .eq('seller_id', id)
       .order('created_at', { ascending: false }),
     admin
       .from('conversations')
       .select('id, created_at, last_message_at, buyer:users!buyer_id(name), seller:users!seller_id(name), products(id, brand, model, slug, product_type, product_images(url, order))')
-      .or(`buyer_id.eq.${params.id},seller_id.eq.${params.id}`)
+      .or(`buyer_id.eq.${id},seller_id.eq.${id}`)
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .limit(20),
     admin
       .from('password_invites')
       .select('slug, expires_at, used_at, created_at, opened_at')
-      .eq('user_id', params.id)
+      .eq('user_id', id)
       .order('created_at', { ascending: false }),
   ])
 

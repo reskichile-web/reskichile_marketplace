@@ -4,15 +4,16 @@ import type { ProductWithImages } from '@/lib/types'
 const W = 1080
 const H = 1920
 
-// Embedded product photo is rendered 4:5 (matches the catalog/product
-// detail aspect). Side margins double as the left anchor for text.
-const IMG_W = 760
-const IMG_H = 950
+// The product photo is the main visual: it occupies 45% of the Story height
+// and uses narrower side margins so it reads larger at a glance.
+const IMG_W = 900
+const IMG_H = Math.round(H * 0.45)
 const LEFT = (W - IMG_W) / 2
 
 const BRAND = '#2674bf'
 const BG_TOP = '#edf4fb'
 const BG_BOTTOM = '#ffffff'
+const MOUNTAIN_BG = '/images/clement-delhaye-cnluLIyhpBA-unsplash.jpg'
 const TEXT = '#0f172a'
 const TEXT_MUTED = '#64748b'
 const TEXT_SOFT = '#94a3b8'
@@ -27,12 +28,27 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas 2d context unavailable')
 
-  // Background
-  const grad = ctx.createLinearGradient(0, 0, 0, H)
-  grad.addColorStop(0, BG_TOP)
-  grad.addColorStop(1, BG_BOTTOM)
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, W, H)
+  // Full-bleed mountain photo. A light veil preserves the original
+  // hierarchy and keeps product details readable over the landscape.
+  try {
+    const mountain = await loadImage(MOUNTAIN_BG)
+    // Favor the left side of the panorama so the mountain remains visible
+    // without placing the skier directly behind the product information.
+    drawCover(ctx, mountain, 0, 0, W, H, 0.05)
+
+    const veil = ctx.createLinearGradient(0, 0, 0, H)
+    veil.addColorStop(0, 'rgba(237, 244, 251, 0.45)')
+    veil.addColorStop(0.55, 'rgba(255, 255, 255, 0.58)')
+    veil.addColorStop(1, 'rgba(255, 255, 255, 0.76)')
+    ctx.fillStyle = veil
+    ctx.fillRect(0, 0, W, H)
+  } catch {
+    const grad = ctx.createLinearGradient(0, 0, 0, H)
+    grad.addColorStop(0, BG_TOP)
+    grad.addColorStop(1, BG_BOTTOM)
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, W, H)
+  }
 
   // Brand logo (SVG → canvas) — small, near the top
   const logoW = 240
@@ -88,7 +104,6 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   const typeLabel = PRODUCT_TYPES[product.product_type] || product.product_type
   const price = `$${product.price.toLocaleString('es-CL')}`
   const conditionLabel = CONDITIONS[product.condition] || product.condition
-  const seasons = product.seasons_used
   const location = `${product.region}${product.comuna ? ', ' + product.comuna : ''}`
 
   let y = imgY + IMG_H + 70
@@ -116,13 +131,10 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   ctx.fillText(price, LEFT, y)
   y += 54
 
-  // Condition + seasons — LEFT
-  const seasonsText = seasons
-    ? ` • ${seasons} ${parseInt(seasons) === 1 ? 'Temporada' : 'Temporadas'}`
-    : ''
+  // Condition — LEFT
   ctx.fillStyle = TEXT_MUTED
   ctx.font = `500 30px ${FONT_STACK}`
-  ctx.fillText(`${conditionLabel}${seasonsText}`, LEFT, y)
+  ctx.fillText(conditionLabel, LEFT, y)
   y += 60
 
   // Location row dropped to make room for the 4:5 image.
@@ -244,6 +256,7 @@ function drawCover(
   dy: number,
   dw: number,
   dh: number,
+  focusX = 0.5,
 ) {
   const imgRatio = img.width / img.height
   const dstRatio = dw / dh
@@ -253,7 +266,7 @@ function drawCover(
   let sh = img.height
   if (imgRatio > dstRatio) {
     sw = img.height * dstRatio
-    sx = (img.width - sw) / 2
+    sx = (img.width - sw) * focusX
   } else {
     sh = img.width / dstRatio
     sy = (img.height - sh) / 2

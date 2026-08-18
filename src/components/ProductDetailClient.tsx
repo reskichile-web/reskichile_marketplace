@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useViewer } from '@/lib/use-session-auth'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
+import DescriptionCard from '@/components/DescriptionCard'
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -52,6 +53,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
   const images = (product.product_images || []).sort((a, b) => a.order - b.order)
   const isOwner = userId === product.seller_id
   const canEdit = isOwner || isAdmin
+  const isCommerceProduct = product.commerce_owned === true
 
   // Keep the approved product page cacheable: once the viewer session resolves,
   // privately fetch the counter only for the owner/admin. The RPC enforces the
@@ -206,7 +208,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
           <h1 className="font-body text-2xl md:text-3xl font-black mt-1">{title}</h1>
           <p className="font-body text-2xl md:text-3xl font-semibold text-brand-500 mt-1">${product.price.toLocaleString('es-CL')}</p>
 
-          {/* Condition + Seasons row */}
+          {/* Condition */}
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -214,16 +216,11 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
               </svg>
               <span className="text-sm text-gray-700">{CONDITIONS[product.condition] || product.condition}</span>
             </div>
-            {product.seasons_used && (
-              <span className="text-sm text-gray-500">{product.seasons_used} {parseInt(product.seasons_used) === 1 ? 'Temporada' : 'Temporadas'}</span>
-            )}
           </div>
 
           {/* Description */}
           {product.description && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{product.description}</p>
-            </div>
+            <DescriptionCard description={product.description} className="mt-4" />
           )}
 
           {/* Location */}
@@ -346,9 +343,18 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
             </label>
           )}
 
+          {isCommerceProduct && isApproved && (
+            <Link
+              href={'/checkout?producto=' + product.id}
+              className="pressable mt-6 flex w-full items-center justify-center bg-brand-500 px-4 py-3 font-semibold text-white hover:bg-brand-600"
+            >
+              Comprar con Webpay
+            </Link>
+          )}
+
           {/* Contact seller — WhatsApp + Chat. WhatsApp hidden if the seller
               opted out via the "ocultar mi número" toggle. */}
-          {!isOwner && product.seller_id && (
+          {!isCommerceProduct && !isOwner && product.seller_id && (
             <div className="mt-6 flex gap-2 w-full">
               {!hidePhone && (
               <button
@@ -378,7 +384,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
           )}
 
           {/* Anonymous seller fallback — only WhatsApp */}
-          {!isOwner && !product.seller_id && (
+          {!isCommerceProduct && !isOwner && !product.seller_id && (
             <div className="mt-6 w-full">
               <button
                 onClick={handleContact}
@@ -419,7 +425,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
           ) : null}
 
           {/* Owner marks their own live listing sold — above Edit */}
-          {isOwner && product.status === 'approved' && (
+          {!isCommerceProduct && isOwner && product.status === 'approved' && (
             <div className="mt-3">
               <MarkSoldButton
                 productId={product.id}
@@ -445,9 +451,11 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
       </div>
 
       {/* Claim-your-listings prompt — page footer */}
-      <div className="mt-10 md:mt-12 px-4 md:px-0 border-t border-gray-100 pt-6">
-        <ClaimListingsPrompt isLoggedIn={!!userId} />
-      </div>
+      {!isCommerceProduct && (
+        <div className="mt-10 md:mt-12 px-4 md:px-0 border-t border-gray-100 pt-6">
+          <ClaimListingsPrompt isLoggedIn={!!userId} />
+        </div>
+      )}
     </div>
     </div>
   )

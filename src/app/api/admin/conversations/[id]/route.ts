@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server'
 
 // Full transcript for the admin god-mode viewer. READ ONLY: never updates
 // delivered_at / read_at — the participants must not see admin reads.
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -27,12 +28,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         seller:users!seller_id(id, name, email),
         products(id, brand, model, slug, product_images(url, order))
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .maybeSingle(),
     admin
       .from('messages')
       .select('id, body, sender_id, created_at, delivered_at, read_at')
-      .eq('conversation_id', params.id)
+      .eq('conversation_id', id)
       .order('created_at', { ascending: true }),
   ])
 

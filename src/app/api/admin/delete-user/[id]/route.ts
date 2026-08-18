@@ -2,7 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id: targetId } = await params
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -10,7 +11,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const { data: profile } = await supabase.from('users').select('is_admin').eq('id', user.id).single()
   if (!profile?.is_admin) return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
 
-  const targetId = params.id
   if (!targetId) return NextResponse.json({ error: 'Falta id' }, { status: 400 })
   if (targetId === user.id) {
     return NextResponse.json({ error: 'No puedes eliminar tu propia cuenta' }, { status: 400 })

@@ -8,11 +8,11 @@ import { PRODUCT_TYPES } from '@/lib/constants'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  searchParams: { product?: string }
+  searchParams: Promise<{ product?: string }>
 }
 
 export default async function NuevoChatPage({ searchParams }: Props) {
-  const productId = searchParams.product
+  const { product: productId } = await searchParams
   if (!productId) redirect('/catalogo')
 
   const supabase = createServerSupabaseClient()

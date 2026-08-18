@@ -8,11 +8,11 @@
  * Uso: node scripts/reimport-products.mjs
  */
 
-import xlsx from 'xlsx'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { readFirstSheetObjects } from './lib/read-xlsx-objects.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -221,26 +221,26 @@ function extractAttributes(type, row) {
   return Object.keys(attrs).length > 0 ? attrs : null
 }
 
-// ─── Extrae brand/model/condition/seasons/description por tipo ──────────────
+// ─── Extrae brand/model/condition/description por tipo ──────────────────────
 
 function extractProductFields(type, row) {
   const brandModelMap = {
-    esquis:            { brand: 'Marca de los esquís', model: 'Modelo de los esquís', condition: 'Estado de los esquís', seasons: 'Temporadas de uso de los esquís', desc: 'Descripción extra de los esquís (opcional)' },
-    snowboards:        { brand: 'Marca del snowboard', model: 'Modelo del snowboard', condition: 'Estado del snowboard', seasons: 'Temporadas de uso del snowboard', desc: 'Descripción extra del snowboard (opcional)' },
-    botas_esqui:       { brand: 'Marca de las Botas de Esquí', model: 'Modelo de las Botas de Esquí', condition: 'Estado de las Botas de Esquí', seasons: 'Temporadas de uso de las Botas de Esquí', desc: 'Descripción extra de las Botas de Esquí (opcional)' },
-    botas_snowboard:   { brand: 'Marca de las Botas de Snowboard', model: 'Modelo de las Botas de Snowboard', condition: 'Estado de las Botas de Snowboard', seasons: 'Temporadas de uso de las Botas de Snowboard', desc: 'Descripción extra de las Botas de Snowboard (opcional)' },
-    bastones:          { brand: 'Marca de los Bastones', model: 'Modelo de los Bastones', condition: 'Estado de los Bastones', seasons: 'Temporadas de uso de los Bastones', desc: 'Descripción extra de los Bastones (opcional)' },
-    cascos:            { brand: 'Marca del Casco', model: 'Modelo del Casco', condition: 'Estado del Casco', seasons: 'Temporadas de uso del Casco', desc: 'Descripción extra del Casco (opcional)' },
-    guantes:           { brand: 'Marca de los Guantes', model: 'Modelo de los Guantes', condition: 'Estado de los Guantes', seasons: 'Temporadas de uso de los Guantes', desc: 'Descripción extra de los Guantes (opcional)' },
-    parkas:            { brand: 'Marca de la Parka', model: 'Modelo de la Parka', condition: 'Estado de la Parka', seasons: 'Temporadas de uso de la Parka', desc: 'Descripción extra de la Parka (opcional)' },
-    pantalones:        { brand: 'Marca de los Pantalones', model: 'Modelo de los Pantalones', condition: 'Estado de los Pantalones', seasons: 'Temporadas de uso de los Pantalones', desc: 'Descripción extra de los Pantalones (opcional)' },
-    antiparras:        { brand: 'Marca de las Antiparras', model: 'Modelo de las Antiparras', condition: 'Estado de las Antiparras', seasons: 'Temporadas de uso de las Antiparras', desc: 'Descripción extra de las Antiparras (opcional)' },
-    mochilas:          { brand: 'Marca de la Mochila', model: 'Modelo de la Mochila', condition: 'Estado de la Mochila', seasons: 'Temporadas de uso de la Mochila', desc: 'Descripción extra de la Mochila (opcional)' },
-    bolsos:            { brand: 'Marca del Bolso', model: 'Modelo del Bolso', condition: 'Estado del Bolso', seasons: null, desc: 'Descripción extra del Bolso (opcional)' },
-    camaras_accion:    { brand: 'Marca de la Cámara', model: 'Modelo de la Cámara', condition: 'Estado de la Cámara', seasons: null, desc: 'Descripción extra de la Cámara (opcional)' },
-    fijaciones:        { brand: 'Marca de las Fijaciones', model: 'Modelo de las Fijaciones', condition: 'Estado de las Fijaciones', seasons: null, desc: 'Descripción extra de las Fijaciones (opcional)' },
-    equipo_avalanchas: { brand: 'Marca del Equipo', model: 'Modelo del Equipo', condition: 'Estado del Equipo', seasons: 'Temporadas de uso del Equipo', desc: 'Descripción extra del Equipo (opcional)' },
-    otros:             { brand: 'Otros Marca', model: 'Otros Modelo', condition: 'Otros Estado', seasons: null, desc: 'Otros Descripción extra (opcional)' },
+    esquis:            { brand: 'Marca de los esquís', model: 'Modelo de los esquís', condition: 'Estado de los esquís', desc: 'Descripción extra de los esquís (opcional)' },
+    snowboards:        { brand: 'Marca del snowboard', model: 'Modelo del snowboard', condition: 'Estado del snowboard', desc: 'Descripción extra del snowboard (opcional)' },
+    botas_esqui:       { brand: 'Marca de las Botas de Esquí', model: 'Modelo de las Botas de Esquí', condition: 'Estado de las Botas de Esquí', desc: 'Descripción extra de las Botas de Esquí (opcional)' },
+    botas_snowboard:   { brand: 'Marca de las Botas de Snowboard', model: 'Modelo de las Botas de Snowboard', condition: 'Estado de las Botas de Snowboard', desc: 'Descripción extra de las Botas de Snowboard (opcional)' },
+    bastones:          { brand: 'Marca de los Bastones', model: 'Modelo de los Bastones', condition: 'Estado de los Bastones', desc: 'Descripción extra de los Bastones (opcional)' },
+    cascos:            { brand: 'Marca del Casco', model: 'Modelo del Casco', condition: 'Estado del Casco', desc: 'Descripción extra del Casco (opcional)' },
+    guantes:           { brand: 'Marca de los Guantes', model: 'Modelo de los Guantes', condition: 'Estado de los Guantes', desc: 'Descripción extra de los Guantes (opcional)' },
+    parkas:            { brand: 'Marca de la Parka', model: 'Modelo de la Parka', condition: 'Estado de la Parka', desc: 'Descripción extra de la Parka (opcional)' },
+    pantalones:        { brand: 'Marca de los Pantalones', model: 'Modelo de los Pantalones', condition: 'Estado de los Pantalones', desc: 'Descripción extra de los Pantalones (opcional)' },
+    antiparras:        { brand: 'Marca de las Antiparras', model: 'Modelo de las Antiparras', condition: 'Estado de las Antiparras', desc: 'Descripción extra de las Antiparras (opcional)' },
+    mochilas:          { brand: 'Marca de la Mochila', model: 'Modelo de la Mochila', condition: 'Estado de la Mochila', desc: 'Descripción extra de la Mochila (opcional)' },
+    bolsos:            { brand: 'Marca del Bolso', model: 'Modelo del Bolso', condition: 'Estado del Bolso', desc: 'Descripción extra del Bolso (opcional)' },
+    camaras_accion:    { brand: 'Marca de la Cámara', model: 'Modelo de la Cámara', condition: 'Estado de la Cámara', desc: 'Descripción extra de la Cámara (opcional)' },
+    fijaciones:        { brand: 'Marca de las Fijaciones', model: 'Modelo de las Fijaciones', condition: 'Estado de las Fijaciones', desc: 'Descripción extra de las Fijaciones (opcional)' },
+    equipo_avalanchas: { brand: 'Marca del Equipo', model: 'Modelo del Equipo', condition: 'Estado del Equipo', desc: 'Descripción extra del Equipo (opcional)' },
+    otros:             { brand: 'Otros Marca', model: 'Otros Modelo', condition: 'Otros Estado', desc: 'Otros Descripción extra (opcional)' },
   }
 
   const map = brandModelMap[type]
@@ -250,7 +250,6 @@ function extractProductFields(type, row) {
     brand: strVal(row[map.brand]) || 'Sin marca',
     model: strVal(row[map.model]),
     condition: mapCondition(row[map.condition]),
-    seasons_used: map.seasons ? strVal(row[map.seasons]) : null,
     description: strVal(row[map.desc]),
   }
 }
@@ -263,14 +262,13 @@ async function main() {
 
   let workbook
   try {
-    workbook = xlsx.readFile(excelPath)
+    workbook = await readFirstSheetObjects(excelPath)
   } catch {
     console.error('❌ No se encontró scripts/productos.xlsx')
     process.exit(1)
   }
 
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' })
+  const rows = workbook
   console.log(`✅ ${rows.length} filas en Excel\n`)
 
   // ── Paso 1: Borrar todos los productos existentes ──
@@ -402,7 +400,6 @@ async function main() {
       brand: fields.brand,
       model: fields.model,
       condition: fields.condition || 'usado_buen_estado',
-      seasons_used: fields.seasons_used,
       description: fields.description,
       price,
       region: region || 'Metropolitana',

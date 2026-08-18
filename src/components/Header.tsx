@@ -2,12 +2,14 @@
 
 import { Suspense } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useSessionAuth } from '@/lib/use-session-auth'
 import MobileMenu from './MobileMenu'
 import SearchBar from './SearchBar'
 import CategoryNav from './CategoryNav'
 import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
+import SkiRackCartLink from './SkiRackCartLink'
 
 // Client component on purpose: it reads the auth session in the browser so the
 // surrounding pages stay ISR-cacheable (no server-side cookies()). The static
@@ -16,6 +18,8 @@ import ChatProvider from './chat/ChatProvider'
 // is untouched — middleware still refreshes it on every request.
 export default function Header() {
   const { userId, email, isAdmin, avatarUrl, unreadCount } = useSessionAuth()
+  const pathname = usePathname()
+  const showSkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
 
   return (
     <ChatProvider userId={userId} initialUnreadCount={unreadCount}>
@@ -45,6 +49,7 @@ export default function Header() {
           {/* Right actions — mobile */}
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
+            {showSkiRackCart && <SkiRackCartLink />}
             {userId ? (
               <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />
             ) : (
@@ -72,6 +77,7 @@ export default function Header() {
             <Link href="/vender" className="pressable bg-brand-500 text-white text-sm px-5 py-1.5 rounded-none hover:bg-brand-600 transition-colors font-nav">
               Vender
             </Link>
+            {showSkiRackCart && <SkiRackCartLink />}
             {userId && (
               <>
                 <Link

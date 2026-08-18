@@ -8,22 +8,23 @@ export default async function ConfirmSoldPage({
   params,
   searchParams,
 }: {
-  params: { token: string }
-  searchParams: { alt?: string }
+  params: Promise<{ token: string }>
+  searchParams: Promise<{ alt?: string }>
 }) {
-  const view = await loadActionToken(params.token, 'confirm_sold')
+  const [{ token }, query] = await Promise.all([params, searchParams])
+  const view = await loadActionToken(token, 'confirm_sold')
   if (view.state !== 'valid' || !view.product) return <InvalidTokenNotice state={view.state} />
   if (view.product.status === 'sold') return <InvalidTokenNotice state="used" />
 
   // Sibling token → "No, sigue disponible" page (round-trips back here via ?alt).
-  const alt = searchParams.alt
+  const alt = query.alt
   const altProps = alt
-    ? { altHref: `/p/disponible/${alt}?alt=${params.token}`, altLabel: 'No, sigue disponible' }
+    ? { altHref: `/p/disponible/${alt}?alt=${token}`, altLabel: 'No, sigue disponible' }
     : {}
 
   return (
     <ActionTokenPage
-      token={params.token}
+      token={token}
       endpoint="/api/products/sold/confirm"
       product={view.product}
       title="¡Felicitaciones por tu venta!"

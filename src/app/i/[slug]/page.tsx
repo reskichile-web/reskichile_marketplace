@@ -6,10 +6,11 @@ import TrackInviteOpen from '@/components/TrackInviteOpen'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function InviteRedeemPage({ params }: Props) {
+  const { slug } = await params
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -19,7 +20,7 @@ export default async function InviteRedeemPage({ params }: Props) {
   const { data: invite } = await admin
     .from('password_invites')
     .select('slug, user_id, expires_at, used_at')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .maybeSingle()
 
   const expired = invite && new Date(invite.expires_at).getTime() < Date.now()
@@ -60,7 +61,7 @@ export default async function InviteRedeemPage({ params }: Props) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">
-      <TrackInviteOpen slug={params.slug} />
+      <TrackInviteOpen slug={slug} />
       <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
         <h1 className="font-body text-2xl font-black text-gray-900">
           {firstName ? `Bienvenido, ${firstName}` : 'Bienvenido a ReSkiChile'}
@@ -78,7 +79,7 @@ export default async function InviteRedeemPage({ params }: Props) {
           </div>
         )}
 
-        <RedeemInviteForm slug={params.slug} />
+        <RedeemInviteForm slug={slug} />
 
         <p className="mt-6 text-xs text-gray-400 text-center leading-relaxed">
           Este link es seguro y único para ti. No lo compartas con nadie.
