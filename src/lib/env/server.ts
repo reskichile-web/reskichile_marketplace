@@ -58,7 +58,10 @@ export function isPaymentsEnabled(): boolean {
 export function getAppUrl(): URL {
   const raw =
     process.env.APP_URL ||
-    (process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:4173')
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NODE_ENV === 'production'
+      ? 'https://www.reskichile.cl'
+      : 'http://localhost:4173')
 
   if (!raw) {
     throw new ConfigurationError('APP_URL no está configurada')
