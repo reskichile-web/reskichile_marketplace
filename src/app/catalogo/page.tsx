@@ -151,6 +151,7 @@ export default async function CatalogPage({ searchParams }: Props) {
           selectedConditions={conditions}
           selectedRegions={regions}
           selectedBrands={brands}
+          selectedProductTypes={types}
           minPrice={minPrice}
           maxPrice={maxPrice}
           conditionCounts={conditionCounts}

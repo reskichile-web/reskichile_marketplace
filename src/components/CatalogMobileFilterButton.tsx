@@ -1,14 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, SlidersHorizontal } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ChevronDown, X, SlidersHorizontal } from 'lucide-react'
 import CatalogSidebar from './CatalogSidebar'
 import type { SkiCounts } from '@/lib/ski-filters'
+import { PRODUCT_TYPES } from '@/lib/constants'
 
 interface Props {
   selectedConditions: string[]
   selectedRegions: string[]
   selectedBrands: string[]
+  selectedProductTypes: string[]
   minPrice?: number
   maxPrice?: number
   conditionCounts: Record<string, number>
@@ -26,7 +29,12 @@ interface Props {
 }
 
 export default function CatalogMobileFilterButton(props: Props) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
+  const selectedCategory =
+    props.selectedProductTypes.length === 1 ? props.selectedProductTypes[0] : ''
+  const [category, setCategory] = useState(selectedCategory)
   const skiActive =
     props.isEsquisOnly &&
     (props.selectedTipo.length +
@@ -39,6 +47,7 @@ export default function CatalogMobileFilterButton(props: Props) {
     props.selectedConditions.length +
     props.selectedRegions.length +
     props.selectedBrands.length +
+    (selectedCategory ? 1 : 0) +
     (props.minPrice != null || props.maxPrice != null ? 1 : 0) +
     (skiActive || 0)
 
@@ -48,6 +57,35 @@ export default function CatalogMobileFilterButton(props: Props) {
       document.body.style.overflow = ''
     }
   }, [open])
+
+  useEffect(() => {
+    setCategory(selectedCategory)
+  }, [selectedCategory])
+
+  function changeCategory(value: string) {
+    setCategory(value)
+
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) params.set('product_type', value)
+    else params.delete('product_type')
+
+    // These filters only belong to Esquís and must not leak into another
+    // category (or back into the general catalog).
+    params.delete('tipo')
+    params.delete('genero')
+    params.delete('largo')
+    params.delete('ancho')
+    params.delete('fij')
+    params.delete('conexion')
+    params.delete('page')
+
+    const query = params.toString()
+    router.push(query ? `/catalogo?${query}` : '/catalogo')
+  }
+
+  const filterTitle = category && PRODUCT_TYPES[category]
+    ? `Filtros para ${PRODUCT_TYPES[category]}`
+    : 'Filtros generales'
 
   return (
     <>
@@ -80,7 +118,35 @@ export default function CatalogMobileFilterButton(props: Props) {
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
+            <div className="shrink-0 border-b border-brand-100 bg-brand-50/70 px-5 py-4">
+              <label
+                htmlFor="mobile-catalog-category"
+                className="mb-2 block text-[11px] font-body font-bold uppercase tracking-[0.16em] text-brand-600"
+              >
+                Categoría
+              </label>
+              <div className="relative">
+                <select
+                  id="mobile-catalog-category"
+                  value={category}
+                  onChange={(event) => changeCategory(event.target.value)}
+                  className="h-12 w-full appearance-none rounded-md border-2 border-brand-400 bg-white pl-4 pr-11 font-body text-base font-bold text-gray-900 shadow-sm outline-none transition-colors focus:border-brand-600 focus:ring-2 focus:ring-brand-200"
+                >
+                  <option value="">Todas las categorías</option>
+                  {Object.entries(PRODUCT_TYPES).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-500"
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
             <div className="flex-1 overflow-y-auto p-5">
+              <p className="mb-3 text-xs font-body font-bold uppercase tracking-widest text-gray-400">
+                {filterTitle}
+              </p>
               <CatalogSidebar
                 selectedConditions={props.selectedConditions}
                 selectedRegions={props.selectedRegions}
