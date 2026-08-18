@@ -152,7 +152,7 @@ export default function ProductBrowser({ products }: Props) {
   return (
     <section className="max-w-7xl mx-auto px-4">
       {/* Sticky sorting navbar */}
-      <div className="sticky top-0 z-30 bg-white py-3 md:py-4 border-b border-gray-200">
+      <div className="sticky top-0 z-30 border-y border-gray-200 bg-white py-3 md:py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h2 className="font-body text-lg md:text-xl font-black">Productos</h2>

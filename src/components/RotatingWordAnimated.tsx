@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
@@ -20,16 +20,15 @@ export default function RotatingWordAnimated() {
     return () => clearInterval(interval)
   }, [])
 
-  const letters = useMemo(() => category.label.split(''), [category.label])
-
   return (
-    <span className="inline-flex overflow-hidden align-bottom text-brand-500 [text-shadow:none]">
-      <AnimatePresence mode="wait">
+    <span className="relative block h-full w-full overflow-hidden text-brand-500 [text-shadow:none]">
+      <AnimatePresence initial={false}>
         <motion.span
           key={category.type}
-          className="inline-flex"
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
+          className="absolute inset-x-0 top-0 inline-flex"
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '-100%', opacity: 0 }}
           transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
         >
           <Link
@@ -37,20 +36,7 @@ export default function RotatingWordAnimated() {
             onClick={() => track({ type: 'click', name: 'hero_category', category: category.type })}
             className="inline-flex cursor-pointer transition-colors hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
           >
-            {letters.map((letter, i) => (
-              <motion.span
-                key={`${category.type}-${i}`}
-                className="inline-block origin-bottom"
-                exit={{ scaleY: 0 }}
-                transition={{
-                  duration: 0.2,
-                  delay: i * 0.025,
-                  ease: [0.76, 0, 0.24, 1],
-                }}
-              >
-                {letter}
-              </motion.span>
-            ))}
+            {category.label}
           </Link>
         </motion.span>
       </AnimatePresence>
