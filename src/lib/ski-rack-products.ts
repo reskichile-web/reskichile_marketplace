@@ -2,6 +2,11 @@ export const SKI_RACK_SIZES = ['S', 'M', 'L'] as const
 
 export type SkiRackSize = (typeof SKI_RACK_SIZES)[number]
 
+export interface SkiRackGalleryImage {
+  url: string
+  alt: string
+}
+
 export interface SkiRackProduct {
   slug: string
   name: string
@@ -10,7 +15,8 @@ export interface SkiRackProduct {
   image: string
   imageAlt: string
   imageClassName: string
-  gallery: Array<{ url: string; alt: string }>
+  sizeImages: Record<SkiRackSize, SkiRackGalleryImage>
+  gallery: SkiRackGalleryImage[]
 }
 
 export const SKI_RACK_DESCRIPTION =
@@ -25,18 +31,32 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
     image: '/images/reski-rack-product.png',
     imageAlt: 'Ski Rack de madera natural',
     imageClassName: 'brightness-[1.015]',
-    gallery: [
-      {
+    sizeImages: {
+      S: {
         url: '/images/reski-rack-product.png',
-        alt: 'Ski Rack de madera natural sobre fondo claro',
+        alt: 'Ski Rack de madera natural talla S sobre fondo claro',
       },
+      M: {
+        url: '/images/ski-rack-madera-m.jpg',
+        alt: 'Ski Rack de madera natural talla M sobre fondo claro',
+      },
+      L: {
+        url: '/images/ski-rack-madera-l.jpg',
+        alt: 'Ski Rack de madera natural talla L sobre fondo claro',
+      },
+    },
+    gallery: [
       {
         url: '/images/default-racks.png',
         alt: 'Detalle de los soportes Ski Rack de madera',
       },
       {
-        url: '/images/ski-rack-main.jpg',
-        alt: 'Esquís organizados con Ski Rack en un muro',
+        url: '/images/ski-rack-installed-backpack.jpg',
+        alt: 'Ski Racks instalados con esquís, bastones y mochila',
+      },
+      {
+        url: '/images/ski-rack-installed-room.jpg',
+        alt: 'Ski Racks instalados para organizar equipo de montaña',
       },
     ],
   },
@@ -48,14 +68,28 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
     image: '/images/reski-rack-filament.png',
     imageAlt: 'Ski Rack fabricado en filamento',
     imageClassName: '',
+    sizeImages: {
+      S: {
+        url: '/images/reski-rack-filament.png',
+        alt: 'Ski Rack de filamento talla S sobre fondo claro',
+      },
+      M: {
+        url: '/images/ski-rack-filamento-m.jpg',
+        alt: 'Ski Rack de filamento talla M sobre fondo claro',
+      },
+      L: {
+        url: '/images/ski-rack-filamento-l.jpg',
+        alt: 'Ski Rack de filamento talla L sobre fondo claro',
+      },
+    },
     gallery: [
       {
-        url: '/images/reski-rack-filament.png',
-        alt: 'Ski Rack negro fabricado en filamento sobre fondo claro',
+        url: '/images/ski-rack-installed-backpack.jpg',
+        alt: 'Ski Racks instalados con esquís, bastones y mochila',
       },
       {
-        url: '/images/ski-rack-main.jpg',
-        alt: 'Esquís organizados con Ski Rack en un muro',
+        url: '/images/ski-rack-installed-room.jpg',
+        alt: 'Ski Racks instalados para organizar equipo de montaña',
       },
     ],
   },
@@ -63,4 +97,18 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
 
 export function getSkiRackProduct(slug: string): SkiRackProduct | undefined {
   return SKI_RACK_PRODUCTS.find((product) => product.slug === slug)
+}
+
+export function getSkiRackSizeImage(
+  product: SkiRackProduct,
+  size: SkiRackSize,
+): SkiRackGalleryImage {
+  return product.sizeImages[size]
+}
+
+export function getSkiRackGalleryForSize(
+  product: SkiRackProduct,
+  size: SkiRackSize,
+): SkiRackGalleryImage[] {
+  return [getSkiRackSizeImage(product, size), ...product.gallery]
 }
