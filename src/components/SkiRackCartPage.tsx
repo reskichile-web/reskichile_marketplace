@@ -6,7 +6,7 @@ import {
   MAX_CART_QUANTITY,
   useSkiRackCart,
 } from '@/lib/ski-rack-cart'
-import { getSkiRackProduct } from '@/lib/ski-rack-products'
+import { getSkiRackProduct, getSkiRackSizeImage } from '@/lib/ski-rack-products'
 import { variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
 
@@ -70,7 +70,13 @@ export default function SkiRackCartPage() {
             {lines.map((line) => (
               <article key={`${line.slug}-${line.size}`} className="flex gap-4 rounded-2xl border border-gray-100 p-3 sm:p-4">
                 <Link href={`/ski-rack/${line.slug}`} className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl bg-gray-50 sm:h-32 sm:w-32">
-                  <Image src={line.product.image} alt={line.product.imageAlt} fill sizes="128px" className="object-cover" />
+                  <Image
+                    src={getSkiRackSizeImage(line.product, line.size).url}
+                    alt={getSkiRackSizeImage(line.product, line.size).alt}
+                    fill
+                    sizes="128px"
+                    className="object-cover"
+                  />
                 </Link>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <div className="flex items-start justify-between gap-3">
