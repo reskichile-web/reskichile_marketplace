@@ -142,7 +142,7 @@ export default function CatalogSidebar({
     .map(([name, count]) => ({ name, count }))
 
   return (
-    <div className="text-sm max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 -mr-2">
+    <div className="text-sm lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-2 lg:-mr-2">
       {/* 1. Precio */}
       <Section
         label="Precio"
