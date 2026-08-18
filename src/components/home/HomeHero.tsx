@@ -17,45 +17,47 @@ export default function HomeHero() {
         </defs>
       </svg>
 
-      <figure className={styles.photo}>
-        <Image
-          src="/images/3.png"
-          alt="Dos esquiadores sosteniendo sus esquís entre árboles nevados"
-          fill
-          priority
-          sizes="(max-width: 820px) 100vw, 42vw"
-        />
-      </figure>
+      <div className={styles.frame}>
+        <figure className={styles.photo}>
+          <Image
+            src="/images/3.png"
+            alt="Dos esquiadores sosteniendo sus esquís entre árboles nevados"
+            fill
+            priority
+            sizes="(max-width: 820px) calc(100vw - 32px), 50vw"
+          />
+        </figure>
 
-      <div className={styles.content}>
-        <h1 id="home-hero-title" className={styles.title}>
-          Encuentra lo mejor en <span className={styles.rotatingLine}><RotatingWord /></span>
-        </h1>
-        <p className={styles.copy}>Mismo equipo, mejor precio. El snowmarket de Chile.</p>
+        <div className={styles.content}>
+          <h1 id="home-hero-title" className={styles.title}>
+            Encuentra lo mejor en <span className={styles.rotatingLine}><RotatingWord /></span>
+          </h1>
+          <p className={styles.copy}>Mismo equipo, mejor precio. El snowmarket de Chile.</p>
 
-        <div className={styles.actions}>
-          <TrackedLink
-            href="/catalogo"
-            event="hero_explorar"
-            className={`${styles.button} ${styles.primaryButton}`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-4-4" />
-            </svg>
-            <span>Explorar ofertas</span>
-          </TrackedLink>
-          <TrackedLink
-            href="/vender"
-            event="hero_publicar"
-            className={styles.button}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} aria-hidden="true">
-              <path d="M20.6 13.1 12.7 21a2.4 2.4 0 0 1-3.4 0L3 14.7a2.4 2.4 0 0 1 0-3.4L10.9 3H19a2 2 0 0 1 2 2v8.1Z" />
-              <circle cx="16.5" cy="7.5" r="1.2" />
-            </svg>
-            <span>Publicar equipo</span>
-          </TrackedLink>
+          <div className={styles.actions}>
+            <TrackedLink
+              href="/catalogo"
+              event="hero_explorar"
+              className={`${styles.button} ${styles.primaryButton}`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-4-4" />
+              </svg>
+              <span>Explorar ofertas</span>
+            </TrackedLink>
+            <TrackedLink
+              href="/vender"
+              event="hero_publicar"
+              className={styles.button}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} aria-hidden="true">
+                <path d="M20.6 13.1 12.7 21a2.4 2.4 0 0 1-3.4 0L3 14.7a2.4 2.4 0 0 1 0-3.4L10.9 3H19a2 2 0 0 1 2 2v8.1Z" />
+                <circle cx="16.5" cy="7.5" r="1.2" />
+              </svg>
+              <span>Publicar equipo</span>
+            </TrackedLink>
+          </div>
         </div>
       </div>
     </section>

@@ -9,7 +9,7 @@ import { ProductGridSkeleton } from '@/components/skeletons/ProductCardSkeleton'
 function ProductsSkeleton() {
   return (
     <section className="max-w-7xl mx-auto px-4">
-      <div className="py-3 md:py-4 border-b border-gray-200 mb-6">
+      <div className="mb-6 border-y border-gray-200 py-3 md:py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Skeleton className="h-6 w-28" />
