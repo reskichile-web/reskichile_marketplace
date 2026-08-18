@@ -52,6 +52,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.APP_URL || 'http://localhost:4173'),
   title: 'ReskiChile - Equipamiento de montaña usado',
   description: 'Marketplace de equipamiento usado de ski, snowboard y escalada en Chile',
   icons: {

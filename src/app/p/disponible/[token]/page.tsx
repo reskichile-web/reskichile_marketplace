@@ -8,21 +8,22 @@ export default async function StillAvailablePage({
   params,
   searchParams,
 }: {
-  params: { token: string }
-  searchParams: { alt?: string }
+  params: Promise<{ token: string }>
+  searchParams: Promise<{ alt?: string }>
 }) {
-  const view = await loadActionToken(params.token, 'still_available')
+  const [{ token }, query] = await Promise.all([params, searchParams])
+  const view = await loadActionToken(token, 'still_available')
   if (view.state !== 'valid' || !view.product) return <InvalidTokenNotice state={view.state} />
 
   // Sibling token → "Sí, ya la vendí" page (round-trips back here via ?alt).
-  const alt = searchParams.alt
+  const alt = query.alt
   const altProps = alt
-    ? { altHref: `/p/vendi/${alt}?alt=${params.token}`, altLabel: 'Sí, ya la vendí' }
+    ? { altHref: `/p/vendi/${alt}?alt=${token}`, altLabel: 'Sí, ya la vendí' }
     : {}
 
   return (
     <ActionTokenPage
-      token={params.token}
+      token={token}
       endpoint="/api/products/reminder/still-available"
       product={view.product}
       title="¿Sigue disponible?"

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email/send'
 import { buildSaleReminderEmail } from '@/lib/email/templates'
 import { generateToken } from '@/lib/sold'
+import { saleReminderCutoff } from '@/lib/sale-reminder'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const reRemindCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  const reRemindCutoff = saleReminderCutoff()
 
   // Approved, 30+ days live, and either never reminded or last reminder >30d ago.
   const { data: products, error } = await admin

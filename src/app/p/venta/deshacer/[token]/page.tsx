@@ -4,8 +4,9 @@ import InvalidTokenNotice from '@/components/InvalidTokenNotice'
 
 export const dynamic = 'force-dynamic'
 
-export default async function UndoSalePage({ params }: { params: { token: string } }) {
-  const view = await loadActionToken(params.token, 'undo_sale')
+export default async function UndoSalePage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params
+  const view = await loadActionToken(token, 'undo_sale')
   if (view.state !== 'valid' || !view.product) return <InvalidTokenNotice state={view.state} />
 
   // Already reverted out of sold — nothing to undo.
@@ -13,7 +14,7 @@ export default async function UndoSalePage({ params }: { params: { token: string
 
   return (
     <ActionTokenPage
-      token={params.token}
+      token={token}
       endpoint="/api/products/sold/undo"
       product={view.product}
       title="Deshacer venta"

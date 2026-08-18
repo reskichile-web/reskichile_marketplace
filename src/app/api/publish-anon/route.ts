@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
     const brand = formData.get('brand') as string
     const model = formData.get('model') as string | null
     const condition = formData.get('condition') as string
-    const seasons_used = formData.get('seasons_used') as string | null
     const description = formData.get('description') as string | null
     const price = formData.get('price') as string
     const region = formData.get('region') as string
@@ -52,7 +51,6 @@ export async function POST(request: NextRequest) {
         brand: brand.trim(),
         model: model?.trim() || null,
         condition,
-        seasons_used: condition === 'nuevo_sellado' ? null : seasons_used || null,
         description: description?.trim() || null,
         price: parseInt(price),
         region,

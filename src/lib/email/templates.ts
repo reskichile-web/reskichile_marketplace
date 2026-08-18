@@ -16,7 +16,10 @@ const MAIL_ICON =
 // identically everywhere (the unicode ✓ is curvy and varies by client).
 const CHECK_ICON =
   'https://kdehuccekavwhhuvvogf.supabase.co/storage/v1/object/public/product-images/email/check-white.png'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://reskichile.cl'
+const SITE_URL =
+  process.env.APP_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  'https://www.reskichile.cl'
 const SUPPORT_EMAIL = 'reskichile@gmail.com'
 const BRAND = '#2674c0' // azul ReSkiChile para los correos
 
@@ -471,4 +474,64 @@ export function buildInternalNotice(title: string, rows: { label: string; value:
   `)
   const text = `${title}\n\n${rows.map(r => `${r.label}: ${r.value}`).join('\n')}`
   return { subject: title, html, text }
+}
+
+// ─── Templates: comercio / Webpay ──────────────────────────────────────────
+
+export interface CommerceEmailItem {
+  name: string
+  quantity: number
+  lineTotalClp: number
+}
+
+export interface OrderConfirmationEmail {
+  buyerName: string
+  orderNumber: string
+  orderPublicId: string
+  deliveryMethod: 'home' | 'pickup'
+  destinationRegion: string
+  destinationCommune: string
+  subtotalClp: number
+  discountClp: number
+  shippingClp: number
+  totalClp: number
+  items: CommerceEmailItem[]
+}
+
+export function buildOrderConfirmationEmail(
+  order: OrderConfirmationEmail
+): BuiltEmail {
+  const resultUrl = `${SITE_URL}/checkout/resultado?orden=${encodeURIComponent(order.orderPublicId)}`
+  const itemRows = order.items.map(item => `
+    <tr>
+      <td style="padding:7px 0;font-size:14px;color:#374151;">${escapeHtml(item.name)} × ${item.quantity}</td>
+      <td style="padding:7px 0;font-size:14px;color:#111827;text-align:right;font-weight:600;">${formatCLP(item.lineTotalClp)}</td>
+    </tr>`).join('')
+  const discountRow = order.discountClp > 0
+    ? `<tr><td style="padding:7px 0;font-size:14px;color:#059669;">Descuento</td><td style="padding:7px 0;font-size:14px;color:#059669;text-align:right;">-${formatCLP(order.discountClp)}</td></tr>`
+    : ''
+  const deliveryLabel = order.deliveryMethod === 'pickup'
+    ? 'Sucursal o punto de retiro'
+    : 'Despacho a domicilio'
+  const subject = `Compra confirmada · ${order.orderNumber}`
+  const html = layout(`
+    <p style="margin:0 0 14px;color:#1f2937;">${greeting(order.buyerName)}</p>
+    <p style="margin:0 0 18px;color:#1f2937;">Recibimos tu pago. Tu orden <strong>${escapeHtml(order.orderNumber)}</strong> ya entró a preparación.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;">
+      ${itemRows}
+      ${discountRow}
+      <tr><td style="padding:7px 0;font-size:14px;color:#6b7280;">Despacho</td><td style="padding:7px 0;font-size:14px;color:#111827;text-align:right;">${formatCLP(order.shippingClp)}</td></tr>
+      <tr><td style="padding:12px 0 8px;font-size:16px;color:#111827;font-weight:800;">Total</td><td style="padding:12px 0 8px;font-size:16px;color:#111827;text-align:right;font-weight:800;">${formatCLP(order.totalClp)}</td></tr>
+    </table>
+    <p style="margin:18px 0 4px;color:#374151;font-weight:700;">${deliveryLabel}</p>
+    <p style="margin:0 0 20px;color:#6b7280;font-size:14px;">${escapeHtml(order.destinationCommune)}, ${escapeHtml(order.destinationRegion)}</p>
+    ${ctaOutline(resultUrl, 'Ver estado de la orden')}
+    <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#9ca3af;text-align:center;">ReskiChile nunca recibe ni almacena los datos de tu tarjeta.</p>
+    ${contactBlock()}
+  `)
+  const textItems = order.items
+    .map(item => `- ${item.name} × ${item.quantity}: ${formatCLP(item.lineTotalClp)}`)
+    .join('\n')
+  const text = `Hola ${order.buyerName},\n\nRecibimos tu pago. Tu orden ${order.orderNumber} ya entró a preparación.\n\n${textItems}\nDespacho: ${formatCLP(order.shippingClp)}\nTotal: ${formatCLP(order.totalClp)}\n\nEntrega: ${deliveryLabel}, ${order.destinationCommune}, ${order.destinationRegion}\n\nVer estado: ${resultUrl}\n\nReSkiChile`
+  return { subject, html, text }
 }

@@ -9,6 +9,10 @@
 # testing
 /coverage
 
+# local design previews and generated review artifacts
+/outputs/
+/prototypes/
+
 # next.js
 /.next/
 /out/
@@ -30,6 +34,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# supabase CLI cache/link metadata
+/supabase/.temp/
 
 # typescript
 *.tsbuildinfo

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 }
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     product_type?: string
     condition?: string
     region?: string
@@ -31,29 +31,30 @@ interface Props {
     ancho?: string
     fij?: string
     conexion?: string
-  }
+  }>
 }
 
 export default async function CatalogPage({ searchParams }: Props) {
+  const queryParams = await searchParams
   // Anonymous client (no cookies, no getUser round trip) — the catalog only
   // shows approved products, and login state is resolved client-side by
   // ClaimListingsPrompt. Note: this page is dynamic anyway (it reads searchParams).
   const supabase = createPublicServerClient()
 
-  const types = (searchParams.product_type || '').split(',').filter(Boolean)
-  const conditions = (searchParams.condition || '').split(',').filter(Boolean)
-  const regions = (searchParams.region || '').split(',').filter(Boolean)
-  const brands = (searchParams.brand || '').split(',').filter(Boolean)
-  const minPrice = searchParams.min_price ? Number(searchParams.min_price) : undefined
-  const maxPrice = searchParams.max_price ? Number(searchParams.max_price) : undefined
-  const sort = searchParams.sort || 'recent'
+  const types = (queryParams.product_type || '').split(',').filter(Boolean)
+  const conditions = (queryParams.condition || '').split(',').filter(Boolean)
+  const regions = (queryParams.region || '').split(',').filter(Boolean)
+  const brands = (queryParams.brand || '').split(',').filter(Boolean)
+  const minPrice = queryParams.min_price ? Number(queryParams.min_price) : undefined
+  const maxPrice = queryParams.max_price ? Number(queryParams.max_price) : undefined
+  const sort = queryParams.sort || 'recent'
 
-  const tipo = (searchParams.tipo || '').split(',').filter(Boolean)
-  const genero = (searchParams.genero || '').split(',').filter(Boolean)
-  const largo = (searchParams.largo || '').split(',').filter(Boolean)
-  const ancho = (searchParams.ancho || '').split(',').filter(Boolean)
-  const fij = searchParams.fij || ''
-  const conexion = (searchParams.conexion || '').split(',').filter(Boolean)
+  const tipo = (queryParams.tipo || '').split(',').filter(Boolean)
+  const genero = (queryParams.genero || '').split(',').filter(Boolean)
+  const largo = (queryParams.largo || '').split(',').filter(Boolean)
+  const ancho = (queryParams.ancho || '').split(',').filter(Boolean)
+  const fij = queryParams.fij || ''
+  const conexion = (queryParams.conexion || '').split(',').filter(Boolean)
 
   let query = supabase
     .from('products')

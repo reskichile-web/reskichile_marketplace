@@ -7,8 +7,9 @@ import { NextResponse } from 'next/server'
 // the caller must own the product (or be an admin).
 export async function POST(
   _request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -20,7 +21,7 @@ export async function POST(
   const { data: product } = await supabase
     .from('products')
     .select('id, slug, seller_id')
-    .eq('id', params.id)
+    .eq('id', id)
     .maybeSingle()
 
   if (!product) {

@@ -10,8 +10,9 @@ import { NextResponse } from 'next/server'
 // skipped if the product was already approved, so re-clicking won't re-send.
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -34,7 +35,7 @@ export async function POST(
   const { data: product } = await admin
     .from('products')
     .select('id, brand, model, slug, price, condition, product_type, status, seller_id, product_images (url, order), users:seller_id (name, email)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!product) {
@@ -46,7 +47,7 @@ export async function POST(
   const { error: updateError } = await admin
     .from('products')
     .update({ status: 'approved', rejection_reason: null })
-    .eq('id', params.id)
+    .eq('id', id)
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })

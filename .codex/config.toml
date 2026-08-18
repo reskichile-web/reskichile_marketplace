@@ -1,0 +1,10 @@
+# Project-scoped, read-only Supabase MCP connection.
+# Authentication is OAuth and is stored by Codex outside this repository.
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?project_ref=kdehuccekavwhhuvvogf&read_only=true&features=database,debugging,docs"
+auth = "oauth"
+enabled = true
+required = false
+default_tools_approval_mode = "writes"
+startup_timeout_sec = 20
+tool_timeout_sec = 60

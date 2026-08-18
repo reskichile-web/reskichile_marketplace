@@ -132,7 +132,6 @@ export default function EditProductPage() {
     brand: '',
     model: '',
     condition: '',
-    seasons_used: '',
     price: '',
     region: '',
     comuna: '',
@@ -177,7 +176,6 @@ export default function EditProductPage() {
         brand: product.brand || '',
         model: product.model || '',
         condition: product.condition || '',
-        seasons_used: product.seasons_used || '',
         price: String(product.price || ''),
         region: product.region || '',
         comuna: product.comuna || '',
@@ -380,7 +378,6 @@ export default function EditProductPage() {
       brand: form.brand,
       model: form.model || null,
       condition: form.condition,
-      seasons_used: form.seasons_used || null,
       description: form.description || null,
       price,
       region: form.region,
@@ -549,7 +546,6 @@ export default function EditProductPage() {
             options={Object.values(CONDITIONS)}
             hasError={fieldErrors.condition}
           />
-          <InlineField label="Temporadas" value={form.seasons_used} onSave={v => updateForm('seasons_used', v)} />
           <InlineField
             label="Precio (CLP)"
             value={form.price ? `$${Number(form.price).toLocaleString('es-CL')}` : ''}

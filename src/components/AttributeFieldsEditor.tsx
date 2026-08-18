@@ -31,6 +31,10 @@ interface Props {
 export default function AttributeFieldsEditor({ fields, values, onChange }: Props) {
   if (fields.length === 0) return null
 
+  const visibleFields = fields.filter(field => (
+    !field.key.startsWith('fijaciones_') || values.incluye_fijaciones === true
+  ))
+
   const chipCls = (selected: boolean) =>
     `px-3 py-2.5 rounded-lg border-2 text-sm whitespace-nowrap transition-all ${
       selected
@@ -39,12 +43,12 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
     }`
 
   return (
-    <div className="space-y-5">
-      {fields.map(field => {
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {visibleFields.map(field => {
         if (field.type === 'multiselect') {
           const current = Array.isArray(values[field.key]) ? (values[field.key] as string[]) : []
           return (
-            <div key={field.key}>
+            <div key={field.key} className="sm:col-span-2">
               <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                 {field.label}
                 {field.info && <InfoTip text={field.info} />}
@@ -74,9 +78,11 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
         }
 
         if (field.type === 'boolean') {
-          const val = values[field.key]
+          const val = field.key === 'incluye_fijaciones' && values[field.key] === undefined
+            ? false
+            : values[field.key]
           return (
-            <div key={field.key}>
+            <div key={field.key} className="sm:col-span-2">
               <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                 {field.label}
                 {field.info && <InfoTip text={field.info} />}
@@ -86,7 +92,12 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
                   <button
                     key={l}
                     type="button"
-                    onClick={() => onChange(field.key, val === v ? undefined : v)}
+                    onClick={() => onChange(
+                      field.key,
+                      field.key === 'incluye_fijaciones' && v === false
+                        ? false
+                        : val === v ? undefined : v,
+                    )}
                     className={chipCls(val === v)}
                   >
                     {l}
@@ -99,7 +110,7 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
 
         if (field.type === 'select') {
           return (
-            <div key={field.key}>
+            <div key={field.key} className="sm:col-span-2">
               <label className="flex items-center gap-1.5 text-sm font-medium mb-1">
                 {field.label}
                 {field.info && <InfoTip text={field.info} />}

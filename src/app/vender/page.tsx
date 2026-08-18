@@ -12,7 +12,7 @@ import Spinner from '@/components/Spinner'
 import PopupMessage from '@/components/PopupMessage'
 import BrandInput from '@/components/BrandInput'
 import PhoneInput from '@/components/PhoneInput'
-import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
+import { ChevronLeft, Recycle, CheckCircle2, Star, Sparkles, PackageCheck } from 'lucide-react'
 
 // Full-screen overlay shown only during publish — framer-motion loads on demand.
 const PublishLoadingOverlay = dynamic(() => import('@/components/PublishLoadingOverlay'), { ssr: false })
@@ -39,6 +39,7 @@ const MAX_IMAGES = 8
 const MIN_IMAGES = 3
 
 type Step = 'type' | 'details' | 'photos' | 'auth' | 'success'
+type PublicationMode = 'short' | 'detailed'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TYPE_ICON_COMPONENTS: Record<string, any> = {
@@ -131,13 +132,12 @@ export default function SellPage() {
   const [model, setModel] = useState('')
   const [modelConfirmed, setModelConfirmed] = useState(false)
   const [condition, setCondition] = useState('usado_como_nuevo')
-  const [seasonsUsed, setSeasonsUsed] = useState('1')
   const [price, setPrice] = useState('')
   const [region, setRegion] = useState('')
   const [comuna, setComuna] = useState('')
   const [description, setDescription] = useState('')
   const [attrs, setAttrs] = useState<Record<string, unknown>>({})
-  const [attrsOpen, setAttrsOpen] = useState(false)
+  const [publicationMode, setPublicationMode] = useState<PublicationMode>('short')
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
 
@@ -147,11 +147,19 @@ export default function SellPage() {
 
   // Attributes ready to persist: drop empties so the JSONB stays clean
   function cleanedAttributes(): Record<string, unknown> {
+    if (publicationMode === 'short') return {}
+
     const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(attrs)) {
+      if (k.startsWith('fijaciones_') && attrs.incluye_fijaciones !== true) continue
       if (v === undefined || v === null || v === '') continue
       if (Array.isArray(v) && v.length === 0) continue
       out[k] = v
+    }
+    const hasBindingsQuestion = (PRODUCT_ATTRIBUTES[productType] || [])
+      .some(field => field.key === 'incluye_fijaciones')
+    if (hasBindingsQuestion && out.incluye_fijaciones === undefined) {
+      out.incluye_fijaciones = false
     }
     return out
   }
@@ -269,6 +277,16 @@ export default function SellPage() {
     scrollTop()
   }
 
+  function headerBack() {
+    if (step === 'auth' && otpStep) {
+      setOtpStep(false)
+      setOtpError(false)
+      scrollTop()
+      return
+    }
+    prevStep()
+  }
+
   async function handlePublish(userId?: string) {
     setLoading(true)
     setPublishPhase('compressing')
@@ -332,7 +350,6 @@ export default function SellPage() {
         brand: brand.trim(),
         model: model.trim() || null,
         condition,
-        seasons_used: condition === 'nuevo_sellado' ? null : seasonsUsed || null,
         description: description.trim() || null,
         price: priceInt,
         region,
@@ -461,7 +478,6 @@ export default function SellPage() {
     formData.append('brand', brand.trim())
     formData.append('model', model.trim())
     formData.append('condition', condition)
-    formData.append('seasons_used', condition === 'nuevo_sellado' ? '' : seasonsUsed)
     formData.append('description', description.trim())
     formData.append('price', price)
     formData.append('region', region)
@@ -581,7 +597,19 @@ export default function SellPage() {
       {step !== 'success' && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="font-body text-2xl font-black text-brand-500">Publicar producto</h1>
+            <div className="flex items-center gap-1">
+              {step !== 'type' && (
+                <button
+                  type="button"
+                  onClick={headerBack}
+                  aria-label="Volver al paso anterior"
+                  className="-ml-2 rounded-full p-1 text-brand-500 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                >
+                  <ChevronLeft className="h-6 w-6" strokeWidth={2.5} />
+                </button>
+              )}
+              <h1 className="font-body text-2xl font-black text-brand-500">Publicar producto</h1>
+            </div>
             <span className="text-xs text-gray-400">Paso {currentStepIndex + 1} de {steps.length}</span>
           </div>
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -606,7 +634,7 @@ export default function SellPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => { setProductType(key); setAttrs({}); setAttrsOpen(false); setStep('details'); scrollTop() }}
+                onClick={() => { setProductType(key); setAttrs({}); setPublicationMode('short'); setStep('details'); scrollTop() }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${productType === key ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
               >
                 {(() => {
@@ -680,7 +708,6 @@ export default function SellPage() {
                     type="button"
                     onClick={() => {
                       setCondition(cond.key)
-                      if (cond.key === 'nuevo_sellado') setSeasonsUsed('')
                       setFieldErrors(prev => { const n = {...prev}; delete n.condition; return n })
                     }}
                     className={`flex-1 flex flex-col items-center gap-1.5 p-2.5 rounded-lg border-2 transition-all ${isSelected ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
@@ -692,30 +719,6 @@ export default function SellPage() {
               })}
             </div>
           </div>
-
-          {/* Seasons — hidden for sellado */}
-          {condition && condition !== 'nuevo_sellado' && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Temporadas de uso</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSeasonsUsed('')}
-                  className={`px-3 py-2.5 rounded-lg border-2 text-sm whitespace-nowrap transition-all ${seasonsUsed === '' ? 'border-brand-500 bg-brand-50 text-brand-500 font-medium' : 'border-gray-100 text-gray-500 hover:border-gray-300'}`}
-                >
-                  Sin especificar
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  value={seasonsUsed}
-                  onChange={e => setSeasonsUsed(e.target.value)}
-                  className="flex-1 border rounded-lg px-3 py-2.5"
-                  placeholder="Ej. 1"
-                />
-              </div>
-            </div>
-          )}
 
           {/* Price */}
           <div>
@@ -779,8 +782,39 @@ export default function SellPage() {
       {/* ─── Step 3: Photos ─── */}
       {step === 'photos' && (
         <div className="space-y-5">
-          <h2 className="font-body text-xl font-bold mb-2">Fotos de tu producto</h2>
-          <p className="text-sm text-gray-500">Sube al menos {minImages} fotos. La primera será la portada.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="font-body text-xl font-bold">Detalles de tu producto</h2>
+            <div className="flex items-center gap-1.5 self-start sm:self-auto">
+              <span className="text-[11px] font-medium text-gray-500">Publicación:</span>
+              <div
+                className="inline-flex rounded-lg border border-white bg-white p-0.5 shadow-[0_3px_10px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,1)] ring-1 ring-gray-100"
+                role="group"
+                aria-label="Extensión de la publicación"
+              >
+                {([
+                  { value: 'short', label: 'Corta' },
+                  { value: 'detailed', label: 'Detallada' },
+                ] as const).map(option => {
+                  const isActive = publicationMode === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setPublicationMode(option.value)}
+                      aria-pressed={isActive}
+                      className={`rounded-md border px-2.5 py-1 text-[11px] leading-none transition-all ${
+                        isActive
+                          ? 'border-brand-600 bg-brand-500 font-bold text-white shadow-md shadow-brand-500/25'
+                          : 'border-transparent bg-transparent font-medium text-gray-400 hover:text-gray-600'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
 
           {/* Description */}
           <div>
@@ -792,6 +826,17 @@ export default function SellPage() {
               placeholder="Describe el estado, detalles o cualquier información relevante..."
             />
           </div>
+
+          {/* Detailed publication attributes, integrated directly in the form. */}
+          {publicationMode === 'detailed' && (PRODUCT_ATTRIBUTES[productType] || []).length > 0 && (
+            <div className="border-t border-gray-200 pt-5">
+              <AttributeFieldsEditor
+                fields={PRODUCT_ATTRIBUTES[productType] || []}
+                values={attrs}
+                onChange={(key, value) => setAttrs(prev => ({ ...prev, [key]: value }))}
+              />
+            </div>
+          )}
 
           <SortableImageGrid
             images={imageItems}
@@ -833,35 +878,6 @@ export default function SellPage() {
             }}
             compressing={compressing}
           />
-
-          {/* Optional attributes — free divider-style toggle, no card */}
-          {(PRODUCT_ATTRIBUTES[productType] || []).length > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setAttrsOpen(o => !o)}
-                className="w-full flex items-center gap-3 py-1.5 group"
-              >
-                <span className="flex-1 h-px bg-gray-200" />
-                <span className="flex items-center gap-1.5 text-xs font-light text-gray-400 group-hover:text-gray-600 transition-colors">
-                  Atributos del producto (opcional)
-                  <svg className={`w-3.5 h-3.5 transition-transform ${attrsOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </span>
-                <span className="flex-1 h-px bg-gray-200" />
-              </button>
-              {attrsOpen && (
-                <div className="pt-3">
-                  <AttributeFieldsEditor
-                    fields={PRODUCT_ATTRIBUTES[productType] || []}
-                    values={attrs}
-                    onChange={(key, value) => setAttrs(prev => ({ ...prev, [key]: value }))}
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Final details: preferences + terms in one white card.
               The user-level prefs (hide_phone, notify_*) only persist when
@@ -1259,7 +1275,7 @@ export default function SellPage() {
                 setStep('type')
                 setProductType('')
                 setAttrs({})
-                setAttrsOpen(false)
+                setPublicationMode('short')
                 setBrand('')
                 setModel('')
                 setCondition('usado_como_nuevo')

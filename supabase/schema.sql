@@ -46,7 +46,7 @@ CREATE POLICY "Users can view own profile" ON public.users
   FOR SELECT USING (auth.uid() = id);
 
 CREATE POLICY "Users can update own profile" ON public.users
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can insert own profile" ON public.users
   FOR INSERT WITH CHECK (auth.uid() = id);
@@ -56,13 +56,66 @@ CREATE POLICY "Admins can view all users" ON public.users
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND is_admin = TRUE)
   );
 
+-- Authorization fields are protected independently from RLS. A table-level
+-- UPDATE grant would otherwise allow a profile owner to submit is_admin=true.
+CREATE TABLE public.user_role_events (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  old_is_admin BOOLEAN,
+  new_is_admin BOOLEAN NOT NULL,
+  changed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  database_role TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.user_role_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.user_role_events FROM anon, authenticated;
+GRANT SELECT, INSERT ON public.user_role_events TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.user_role_events_id_seq TO service_role;
+
+CREATE OR REPLACE FUNCTION public.commerce_protect_user_admin_role()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF auth.role() IN ('anon', 'authenticated') THEN
+    IF TG_OP = 'INSERT' AND COALESCE(NEW.is_admin, FALSE) THEN
+      RAISE EXCEPTION 'administrator role requires a trusted server operation';
+    END IF;
+    IF TG_OP = 'UPDATE' AND NEW.is_admin IS DISTINCT FROM OLD.is_admin THEN
+      RAISE EXCEPTION 'administrator role requires a trusted server operation';
+    END IF;
+  END IF;
+
+  IF TG_OP = 'UPDATE' AND NEW.is_admin IS DISTINCT FROM OLD.is_admin THEN
+    INSERT INTO public.user_role_events (
+      user_id, old_is_admin, new_is_admin, changed_by, database_role
+    ) VALUES (
+      NEW.id, OLD.is_admin, COALESCE(NEW.is_admin, FALSE), auth.uid(), CURRENT_USER
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.commerce_protect_user_admin_role() FROM PUBLIC;
+
+CREATE TRIGGER users_protect_admin_role
+BEFORE INSERT OR UPDATE ON public.users
+FOR EACH ROW EXECUTE FUNCTION public.commerce_protect_user_admin_role();
+
+REVOKE UPDATE ON public.users FROM anon, authenticated;
+GRANT UPDATE (
+  email, name, phone, instagram, hide_phone,
+  notify_chat_email, notify_reminders_email
+) ON public.users TO authenticated;
+
 -- ============================================
 -- PRODUCTS
 -- ============================================
 -- product_type: tipo de producto del formulario
 -- brand, model: comunes a todos
 -- condition: Nuevo (sellado), Nuevo, Usado - Como nuevo, Usado - Buen estado, Usado - Aceptable
--- seasons_used: temporadas de uso (texto libre, ej: "2", "3-4")
 -- region, comuna: ubicación de despacho
 -- attributes: JSONB con campos específicos por tipo de producto
 -- ============================================
@@ -80,7 +133,6 @@ CREATE TABLE public.products (
   condition TEXT NOT NULL CHECK (condition IN (
     'nuevo_sellado', 'nuevo', 'usado_como_nuevo', 'usado_buen_estado', 'usado_aceptable'
   )),
-  seasons_used TEXT,
   description TEXT,
   price INTEGER NOT NULL CHECK (price > 0),
   region TEXT NOT NULL,

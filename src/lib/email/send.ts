@@ -23,12 +23,18 @@ export interface SendEmailInput {
   cc?: string | string[]
   /** Blind copy — hidden from the `to` recipient. */
   bcc?: string | string[]
+  /** Stable provider key used to make retries safe for 24 hours. */
+  idempotencyKey?: string
 }
 
 export interface SendEmailResult {
   ok: boolean
   id?: string
   error?: string
+  status?: number
+  retryable?: boolean
+  /** The request may have reached the provider but its response was lost. */
+  uncertain?: boolean
 }
 
 /**
@@ -50,6 +56,9 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        ...(input.idempotencyKey
+          ? { 'Idempotency-Key': input.idempotencyKey }
+          : {}),
       },
       body: JSON.stringify({
         from,
@@ -61,6 +70,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         ...(input.cc ? { cc: input.cc } : {}),
         ...(input.bcc ? { bcc: input.bcc } : {}),
       }),
+      signal: AbortSignal.timeout(10000),
     })
 
     const data = await res.json().catch(() => ({}))
@@ -69,11 +79,27 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       // Resend returns { name, message } on error; surface message + status so
       // 429 (rate/quota) and domain-verification errors are visible in logs.
       const message = data?.message || `Resend respondió ${res.status}`
-      return { ok: false, error: message }
+      const errorName = typeof data?.name === 'string' ? data.name : ''
+      const retryable =
+        res.status === 429 ||
+        res.status >= 500 ||
+        errorName === 'concurrent_idempotent_requests'
+      return {
+        ok: false,
+        error: message,
+        status: res.status,
+        retryable,
+        uncertain: false,
+      }
     }
 
     return { ok: true, id: data?.id }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Error de red al enviar correo' }
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'Error de red al enviar correo',
+      retryable: false,
+      uncertain: true,
+    }
   }
 }
