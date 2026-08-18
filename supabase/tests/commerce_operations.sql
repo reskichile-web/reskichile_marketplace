@@ -31,6 +31,12 @@ BEGIN
     AND inventory.size = 'S'
     AND inventory.shipping_origin_code = 'los_angeles';
 
+  -- Production starts at zero until an administrator reconciles physical
+  -- inventory. This isolated test explicitly provisions five units.
+  UPDATE public.ski_rack_inventory
+  SET stock_on_hand = 5
+  WHERE id = v_inventory_id;
+
   INSERT INTO public.orders (
     order_number, buyer_user_id, buyer_email, buyer_name, buyer_phone,
     delivery_method, shipping_snapshot, subtotal_clp, discount_clp,

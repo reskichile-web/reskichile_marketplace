@@ -29,7 +29,8 @@ for migration in \
   202608170001_remove_seasons_used.sql \
   202608170002_ski_rack_inventory.sql \
   202608180001_commerce_operations.sql \
-  202608180002_marketplace_security_hardening.sql
+  202608180002_marketplace_security_hardening.sql \
+  202608180003_zero_unverified_ski_rack_inventory.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
