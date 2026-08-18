@@ -172,8 +172,9 @@ export default function ProductBrowser({ products }: Props) {
               {hasFilters && <span className="w-2 h-2 bg-brand-500 rounded-full" />}
             </button>
 
-            {/* Sort — dropdown on mobile, pills on desktop */}
+            {/* Sort dropdown */}
             <select
+              aria-label="Ordenar productos"
               value={sort}
               onChange={e => setSort(e.target.value as SortKey)}
               className="md:hidden appearance-none bg-gray-100 text-gray-700 text-xs font-medium pl-2.5 pr-6 py-1.5 rounded-full border-0"
@@ -185,21 +186,23 @@ export default function ProductBrowser({ products }: Props) {
             </select>
 
             <span className="text-xs text-gray-400 hidden md:inline">Ordenar:</span>
-            {([
-              ['recent', 'Más recientes'],
-              ['price_asc', 'Menor precio'],
-              ['price_desc', 'Mayor precio'],
-              ['name_asc', 'Marca A-Z'],
-            ] as [SortKey, string][]).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setSort(key)}
-                className={`hidden md:block px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${sort === key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            <label className="relative hidden md:block">
+              <span className="sr-only">Ordenar productos</span>
+              <select
+                value={sort}
+                onChange={e => setSort(e.target.value as SortKey)}
+                className="h-9 min-w-40 appearance-none rounded-lg border border-gray-200 bg-white py-0 pl-3.5 pr-9 text-sm font-medium text-gray-700 outline-none transition-colors hover:border-gray-300 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
               >
-                {label}
-              </button>
-            ))}
-            <Link href="/vender" className="hidden md:block ml-8 px-8 py-2 rounded-lg text-sm font-bold bg-brand-500 text-white hover:bg-brand-600 transition-colors">
+                <option value="recent">Más recientes</option>
+                <option value="price_asc">Menor precio</option>
+                <option value="price_desc">Mayor precio</option>
+                <option value="name_asc">Marca A-Z</option>
+              </select>
+              <svg className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+                <path d="m6 8 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </label>
+            <Link href="/vender" className="ml-8 hidden rounded-lg bg-brand-500 px-8 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-600 md:block">
               Vender
             </Link>
           </div>
