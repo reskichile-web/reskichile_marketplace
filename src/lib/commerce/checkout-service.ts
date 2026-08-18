@@ -469,11 +469,15 @@ export async function quoteCheckout(
     )
   }
 
-  if (config.environment === 'production') {
+  if (
+    config.environment === 'integration' &&
+    config.sandboxBuyerEmails.length > 0 &&
+    !config.sandboxBuyerEmails.includes(input.buyer.email)
+  ) {
     throw new CheckoutServiceError(
-      'SHIPPING_NOT_READY',
-      'Las tarifas productivas de despacho todavía no están habilitadas.',
-      503
+      'SANDBOX_BUYER_NOT_ALLOWED',
+      'Este correo no está autorizado para pruebas de pago.',
+      403
     )
   }
 

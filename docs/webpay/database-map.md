@@ -1,6 +1,7 @@
 # Mapa visual: producto, orden y pago
 
-Estado local después de las seis migraciones hasta `202608180002`.
+Estado después de las ocho migraciones hasta `202608180004`, aplicadas también
+al proyecto remoto el 2026-08-18.
 
 ## Flujo completo
 

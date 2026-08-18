@@ -1,6 +1,6 @@
 # Runbook Webpay Plus: sandbox, validación y producción
 
-Estado: código listo; falta aplicar migraciones y ejecutar contra Webpay
+Estado: base aplicada y permisos críticos corregidos; falta deploy y prueba real contra sandbox
 Última revisión: 2026-08-18
 
 ## 1. Objetivo
@@ -41,7 +41,7 @@ las evidencias estén listos.
 - Node 20.19.5 y Next.js 16.3.1;
 - `npm audit --omit=dev` sin vulnerabilidades;
 - Supabase local o proyecto sandbox separado de producción;
-- migraciones de órdenes, reservas y pagos aplicadas en sandbox;
+- ocho migraciones de órdenes, reservas, pagos y permisos aplicadas;
 - correo de comprador invitado controlado para pruebas;
 - productos de prueba claramente identificados;
 - túnel HTTPS solo si se requiere probar desde un entorno remoto;
@@ -295,8 +295,11 @@ capturas o archivos de evidencia.
 
 Cuando todos los gates estén aprobados:
 
-1. Ingresar a la ruta de desarrolladores de Transbank.
-2. Elegir validación para solución propia mediante SDK/API, no plugin.
+1. Abrir la documentación oficial de puesta en producción:
+   `https://www.transbankdevelopers.cl/documentacion/como_empezar`.
+2. En “El proceso de validación”, abrir el formulario para Webpay Plus con SDK
+   o integración directa al API. El enlace oficial vigente al 2026-08-18 apunta
+   a `https://form.typeform.com/to/ibXdg6Av`.
 3. Completar los datos del código de comercio ya afiliado.
 4. Adjuntar la evidencia requerida.
 5. Corregir observaciones sin habilitar producción.

@@ -30,7 +30,8 @@ for migration in \
   202608170002_ski_rack_inventory.sql \
   202608180001_commerce_operations.sql \
   202608180002_marketplace_security_hardening.sql \
-  202608180003_zero_unverified_ski_rack_inventory.sql
+  202608180003_zero_unverified_ski_rack_inventory.sql \
+  202608180004_lock_down_commerce_rpcs.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
@@ -40,3 +41,5 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/commerce_operations.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/marketplace_security.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/commerce_permissions.sql"

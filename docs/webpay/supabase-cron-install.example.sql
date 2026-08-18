@@ -1,6 +1,6 @@
 -- NO ejecutar como migración automática.
--- Reemplazar los dos valores CHANGE_ME directamente en Supabase/Vault.
--- El secreto debe ser el mismo RECONCILIATION_JOB_SECRET configurado en Vercel.
+-- Reemplazar los cuatro valores CHANGE_ME directamente en Supabase/Vault.
+-- Cada job usa un secreto diferente, idéntico al de Vercel para ese endpoint.
 
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
@@ -16,8 +16,13 @@ SELECT vault.create_secret(
 );
 
 SELECT vault.create_secret(
-  'CHANGE_ME_RANDOM_SECRET_AT_LEAST_32_CHARACTERS',
+  'CHANGE_ME_RECONCILIATION_SECRET_AT_LEAST_32_CHARACTERS',
   'reski_payment_reconciliation_secret'
+);
+
+SELECT vault.create_secret(
+  'CHANGE_ME_OUTBOX_SECRET_AT_LEAST_32_CHARACTERS',
+  'reski_commerce_outbox_secret'
 );
 
 DO $$
@@ -87,7 +92,7 @@ SELECT cron.schedule(
         'Authorization', 'Bearer ' || (
           SELECT decrypted_secret
           FROM vault.decrypted_secrets
-          WHERE name = 'reski_payment_reconciliation_secret'
+          WHERE name = 'reski_commerce_outbox_secret'
           ORDER BY created_at DESC
           LIMIT 1
         )

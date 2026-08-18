@@ -14,10 +14,13 @@ export interface PaymentConfig {
   sandboxShippingClp: number
   shippingRateSource: ShippingRateSource
   allowIncompleteShippingInSandbox: boolean
+  sandboxBuyerEmails: readonly string[]
   inventoryReservationMinutes: number
   rateLimitSecret: string
   reconciliationJobSecret: string
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export interface RefundConfig {
   enabled: boolean
@@ -49,6 +52,26 @@ function parseInteger(
   }
 
   return parsed
+}
+
+function parseEmailAllowlist(value: string | undefined): readonly string[] {
+  if (!value?.trim()) return []
+
+  const emails = value
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+
+  if (
+    emails.length > 20 ||
+    emails.some((email) => email.length > 254 || !EMAIL_RE.test(email))
+  ) {
+    throw new ConfigurationError(
+      'SANDBOX_BUYER_EMAIL_ALLOWLIST contiene un correo inválido'
+    )
+  }
+
+  return [...new Set(emails)]
 }
 
 export function isPaymentsEnabled(): boolean {
@@ -98,23 +121,52 @@ function buildPaymentConfig(
     20000
   )
 
-  const inventoryReservationMinutes = parseInteger(
-    'INVENTORY_RESERVATION_MINUTES',
-    process.env.INVENTORY_RESERVATION_MINUTES || '15',
-    5,
-    30
-  )
+  const inventoryReservationMinutes =
+    purpose === 'checkout'
+      ? parseInteger(
+          'INVENTORY_RESERVATION_MINUTES',
+          process.env.INVENTORY_RESERVATION_MINUTES || '15',
+          5,
+          30
+        )
+      : 15
 
-  const shippingRateSourceRaw = process.env.SHIPPING_RATE_SOURCE || 'table'
-  if (shippingRateSourceRaw !== 'sandbox_fixed' && shippingRateSourceRaw !== 'table') {
-    throw new ConfigurationError('SHIPPING_RATE_SOURCE no es válido')
+  let shippingRateSource: ShippingRateSource = 'table'
+  let sandboxShippingClp = 0
+  let sandboxBuyerEmails: readonly string[] = []
+  let allowIncompleteShippingInSandbox = false
+
+  // Shipping and sandbox access are checkout-only concerns. Never let a typo
+  // in one of these gates prevent a callback or reconciliation for an already
+  // initiated transaction.
+  if (purpose === 'checkout') {
+    const shippingRateSourceRaw = process.env.SHIPPING_RATE_SOURCE || 'table'
+    if (
+      shippingRateSourceRaw !== 'sandbox_fixed' &&
+      shippingRateSourceRaw !== 'table'
+    ) {
+      throw new ConfigurationError('SHIPPING_RATE_SOURCE no es válido')
+    }
+    shippingRateSource = shippingRateSourceRaw
+    sandboxShippingClp =
+      environment === 'integration' &&
+      shippingRateSource === 'sandbox_fixed' &&
+      enabled
+        ? parseInteger(
+            'SANDBOX_SHIPPING_CLP',
+            process.env.SANDBOX_SHIPPING_CLP,
+            0,
+            1000000
+          )
+        : 0
+    sandboxBuyerEmails =
+      environment === 'integration'
+        ? parseEmailAllowlist(process.env.SANDBOX_BUYER_EMAIL_ALLOWLIST)
+        : []
+    allowIncompleteShippingInSandbox =
+      environment === 'integration' &&
+      process.env.ALLOW_INCOMPLETE_SHIPPING_IN_SANDBOX === 'true'
   }
-  const shippingRateSource = shippingRateSourceRaw as ShippingRateSource
-
-  const sandboxShippingClp =
-    environment === 'integration' && shippingRateSource === 'sandbox_fixed' && enabled
-      ? parseInteger('SANDBOX_SHIPPING_CLP', process.env.SANDBOX_SHIPPING_CLP, 0, 1000000)
-      : 0
 
   const rateLimitSecret = process.env.CHECKOUT_RATE_LIMIT_SECRET || ''
   const reconciliationJobSecret = process.env.RECONCILIATION_JOB_SECRET || ''
@@ -122,6 +174,18 @@ function buildPaymentConfig(
   if (purpose === 'checkout' && enabled && rateLimitSecret.length < 32) {
     throw new ConfigurationError(
       'CHECKOUT_RATE_LIMIT_SECRET debe tener al menos 32 caracteres'
+    )
+  }
+
+  if (
+    purpose === 'checkout' &&
+    enabled &&
+    environment === 'integration' &&
+    process.env.NODE_ENV === 'production' &&
+    sandboxBuyerEmails.length === 0
+  ) {
+    throw new ConfigurationError(
+      'SANDBOX_BUYER_EMAIL_ALLOWLIST es obligatoria para probar sandbox desplegado'
     )
   }
 
@@ -173,9 +237,8 @@ function buildPaymentConfig(
     transbankTimeoutMs,
     sandboxShippingClp,
     shippingRateSource,
-    allowIncompleteShippingInSandbox:
-      environment === 'integration' &&
-      process.env.ALLOW_INCOMPLETE_SHIPPING_IN_SANDBOX === 'true',
+    allowIncompleteShippingInSandbox,
+    sandboxBuyerEmails,
     inventoryReservationMinutes,
     rateLimitSecret,
     reconciliationJobSecret,
@@ -241,12 +304,12 @@ export function getRefundConfig(): RefundConfig {
   return { enabled, requireAal2, recentSessionMinutes, rateLimitSecret }
 }
 
-/** Shared bearer secret for Supabase Cron commerce workers. */
+/** Dedicated bearer secret for the Supabase Cron outbox worker. */
 export function getCommerceJobSecret(): string {
-  const secret = process.env.RECONCILIATION_JOB_SECRET || ''
+  const secret = process.env.OUTBOX_JOB_SECRET || ''
   if (secret.length < 32) {
     throw new ConfigurationError(
-      'RECONCILIATION_JOB_SECRET debe tener al menos 32 caracteres'
+      'OUTBOX_JOB_SECRET debe tener al menos 32 caracteres'
     )
   }
   return secret

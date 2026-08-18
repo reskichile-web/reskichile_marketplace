@@ -38,8 +38,8 @@ Documentos asociados:
 | Fase | Estado al 2026-08-18 |
 |---|---|
 | Retiro del mock | Completo en el workspace; falta verificar tras despliegue |
-| Dominio SQL | Seis migraciones y pruebas RLS/transaccionales pasan en PostgreSQL 16 aislado |
-| SDK/rutas sandbox | Implementado; falta aplicar migración y prueba Webpay real de sandbox |
+| Dominio SQL | Ocho migraciones aplicadas; pruebas RLS/transaccionales pasan en PostgreSQL 16 aislado |
+| SDK/rutas sandbox | Implementado; falta deploy controlado y prueba Webpay real de sandbox |
 | Checkout invitado | Implementado para carrito/tallas; despacho por tabla o prueba explícita |
 | Conciliación | Endpoint/leases implementados; falta instalar Supabase Cron |
 | Refunds/fulfillment | Backend, outbox y panel implementados; falta probarlos contra Webpay sandbox y configurar alertas/correo |
@@ -63,7 +63,7 @@ Documentos asociados:
 | Conciliación | A cargo del propietario de ReskiChile |
 | Reembolsos | A cargo de un administrador |
 | Carrito | Modelo para varios ítems; lanzamiento inicial con un producto |
-| Inventario | Preparado por producto, talla y origen; falta aplicar migración remota y cargar stock |
+| Inventario | Activo por producto, talla y origen; validar conteo físico antes de probar |
 | Propiedad | ReskiChile es dueño, cobra y despacha el inventario |
 | Checkout | Invitado; no requiere crear cuenta |
 | Datos comprador | Correo y datos mínimos necesarios para el despacho |
@@ -218,7 +218,7 @@ Alcance:
 Baseline local al 2026-08-18: Next.js 16.3.1, Node 20 fijado,
 `npm audit --omit=dev` con 0 vulnerabilidades y build de producción correcto. La
 librería `xlsx` sin parche se reemplazó por un lector limitado a 10 MB, 5.000
-filas y 250 columnas. CI ejecuta secretos, audit, lint, tipos, Vitest, las seis
+filas y 250 columnas. CI ejecuta secretos, audit, lint, tipos, Vitest, las ocho
 migraciones sobre PostgreSQL 16 y build.
 
 Gate: plataforma estable, soportada, respaldada y sin vulnerabilidades críticas

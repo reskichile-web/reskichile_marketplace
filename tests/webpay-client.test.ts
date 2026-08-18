@@ -14,6 +14,7 @@ const config: PaymentConfig = {
   sandboxShippingClp: 3990,
   shippingRateSource: 'sandbox_fixed',
   allowIncompleteShippingInSandbox: true,
+  sandboxBuyerEmails: [],
   inventoryReservationMinutes: 15,
   rateLimitSecret: 'x'.repeat(32),
   reconciliationJobSecret: 'y'.repeat(32),
