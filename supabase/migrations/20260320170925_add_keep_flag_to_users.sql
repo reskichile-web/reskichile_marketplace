@@ -1,0 +1,3 @@
+
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS keep boolean DEFAULT NULL;
+;
