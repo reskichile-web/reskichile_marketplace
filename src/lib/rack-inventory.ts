@@ -22,6 +22,11 @@ export interface RackInventoryResponse {
   products: RackInventoryProduct[]
 }
 
+export interface RackInventoryUpdate {
+  inventoryId: string
+  stockOnHand: number
+}
+
 export type RackInventoryBySlug = Record<string, RackInventoryProduct>
 
 export function inventoryBySlug(products: RackInventoryProduct[]): RackInventoryBySlug {
@@ -37,6 +42,23 @@ export function variantAvailability(
 
 export function totalRackAvailability(product: RackInventoryProduct | undefined): number {
   return product?.variants.reduce((total, variant) => total + variant.availableQuantity, 0) ?? 0
+}
+
+/** Only persist fields the admin actually changed. */
+export function changedRackInventoryItems(
+  product: RackInventoryProduct,
+  draft: Record<string, string>,
+): RackInventoryUpdate[] {
+  return product.variants
+    .filter(variant => {
+      if (!variant.inventoryId) return false
+      const value = draft[variant.inventoryId]
+      return value !== undefined && value !== '' && Number(value) !== variant.stockOnHand
+    })
+    .map(variant => ({
+      inventoryId: variant.inventoryId,
+      stockOnHand: Number(draft[variant.inventoryId]),
+    }))
 }
 
 export function completeRackVariants(

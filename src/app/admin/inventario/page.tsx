@@ -1,7 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import type { RackInventoryProduct, RackInventoryResponse } from '@/lib/rack-inventory'
+import { Warehouse } from 'lucide-react'
+import {
+  changedRackInventoryItems,
+  type RackInventoryProduct,
+  type RackInventoryResponse,
+} from '@/lib/rack-inventory'
 
 const money = new Intl.NumberFormat('es-CL', {
   style: 'currency',
@@ -10,8 +15,8 @@ const money = new Intl.NumberFormat('es-CL', {
 })
 
 const ORIGINS = [
-  { code: 'los_angeles', label: 'Los Ángeles' },
   { code: 'las_condes', label: 'Las Condes' },
+  { code: 'los_angeles', label: 'Los Ángeles' },
 ] as const
 
 export default function AdminInventoryPage() {
@@ -47,15 +52,13 @@ export default function AdminInventoryPage() {
   }, [load])
 
   async function saveProduct(product: RackInventoryProduct) {
+    const items = changedRackInventoryItems(product, draft)
+
+    if (items.length === 0) return
+
     setSavingSlug(product.slug)
     setMessage(null)
     try {
-      const items = product.variants
-        .filter(variant => variant.inventoryId)
-        .map(variant => ({
-          inventoryId: variant.inventoryId,
-          stockOnHand: Number(draft[variant.inventoryId]),
-        }))
       const response = await fetch('/api/admin/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -92,44 +95,61 @@ export default function AdminInventoryPage() {
       )}
 
       {loading ? (
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
-          {[0, 1].map(item => <div key={item} className="h-72 animate-pulse rounded-2xl bg-gray-100" />)}
+        <div className="mt-8 space-y-4">
+          {[0, 1].map(item => <div key={item} className="h-56 animate-pulse rounded-2xl bg-gray-100" />)}
         </div>
       ) : (
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+        <div className="mt-8 space-y-4">
           {products.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-sm text-gray-500 md:col-span-2">
+            <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-sm text-gray-500">
               No hay productos Ski Rack configurados en inventario.
             </div>
           )}
           {products.map(product => {
             const available = product.variants.reduce((sum, variant) => sum + variant.availableQuantity, 0)
             const reserved = product.variants.reduce((sum, variant) => sum + variant.reservedQuantity, 0)
+            const editableVariants = product.variants.filter(variant => variant.inventoryId)
+            const hasInvalidDraft = editableVariants.some(variant => draft[variant.inventoryId] === '')
+            const changedCount = editableVariants.filter(variant => (
+              draft[variant.inventoryId] !== undefined
+              && draft[variant.inventoryId] !== ''
+              && Number(draft[variant.inventoryId]) !== variant.stockOnHand
+            )).length
             return (
-              <section key={product.slug} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
+              <section
+                key={product.slug}
+                className="grid gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm xl:grid-cols-[minmax(180px,0.7fr)_minmax(260px,1fr)_minmax(260px,1fr)_auto] xl:items-stretch"
+              >
+                <div className="flex min-w-0 flex-col justify-between py-1">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{product.material}</p>
                     <h2 className="mt-1 font-body text-xl font-black">{product.name}</h2>
                     <p className="mt-1 text-sm font-semibold text-brand-500">{money.format(product.priceClp)}</p>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${available === 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>
+                  <span className={`mt-5 w-fit rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${available === 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>
                     {available === 0 ? 'Sin stock' : `${available} disponibles`}
                   </span>
                 </div>
 
-                <div className="mt-6 space-y-5">
+                <div className="grid gap-4 sm:grid-cols-2 xl:contents">
                   {ORIGINS.map(origin => (
-                    <div key={origin.code}>
-                      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                        {origin.label}
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
+                    <div key={origin.code} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                      <div className="mb-4 flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-500 shadow-sm ring-1 ring-gray-100">
+                          <Warehouse className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                        </span>
+                        <p className="text-xs font-black uppercase tracking-wider text-gray-700">
+                          {origin.label}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
                         {product.variants
                           .filter(variant => variant.originCode === origin.code)
                           .map(variant => (
-                            <label key={variant.inventoryId || `${origin.code}:${variant.size}`} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                              <span className="text-xs font-black text-gray-700">Talla {variant.size}</span>
+                            <label key={variant.inventoryId || `${origin.code}:${variant.size}`} className="min-w-0">
+                              <span className="block text-center text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                Talla {variant.size}
+                              </span>
                               <input
                                 type="number"
                                 min="0"
@@ -137,14 +157,17 @@ export default function AdminInventoryPage() {
                                 step="1"
                                 value={draft[variant.inventoryId] ?? ''}
                                 disabled={!variant.inventoryId}
+                                aria-label={`${product.name}, ${origin.label}, talla ${variant.size}`}
                                 onChange={event => setDraft(current => ({
                                   ...current,
                                   [variant.inventoryId]: event.target.value.replace(/[^0-9]/g, ''),
                                 }))}
-                                className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-lg font-black outline-none focus:border-brand-500 disabled:bg-gray-100"
+                                className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-2 py-2.5 text-center text-base font-black text-gray-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-100"
                               />
-                              <span className="mt-2 block text-[10px] leading-4 text-gray-400">
-                                {variant.reservedQuantity} reservadas · {variant.availableQuantity} libres
+                              <span className="mt-1.5 block truncate text-center text-[9px] text-gray-400">
+                                {variant.reservedQuantity > 0
+                                  ? `${variant.reservedQuantity} reservadas`
+                                  : `${variant.availableQuantity} libres`}
                               </span>
                             </label>
                           ))}
@@ -153,17 +176,17 @@ export default function AdminInventoryPage() {
                   ))}
                 </div>
 
-                <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
-                  <p className="text-xs text-gray-400">{reserved} unidades en pagos activos</p>
+                <div className="flex min-w-[136px] flex-row items-center justify-between gap-3 border-t border-gray-100 pt-4 xl:flex-col xl:items-stretch xl:justify-center xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
+                  <p className="text-xs leading-5 text-gray-400 xl:text-center">
+                    {reserved > 0 ? `${reserved} en pagos activos` : 'Sin reservas activas'}
+                  </p>
                   <button
                     type="button"
                     onClick={() => saveProduct(product)}
-                    disabled={savingSlug !== null || product.variants.some(variant => (
-                      !variant.inventoryId || draft[variant.inventoryId] === ''
-                    ))}
-                    className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50"
+                    disabled={savingSlug !== null || hasInvalidDraft || changedCount === 0}
+                    className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                   >
-                    {savingSlug === product.slug ? 'Guardando…' : 'Guardar stock'}
+                    {savingSlug === product.slug ? 'Guardando…' : 'Guardar'}
                   </button>
                 </div>
               </section>
