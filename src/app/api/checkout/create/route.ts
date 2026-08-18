@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPaymentConfig } from '@/lib/env/server'
 import {
@@ -6,7 +5,7 @@ import {
   CheckoutServiceError,
   consumeCheckoutRateLimit,
   createCheckout,
-  guestTokenFromPaymentCookie,
+  derivePaymentAccessToken,
   paymentAccessCookie,
   paymentAccessCookieName,
   readCheckoutJson,
@@ -52,10 +51,10 @@ export async function POST(request: NextRequest) {
     await consumeCheckoutRateLimit(config, request, 'create')
     const input = parseCheckoutInput(await readCheckoutJson(request))
     const cookieName = paymentAccessCookieName(config)
-    const currentCookie = request.cookies.get(cookieName)?.value
-    const guestAccessToken =
-      guestTokenFromPaymentCookie(currentCookie) ||
-      randomBytes(32).toString('base64url')
+    const guestAccessToken = derivePaymentAccessToken(
+      config,
+      input.idempotencyKey
+    )
     const checkout = await createCheckout(config, input, guestAccessToken)
 
     const response = NextResponse.json(
