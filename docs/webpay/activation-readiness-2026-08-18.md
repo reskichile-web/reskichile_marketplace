@@ -22,6 +22,7 @@ También se corrigió:
   abre solo si existen credenciales y una tarifa real coincidente;
 - una allowlist obligatoria de correos para un sandbox desplegado;
 - secretos separados para conciliación y outbox;
+- token invitado distinto por orden e idempotente sólo para su propio reintento;
 - respuesta controlada si falta la configuración de conciliación;
 - CSP más restrictiva y eliminación del header `X-Powered-By`.
 

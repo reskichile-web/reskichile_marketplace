@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { quoteCheckout } from '@/lib/commerce/checkout-service'
+import {
+  derivePaymentAccessToken,
+  quoteCheckout,
+} from '@/lib/commerce/checkout-service'
 import type { CheckoutInput } from '@/lib/commerce/checkout-validation'
 import type { PaymentConfig } from '@/lib/env/server'
 
@@ -44,5 +47,18 @@ describe('sandbox checkout access', () => {
       code: 'SANDBOX_BUYER_NOT_ALLOWED',
       status: 403,
     })
+  })
+
+  it('scopes guest access to one idempotency key while preserving retries', () => {
+    const first = derivePaymentAccessToken(config, input.idempotencyKey)
+    const retry = derivePaymentAccessToken(config, input.idempotencyKey)
+    const differentOrder = derivePaymentAccessToken(
+      config,
+      'eac18fc7-b34c-463a-9e3b-bf42877ff8c2'
+    )
+
+    expect(retry).toBe(first)
+    expect(differentOrder).not.toBe(first)
+    expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/)
   })
 })

@@ -1,6 +1,12 @@
 import 'server-only'
 
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto'
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from 'crypto'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { PaymentConfig } from '@/lib/env/server'
 import {
@@ -797,14 +803,15 @@ export function verifyPaymentAccessCookie(
   return actual.length === expected.length && timingSafeEqual(actual, expected)
 }
 
-export function guestTokenFromPaymentCookie(
-  cookieValue: string | undefined
-): string | null {
-  if (!cookieValue) return null
-  const separator = cookieValue.indexOf('.')
-  if (separator < 1) return null
-  const token = cookieValue.slice(separator + 1)
-  return /^[A-Za-z0-9_-]{32,128}$/.test(token) ? token : null
+export function derivePaymentAccessToken(
+  config: PaymentConfig,
+  idempotencyKey: string
+): string {
+  // A deterministic, server-authenticated token lets a lost HTTP response be
+  // retried with the same idempotency key without sharing access across orders.
+  return createHmac('sha256', config.rateLimitSecret)
+    .update('reski-order-access:v1:' + idempotencyKey)
+    .digest('base64url')
 }
 
 export function paymentAccessCookieName(config: PaymentConfig): string {
