@@ -58,7 +58,6 @@ export function isPaymentsEnabled(): boolean {
 export function getAppUrl(): URL {
   const raw =
     process.env.APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.NODE_ENV === 'production'
       ? 'https://www.reskichile.cl'
       : 'http://localhost:4173')

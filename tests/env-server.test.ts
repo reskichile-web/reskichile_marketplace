@@ -6,10 +6,10 @@ afterEach(() => {
 })
 
 describe('getAppUrl', () => {
-  it('uses the verified canonical domain when Vercel has no legacy APP_URL', () => {
+  it('uses the verified canonical domain when Vercel has no APP_URL', () => {
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('APP_URL', undefined)
-    vi.stubEnv('NEXT_PUBLIC_SITE_URL', undefined)
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://reskichile.cl')
 
     expect(getAppUrl().origin).toBe('https://www.reskichile.cl')
   })
