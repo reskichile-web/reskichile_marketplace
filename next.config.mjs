@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   turbopack: {
     root: process.cwd(),
   },
@@ -34,7 +35,21 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self' https://webpay3gint.transbank.cl https://webpay3g.transbank.cl",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline'",
+              "script-src-attr 'none'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "frame-src 'none'",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "object-src 'none'",
+              "form-action 'self' https://webpay3gint.transbank.cl https://webpay3g.transbank.cl",
+              'upgrade-insecure-requests',
+            ].join('; '),
           },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

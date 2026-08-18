@@ -1,22 +1,25 @@
 # Auditoría de seguridad de la integración
 
+> Documento histórico. El estado operativo vigente está en
+> `activation-readiness-2026-08-18.md`; las ocho migraciones ya fueron aplicadas.
+
 Fecha original: 2026-08-15 · actualización: 2026-08-18
-Alcance: código y migraciones locales; el Supabase remoto todavía no fue modificado.
+Alcance histórico: el remoto fue actualizado posteriormente; ver el documento
+vigente enlazado arriba.
 
 ## Resultado ejecutivo
 
-Los defectos críticos detectados en el primer diseño quedaron corregidos en el
-workspace y probados contra PostgreSQL temporal. Esto **no habilita producción**:
-faltan aplicación controlada de migraciones, cron, inventario real, sandbox
-completo y configuración operativa de alertas. La inspección remota,
-fulfillment/outbox y reembolsos ya están cerrados en código local.
+Los defectos críticos detectados en el primer diseño quedaron corregidos. Las
+ocho migraciones están aplicadas en Supabase, pero esto **no habilita
+producción**: faltan cron, sandbox completo, validación Transbank, tarifas y
+configuración operativa de alertas.
 
 | Riesgo | Antes | Corrección local | Estado remoto |
 |---|---|---|---|
-| caída entre `processing` y `commit` | podía quedar atascado o inducir otro commit | lease durable; `commit_started_at`; recuperación exclusivamente por `status` | no aplicada |
-| reserva vence durante pago | podía liberar/vender la misma pieza | estados `payment_processing` y `reconciliation_required`; índice único sobre todos los estados retenidos | no aplicada |
-| deadlock checkout/callback | orden de locks distinto | productos → reservas → orden → intento en todos los RPC sensibles | no aplicada |
-| campos sensibles de usuario | policy/grant amplio permitía tocar `is_admin` y podía exponer flags futuros como `keep` | allowlist cerrada por columna + trigger de admin + `user_role_events`; columnas nuevas se deniegan por defecto | no aplicada |
+| caída entre `processing` y `commit` | podía quedar atascado o inducir otro commit | lease durable; `commit_started_at`; recuperación exclusivamente por `status` | aplicada |
+| reserva vence durante pago | podía liberar/vender la misma pieza | estados `payment_processing` y `reconciliation_required`; índice único sobre todos los estados retenidos | aplicada |
+| deadlock checkout/callback | orden de locks distinto | productos → reservas → orden → intento en todos los RPC sensibles | aplicada |
+| campos sensibles de usuario | policy/grant amplio permitía tocar `is_admin` y podía exponer flags futuros como `keep` | allowlist cerrada por columna + trigger de admin + `user_role_events`; columnas nuevas se deniegan por defecto | aplicada |
 | payload RPC incompatible | TypeScript esperaba `id` y SQL devolvía `attempt_id` | contrato alineado y prueba funcional completa | corregido local |
 | dependencias altas | Next/PostCSS/Sharp y `xlsx` afectados | Next 16.3.1; `xlsx` retirado por lector acotado | `npm audit`: 0 |
 | callback/body ambiguo | Content-Type por prefijo y parámetros duplicables | media type exacto, 4 KiB máximo y rechazo de duplicados | corregido local |
@@ -32,7 +35,7 @@ Next.js production build    OK
 npm audit completo          0 vulnerabilidades
 Migración foundation        OK en PostgreSQL temporal
 Migración hardening         OK en PostgreSQL temporal
-Seis migraciones en CI      OK en PostgreSQL 16 aislado
+Ocho migraciones en CI      OK en PostgreSQL 16 aislado
 Vitest                      10 pruebas OK
 
 Prueba transaccional:
@@ -45,7 +48,7 @@ authenticated UPDATE is_admin=false · UPDATE name=true
 
 | Prioridad | Falta | Cierre esperado |
 |---|---|---|
-| P0 | aplicar las seis migraciones en orden | dry-run, exportar `seasons_used`, backup apropiado y `supabase db push` controlado |
+| cerrado | ocho migraciones aplicadas | `supabase migration list` alineado y RPC anónimos bloqueados |
 | P0 | cargar stock real por talla/origen | `/admin/inventario`, partiendo en cero |
 | P0 | programar jobs | Supabase Cron → reconciliación y outbox con secreto en Vault |
 | P0 | ejecutar matriz sandbox | aprobado, rechazado, anulado, timeout, doble callback y caída simulada |

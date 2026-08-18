@@ -20,15 +20,15 @@ function authorized(request: Request, secret: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const config = getPaymentReconciliationConfig()
-  if (!authorized(request, config.reconciliationJobSecret)) {
-    return NextResponse.json(
-      { error: 'No autorizado' },
-      { status: 401, headers: { 'Cache-Control': 'no-store' } }
-    )
-  }
-
   try {
+    const config = getPaymentReconciliationConfig()
+    if (!authorized(request, config.reconciliationJobSecret)) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401, headers: { 'Cache-Control': 'no-store' } }
+      )
+    }
+
     // Keep the worst-case provider time below the 60-second Hobby function
     // limit. An interrupted batch is safe: each attempt has a recoverable lease.
     const batchSize = Math.max(

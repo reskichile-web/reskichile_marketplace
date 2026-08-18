@@ -21,6 +21,12 @@ $$;
 CREATE SCHEMA IF NOT EXISTS auth;
 GRANT USAGE ON SCHEMA auth, public TO anon, authenticated, service_role;
 
+-- Reproduce the direct routine grants used by existing Supabase projects.
+-- Commerce migrations must explicitly revoke anon/authenticated, not merely
+-- PUBLIC, or a function remains callable through PostgREST.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS UUID
 LANGUAGE sql
