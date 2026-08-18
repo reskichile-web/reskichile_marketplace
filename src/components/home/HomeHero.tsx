@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import TrackedLink from '@/components/TrackedLink'
 import RotatingWord from '@/components/RotatingWord'
+import SellTagIcon from '@/components/SellTagIcon'
 import styles from './HomeHero.module.css'
 
 export default function HomeHero() {
@@ -30,7 +31,8 @@ export default function HomeHero() {
 
         <div className={styles.content}>
           <h1 id="home-hero-title" className={styles.title}>
-            Encuentra lo mejor en <span className={styles.rotatingLine}><RotatingWord /></span>
+            <span className={styles.titleLead}>Encuentra lo mejor en</span>{' '}
+            <span className={styles.rotatingLine}><RotatingWord /></span>
           </h1>
           <p className={styles.copy}>Mismo equipo, mejor precio. El snowmarket de Chile.</p>
 
@@ -38,7 +40,7 @@ export default function HomeHero() {
             <TrackedLink
               href="/catalogo"
               event="hero_explorar"
-              className={`${styles.button} ${styles.primaryButton}`}
+              className={styles.button}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <circle cx="11" cy="11" r="7" />
@@ -49,12 +51,9 @@ export default function HomeHero() {
             <TrackedLink
               href="/vender"
               event="hero_publicar"
-              className={styles.button}
+              className={`${styles.button} ${styles.primaryButton}`}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} aria-hidden="true">
-                <path d="M20.6 13.1 12.7 21a2.4 2.4 0 0 1-3.4 0L3 14.7a2.4 2.4 0 0 1 0-3.4L10.9 3H19a2 2 0 0 1 2 2v8.1Z" />
-                <circle cx="16.5" cy="7.5" r="1.2" />
-              </svg>
+              <SellTagIcon />
               <span>Publicar equipo</span>
             </TrackedLink>
           </div>

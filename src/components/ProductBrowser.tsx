@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { ArrowUpDown, ChevronDown, SlidersHorizontal, X } from 'lucide-react'
+import SellTagIcon from '@/components/SellTagIcon'
 import { StaggerGrid, StaggerItem } from '@/components/StaggerGrid'
 import ProductCard from '@/components/ProductCard'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
@@ -52,6 +54,53 @@ function CheckItem({ label, checked, onChange }: { label: string; checked: boole
   )
 }
 
+function MobileFilterSection({
+  title,
+  active,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  active: boolean
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div className="border-t border-gray-200">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className="flex w-full items-center justify-between py-4 text-left"
+      >
+        <span className={`text-xs font-body font-bold uppercase tracking-widest ${active ? 'text-black' : 'text-gray-700'}`}>
+          {title}
+          {active && <span className="ml-2 inline-block h-1.5 w-1.5 rounded-full bg-brand-500 align-middle" />}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+      {open && <div className="max-h-64 space-y-2 overflow-y-auto pb-5 pr-1">{children}</div>}
+    </div>
+  )
+}
+
+function MobileCheckItem({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2.5 group">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded-sm border-gray-300 text-black focus:ring-black/20"
+      />
+      <span className={`flex-1 truncate text-sm ${checked ? 'font-medium text-black' : 'text-gray-600 group-hover:text-black'}`}>
+        {label}
+      </span>
+    </label>
+  )
+}
+
 export default function ProductBrowser({ products }: Props) {
   const [sort, setSort] = useState<SortKey>('recent')
   const [typeFilters, setTypeFilters] = useState<Set<string>>(new Set())
@@ -87,7 +136,15 @@ export default function ProductBrowser({ products }: Props) {
   }, [products, sort, typeFilters, conditionFilters, brandFilters, regionFilters])
 
   const hasFilters = typeFilters.size > 0 || conditionFilters.size > 0 || brandFilters.size > 0 || regionFilters.size > 0
+  const activeFilterCount = typeFilters.size + conditionFilters.size + brandFilters.size + regionFilters.size
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+
+  useEffect(() => {
+    document.body.style.overflow = mobileFiltersOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileFiltersOpen])
 
   function clearFilters() {
     setTypeFilters(new Set())
@@ -149,44 +206,110 @@ export default function ProductBrowser({ products }: Props) {
     </>
   )
 
+  const mobileFilterContent = (
+    <>
+      <MobileFilterSection title="Tipo" active={typeFilters.size > 0} defaultOpen>
+        {Object.entries(PRODUCT_TYPES).map(([value, label]) => (
+          <MobileCheckItem
+            key={value}
+            label={label}
+            checked={typeFilters.has(value)}
+            onChange={() => setTypeFilters(toggleSet(typeFilters, value))}
+          />
+        ))}
+      </MobileFilterSection>
+      <MobileFilterSection title="Marca" active={brandFilters.size > 0}>
+        {brands.map(brand => (
+          <MobileCheckItem
+            key={brand}
+            label={brand}
+            checked={brandFilters.has(brand)}
+            onChange={() => setBrandFilters(toggleSet(brandFilters, brand))}
+          />
+        ))}
+      </MobileFilterSection>
+      <MobileFilterSection title="Condición" active={conditionFilters.size > 0}>
+        {Object.entries(CONDITIONS).map(([value, label]) => (
+          <MobileCheckItem
+            key={value}
+            label={label}
+            checked={conditionFilters.has(value)}
+            onChange={() => setConditionFilters(toggleSet(conditionFilters, value))}
+          />
+        ))}
+      </MobileFilterSection>
+      <MobileFilterSection title="Región" active={regionFilters.size > 0}>
+        {REGIONS.map(region => (
+          <MobileCheckItem
+            key={region}
+            label={region}
+            checked={regionFilters.has(region)}
+            onChange={() => setRegionFilters(toggleSet(regionFilters, region))}
+          />
+        ))}
+      </MobileFilterSection>
+      {hasFilters && (
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="mt-4 text-xs font-body uppercase tracking-wider text-gray-500 transition-colors hover:text-black"
+        >
+          Limpiar filtros
+        </button>
+      )}
+    </>
+  )
+
   return (
     <section className="max-w-7xl mx-auto px-4">
       {/* Sticky sorting navbar */}
-      <div className="sticky top-0 z-30 border-y border-gray-200 bg-white py-3 md:py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="font-body text-lg md:text-xl font-black">Productos</h2>
-            <span className="text-sm text-gray-400">{filtered.length}</span>
-          </div>
+      <div data-testid="landing-product-toolbar" className="sticky top-0 z-30 bg-white">
+        <div className="flex items-center gap-3 py-3 lg:hidden">
+          <h2 className="font-body text-lg font-black">Productos</h2>
+          <span className="text-sm text-gray-400">{filtered.length}</span>
+        </div>
 
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            {/* Mobile filter button */}
-            <button
-              onClick={() => setMobileFiltersOpen(true)}
-              className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              Filtros
-              {hasFilters && <span className="w-2 h-2 bg-brand-500 rounded-full" />}
-            </button>
+        <div className="flex items-center justify-between gap-3 border-y border-gray-200 py-3 lg:hidden">
+          <button
+            type="button"
+            data-testid="landing-filter-button"
+            onClick={() => setMobileFiltersOpen(true)}
+            className="relative inline-flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-body font-semibold text-gray-800 transition-colors hover:border-black hover:text-black"
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
 
-            {/* Sort dropdown */}
+          <label className="inline-flex min-w-0 items-center gap-2 text-sm text-gray-600">
+            <ArrowUpDown className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
             <select
               aria-label="Ordenar productos"
               value={sort}
               onChange={e => setSort(e.target.value as SortKey)}
-              className="md:hidden appearance-none bg-gray-100 text-gray-700 text-xs font-medium pl-2.5 pr-6 py-1.5 rounded-full border-0"
+              className="min-w-0 cursor-pointer border-0 bg-transparent font-body font-medium text-gray-700 focus:outline-none"
             >
-              <option value="recent">Recientes</option>
-              <option value="price_asc">Menor precio</option>
-              <option value="price_desc">Mayor precio</option>
+              <option value="recent">Más recientes</option>
+              <option value="price_asc">Precio: menor a mayor</option>
+              <option value="price_desc">Precio: mayor a menor</option>
               <option value="name_asc">Marca A-Z</option>
             </select>
+          </label>
+        </div>
 
-            <span className="text-xs text-gray-400 hidden md:inline">Ordenar:</span>
-            <label className="relative hidden md:block">
+        <div className="hidden items-center justify-between gap-3 border-y border-gray-200 py-4 lg:flex">
+          <div className="flex items-center gap-3">
+            <h2 className="font-body text-xl font-black">Productos</h2>
+            <span className="text-sm text-gray-400">{filtered.length}</span>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="text-xs text-gray-400">Ordenar:</span>
+            <label className="relative block">
               <span className="sr-only">Ordenar productos</span>
               <select
                 value={sort}
@@ -202,7 +325,11 @@ export default function ProductBrowser({ products }: Props) {
                 <path d="m6 8 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </label>
-            <Link href="/vender" className="ml-8 hidden rounded-lg bg-brand-500 px-8 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-600 md:block">
+            <Link
+              href="/vender"
+              className="pressable ml-8 hidden h-9 items-center justify-center gap-1.5 bg-brand-500 px-5 text-sm text-white transition-colors hover:bg-brand-600 font-nav md:inline-flex"
+            >
+              <SellTagIcon className="h-4 w-4" />
               Vender
             </Link>
           </div>
@@ -211,19 +338,25 @@ export default function ProductBrowser({ products }: Props) {
 
       {/* Mobile filter drawer */}
       {mobileFiltersOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFiltersOpen(false)} />
-          <div className="absolute right-0 top-0 bottom-0 w-72 bg-white shadow-xl overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-bold text-lg">Filtros</h3>
-              <button onClick={() => setMobileFiltersOpen(false)} className="p-1">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+        <div className="fixed inset-0 z-[9999] lg:hidden">
+          <div className="filter-overlay-enter absolute inset-0 bg-black/40" onClick={() => setMobileFiltersOpen(false)} />
+          <div data-testid="landing-filter-drawer" className="filter-drawer-enter absolute inset-y-0 left-0 flex w-72 max-w-[calc(100vw-2rem)] flex-col bg-white shadow-xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h3 className="font-body font-bold text-gray-900">Filtros</h3>
+              <button
+                type="button"
+                onClick={() => setMobileFiltersOpen(false)}
+                aria-label="Cerrar"
+                className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-gray-100"
+              >
+                <X className="h-5 w-5 text-gray-600" aria-hidden="true" />
               </button>
             </div>
-            <div className="p-4 space-y-5">
-              {filterContent}
+            <div className="flex-1 overflow-y-auto p-5">
+              <p className="mb-3 text-xs font-body font-bold uppercase tracking-widest text-gray-400">
+                Filtros generales
+              </p>
+              {mobileFilterContent}
             </div>
           </div>
         </div>
@@ -232,7 +365,7 @@ export default function ProductBrowser({ products }: Props) {
       {/* Main layout: filters sidebar + products */}
       <div className="flex gap-5 pt-6 pb-16">
         {/* Filters sidebar — left, sticky, desktop only */}
-        <aside className="hidden md:block w-48 shrink-0">
+        <aside className="hidden lg:block w-48 shrink-0">
           <div className="sticky top-16 space-y-4 max-h-[calc(100vh-100px)] overflow-y-auto pr-1 pt-2">
             {filterContent}
           </div>

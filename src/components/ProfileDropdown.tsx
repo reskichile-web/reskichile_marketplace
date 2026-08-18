@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { PackageOpen } from 'lucide-react'
 import { useUnreadCount } from './chat/ChatProvider'
 
 interface Props {
@@ -112,9 +113,7 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, is
             onClick={() => setOpen(false)}
             className="md:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-500 transition-colors"
           >
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
+            <PackageOpen className="h-4 w-4 text-gray-400" strokeWidth={1.8} aria-hidden="true" />
             Mis productos
           </Link>
 

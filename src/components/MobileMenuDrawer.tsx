@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
+import SellTagIcon from './SellTagIcon'
 
 type AccordionName = 'marketplace' | 'installation' | 'support' | null
 
@@ -93,8 +94,9 @@ export default function MobileMenuDrawer({
               <Link
                 href="/vender"
                 onClick={onClose}
-                className="pressable mb-5 block w-full rounded-none bg-brand-500 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-brand-600"
+                className="pressable mb-5 inline-flex w-full items-center justify-center gap-2 rounded-none bg-brand-500 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-brand-600"
               >
+                <SellTagIcon className="h-4 w-4" />
                 Vender
               </Link>
 
