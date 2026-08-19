@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createPublicServerClient } from '@/lib/supabase/server'
-import { getPaymentConfig } from '@/lib/env/server'
+import { getAddressConfig, getPaymentConfig } from '@/lib/env/server'
 import CheckoutForm from '@/components/checkout/CheckoutForm'
 import SkiRackCheckout from '@/components/checkout/SkiRackCheckout'
 import { getSkiRackProduct } from '@/lib/ski-rack-products'
@@ -24,14 +24,16 @@ export default async function CheckoutPage({ searchParams }: Props) {
   if (query.racks === '1') {
     let enabled = false
     let sandbox = true
+    let addressValidationEnabled = false
     try {
       const config = getPaymentConfig()
       enabled = config.enabled
       sandbox = config.environment === 'integration'
+      addressValidationEnabled = getAddressConfig().enabled
     } catch {
       enabled = false
     }
-    return <SkiRackCheckout enabled={enabled} sandbox={sandbox} />
+    return <SkiRackCheckout enabled={enabled} sandbox={sandbox} addressValidationEnabled={addressValidationEnabled} />
   }
 
   if (!UUID_RE.test(productId)) notFound()
@@ -39,7 +41,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const supabase = createPublicServerClient()
   const { data: product } = await supabase
     .from('products')
-    .select('id, brand, model, price, commerce_owned')
+    .select('id, brand, model, price, commerce_owned, product_images(url, order)')
     .eq('id', productId)
     .eq('status', 'approved')
     .eq('commerce_owned', true)
@@ -49,10 +51,12 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
   let enabled = false
   let sandbox = true
+  let addressValidationEnabled = false
   try {
     const config = getPaymentConfig()
     enabled = config.enabled
     sandbox = config.environment === 'integration'
+    addressValidationEnabled = getAddressConfig().enabled
   } catch {
     enabled = false
   }
@@ -65,10 +69,14 @@ export default async function CheckoutPage({ searchParams }: Props) {
         priceClp: Number(product.price),
         quantity: 1,
         backHref: '/producto/' + product.id,
+        imageUrl: ((product.product_images as { url: string; order: number }[] | null) || [])
+          .slice()
+          .sort((a, b) => a.order - b.order)[0]?.url,
       }]}
       kind="products"
       enabled={enabled}
       sandbox={sandbox}
+      addressValidationEnabled={addressValidationEnabled}
     />
   )
 }

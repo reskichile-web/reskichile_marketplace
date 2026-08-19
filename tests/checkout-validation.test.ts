@@ -13,6 +13,7 @@ const checkout = {
     name: '  Ana   Pérez ',
     email: 'ANA@EXAMPLE.COM',
     phone: '+56 9 1234 5678',
+    phoneCountry: 'CL',
   },
   delivery: {
     method: 'home',
@@ -33,6 +34,7 @@ describe('parseCheckoutInput', () => {
       name: 'Ana Pérez',
       email: 'ana@example.com',
       phone: '+56912345678',
+      phoneCountry: 'CL',
     })
     expect(parsed.rackItems).toEqual([{ slug: 'madera', size: 'S', quantity: 2 }])
     expect(parsed.couponCode).toBe('WELCOME10')
@@ -62,6 +64,15 @@ describe('parseCheckoutInput', () => {
         { slug: 'madera', size: 'L', quantity: 1 },
       ],
     })).toThrow('máximo de unidades')
+  })
+
+  it.each([
+    [{ ...checkout.buyer, phone: '912345678' }, 'país seleccionado'],
+    [{ ...checkout.buyer, phone: '+56812345678' }, 'país seleccionado'],
+    [{ name: checkout.buyer.name, email: checkout.buyer.email, phone: checkout.buyer.phone }, 'País del teléfono'],
+    [{ ...checkout.buyer, phoneCountry: 'US' }, 'país seleccionado'],
+  ])('rejects a manipulated phone payload', (buyer, message) => {
+    expect(() => parseCheckoutInput({ ...checkout, buyer })).toThrow(message)
   })
 
   it('builds the same fingerprint regardless of rack line ordering', () => {

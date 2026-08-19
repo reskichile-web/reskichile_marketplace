@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  getAddressConfig,
   getAppUrl,
   getPaymentCallbackConfig,
   getPaymentConfig,
@@ -73,5 +74,46 @@ describe('sandbox checkout allowlist', () => {
       shippingRateSource: 'table',
       sandboxBuyerEmails: [],
     })
+  })
+})
+
+describe('address validation configuration', () => {
+  it('stays disabled without requiring provider secrets', () => {
+    vi.stubEnv('ADDRESS_VALIDATION_ENABLED', undefined)
+    vi.stubEnv('GOOGLE_MAPS_SERVER_API_KEY', undefined)
+    vi.stubEnv('ADDRESS_VALIDATION_SIGNING_SECRET', undefined)
+
+    expect(getAddressConfig()).toMatchObject({
+      enabled: false,
+      provider: 'google',
+      timeoutMs: 5000,
+    })
+  })
+
+  it('fails closed when an enabled provider is missing server-only secrets', () => {
+    vi.stubEnv('ADDRESS_VALIDATION_ENABLED', 'true')
+    vi.stubEnv('GOOGLE_MAPS_SERVER_API_KEY', undefined)
+    expect(() => getAddressConfig()).toThrow('GOOGLE_MAPS_SERVER_API_KEY')
+
+    vi.stubEnv('GOOGLE_MAPS_SERVER_API_KEY', 'g'.repeat(30))
+    vi.stubEnv('ADDRESS_VALIDATION_SIGNING_SECRET', 's'.repeat(32))
+    vi.stubEnv('CHECKOUT_RATE_LIMIT_SECRET', 'r'.repeat(32))
+    expect(getAddressConfig()).toMatchObject({ enabled: true, provider: 'google' })
+  })
+
+  it('does not allow new production payments with address validation disabled', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('APP_URL', 'https://www.reskichile.cl')
+    vi.stubEnv('PAYMENTS_ENABLED', 'true')
+    vi.stubEnv('TRANSBANK_ENVIRONMENT', 'production')
+    vi.stubEnv('TRANSBANK_COMMERCE_CODE', 'production-commerce-code')
+    vi.stubEnv('TRANSBANK_API_KEY_SECRET', 'production-api-key')
+    vi.stubEnv('SHIPPING_RATE_SOURCE', 'table')
+    vi.stubEnv('CHECKOUT_RATE_LIMIT_SECRET', 'r'.repeat(32))
+    vi.stubEnv('ADDRESS_VALIDATION_ENABLED', undefined)
+
+    expect(() => getPaymentConfig()).toThrow(
+      'Producción requiere validación de dirección habilitada'
+    )
   })
 })
