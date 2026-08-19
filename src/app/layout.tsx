@@ -51,8 +51,38 @@ export const viewport: Viewport = {
   interactiveWidget: 'resizes-content',
 }
 
+function metadataBaseFromEnvironment(): URL {
+  const raw = process.env.APP_URL || 'http://localhost:4173'
+
+  try {
+    return new URL(raw)
+  } catch {
+    const trimmed = raw.trim()
+    const wrappedInQuotes =
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+
+    // Never include the value itself: APP_URL may be marked sensitive in the
+    // deployment provider. These shape-only diagnostics are enough to detect
+    // assignment prefixes, quotes and invisible characters safely.
+    throw new TypeError(
+      [
+        'APP_URL_INVALID',
+        `length=${raw.length}`,
+        `trimmedLength=${trimmed.length}`,
+        `startsWithHttps=${trimmed.startsWith('https://')}`,
+        `endsWithVercelApp=${trimmed.endsWith('.vercel.app')}`,
+        `containsEquals=${trimmed.includes('=')}`,
+        `wrappedInQuotes=${wrappedInQuotes}`,
+        `hasInnerWhitespace=${/\s/.test(trimmed)}`,
+        `hasNonAscii=${/[^\x20-\x7e]/.test(raw)}`,
+      ].join(' ')
+    )
+  }
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL || 'http://localhost:4173'),
+  metadataBase: metadataBaseFromEnvironment(),
   title: 'ReskiChile - Equipamiento de montaña usado',
   description: 'Marketplace de equipamiento usado de ski, snowboard y escalada en Chile',
   icons: {
