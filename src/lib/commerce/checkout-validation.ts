@@ -1,8 +1,16 @@
 import 'server-only'
 
 import { createHash } from 'crypto'
-import { normalizeStoredPhone } from '@/lib/phone'
+import {
+  getCountryByIso2,
+  parseAndValidatePhone,
+  type CountryOption,
+} from '@/lib/phone'
 import { CHILE_REGIONS } from './regions'
+import {
+  manualShippingSnapshot,
+  type ShippingAddressSnapshot,
+} from './address'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -25,6 +33,7 @@ export interface CheckoutInput {
     name: string
     email: string
     phone: string
+    phoneCountry: CountryOption['iso2']
   }
   delivery: {
     method: DeliveryMethod
@@ -34,6 +43,9 @@ export interface CheckoutInput {
     number: string | null
     extra: string | null
     pickupPointId: string | null
+    addressContext: string | null
+    addressValidationToken: string | null
+    shippingSnapshot: ShippingAddressSnapshot
   }
   couponCode: string | null
 }
@@ -144,11 +156,22 @@ export function parseCheckoutInput(raw: unknown): CheckoutInput {
     throw new CheckoutValidationError('El correo no es válido')
   }
 
+  const phoneCountryRaw = stringValue(
+    buyer.phoneCountry,
+    'País del teléfono',
+    2,
+    2
+  ).toUpperCase()
+  const phoneCountry = getCountryByIso2(phoneCountryRaw)
+  if (!phoneCountry) {
+    throw new CheckoutValidationError('El país del teléfono no es válido')
+  }
+
   const phoneRaw = stringValue(buyer.phone, 'Teléfono', 8, 30)
-  const phone = normalizeStoredPhone(phoneRaw)
+  const phone = parseAndValidatePhone(phoneRaw, phoneCountry.iso2)
   if (!phone) {
     throw new CheckoutValidationError(
-      'El teléfono debe incluir un número móvil válido'
+      'El teléfono no es válido para el país seleccionado'
     )
   }
 
@@ -173,6 +196,16 @@ export function parseCheckoutInput(raw: unknown): CheckoutInput {
       : null
 
   const extra = optionalString(delivery.extra, 'Información adicional', 160)
+  const addressContext = optionalString(
+    delivery.addressContext,
+    'Contexto de dirección',
+    36
+  )
+  const addressValidationToken = optionalString(
+    delivery.addressValidationToken,
+    'Validación de dirección',
+    4096
+  )
 
   let couponCode: string | null = null
   if (root.couponCode != null && root.couponCode !== '') {
@@ -186,7 +219,7 @@ export function parseCheckoutInput(raw: unknown): CheckoutInput {
     productIds,
     rackItems,
     idempotencyKey: root.idempotencyKey.toLowerCase(),
-    buyer: { name, email, phone },
+    buyer: { name, email, phone, phoneCountry: phoneCountry.iso2 },
     delivery: {
       method,
       region,
@@ -195,19 +228,39 @@ export function parseCheckoutInput(raw: unknown): CheckoutInput {
       number,
       extra,
       pickupPointId,
+      addressContext,
+      addressValidationToken,
+      shippingSnapshot: manualShippingSnapshot({
+        region,
+        commune,
+        street,
+        number,
+        extra,
+        pickupPointId,
+      }),
     },
     couponCode,
   }
 }
 
 export function checkoutFingerprint(input: CheckoutInput): string {
+  const delivery = {
+    method: input.delivery.method,
+    region: input.delivery.region,
+    commune: input.delivery.commune,
+    street: input.delivery.street,
+    number: input.delivery.number,
+    extra: input.delivery.extra,
+    pickupPointId: input.delivery.pickupPointId,
+    shippingSnapshot: input.delivery.shippingSnapshot,
+  }
   const canonical = JSON.stringify({
     productIds: [...input.productIds].sort(),
     rackItems: [...input.rackItems].sort((a, b) => (
       `${a.slug}:${a.size}`.localeCompare(`${b.slug}:${b.size}`)
     )),
     buyer: input.buyer,
-    delivery: input.delivery,
+    delivery,
     couponCode: input.couponCode,
   })
   return createHash('sha256').update(canonical).digest('hex')

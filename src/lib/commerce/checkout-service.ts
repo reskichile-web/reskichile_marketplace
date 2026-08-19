@@ -19,6 +19,12 @@ import {
   sha256,
 } from './checkout-validation'
 import {
+  checkoutOriginDiagnostics,
+  isTrustedCheckoutOrigin,
+  runtimeFromEnvironment,
+  shouldObserveCheckoutOriginMismatch,
+} from './checkout-origin'
+import {
   createWebpayTransaction,
   safeWebpayError,
 } from '@/lib/payments/webpay-client'
@@ -611,6 +617,7 @@ export async function createCheckout(
     p_guest_access_hash: guestAccessHash,
     p_reservation_minutes: config.inventoryReservationMinutes,
     p_allow_incomplete_shipping: config.allowIncompleteShippingInSandbox,
+    p_shipping_snapshot: input.delivery.shippingSnapshot,
   }
   const { data, error } = input.rackItems.length > 0
     ? await supabase.rpc('commerce_create_rack_checkout', {
@@ -752,11 +759,19 @@ export function assertTrustedCheckoutRequest(
   config: PaymentConfig,
   request: Request
 ): void {
-  const origin = request.headers.get('origin')
-  if (!origin || origin !== config.appUrl.origin) {
+  if (!isTrustedCheckoutOrigin(config.appUrl, request)) {
+    const runtime = runtimeFromEnvironment()
+    if (shouldObserveCheckoutOriginMismatch(runtime)) {
+      console.info(
+        'checkout_origin_mismatch',
+        checkoutOriginDiagnostics(config.appUrl, request, runtime)
+      )
+    }
     throw new CheckoutServiceError(
       'INVALID_ORIGIN',
-      'La solicitud no tiene un origen permitido.',
+      config.environment === 'integration'
+        ? 'Abre el checkout desde la dirección oficial del ambiente de prueba.'
+        : 'La solicitud no tiene un origen permitido.',
       403
     )
   }

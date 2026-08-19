@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import SkiRackGallery from '@/components/SkiRackGallery'
 import DescriptionCard from '@/components/DescriptionCard'
 import {
   SKI_RACK_DESCRIPTION,
   SKI_RACK_SIZES,
+  getSkiRackGalleryForSize,
   type SkiRackProduct,
   type SkiRackSize,
 } from '@/lib/ski-rack-products'
-import { addSkiRackCartItem, MAX_CART_QUANTITY } from '@/lib/ski-rack-cart'
+import { addSkiRackCartItem, MAX_CART_QUANTITY, openSkiRackCart } from '@/lib/ski-rack-cart'
 import { totalRackAvailability, variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
 
@@ -21,7 +21,7 @@ const money = new Intl.NumberFormat('es-CL', {
 })
 
 export default function SkiRackProductDetail({ product }: { product: SkiRackProduct }) {
-  const [selectedSize, setSelectedSize] = useState<SkiRackSize>('M')
+  const [selectedSize, setSelectedSize] = useState<SkiRackSize>('S')
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
   const { inventory, loading: inventoryLoading } = useRackInventory()
@@ -56,7 +56,8 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
         <div className="grid md:grid-cols-2 md:gap-8">
           <div className="px-4 md:px-0">
             <SkiRackGallery
-              images={product.gallery}
+              key={selectedSize}
+              images={getSkiRackGalleryForSize(product, selectedSize)}
               title={product.name}
             />
           </div>
@@ -198,20 +199,20 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
               </button>
             </div>
 
-            <div className="mt-2 min-h-5 text-center text-xs">
-              {added ? (
-                <span className="text-brand-500">
-                  {quantity} {quantity === 1 ? 'unidad agregada' : 'unidades agregadas'} ·{' '}
-                  <Link href="/carrito" className="font-semibold underline underline-offset-2">
-                    Ver carrito
-                  </Link>
-                </span>
-              ) : soldOut ? (
-                <span className="text-gray-500">Todas las tallas están agotadas por el momento.</span>
-              ) : (
-                <span className="text-gray-400">Envío y total se confirman en el checkout.</span>
-              )}
-            </div>
+            {(added || soldOut) && (
+              <div className="mt-2 min-h-5 text-center text-xs">
+                {added ? (
+                  <span className="text-brand-500">
+                    {quantity} {quantity === 1 ? 'unidad agregada' : 'unidades agregadas'} ·{' '}
+                    <button type="button" onClick={openSkiRackCart} className="font-semibold underline underline-offset-2">
+                      Ver carrito
+                    </button>
+                  </span>
+                ) : (
+                  <span className="text-gray-500">Todas las tallas están agotadas por el momento.</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

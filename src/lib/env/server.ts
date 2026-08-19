@@ -8,7 +8,6 @@ export interface PaymentConfig {
   enabled: boolean
   environment: PaymentEnvironment
   appUrl: URL
-  vercelAutomationBypassSecret: string
   transbankCommerceCode?: string
   transbankApiKeySecret?: string
   transbankTimeoutMs: number
@@ -19,6 +18,8 @@ export interface PaymentConfig {
   inventoryReservationMinutes: number
   rateLimitSecret: string
   reconciliationJobSecret: string
+  vercelEnvironment?: string
+  vercelProtectionBypassSecret?: string
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -29,6 +30,16 @@ export interface RefundConfig {
   requireAal2: boolean
   recentSessionMinutes: number
   rateLimitSecret: string
+}
+
+export interface AddressConfig {
+  enabled: boolean
+  provider: 'google'
+  appUrl: URL
+  googleMapsServerApiKey?: string
+  signingSecret?: string
+  rateLimitSecret?: string
+  timeoutMs: number
 }
 
 export class ConfigurationError extends Error {
@@ -172,16 +183,17 @@ function buildPaymentConfig(
 
   const rateLimitSecret = process.env.CHECKOUT_RATE_LIMIT_SECRET || ''
   const reconciliationJobSecret = process.env.RECONCILIATION_JOB_SECRET || ''
+  const vercelEnvironment = process.env.VERCEL_ENV
   const requiresVercelAutomationBypass =
     purpose === 'checkout' &&
     enabled &&
     environment === 'integration' &&
-    process.env.VERCEL_ENV === 'preview'
-  const vercelAutomationBypassSecret = requiresVercelAutomationBypass
-    ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET || ''
-    : ''
+    vercelEnvironment === 'preview'
+  const vercelProtectionBypassSecret = requiresVercelAutomationBypass
+    ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    : undefined
 
-  if (requiresVercelAutomationBypass && !vercelAutomationBypassSecret) {
+  if (requiresVercelAutomationBypass && !vercelProtectionBypassSecret) {
     throw new ConfigurationError(
       'VERCEL_AUTOMATION_BYPASS_SECRET es obligatorio para Webpay Integration en Preview'
     )
@@ -202,6 +214,15 @@ function buildPaymentConfig(
   ) {
     throw new ConfigurationError(
       'SANDBOX_BUYER_EMAIL_ALLOWLIST es obligatoria para probar sandbox desplegado'
+    )
+  }
+
+  if (
+    vercelProtectionBypassSecret &&
+    vercelProtectionBypassSecret.length < 32
+  ) {
+    throw new ConfigurationError(
+      'VERCEL_AUTOMATION_BYPASS_SECRET debe tener al menos 32 caracteres'
     )
   }
 
@@ -236,6 +257,16 @@ function buildPaymentConfig(
 
     if (
       purpose === 'checkout' &&
+      enabled &&
+      process.env.ADDRESS_VALIDATION_ENABLED !== 'true'
+    ) {
+      throw new ConfigurationError(
+        'Producción requiere validación de dirección habilitada'
+      )
+    }
+
+    if (
+      purpose === 'checkout' &&
       process.env.ALLOW_INCOMPLETE_SHIPPING_IN_SANDBOX === 'true'
     ) {
       throw new ConfigurationError(
@@ -248,7 +279,6 @@ function buildPaymentConfig(
     enabled,
     environment,
     appUrl,
-    vercelAutomationBypassSecret,
     transbankCommerceCode,
     transbankApiKeySecret,
     transbankTimeoutMs,
@@ -259,6 +289,8 @@ function buildPaymentConfig(
     inventoryReservationMinutes,
     rateLimitSecret,
     reconciliationJobSecret,
+    vercelEnvironment,
+    vercelProtectionBypassSecret,
   }
 }
 
@@ -271,17 +303,17 @@ export function buildWebpayReturnUrl(config: PaymentConfig): string {
   const requiresVercelAutomationBypass =
     config.enabled &&
     config.environment === 'integration' &&
-    process.env.VERCEL_ENV === 'preview'
+    config.vercelEnvironment === 'preview'
 
   if (requiresVercelAutomationBypass) {
-    if (!config.vercelAutomationBypassSecret) {
+    if (!config.vercelProtectionBypassSecret) {
       throw new ConfigurationError(
         'VERCEL_AUTOMATION_BYPASS_SECRET es obligatorio para Webpay Integration en Preview'
       )
     }
     returnUrl.searchParams.set(
       'x-vercel-protection-bypass',
-      config.vercelAutomationBypassSecret
+      config.vercelProtectionBypassSecret
     )
   }
 
@@ -363,4 +395,49 @@ export function getCommerceJobSecret(): string {
     )
   }
   return secret
+}
+
+/** Server-only Google address configuration. Disabled means no provider call. */
+export function getAddressConfig(): AddressConfig {
+  const enabled = process.env.ADDRESS_VALIDATION_ENABLED === 'true'
+  const provider = process.env.ADDRESS_PROVIDER || 'google'
+  if (provider !== 'google') {
+    throw new ConfigurationError('ADDRESS_PROVIDER no es válido')
+  }
+
+  const timeoutMs = parseInteger(
+    'ADDRESS_PROVIDER_TIMEOUT_MS',
+    process.env.ADDRESS_PROVIDER_TIMEOUT_MS || '5000',
+    1000,
+    10000
+  )
+  const googleMapsServerApiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY
+  const signingSecret = process.env.ADDRESS_VALIDATION_SIGNING_SECRET
+  const rateLimitSecret = process.env.CHECKOUT_RATE_LIMIT_SECRET
+
+  if (enabled && (!googleMapsServerApiKey || googleMapsServerApiKey.length < 20)) {
+    throw new ConfigurationError(
+      'GOOGLE_MAPS_SERVER_API_KEY no está configurada'
+    )
+  }
+  if (enabled && (!signingSecret || signingSecret.length < 32)) {
+    throw new ConfigurationError(
+      'ADDRESS_VALIDATION_SIGNING_SECRET debe tener al menos 32 caracteres'
+    )
+  }
+  if (enabled && (!rateLimitSecret || rateLimitSecret.length < 32)) {
+    throw new ConfigurationError(
+      'CHECKOUT_RATE_LIMIT_SECRET debe tener al menos 32 caracteres'
+    )
+  }
+
+  return {
+    enabled,
+    provider,
+    appUrl: getAppUrl(),
+    googleMapsServerApiKey,
+    signingSecret,
+    rateLimitSecret,
+    timeoutMs,
+  }
 }

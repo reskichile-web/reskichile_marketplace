@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { PackageOpen } from 'lucide-react'
 import { useUnreadCount } from './chat/ChatProvider'
 
 interface Props {
@@ -37,23 +38,37 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, is
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="pressable-subtle relative flex items-center"
+        className={`group pressable-subtle relative flex h-9 items-center gap-0.5 rounded-full py-0.5 pl-0.5 pr-1.5 transition-colors hover:bg-gray-100 ${open ? 'bg-gray-100' : ''}`}
         title="Mi cuenta"
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-transparent hover:border-brand-200 transition-colors" />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center hover:bg-gray-300 transition-colors">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" />
-            </svg>
-          </div>
-        )}
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full ring-2 ring-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
+        <span className="relative shrink-0">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full border-2 border-transparent object-cover transition-colors group-hover:border-brand-200" />
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-gray-500 transition-colors group-hover:bg-gray-300">
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.6-4.9-9.8-4.9z" />
+              </svg>
+            </span>
+          )}
+          {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </span>
+        <svg
+          className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-gray-600' : 'text-gray-400 group-hover:text-gray-600'}`}
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          aria-hidden="true"
+        >
+          <path d="m6 8 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
 
       {open && (
@@ -98,9 +113,7 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, is
             onClick={() => setOpen(false)}
             className="md:hidden flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-500 transition-colors"
           >
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
+            <PackageOpen className="h-4 w-4 text-gray-400" strokeWidth={1.8} aria-hidden="true" />
             Mis productos
           </Link>
 

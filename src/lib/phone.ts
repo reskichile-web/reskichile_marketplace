@@ -1,26 +1,34 @@
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/min'
+
 export interface CountryOption {
   code: string // includes leading "+"
+  iso2: CountryCode
   flag: string
   label: string
-  // Expected length of LOCAL digits (without country code)
+  // Maximum number of national digits accepted by the visible input.
   localLength: number
+  validLocalLengths: readonly number[]
 }
 
 export const COUNTRY_OPTIONS: CountryOption[] = [
-  { code: '+56', flag: '🇨🇱', label: 'Chile', localLength: 9 },
-  { code: '+54', flag: '🇦🇷', label: 'Argentina', localLength: 10 },
-  { code: '+55', flag: '🇧🇷', label: 'Brasil', localLength: 11 },
-  { code: '+51', flag: '🇵🇪', label: 'Perú', localLength: 9 },
-  { code: '+57', flag: '🇨🇴', label: 'Colombia', localLength: 10 },
-  { code: '+52', flag: '🇲🇽', label: 'México', localLength: 10 },
-  { code: '+1', flag: '🇺🇸', label: 'EEUU', localLength: 10 },
-  { code: '+34', flag: '🇪🇸', label: 'España', localLength: 9 },
+  { code: '+56', iso2: 'CL', flag: '🇨🇱', label: 'Chile', localLength: 9, validLocalLengths: [9] },
+  { code: '+54', iso2: 'AR', flag: '🇦🇷', label: 'Argentina', localLength: 11, validLocalLengths: [10, 11] },
+  { code: '+55', iso2: 'BR', flag: '🇧🇷', label: 'Brasil', localLength: 11, validLocalLengths: [10, 11] },
+  { code: '+51', iso2: 'PE', flag: '🇵🇪', label: 'Perú', localLength: 9, validLocalLengths: [9] },
+  { code: '+57', iso2: 'CO', flag: '🇨🇴', label: 'Colombia', localLength: 10, validLocalLengths: [10] },
+  { code: '+52', iso2: 'MX', flag: '🇲🇽', label: 'México', localLength: 10, validLocalLengths: [10] },
+  { code: '+1', iso2: 'US', flag: '🇺🇸', label: 'EEUU', localLength: 10, validLocalLengths: [10] },
+  { code: '+34', iso2: 'ES', flag: '🇪🇸', label: 'España', localLength: 9, validLocalLengths: [9] },
 ]
 
 export const DEFAULT_COUNTRY: CountryOption = COUNTRY_OPTIONS[0]
 
 export function getCountryByCode(code: string): CountryOption | undefined {
   return COUNTRY_OPTIONS.find((c) => c.code === code)
+}
+
+export function getCountryByIso2(iso2: string): CountryOption | undefined {
+  return COUNTRY_OPTIONS.find((country) => country.iso2 === iso2.toUpperCase())
 }
 
 /**
@@ -43,11 +51,12 @@ export function parseLocalDigits(input: string, country: CountryOption): string 
   // Strip leading 00 (international call prefix)
   if (digits.startsWith('00')) digits = digits.slice(2)
 
-  // If it starts with the country code's digits AND total length suggests it includes the prefix, strip it
+  // When pasted as an international value, remove the selected prefix before
+  // clamping. This avoids turning "+56 9..." into a local number beginning 56.
   const ccDigits = country.code.replace('+', '')
   if (
     digits.startsWith(ccDigits) &&
-    digits.length === ccDigits.length + country.localLength
+    (input.trim().startsWith('+') || digits.length > country.localLength)
   ) {
     digits = digits.slice(ccDigits.length)
   }
@@ -127,13 +136,53 @@ export function parseStoredPhone(stored: string | null | undefined): {
  */
 export function validateLocal(local: string, country: CountryOption): string | null {
   const d = local.replace(/\D/g, '')
-  if (d.length !== country.localLength) {
-    return `Debe tener ${country.localLength} dígitos`
+  if (!country.validLocalLengths.includes(d.length)) {
+    const expected = country.validLocalLengths.join(' u ')
+    return `Debe tener ${expected} dígitos`
   }
   if (country.code === '+56' && !d.startsWith('9')) {
     return 'En Chile debe comenzar con 9'
   }
+  if (!parseAndValidatePhone(`${country.code}${d}`, country.iso2)) {
+    return `El número no es válido para ${country.label}`
+  }
   return null
+}
+
+/**
+ * Strict checkout boundary. The number must carry an explicit international
+ * prefix, belong to one of the countries shown by PhoneInput and be valid for
+ * the country selected by the buyer. The returned value is always E.164.
+ */
+export function parseAndValidatePhone(
+  raw: string,
+  expectedCountry?: string
+): string | null {
+  const value = raw.trim()
+  if (
+    !value.startsWith('+') ||
+    value.length > 30 ||
+    !/^\+[0-9\s().-]+$/.test(value)
+  ) {
+    return null
+  }
+
+  const selected = expectedCountry
+    ? getCountryByIso2(expectedCountry)
+    : undefined
+  if (expectedCountry && !selected) return null
+
+  const parsed = parsePhoneNumberFromString(value, selected?.iso2)
+  if (!parsed?.isValid() || !parsed.country) return null
+
+  const supported = getCountryByIso2(parsed.country)
+  if (!supported || (selected && parsed.country !== selected.iso2)) return null
+  if (`+${parsed.countryCallingCode}` !== supported.code) return null
+  const national = parsed.nationalNumber.toString()
+  if (!supported.validLocalLengths.includes(national.length)) return null
+  if (supported.iso2 === 'CL' && !national.startsWith('9')) return null
+
+  return parsed.number
 }
 
 /**
@@ -150,8 +199,10 @@ export function normalizeStoredPhone(raw: string | null | undefined): string | n
   const cleaned = raw.replace(/[^\d+]/g, '')
   if (!cleaned) return null
 
-  // Already starts with +; trust the country prefix in the digits.
+  // Prefer strict normalization for countries supported by PhoneInput.
   if (cleaned.startsWith('+')) {
+    const validated = parseAndValidatePhone(cleaned)
+    if (validated) return validated
     const digits = cleaned.slice(1).replace(/\D/g, '')
     if (digits.length < 8 || digits.length > 15) return null
     return `+${digits}`
@@ -171,7 +222,10 @@ export function normalizeStoredPhone(raw: string | null | undefined): string | n
   const sorted = [...COUNTRY_OPTIONS].sort((a, b) => b.code.length - a.code.length)
   for (const c of sorted) {
     const cc = c.code.replace('+', '')
-    if (digits.startsWith(cc) && digits.length === cc.length + c.localLength) {
+    if (
+      digits.startsWith(cc) &&
+      c.validLocalLengths.includes(digits.length - cc.length)
+    ) {
       return `+${digits}`
     }
   }

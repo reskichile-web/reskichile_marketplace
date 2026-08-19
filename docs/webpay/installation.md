@@ -187,15 +187,25 @@ INVENTORY_RESERVATION_MINUTES=15
 ALLOW_INCOMPLETE_SHIPPING_IN_SANDBOX=false
 SANDBOX_BUYER_EMAIL_ALLOWLIST=<correo controlado por el propietario>
 CHECKOUT_RATE_LIMIT_SECRET=<aleatorio, 32+ caracteres>
-RECONCILIATION_JOB_SECRET=<otro aleatorio, 32+ caracteres>
-OUTBOX_JOB_SECRET=<tercer aleatorio, 32+ caracteres>
-ADMIN_ACTION_RATE_LIMIT_SECRET=<cuarto aleatorio, 32+ caracteres>
-REFUNDS_ENABLED=false
-REFUNDS_REQUIRE_AAL2=true
-REFUND_RECENT_SESSION_MINUTES=30
-COMMERCE_ALERT_EMAIL=<correo operativo controlado>
 SHIPPING_RATE_SOURCE=sandbox_fixed
 SANDBOX_SHIPPING_CLP=3990
+ADDRESS_VALIDATION_ENABLED=false
+ADDRESS_PROVIDER=google
+ADDRESS_PROVIDER_TIMEOUT_MS=5000
+```
+
+En un Preview protegido que vaya a crear transacciones, Vercel debe inyectar
+además `VERCEL_AUTOMATION_BYPASS_SECRET`. La aplicación falla cerrado si
+`PAYMENTS_ENABLED=true`, `TRANSBANK_ENVIRONMENT=integration` y
+`VERCEL_ENV=preview`, pero el secreto no existe o mide menos de 32 caracteres.
+El bypass se incorpora únicamente al `return_url` y nunca a Production.
+
+Para activar la validación de domicilio se requieren, sólo en el servidor:
+
+```dotenv
+ADDRESS_VALIDATION_ENABLED=true
+GOOGLE_MAPS_SERVER_API_KEY=<llave restringida>
+ADDRESS_VALIDATION_SIGNING_SECRET=<otro aleatorio, 32+ caracteres>
 ```
 
 `table` exige tarifas aprobadas por origen y comuna/región. Para una prueba
@@ -208,21 +218,24 @@ nunca usar prefijo `NEXT_PUBLIC_`. En integración no se configuran
 `TRANSBANK_COMMERCE_CODE` ni `TRANSBANK_API_KEY_SECRET`: el SDK oficial aporta
 las credenciales públicas del sandbox.
 
+`RECONCILIATION_JOB_SECRET`, `OUTBOX_JOB_SECRET`, Resend, refunds y sus jobs no
+son requisito para crear la primera transacción Integration. Permanecen
+pospuestos hasta validar el flujo Webpay básico.
+
 ### Guía segura para los secretos
 
-Para la primera prueba, generar cuatro valores distintos en Terminal:
+Para la primera prueba, generar `CHECKOUT_RATE_LIMIT_SECRET` en Terminal. Si se
+habilita dirección validada, generar un segundo valor distinto:
 
 ```bash
 openssl rand -hex 32
 openssl rand -hex 32
-openssl rand -hex 32
-openssl rand -hex 32
 ```
 
-Guardarlos como `CHECKOUT_RATE_LIMIT_SECRET`, `RECONCILIATION_JOB_SECRET` y
-`OUTBOX_JOB_SECRET`, y `ADMIN_ACTION_RATE_LIMIT_SECRET` en `.env.local`. No
-pegarlos en chat, documentación, capturas ni variables `NEXT_PUBLIC_*`. Después
-de guardarlos, reiniciar `npm run dev`.
+Guardarlos como `CHECKOUT_RATE_LIMIT_SECRET` y, cuando corresponda,
+`ADDRESS_VALIDATION_SIGNING_SECRET`. No pegarlos en chat, documentación,
+capturas ni variables `NEXT_PUBLIC_*`. Después de guardarlos, reiniciar
+`npm run dev`.
 
 Cuando exista un despliegue sandbox estable:
 

@@ -9,12 +9,25 @@ import {
 
 const STORAGE_KEY = 'reskichile:ski-rack-cart'
 const CHANGE_EVENT = 'reskichile:ski-rack-cart-change'
+const OPEN_EVENT = 'reskichile:ski-rack-cart-open'
 export const MAX_CART_QUANTITY = 10
 
 export interface SkiRackCartItem {
   slug: string
   size: SkiRackSize
   quantity: number
+}
+
+export function shouldShowSkiRackCart({
+  itemCount,
+  ready,
+  showWhenEmpty,
+}: {
+  itemCount: number
+  ready: boolean
+  showWhenEmpty: boolean
+}) {
+  return showWhenEmpty || (ready && itemCount > 0)
 }
 
 function validSize(value: unknown): value is SkiRackSize {
@@ -70,6 +83,17 @@ export function addSkiRackCartItem(slug: string, size: SkiRackSize, quantity: nu
   }
 
   writeCart(items)
+}
+
+export function openSkiRackCart() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event(OPEN_EVENT))
+}
+
+export function subscribeToSkiRackCartOpen(listener: () => void) {
+  if (typeof window === 'undefined') return () => undefined
+  window.addEventListener(OPEN_EVENT, listener)
+  return () => window.removeEventListener(OPEN_EVENT, listener)
 }
 
 export function useSkiRackCart() {

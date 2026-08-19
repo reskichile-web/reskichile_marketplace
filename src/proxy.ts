@@ -1,7 +1,17 @@
 import { updateSession } from '@/lib/supabase/middleware'
+import { getAppUrl } from '@/lib/env/server'
+import { canonicalPreviewNavigationRedirect } from '@/lib/commerce/checkout-origin'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  try {
+    const canonical = canonicalPreviewNavigationRedirect(request, getAppUrl())
+    if (canonical) return NextResponse.redirect(canonical, 307)
+  } catch {
+    // Invalid/missing canonical configuration must not create a redirect loop.
+    // Checkout POST endpoints still fail closed through the Origin guard.
+  }
+
   // Legacy IG links: /ski-rack-{anything} → render the /ski-rack view
   if (request.nextUrl.pathname.startsWith('/ski-rack-')) {
     const url = request.nextUrl.clone()

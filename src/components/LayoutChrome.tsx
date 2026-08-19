@@ -21,6 +21,8 @@ export default function LayoutChrome({ header, footer, children }: Props) {
     pathname === '/mensajes/nuevo' ||
     (pathname.startsWith('/mensajes/') && pathname !== '/mensajes')
   const isAdminRoute = pathname.startsWith('/admin')
+  const isCheckoutRoute = pathname === '/checkout'
+  const hidesMarketplaceChrome = isAdminRoute || isCheckoutRoute
 
   // Lock html/body to the dynamic viewport on a fullscreen chat (mobile only),
   // otherwise body's min-h-screen (100vh) leaves a gap below the chat (which
@@ -68,16 +70,16 @@ export default function LayoutChrome({ header, footer, children }: Props) {
 
   return (
     <>
-      {!isAdminRoute && (
+      {!hidesMarketplaceChrome && (
         <div className={isFullscreenChatRoute ? 'hidden md:block' : 'contents'}>
           {header}
-          <div className="h-[95px] md:h-[130px]" />
+          <div className="h-[60px] md:h-[130px]" />
         </div>
       )}
-      <main className={`flex-1 ${isFullscreenChatRoute || isAdminRoute ? '' : 'min-h-[calc(100vh-95px)] md:min-h-[calc(100vh-130px)]'}`}>
+      <main className={`flex-1 ${isFullscreenChatRoute || hidesMarketplaceChrome ? '' : 'min-h-[calc(100vh-60px)] md:min-h-[calc(100vh-130px)]'}`}>
         {children}
       </main>
-      {!isAdminRoute && (
+      {!hidesMarketplaceChrome && (
         <div className={isFullscreenChatRoute ? 'hidden md:block' : 'contents'}>
           {footer}
         </div>

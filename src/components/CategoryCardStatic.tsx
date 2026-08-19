@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { track } from '@/lib/track'
 import type { CategoryCardProps } from './CategoryCardAnimated'
+import SellTagIcon from './SellTagIcon'
 
 const AI_CATEGORIES = new Set<string>([])
 
@@ -67,7 +68,8 @@ export default function CategoryCardStatic({ type, label, image, imagePosition, 
           <Link href={`/catalogo?product_type=${type}`} onClick={() => track({ type: 'click', name: 'category_marketplace', category: type })} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
             Marketplace
           </Link>
-          <Link href="/vender" onClick={() => track({ type: 'click', name: 'category_vender', category: type })} className="block text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
+          <Link href="/vender" onClick={() => track({ type: 'click', name: 'category_vender', category: type })} className="flex items-center gap-1.5 text-white font-bold text-xs md:text-base hover:text-brand-300 transition-colors">
+            <SellTagIcon className="h-3.5 w-3.5 md:h-4 md:w-4" />
             Vender
           </Link>
         </div>

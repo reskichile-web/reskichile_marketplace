@@ -10,7 +10,6 @@ const config: PaymentConfig = {
   enabled: true,
   environment: 'integration',
   appUrl: new URL('http://localhost:4173'),
-  vercelAutomationBypassSecret: '',
   transbankTimeoutMs: 8000,
   sandboxShippingClp: 3990,
   shippingRateSource: 'sandbox_fixed',

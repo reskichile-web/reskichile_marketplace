@@ -98,9 +98,9 @@ export default function SkiRackStory() {
               <p className="mt-0.5 font-body text-sm font-bold text-black md:text-base">
                 {money.format(priceClp)}
               </p>
-              {!loading && (
-                <p className={`mt-1 text-[10px] font-medium ${soldOut ? 'text-gray-400' : 'text-emerald-600'}`}>
-                  {soldOut ? 'Todas las tallas agotadas' : `${totalAvailable} disponibles`}
+              {!loading && soldOut && (
+                <p className="mt-1 text-[10px] font-medium text-gray-400">
+                  Todas las tallas agotadas
                 </p>
               )}
             </div>
