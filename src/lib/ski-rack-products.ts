@@ -47,16 +47,12 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
     },
     gallery: [
       {
-        url: '/images/default-racks.png',
-        alt: 'Detalle de los soportes Ski Rack de madera',
+        url: '/images/ski-rack-madera-common-1.jpg',
+        alt: 'Detalle cruzado de un par de soportes Ski Rack de madera',
       },
       {
-        url: '/images/ski-rack-installed-backpack.jpg',
-        alt: 'Ski Racks instalados con esquís, bastones y mochila',
-      },
-      {
-        url: '/images/ski-rack-installed-room.jpg',
-        alt: 'Ski Racks instalados para organizar equipo de montaña',
+        url: '/images/ski-rack-madera-common-2.jpg',
+        alt: 'Comparación de las tres tallas de Ski Rack de madera',
       },
     ],
   },
@@ -82,16 +78,7 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
         alt: 'Ski Rack de filamento talla L sobre fondo claro',
       },
     },
-    gallery: [
-      {
-        url: '/images/ski-rack-installed-backpack.jpg',
-        alt: 'Ski Racks instalados con esquís, bastones y mochila',
-      },
-      {
-        url: '/images/ski-rack-installed-room.jpg',
-        alt: 'Ski Racks instalados para organizar equipo de montaña',
-      },
-    ],
+    gallery: [],
   },
 ]
 

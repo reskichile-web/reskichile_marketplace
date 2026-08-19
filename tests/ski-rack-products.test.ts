@@ -22,17 +22,28 @@ describe('ski rack product images', () => {
     expect(getSkiRackGalleryForSize(product!, size)[0].url).toBe(expectedUrl)
   })
 
-  it('shares installation photos and removes the unrelated wall composition', () => {
-    for (const slug of ['madera', 'filamento']) {
-      const product = getSkiRackProduct(slug)
-      expect(product).toBeDefined()
+  it('shares the two detail photos between all wood sizes', () => {
+    const product = getSkiRackProduct('madera')
+    expect(product).toBeDefined()
 
-      for (const size of SKI_RACK_SIZES) {
-        const urls = getSkiRackGalleryForSize(product!, size).map(image => image.url)
-        expect(urls).toContain('/images/ski-rack-installed-backpack.jpg')
-        expect(urls).toContain('/images/ski-rack-installed-room.jpg')
-        expect(urls).not.toContain('/images/ski-rack-main.jpg')
-      }
+    for (const size of SKI_RACK_SIZES) {
+      const urls = getSkiRackGalleryForSize(product!, size).map(image => image.url)
+      expect(urls).toContain('/images/ski-rack-madera-common-1.jpg')
+      expect(urls).toContain('/images/ski-rack-madera-common-2.jpg')
+      expect(urls).not.toContain('/images/ski-rack-main.jpg')
+      expect(urls).not.toContain('/images/ski-rack-installed-backpack.jpg')
+      expect(urls).not.toContain('/images/ski-rack-installed-room.jpg')
+    }
+  })
+
+  it('shows only the selected size photo for filament racks', () => {
+    const product = getSkiRackProduct('filamento')
+    expect(product).toBeDefined()
+
+    for (const size of SKI_RACK_SIZES) {
+      expect(getSkiRackGalleryForSize(product!, size)).toEqual([
+        getSkiRackSizeImage(product!, size),
+      ])
     }
   })
 })

@@ -17,6 +17,18 @@ export interface SkiRackCartItem {
   quantity: number
 }
 
+export function shouldShowSkiRackCart({
+  itemCount,
+  ready,
+  showWhenEmpty,
+}: {
+  itemCount: number
+  ready: boolean
+  showWhenEmpty: boolean
+}) {
+  return showWhenEmpty || (ready && itemCount > 0)
+}
+
 function validSize(value: unknown): value is SkiRackSize {
   return SKI_RACK_SIZES.includes(value as SkiRackSize)
 }

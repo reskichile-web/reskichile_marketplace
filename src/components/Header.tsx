@@ -21,7 +21,7 @@ import SkiRackCartLink from './SkiRackCartLink'
 export default function Header() {
   const { userId, email, isAdmin, avatarUrl, unreadCount, loading } = useSessionAuth()
   const pathname = usePathname()
-  const showSkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
+  const showEmptySkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
 
   return (
     <ChatProvider userId={userId} initialUnreadCount={unreadCount}>
@@ -51,7 +51,7 @@ export default function Header() {
           {/* Right actions — mobile */}
           <div className="md:hidden flex items-center gap-3 ml-auto">
             <SearchBar />
-            {showSkiRackCart && <SkiRackCartLink />}
+            <SkiRackCartLink showWhenEmpty={showEmptySkiRackCart} />
             {loading ? (
               <span className="h-9 w-10 shrink-0 rounded-full bg-gray-100" aria-hidden="true" />
             ) : userId ? (
@@ -71,9 +71,6 @@ export default function Header() {
               <SellTagIcon className="h-4 w-4" />
               Vender
             </Link>
-            {loading && (
-              <span className="h-9 w-[198px] shrink-0 rounded-sm bg-gray-100" aria-hidden="true" />
-            )}
             {!loading && !userId && (
               <>
                 <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
@@ -85,18 +82,21 @@ export default function Header() {
                 </Link>
               </>
             )}
-            {showSkiRackCart && <SkiRackCartLink />}
             {!loading && userId && (
-              <>
-                <Link
-                  href="/mis-productos"
-                  className="pressable inline-flex h-9 items-center gap-2 rounded-sm border border-brand-200 bg-white px-4 text-sm text-brand-600 transition-colors hover:border-brand-300 hover:bg-brand-50 font-nav"
-                >
-                  <PackageOpen className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
-                  Mis productos
-                </Link>
-                <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />
-              </>
+              <Link
+                href="/mis-productos"
+                className="pressable inline-flex h-9 items-center gap-2 rounded-sm border border-brand-200 bg-white px-4 text-sm text-brand-600 transition-colors hover:border-brand-300 hover:bg-brand-50 font-nav"
+              >
+                <PackageOpen className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+                Mis productos
+              </Link>
+            )}
+            <SkiRackCartLink showWhenEmpty={showEmptySkiRackCart} />
+            {loading && (
+              <span className="h-9 w-[198px] shrink-0 rounded-sm bg-gray-100" aria-hidden="true" />
+            )}
+            {!loading && userId && (
+              <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />
             )}
           </div>
 

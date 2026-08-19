@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useSkiRackCart } from '@/lib/ski-rack-cart'
+import { shouldShowSkiRackCart, useSkiRackCart } from '@/lib/ski-rack-cart'
 
-export default function SkiRackCartLink() {
-  const { itemCount } = useSkiRackCart()
+export default function SkiRackCartLink({ showWhenEmpty = false }: { showWhenEmpty?: boolean }) {
+  const { itemCount, ready } = useSkiRackCart()
+
+  if (!shouldShowSkiRackCart({ itemCount, ready, showWhenEmpty })) return null
 
   return (
     <Link
