@@ -14,6 +14,11 @@ import {
   CheckoutValidationError,
   parseCheckoutInput,
 } from '@/lib/commerce/checkout-validation'
+import { getAddressConfig } from '@/lib/env/server'
+import {
+  AddressServiceError,
+  verifyCheckoutShippingAddress,
+} from '@/lib/commerce/address-service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,6 +42,12 @@ function errorResponse(error: unknown): NextResponse {
       { status: error.status, headers: { 'Cache-Control': 'no-store' } }
     )
   }
+  if (error instanceof AddressServiceError) {
+    return NextResponse.json(
+      { error: error.publicMessage, code: error.code },
+      { status: error.status, headers: { 'Cache-Control': 'no-store' } }
+    )
+  }
   console.error('checkout_create_failed', { reason: 'unexpected_error' })
   return NextResponse.json(
     { error: 'No pudimos iniciar el pago. No se realizó ningún cobro.', code: 'INTERNAL_ERROR' },
@@ -49,7 +60,10 @@ export async function POST(request: NextRequest) {
     const config = getPaymentConfig()
     assertTrustedCheckoutRequest(config, request)
     await consumeCheckoutRateLimit(config, request, 'create')
-    const input = parseCheckoutInput(await readCheckoutJson(request))
+    const input = verifyCheckoutShippingAddress(
+      getAddressConfig(),
+      parseCheckoutInput(await readCheckoutJson(request))
+    )
     const cookieName = paymentAccessCookieName(config)
     const guestAccessToken = derivePaymentAccessToken(
       config,

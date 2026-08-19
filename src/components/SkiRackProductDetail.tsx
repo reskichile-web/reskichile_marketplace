@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import SkiRackGallery from '@/components/SkiRackGallery'
 import DescriptionCard from '@/components/DescriptionCard'
 import {
@@ -11,7 +10,7 @@ import {
   type SkiRackProduct,
   type SkiRackSize,
 } from '@/lib/ski-rack-products'
-import { addSkiRackCartItem, MAX_CART_QUANTITY } from '@/lib/ski-rack-cart'
+import { addSkiRackCartItem, MAX_CART_QUANTITY, openSkiRackCart } from '@/lib/ski-rack-cart'
 import { totalRackAvailability, variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
 
@@ -205,9 +204,9 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
                 {added ? (
                   <span className="text-brand-500">
                     {quantity} {quantity === 1 ? 'unidad agregada' : 'unidades agregadas'} ·{' '}
-                    <Link href="/carrito" className="font-semibold underline underline-offset-2">
+                    <button type="button" onClick={openSkiRackCart} className="font-semibold underline underline-offset-2">
                       Ver carrito
-                    </Link>
+                    </button>
                   </span>
                 ) : (
                   <span className="text-gray-500">Todas las tallas están agotadas por el momento.</span>

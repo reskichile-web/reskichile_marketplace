@@ -1,8 +1,25 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, Fragment, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  LockKeyhole,
+  ShieldCheck,
+  ShoppingBag,
+  Truck,
+} from 'lucide-react'
+import PhoneInput from '@/components/PhoneInput'
+import AddressAutocomplete from '@/components/checkout/AddressAutocomplete'
 import { CHILE_REGIONS } from '@/lib/commerce/regions'
+import {
+  DEFAULT_COUNTRY,
+  parseAndValidatePhone,
+  type CountryOption,
+} from '@/lib/phone'
 
 export interface CheckoutItemSummary {
   id: string
@@ -12,6 +29,7 @@ export interface CheckoutItemSummary {
   quantity: number
   backHref?: string
   selectedSize?: string
+  imageUrl?: string
 }
 
 interface Props {
@@ -20,6 +38,7 @@ interface Props {
   enabled: boolean
   sandbox: boolean
   unavailableMessage?: string
+  addressValidationEnabled?: boolean
 }
 
 interface Quote {
@@ -42,10 +61,56 @@ function newIdempotencyKey(): string {
   throw new Error('Este navegador no permite iniciar un pago seguro')
 }
 
-export default function CheckoutForm({ items, kind, enabled, sandbox, unavailableMessage }: Props) {
+function CheckoutProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
+  const steps = ['Entrega', 'Revisión', 'Pago']
+
+  return (
+    <div className="mt-7 max-w-xl">
+      <p className="sr-only">Paso {currentStep} de 3</p>
+      <ol
+        aria-label="Progreso del checkout"
+        className="grid grid-cols-[auto_minmax(24px,1fr)_auto_minmax(24px,1fr)_auto] items-start"
+      >
+        {steps.map((step, index) => {
+          const stepNumber = (index + 1) as 1 | 2 | 3
+          const completed = currentStep > stepNumber
+          const active = currentStep === stepNumber
+          return (
+            <Fragment key={step}>
+              <li aria-current={active ? 'step' : undefined} className="flex min-w-14 flex-col items-center">
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold transition-colors ${
+                    active || completed
+                      ? 'border-brand-500 bg-brand-500 text-white'
+                      : 'border-gray-200 bg-white text-gray-400'
+                  }`}
+                >
+                  {completed ? <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" /> : stepNumber}
+                </span>
+                <span className={`mt-2 text-[11px] font-medium sm:text-xs ${active || completed ? 'text-gray-900' : 'text-gray-400'}`}>
+                  {step}
+                </span>
+              </li>
+              {index < steps.length - 1 && (
+                <li
+                  aria-hidden="true"
+                  className={`mt-[15px] h-px ${completed ? 'bg-brand-500' : 'bg-gray-200'}`}
+                />
+              )}
+            </Fragment>
+          )
+        })}
+      </ol>
+    </div>
+  )
+}
+
+export default function CheckoutForm({ items, kind, enabled, sandbox, unavailableMessage, addressValidationEnabled = false }: Props) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState<CountryOption['iso2']>(DEFAULT_COUNTRY.iso2)
+  const [phoneError, setPhoneError] = useState('')
   const [method, setMethod] = useState<'home' | 'pickup'>('home')
   const [region, setRegion] = useState('Metropolitana de Santiago')
   const [commune, setCommune] = useState('')
@@ -53,6 +118,9 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const [number, setNumber] = useState('')
   const [extra, setExtra] = useState('')
   const [pickupPointId, setPickupPointId] = useState('')
+  const [addressContext, setAddressContext] = useState<string | null>(null)
+  const [addressValidationToken, setAddressValidationToken] = useState<string | null>(null)
+  const [addressError, setAddressError] = useState('')
   const [couponCode, setCouponCode] = useState('')
   const [quote, setQuote] = useState<Quote | null>(null)
   const [quotedPayload, setQuotedPayload] = useState<Record<string, unknown> | null>(null)
@@ -71,7 +139,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
           }))
         : [],
       idempotencyKey: key,
-      buyer: { name, email, phone },
+      buyer: { name, email, phone, phoneCountry },
       delivery: {
         method,
         region,
@@ -80,6 +148,8 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
         number: method === 'home' ? number : null,
         extra: extra || null,
         pickupPointId: method === 'pickup' ? pickupPointId : null,
+        addressContext: method === 'home' ? addressContext : null,
+        addressValidationToken: method === 'home' ? addressValidationToken : null,
       },
       couponCode: couponCode || null,
     }
@@ -116,6 +186,17 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   async function handleQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!enabled || loading) return
+    const validPhone = parseAndValidatePhone(phone, phoneCountry)
+    if (!validPhone) {
+      setPhoneError('Ingresa un teléfono válido para el país seleccionado.')
+      return
+    }
+    if (method === 'home' && addressValidationEnabled && (!addressContext || !addressValidationToken)) {
+      setAddressError('Busca y confirma la dirección antes de continuar.')
+      return
+    }
+    setAddressError('')
+    setPhoneError('')
     setError('')
     setLoading('quote')
     try {
@@ -189,154 +270,297 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
     }
   }
 
-  const fieldClass = 'mt-1 w-full border border-gray-300 bg-white px-3 py-3 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500'
+  const fieldClass = 'mt-2 min-h-12 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100'
   const backHref = items[0]?.backHref || (kind === 'racks' ? '/carrito' : '/catalogo')
+  const backLabel = kind === 'racks' ? 'Volver al carrito' : 'Volver al producto'
   const itemSubtotal = items.reduce((total, item) => total + item.priceClp * item.quantity, 0)
+  const currentStep: 1 | 2 | 3 = loading === 'create' ? 3 : quote ? 2 : 1
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <div className="mb-8">
-        <Link href={backHref} className="text-sm text-gray-500 hover:text-brand-500">
-          ← Volver al producto
-        </Link>
-        <h1 className="mt-3 font-body text-3xl font-black">Finalizar compra</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          La tarjeta se ingresa únicamente en el sitio seguro de Webpay.
-        </p>
+    <div className="min-h-screen bg-white">
+      <div className="border-b border-gray-100">
+        <div className="mx-auto flex h-[76px] max-w-6xl items-center px-4 sm:px-6 lg:px-8">
+          <Link href="/" aria-label="Ir al inicio de ReskiChile">
+            <Image src="/logo.svg" alt="ReskiChile" width={170} height={60} priority className="h-12 w-auto" />
+          </Link>
+        </div>
       </div>
-
-      {sandbox && (
-        <div className="mb-6 border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Ambiente de prueba: no uses datos bancarios reales y no se realizará un cobro real.
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-6">
+          <Link href={backHref} className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-brand-500">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {backLabel}
+          </Link>
+          <div className="inline-flex items-center gap-2 text-xs font-medium text-gray-500 sm:text-sm">
+            <LockKeyhole className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+            Checkout seguro
+          </div>
         </div>
-      )}
 
-      {!enabled && unavailableMessage && (
-        <div className="mb-6 border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-          {unavailableMessage}
-        </div>
-      )}
+        {sandbox && (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+            Ambiente de prueba: no uses datos bancarios reales y no se realizará un cobro real.
+          </div>
+        )}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        <form onSubmit={handleQuote} onChange={invalidateQuote} className="space-y-7">
-          <fieldset disabled={!enabled || loading !== null} className="space-y-4 disabled:opacity-60">
-            <legend className="font-body text-xl font-black">Datos de contacto</legend>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium sm:col-span-2">
-                Nombre completo
-                <input required autoComplete="name" maxLength={100} value={name} onChange={(event) => setName(event.target.value)} className={fieldClass} />
-              </label>
-              <label className="text-sm font-medium">
-                Correo
-                <input required type="email" autoComplete="email" maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} className={fieldClass} />
-              </label>
-              <label className="text-sm font-medium">
-                Teléfono
-                <input required type="tel" autoComplete="tel" maxLength={30} placeholder="+56 9 1234 5678" value={phone} onChange={(event) => setPhone(event.target.value)} className={fieldClass} />
-              </label>
-            </div>
-          </fieldset>
+        {!enabled && unavailableMessage && (
+          <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm leading-6 text-brand-800">
+            {unavailableMessage}
+          </div>
+        )}
 
-          <fieldset disabled={!enabled || loading !== null} className="space-y-4 disabled:opacity-60">
-            <legend className="font-body text-xl font-black">Entrega</legend>
-            <div className="grid grid-cols-2 gap-3">
-              <label className={'cursor-pointer border p-3 text-sm ' + (method === 'home' ? 'border-brand-500 bg-blue-50' : 'border-gray-200')}>
-                <input type="radio" name="delivery" value="home" checked={method === 'home'} onChange={() => setMethod('home')} className="mr-2" />
-                A domicilio
-              </label>
-              <label className={'cursor-pointer border p-3 text-sm ' + (method === 'pickup' ? 'border-brand-500 bg-blue-50' : 'border-gray-200')}>
-                <input type="radio" name="delivery" value="pickup" checked={method === 'pickup'} onChange={() => setMethod('pickup')} className="mr-2" />
-                Sucursal o punto
-              </label>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium">
-                Región
-                <select required value={region} onChange={(event) => setRegion(event.target.value)} className={fieldClass}>
-                  {CHILE_REGIONS.map((regionName) => <option key={regionName} value={regionName}>{regionName}</option>)}
-                </select>
-              </label>
-              <label className="text-sm font-medium">
-                Comuna
-                <input required autoComplete="address-level2" maxLength={100} value={commune} onChange={(event) => setCommune(event.target.value)} className={fieldClass} />
-              </label>
-              {method === 'home' ? (
-                <>
-                  <label className="text-sm font-medium">
-                    Calle
-                    <input required autoComplete="address-line1" maxLength={120} value={street} onChange={(event) => setStreet(event.target.value)} className={fieldClass} />
+        <div className="mt-9 grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-14">
+          <section aria-labelledby="checkout-title">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-500">Compra online</p>
+            <h1 id="checkout-title" className="mt-2 font-body text-3xl font-black tracking-tight sm:text-4xl">
+              Finalizar compra
+            </h1>
+            <CheckoutProgress currentStep={currentStep} />
+
+            <form onSubmit={handleQuote} onChange={invalidateQuote} className="mt-10 space-y-10">
+              <fieldset disabled={!enabled || loading !== null} className="space-y-5 disabled:opacity-60">
+                <legend className="font-body text-xl font-black">Información de contacto</legend>
+                <p className="-mt-4 text-sm leading-6 text-gray-500">Usaremos estos datos para confirmar tu compra y coordinar la entrega.</p>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <label className="text-sm font-medium text-gray-800 sm:col-span-2">
+                    Nombre completo
+                    <input
+                      required
+                      autoComplete="name"
+                      maxLength={100}
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder="Nombre y apellido"
+                      className={fieldClass}
+                    />
                   </label>
-                  <label className="text-sm font-medium">
-                    Número
-                    <input required maxLength={20} value={number} onChange={(event) => setNumber(event.target.value)} className={fieldClass} />
+                  <label className="text-sm font-medium text-gray-800">
+                    Correo
+                    <input
+                      required
+                      type="email"
+                      autoComplete="email"
+                      maxLength={254}
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="tu@email.com"
+                      className={fieldClass}
+                    />
                   </label>
-                </>
-              ) : (
-                <label className="text-sm font-medium sm:col-span-2">
-                  Sucursal o punto de retiro
-                  <input required maxLength={120} placeholder="Identificador de prueba" value={pickupPointId} onChange={(event) => setPickupPointId(event.target.value)} className={fieldClass} />
-                </label>
-              )}
-              <label className="text-sm font-medium sm:col-span-2">
-                Depto., oficina o referencia (opcional)
-                <input maxLength={160} value={extra} onChange={(event) => setExtra(event.target.value)} className={fieldClass} />
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset disabled={!enabled || loading !== null} className="disabled:opacity-60">
-            <label className="text-sm font-medium">
-              Cupón (opcional)
-              <input maxLength={32} autoCapitalize="characters" value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} className={fieldClass} />
-            </label>
-          </fieldset>
-
-          {error && <div role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-
-          {!quote && (
-            <button type="submit" disabled={!enabled || loading !== null} className="pressable w-full bg-gray-900 px-6 py-3 font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50">
-              {loading === 'quote' ? 'Calculando…' : enabled ? 'Revisar total' : 'Pagos temporalmente deshabilitados'}
-            </button>
-          )}
-        </form>
-
-        <aside className="h-fit border border-gray-200 bg-gray-50 p-5 lg:sticky lg:top-28">
-          <h2 className="font-body text-lg font-black">Resumen</h2>
-          <div className="mt-5 space-y-4">
-            {items.map(item => (
-              <div key={`${item.id}-${item.selectedSize || ''}`} className="text-sm">
-                <div className="flex justify-between gap-4">
-                  <span className="text-gray-700">{item.name}</span>
-                  <span className="font-semibold">{money.format(item.priceClp * item.quantity)}</span>
+                  <label className="text-sm font-medium text-gray-800">
+                    Teléfono
+                    <PhoneInput
+                      id="checkout-phone"
+                      required
+                      error={phoneError}
+                      onChange={(full, country) => {
+                        setPhone(full)
+                        setPhoneCountry(country.iso2)
+                        if (phoneError) setPhoneError('')
+                      }}
+                      className="mt-2"
+                      inputClassName="min-h-12 rounded-xl border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                      selectClassName="min-h-12 rounded-xl border-gray-200 bg-white outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    />
+                  </label>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  {item.selectedSize ? `Talla ${item.selectedSize} · ` : ''}
-                  {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}
+              </fieldset>
+
+              <fieldset disabled={!enabled || loading !== null} className="space-y-5 border-t border-gray-100 pt-9 disabled:opacity-60">
+                <legend className="font-body text-xl font-black">Dirección de entrega</legend>
+                <p className="-mt-4 text-sm leading-6 text-gray-500">Elige cómo quieres recibir tu compra.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className={`cursor-pointer rounded-xl border p-4 transition-colors ${method === 'home' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <input type="radio" name="delivery" value="home" checked={method === 'home'} onChange={() => setMethod('home')} className="accent-brand-500" />
+                      A domicilio
+                    </span>
+                    <span className="mt-1 block pl-5 text-xs text-gray-500">Recibe en tu dirección</span>
+                  </label>
+                  <label className={`cursor-pointer rounded-xl border p-4 transition-colors ${method === 'pickup' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <input type="radio" name="delivery" value="pickup" checked={method === 'pickup'} onChange={() => setMethod('pickup')} className="accent-brand-500" />
+                      Punto de retiro
+                    </span>
+                    <span className="mt-1 block pl-5 text-xs text-gray-500">Retira donde te acomode</span>
+                  </label>
+                </div>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {method === 'home' && addressValidationEnabled ? (
+                    <AddressAutocomplete
+                      disabled={!enabled || loading !== null}
+                      error={addressError}
+                      onInvalidated={() => {
+                        setAddressContext(null)
+                        setAddressValidationToken(null)
+                        setAddressError('')
+                      }}
+                      onValidated={(address, token, context) => {
+                        setRegion(address.region)
+                        setCommune(address.commune)
+                        setStreet(address.street)
+                        setNumber(address.number)
+                        setAddressContext(context)
+                        setAddressValidationToken(token)
+                        setAddressError('')
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <label className="text-sm font-medium text-gray-800">
+                        Región
+                        <select required value={region} onChange={(event) => setRegion(event.target.value)} className={fieldClass}>
+                          {CHILE_REGIONS.map((regionName) => <option key={regionName} value={regionName}>{regionName}</option>)}
+                        </select>
+                      </label>
+                      <label className="text-sm font-medium text-gray-800">
+                        Comuna
+                        <input required autoComplete="address-level2" maxLength={100} value={commune} onChange={(event) => setCommune(event.target.value)} placeholder="Tu comuna" className={fieldClass} />
+                      </label>
+                      {method === 'home' ? (
+                        <>
+                          <label className="text-sm font-medium text-gray-800">
+                            Calle
+                            <input required autoComplete="address-line1" maxLength={120} value={street} onChange={(event) => setStreet(event.target.value)} placeholder="Nombre de la calle" className={fieldClass} />
+                          </label>
+                          <label className="text-sm font-medium text-gray-800">
+                            Número
+                            <input required maxLength={20} value={number} onChange={(event) => setNumber(event.target.value)} placeholder="1234" className={fieldClass} />
+                          </label>
+                        </>
+                      ) : (
+                        <label className="text-sm font-medium text-gray-800 sm:col-span-2">
+                          Sucursal o punto de retiro
+                          <input required maxLength={120} placeholder="Identificador de prueba" value={pickupPointId} onChange={(event) => setPickupPointId(event.target.value)} className={fieldClass} />
+                        </label>
+                      )}
+                    </>
+                  )}
+                  <label className="text-sm font-medium text-gray-800 sm:col-span-2">
+                    Depto., oficina o referencia <span className="font-normal text-gray-400">(opcional)</span>
+                    <input maxLength={160} value={extra} onChange={(event) => setExtra(event.target.value)} placeholder="Ej. Depto. 502, dejar en conserjería" className={fieldClass} />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset disabled={!enabled || loading !== null} className="border-t border-gray-100 pt-9 disabled:opacity-60">
+                <legend className="font-body text-xl font-black">Descuentos</legend>
+                <label className="mt-5 block text-sm font-medium text-gray-800">
+                  Cupón <span className="font-normal text-gray-400">(opcional)</span>
+                  <input
+                    maxLength={32}
+                    autoCapitalize="characters"
+                    value={couponCode}
+                    onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                    placeholder="Ingresa tu código"
+                    className={fieldClass}
+                  />
+                </label>
+              </fieldset>
+
+              {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">{error}</div>}
+
+              {!quote && (
+                <button
+                  type="submit"
+                  disabled={!enabled || loading !== null}
+                  className="pressable flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-4 font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading === 'quote' ? 'Calculando…' : enabled ? 'Continuar a revisión' : 'Pagos temporalmente deshabilitados'}
+                  {loading !== 'quote' && enabled && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                </button>
+              )}
+            </form>
+          </section>
+
+          <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_16px_50px_rgba(15,23,42,0.06)] sm:p-6 lg:sticky lg:top-28">
+            <h2 className="font-body text-xl font-black">Resumen de compra</h2>
+            <div className="mt-6 space-y-5">
+              {items.map(item => (
+                <div key={`${item.id}-${item.selectedSize || ''}`} className="flex gap-4 text-sm">
+                  <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-50">
+                    {item.imageUrl ? (
+                      <Image src={item.imageUrl} alt={item.name} fill sizes="96px" className="object-cover" />
+                    ) : (
+                      <ShoppingBag className="h-7 w-7 text-gray-300" strokeWidth={1.5} aria-hidden="true" />
+                    )}
+                    {item.quantity > 1 && (
+                      <span className="absolute right-1.5 top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-900 px-1 text-[10px] font-bold text-white">
+                        {item.quantity}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col py-1">
+                    <p className="font-body text-sm font-bold leading-5 text-gray-900">{item.name}</p>
+                    <p className="mt-1 text-xs leading-5 text-gray-500">
+                      {item.selectedSize ? `Talla ${item.selectedSize} · ` : ''}
+                      {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}
+                    </p>
+                    <p className="mt-auto font-body text-sm font-black">{money.format(item.priceClp * item.quantity)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 space-y-3 border-t border-gray-100 pt-5 text-sm">
+              <div className="flex justify-between gap-4 text-gray-600">
+                <span>Subtotal</span>
+                <span className="font-semibold text-gray-900">{money.format(quote?.subtotalClp ?? itemSubtotal)}</span>
+              </div>
+              <div className="flex justify-between gap-4 text-gray-600">
+                <span>Despacho</span>
+                <span className={quote ? 'font-semibold text-gray-900' : 'text-xs text-gray-400'}>
+                  {quote ? money.format(quote.shippingClp) : 'Se calcula al continuar'}
+                </span>
+              </div>
+              {quote && quote.discountClp > 0 && (
+                <div className="flex justify-between gap-4 text-emerald-700">
+                  <span>Descuento</span>
+                  <span className="font-semibold">-{money.format(quote.discountClp)}</span>
+                </div>
+              )}
+              <div className="flex items-end justify-between gap-4 border-t border-gray-100 pt-4">
+                <span className="font-body text-base font-black">{quote ? 'Total' : 'Total parcial'}</span>
+                <span className="font-body text-2xl font-black text-brand-600">{money.format(quote?.totalClp ?? itemSubtotal)}</span>
+              </div>
+            </div>
+
+            {quote ? (
+              <div className="mt-5">
+                <button
+                  type="button"
+                  onClick={handlePayment}
+                  disabled={loading !== null}
+                  className="pressable flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-4 font-semibold text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
+                >
+                  {loading === 'create' ? 'Conectando con Webpay…' : 'Pagar con Webpay'}
+                  {loading !== 'create' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                </button>
+                <p className="mt-3 text-center text-xs leading-5 text-gray-500">
+                  Serás redirigido a Transbank. ReskiChile no recibe ni almacena los datos de tu tarjeta.
                 </p>
               </div>
-            ))}
-          </div>
-          {quote ? (
-            <div className="mt-5 space-y-3 border-t border-gray-200 pt-4 text-sm">
-              {quote.discountClp > 0 && <div className="flex justify-between text-emerald-700"><span>Descuento</span><span>-{money.format(quote.discountClp)}</span></div>}
-              <div className="flex justify-between text-gray-600"><span>Despacho</span><span>{money.format(quote.shippingClp)}</span></div>
-              <div className="flex justify-between border-t border-gray-200 pt-3 text-base font-black"><span>Total</span><span>{money.format(quote.totalClp)}</span></div>
-              <button type="button" onClick={handlePayment} disabled={loading !== null} className="pressable mt-3 w-full bg-brand-500 px-5 py-3 font-semibold text-white hover:bg-brand-600 disabled:opacity-50">
-                {loading === 'create' ? 'Conectando con Webpay…' : 'Ir a Webpay'}
-              </button>
-              <p className="text-xs leading-5 text-gray-500">Serás redirigido a Transbank. ReskiChile no recibe ni almacena los datos de tu tarjeta.</p>
-            </div>
-          ) : (
-            <div className="mt-5 border-t border-gray-200 pt-4">
-              <div className="flex justify-between text-sm font-semibold">
-                <span>Subtotal</span>
-                <span>{money.format(itemSubtotal)}</span>
+            ) : (
+              <p className="mt-4 text-xs leading-5 text-gray-500">Completa tus datos para calcular el despacho y confirmar el total.</p>
+            )}
+
+            <div className="mt-7 grid grid-cols-3 gap-2 border-t border-gray-100 pt-6 text-center">
+              <div className="flex flex-col items-center">
+                <ShieldCheck className="h-6 w-6 text-brand-500" strokeWidth={1.7} aria-hidden="true" />
+                <span className="mt-2 text-[10px] font-medium leading-4 text-gray-600">Compra protegida</span>
               </div>
-              <p className="mt-3 text-xs leading-5 text-gray-500">Completa los datos para calcular el despacho y confirmar el total.</p>
+              <div className="flex flex-col items-center">
+                <Truck className="h-6 w-6 text-brand-500" strokeWidth={1.7} aria-hidden="true" />
+                <span className="mt-2 text-[10px] font-medium leading-4 text-gray-600">Despacho nacional</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <LockKeyhole className="h-6 w-6 text-brand-500" strokeWidth={1.7} aria-hidden="true" />
+                <span className="mt-2 text-[10px] font-medium leading-4 text-gray-600">Pago en Webpay</span>
+              </div>
             </div>
-          )}
-        </aside>
+          </aside>
+        </div>
       </div>
-    </main>
+    </div>
   )
 }

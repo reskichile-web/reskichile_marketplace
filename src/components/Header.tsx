@@ -12,6 +12,7 @@ import CategoryNav from './CategoryNav'
 import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 import SkiRackCartLink from './SkiRackCartLink'
+import SkiRackCartDrawerHost from './SkiRackCartDrawerHost'
 
 // Client component on purpose: it reads the auth session in the browser so the
 // surrounding pages stay ISR-cacheable (no server-side cookies()). The static
@@ -25,6 +26,7 @@ export default function Header() {
 
   return (
     <ChatProvider userId={userId} initialUnreadCount={unreadCount}>
+    <>
     <header className="bg-white shadow-sm">
       {/* Preload avatar image for instant display */}
       {avatarUrl && (
@@ -112,6 +114,8 @@ export default function Header() {
         </div>
       </div>
     </header>
+    <SkiRackCartDrawerHost />
+    </>
     </ChatProvider>
   )
 }

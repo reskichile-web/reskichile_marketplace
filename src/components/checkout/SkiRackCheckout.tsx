@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import CheckoutForm, { type CheckoutItemSummary } from '@/components/checkout/CheckoutForm'
 import { useSkiRackCart } from '@/lib/ski-rack-cart'
-import { getSkiRackProduct } from '@/lib/ski-rack-products'
+import { getSkiRackProduct, getSkiRackSizeImage } from '@/lib/ski-rack-products'
 import { variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
 
-export default function SkiRackCheckout({ enabled, sandbox }: { enabled: boolean; sandbox: boolean }) {
+export default function SkiRackCheckout({ enabled, sandbox, addressValidationEnabled }: { enabled: boolean; sandbox: boolean; addressValidationEnabled: boolean }) {
   const { items: cartItems, ready } = useSkiRackCart()
   const { inventory, loading, error } = useRackInventory()
 
@@ -28,6 +28,7 @@ export default function SkiRackCheckout({ enabled, sandbox }: { enabled: boolean
       quantity: item.quantity,
       selectedSize: item.size,
       backHref: '/carrito',
+      imageUrl: getSkiRackSizeImage(product, item.size).url,
     }]
   })
 
@@ -61,6 +62,7 @@ export default function SkiRackCheckout({ enabled, sandbox }: { enabled: boolean
       kind="racks"
       enabled={checkoutEnabled}
       sandbox={sandbox}
+      addressValidationEnabled={addressValidationEnabled}
       unavailableMessage={unavailableMessage}
     />
   )

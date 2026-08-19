@@ -16,7 +16,7 @@ interface Props {
   // Stored full phone (e.g. "+56912345678") — pre-fills the input
   defaultStored?: string | null
   // Called with the full phone whenever it changes (or '' if local empty)
-  onChange?: (full: string) => void
+  onChange?: (full: string, country: CountryOption) => void
   // Optional explicit error from outside (e.g. server validation)
   error?: string | null
   // Show inline validation while user types (default true)
@@ -58,7 +58,7 @@ export default function PhoneInput({
 
   function emit(nextLocal: string, nextCountry: CountryOption) {
     if (!onChange) return
-    onChange(nextLocal ? toFullPhone(nextLocal, nextCountry) : '')
+    onChange(nextLocal ? toFullPhone(nextLocal, nextCountry) : '', nextCountry)
   }
 
   function handleInput(raw: string) {
@@ -93,6 +93,7 @@ export default function PhoneInput({
     <div className={className}>
       <div className="flex gap-2">
         <select
+          required={required}
           value={country.code}
           onChange={(e) => handleCountry(e.target.value)}
           className={`border rounded px-2 py-2 text-sm w-24 shrink-0 ${selectClassName}`}
@@ -107,11 +108,14 @@ export default function PhoneInput({
         <input
           id={id}
           type="tel"
+          required={required}
+          inputMode="tel"
           value={formatLocal(local, country)}
           onChange={(e) => handleInput(e.target.value)}
           onBlur={() => setTouched(true)}
           placeholder={placeholder ?? fallbackPlaceholder}
           autoComplete="tel-national"
+          aria-invalid={shownError ? true : undefined}
           className={`w-full border rounded px-3 py-2 ${shownError ? 'border-red-400' : ''} ${inputClassName}`}
         />
       </div>
