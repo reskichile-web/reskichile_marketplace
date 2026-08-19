@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  buildWebpayReturnUrl,
   getAppUrl,
   getPaymentCallbackConfig,
   getPaymentConfig,
+  WEBPAY_RETURN_URL_MAX_LENGTH,
 } from '@/lib/env/server'
 
 afterEach(() => {
@@ -73,5 +75,97 @@ describe('sandbox checkout allowlist', () => {
       shippingRateSource: 'table',
       sandboxBuyerEmails: [],
     })
+  })
+})
+
+describe('Webpay return URL for protected Vercel previews', () => {
+  function stubEnabledIntegrationPreview() {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('APP_URL', 'https://sandbox.reskichile.cl')
+    vi.stubEnv('PAYMENTS_ENABLED', 'true')
+    vi.stubEnv('TRANSBANK_ENVIRONMENT', 'integration')
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', 'automation-bypass-secret')
+    vi.stubEnv('SHIPPING_RATE_SOURCE', 'sandbox_fixed')
+    vi.stubEnv('SANDBOX_SHIPPING_CLP', '3990')
+    vi.stubEnv('SANDBOX_BUYER_EMAIL_ALLOWLIST', 'qa@example.cl')
+    vi.stubEnv('CHECKOUT_RATE_LIMIT_SECRET', 'r'.repeat(32))
+  }
+
+  it('adds only the automation bypass to an enabled Integration Preview', () => {
+    stubEnabledIntegrationPreview()
+
+    const returnUrl = new URL(buildWebpayReturnUrl(getPaymentConfig()))
+
+    expect(returnUrl.origin).toBe('https://sandbox.reskichile.cl')
+    expect(returnUrl.pathname).toBe('/api/payments/webpay/return')
+    expect(returnUrl.searchParams.get('x-vercel-protection-bypass')).toBe(
+      'automation-bypass-secret'
+    )
+    expect(returnUrl.searchParams.has('x-vercel-set-bypass-cookie')).toBe(false)
+  })
+
+  it('never adds the bypass to a Vercel Production deployment', () => {
+    stubEnabledIntegrationPreview()
+    vi.stubEnv('VERCEL_ENV', 'production')
+    vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', undefined)
+
+    const returnUrl = new URL(buildWebpayReturnUrl(getPaymentConfig()))
+
+    expect(returnUrl.toString()).toBe(
+      'https://sandbox.reskichile.cl/api/payments/webpay/return'
+    )
+    expect(returnUrl.searchParams.has('x-vercel-protection-bypass')).toBe(false)
+  })
+
+  it('never adds the bypass to a Transbank Production transaction', () => {
+    stubEnabledIntegrationPreview()
+    vi.stubEnv('TRANSBANK_ENVIRONMENT', 'production')
+    vi.stubEnv('SHIPPING_RATE_SOURCE', 'table')
+    vi.stubEnv('TRANSBANK_COMMERCE_CODE', 'production-commerce-code')
+    vi.stubEnv('TRANSBANK_API_KEY_SECRET', 'production-api-key')
+
+    const returnUrl = new URL(buildWebpayReturnUrl(getPaymentConfig()))
+
+    expect(returnUrl.toString()).toBe(
+      'https://sandbox.reskichile.cl/api/payments/webpay/return'
+    )
+    expect(returnUrl.searchParams.has('x-vercel-protection-bypass')).toBe(false)
+  })
+
+  it('fails closed when an enabled Integration Preview has no bypass secret', () => {
+    stubEnabledIntegrationPreview()
+    vi.stubEnv('VERCEL_AUTOMATION_BYPASS_SECRET', undefined)
+
+    expect(() => getPaymentConfig()).toThrow(
+      'VERCEL_AUTOMATION_BYPASS_SECRET es obligatorio'
+    )
+  })
+
+  it('accepts the maximum return URL length and rejects one extra character', () => {
+    stubEnabledIntegrationPreview()
+    const emptyBypassUrl = new URL(
+      '/api/payments/webpay/return',
+      'https://sandbox.reskichile.cl'
+    )
+    emptyBypassUrl.searchParams.set('x-vercel-protection-bypass', '')
+    const maximumSecretLength =
+      WEBPAY_RETURN_URL_MAX_LENGTH - emptyBypassUrl.toString().length
+
+    vi.stubEnv(
+      'VERCEL_AUTOMATION_BYPASS_SECRET',
+      'a'.repeat(maximumSecretLength)
+    )
+    expect(buildWebpayReturnUrl(getPaymentConfig())).toHaveLength(
+      WEBPAY_RETURN_URL_MAX_LENGTH
+    )
+
+    vi.stubEnv(
+      'VERCEL_AUTOMATION_BYPASS_SECRET',
+      'a'.repeat(maximumSecretLength + 1)
+    )
+    expect(() => buildWebpayReturnUrl(getPaymentConfig())).toThrow(
+      `WEBPAY return_url supera el límite de ${WEBPAY_RETURN_URL_MAX_LENGTH} caracteres`
+    )
   })
 })

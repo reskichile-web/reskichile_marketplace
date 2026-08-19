@@ -8,6 +8,7 @@ export interface PaymentConfig {
   enabled: boolean
   environment: PaymentEnvironment
   appUrl: URL
+  vercelAutomationBypassSecret: string
   transbankCommerceCode?: string
   transbankApiKeySecret?: string
   transbankTimeoutMs: number
@@ -21,6 +22,7 @@ export interface PaymentConfig {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const WEBPAY_RETURN_URL_MAX_LENGTH = 255
 
 export interface RefundConfig {
   enabled: boolean
@@ -170,6 +172,20 @@ function buildPaymentConfig(
 
   const rateLimitSecret = process.env.CHECKOUT_RATE_LIMIT_SECRET || ''
   const reconciliationJobSecret = process.env.RECONCILIATION_JOB_SECRET || ''
+  const requiresVercelAutomationBypass =
+    purpose === 'checkout' &&
+    enabled &&
+    environment === 'integration' &&
+    process.env.VERCEL_ENV === 'preview'
+  const vercelAutomationBypassSecret = requiresVercelAutomationBypass
+    ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET || ''
+    : ''
+
+  if (requiresVercelAutomationBypass && !vercelAutomationBypassSecret) {
+    throw new ConfigurationError(
+      'VERCEL_AUTOMATION_BYPASS_SECRET es obligatorio para Webpay Integration en Preview'
+    )
+  }
 
   if (purpose === 'checkout' && enabled && rateLimitSecret.length < 32) {
     throw new ConfigurationError(
@@ -232,6 +248,7 @@ function buildPaymentConfig(
     enabled,
     environment,
     appUrl,
+    vercelAutomationBypassSecret,
     transbankCommerceCode,
     transbankApiKeySecret,
     transbankTimeoutMs,
@@ -243,6 +260,39 @@ function buildPaymentConfig(
     rateLimitSecret,
     reconciliationJobSecret,
   }
+}
+
+/**
+ * Builds the provider callback without mutating APP_URL. Vercel's automation
+ * bypass is scoped exclusively to an enabled Webpay Integration Preview.
+ */
+export function buildWebpayReturnUrl(config: PaymentConfig): string {
+  const returnUrl = new URL('/api/payments/webpay/return', config.appUrl)
+  const requiresVercelAutomationBypass =
+    config.enabled &&
+    config.environment === 'integration' &&
+    process.env.VERCEL_ENV === 'preview'
+
+  if (requiresVercelAutomationBypass) {
+    if (!config.vercelAutomationBypassSecret) {
+      throw new ConfigurationError(
+        'VERCEL_AUTOMATION_BYPASS_SECRET es obligatorio para Webpay Integration en Preview'
+      )
+    }
+    returnUrl.searchParams.set(
+      'x-vercel-protection-bypass',
+      config.vercelAutomationBypassSecret
+    )
+  }
+
+  const serializedReturnUrl = returnUrl.toString()
+  if (serializedReturnUrl.length > WEBPAY_RETURN_URL_MAX_LENGTH) {
+    throw new ConfigurationError(
+      `WEBPAY return_url supera el límite de ${WEBPAY_RETURN_URL_MAX_LENGTH} caracteres`
+    )
+  }
+
+  return serializedReturnUrl
 }
 
 export function getPaymentConfigForEnvironment(

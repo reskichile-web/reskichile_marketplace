@@ -8,7 +8,10 @@ import {
   timingSafeEqual,
 } from 'crypto'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
-import type { PaymentConfig } from '@/lib/env/server'
+import {
+  buildWebpayReturnUrl,
+  type PaymentConfig,
+} from '@/lib/env/server'
 import {
   checkoutFingerprint,
   type CheckoutInput,
@@ -649,10 +652,7 @@ export async function createCheckout(
   }
 
   try {
-    const returnUrl = new URL(
-      '/api/payments/webpay/return',
-      config.appUrl
-    ).toString()
+    const returnUrl = buildWebpayReturnUrl(config)
     const initialized = await createWebpayTransaction(config, {
       buyOrder: checkout.buy_order,
       sessionId: checkout.session_id,
