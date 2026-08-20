@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit --pretty false",
     "test": "vitest run",
     "test:db": "bash scripts/test-commerce-migrations.sh",
-    "secrets:check": "node scripts/check-secrets.mjs"
+    "secrets:check": "node scripts/check-secrets.mjs",
+    "ig:render": "node scripts/render-ig-post.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="850" viewBox="0 0 700 850">
+  <defs>
+    <clipPath id="product-cut">
+      <path d="M81 28 L255 13 L413 35 L620 18 L682 102 L661 247 L685 421 L659 617 L676 763 L598 834 L421 817 L256 838 L78 811 L19 722 L38 558 L17 385 L42 216 L22 109 Z"/>
+    </clipPath>
+    <filter id="newspaper" color-interpolation-filters="sRGB">
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.12" intercept="-0.05"/>
+        <feFuncG type="linear" slope="1.12" intercept="-0.05"/>
+        <feFuncB type="linear" slope="1.12" intercept="-0.05"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <path d="M81 28 L255 13 L413 35 L620 18 L682 102 L661 247 L685 421 L659 617 L676 763 L598 834 L421 817 L256 838 L78 811 L19 722 L38 558 L17 385 L42 216 L22 109 Z" fill="#fff" stroke="#fff" stroke-width="26" stroke-linejoin="round"/>
+  <g clip-path="url(#product-cut)" filter="url(#newspaper)">
+    <image href="../images/salomon-splitboard.jpeg" x="0" y="-15" width="700" height="876" preserveAspectRatio="xMidYMid slice"/>
+  </g>
+  <path d="M81 28 L255 13 L413 35 L620 18 L682 102 L661 247 L685 421 L659 617 L676 763 L598 834 L421 817 L256 838 L78 811 L19 722 L38 558 L17 385 L42 216 L22 109 Z" fill="none" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
+</svg>

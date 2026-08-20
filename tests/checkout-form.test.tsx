@@ -15,18 +15,27 @@ const props = {
 }
 
 describe('checkout form contracts', () => {
-  it('keeps the visual checkout hierarchy and the real three-step flow', () => {
+  it('renders the checkout as Datos, Envío and Pago without a review step', () => {
     const html = renderToStaticMarkup(<CheckoutForm {...props} />)
 
     expect(html).toContain('Checkout seguro')
     expect(html).toContain('aria-label="Ir al inicio de ReskiChile"')
     expect(html).toContain('aria-label="Progreso del checkout"')
-    expect(html).toContain('Entrega')
-    expect(html).toContain('Revisión')
+    expect(html).toContain('Datos')
+    expect(html).toContain('Envío')
     expect(html).toContain('Pago')
+    expect(html).toContain('Medios de pago')
+    expect(html).toContain('src="/webpay-plus-logo.svg"')
+    expect(html).toContain('alt="Webpay Plus"')
     expect(html).toContain('Resumen de compra')
-    expect(html).toContain('Compra protegida')
-    expect(html).toContain('Continuar a revisión')
+    expect(html).toContain('Continuar al envío')
+    expect(html).not.toContain('Revisión')
+    expect(html).not.toContain('Compra online')
+    expect(html).not.toContain('Compra protegida')
+    expect(html).not.toContain('Despacho nacional')
+    expect(html).not.toContain('Cupón')
+    expect(html).not.toContain('Pagar con Webpay')
+    expect(html).not.toContain('Serás redirigido a Transbank')
   })
 
   it('uses the cart as the return destination for rack purchases', () => {
@@ -39,7 +48,8 @@ describe('checkout form contracts', () => {
     )
 
     expect(html).toContain('href="/carrito"')
-    expect(html).toContain('Volver al carrito')
+    expect(html).toContain('aria-label="Volver al carrito"')
+    expect(html).toContain('Finalizar compra')
     expect(html).toContain('Talla M')
   })
 

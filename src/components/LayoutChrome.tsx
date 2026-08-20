@@ -22,7 +22,8 @@ export default function LayoutChrome({ header, footer, children }: Props) {
     (pathname.startsWith('/mensajes/') && pathname !== '/mensajes')
   const isAdminRoute = pathname.startsWith('/admin')
   const isCheckoutRoute = pathname === '/checkout'
-  const hidesMarketplaceChrome = isAdminRoute || isCheckoutRoute
+  const isAutomatedPostRoute = pathname.startsWith('/ig-post')
+  const hidesMarketplaceChrome = isAdminRoute || isCheckoutRoute || isAutomatedPostRoute
 
   // Lock html/body to the dynamic viewport on a fullscreen chat (mobile only),
   // otherwise body's min-h-screen (100vh) leaves a gap below the chat (which

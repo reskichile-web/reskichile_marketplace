@@ -193,7 +193,7 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
                 type="button"
                 onClick={handleAddToCart}
                 disabled={inventoryLoading || soldOut || selectedAvailable === 0}
-                className="pressable flex h-12 flex-1 items-center justify-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                className="pressable flex h-12 flex-1 items-center justify-center bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
                 {soldOut ? 'Sin stock' : added ? 'Agregado' : 'Agregar al carrito'}
               </button>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="650" viewBox="0 0 700 650">
+  <defs>
+    <clipPath id="helmet-cut">
+      <path d="M54 91 L137 30 L302 18 L474 35 L633 74 L681 164 L657 312 L679 486 L623 610 L451 634 L281 616 L99 639 L25 554 L42 392 L19 228 Z"/>
+    </clipPath>
+    <filter id="newspaper" color-interpolation-filters="sRGB">
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.1" intercept="-0.04"/>
+        <feFuncG type="linear" slope="1.1" intercept="-0.04"/>
+        <feFuncB type="linear" slope="1.1" intercept="-0.04"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <path d="M54 91 L137 30 L302 18 L474 35 L633 74 L681 164 L657 312 L679 486 L623 610 L451 634 L281 616 L99 639 L25 554 L42 392 L19 228 Z" fill="#fff" stroke="#fff" stroke-width="26" stroke-linejoin="round"/>
+  <g clip-path="url(#helmet-cut)" filter="url(#newspaper)">
+    <image href="../images/1.png" x="0" y="-25" width="700" height="700" preserveAspectRatio="xMidYMid slice"/>
+  </g>
+  <path d="M54 91 L137 30 L302 18 L474 35 L633 74 L681 164 L657 312 L679 486 L623 610 L451 634 L281 616 L99 639 L25 554 L42 392 L19 228 Z" fill="none" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
+</svg>

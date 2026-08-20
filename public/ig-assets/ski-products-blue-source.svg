@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="850" viewBox="0 0 700 850">
+  <defs>
+    <mask id="cutout-alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="700" height="850" style="mask-type:alpha">
+      <image href="ski-products-cutout.png" x="0" y="0" width="700" height="850"/>
+    </mask>
+    <filter id="rough-paint" x="-15%" y="-20%" width="130%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="8" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g mask="url(#cutout-alpha)">
+    <image href="ski-products-cutout.png" x="0" y="0" width="700" height="850"/>
+    <path d="M25 470 C58 337 165 276 279 293 C374 194 533 208 681 289 C652 339 634 382 606 418 C499 405 416 457 333 512 C218 568 97 566 31 522 Z" fill="#3796f2" filter="url(#rough-paint)" style="mix-blend-mode:multiply"/>
+  </g>
+</svg>

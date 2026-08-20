@@ -9,6 +9,21 @@ const UUID_RE =
 export interface GuestOrderResult {
   publicId: string
   orderNumber: string
+  buyer: {
+    name: string
+    email: string
+    phone: string
+  }
+  delivery: {
+    method: 'home' | 'pickup'
+    region: string
+    commune: string
+    street: string | null
+    number: string | null
+    extra: string | null
+    formattedAddress: string | null
+    pickupPointId: string | null
+  }
   orderStatus: string
   paymentStatus: string
   fulfillmentStatus: string
@@ -25,6 +40,14 @@ export interface GuestOrderResult {
   }>
 }
 
+function snapshotString(
+  snapshot: Record<string, unknown>,
+  key: string
+): string | null {
+  const value = snapshot[key]
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
 export async function getGuestOrder(
   publicId: string,
   accessCookie: string | undefined
@@ -35,7 +58,7 @@ export async function getGuestOrder(
   const { data: order, error } = await supabase
     .from('orders')
     .select(
-      'id, public_id, order_number, order_status, payment_status, fulfillment_status, subtotal_clp, discount_clp, shipping_clp, total_clp, guest_access_hash, created_at, paid_at'
+      'id, public_id, order_number, buyer_email, buyer_name, buyer_phone, delivery_method, shipping_snapshot, order_status, payment_status, fulfillment_status, subtotal_clp, discount_clp, shipping_clp, total_clp, guest_access_hash, created_at, paid_at'
     )
     .eq('public_id', publicId)
     .maybeSingle()
@@ -59,9 +82,31 @@ export async function getGuestOrder(
 
   if (itemError) return null
 
+  const shippingSnapshot = order.shipping_snapshot &&
+    typeof order.shipping_snapshot === 'object' &&
+    !Array.isArray(order.shipping_snapshot)
+    ? order.shipping_snapshot as Record<string, unknown>
+    : {}
+  const deliveryMethod = order.delivery_method === 'pickup' ? 'pickup' : 'home'
+
   return {
     publicId: String(order.public_id),
     orderNumber: String(order.order_number),
+    buyer: {
+      name: String(order.buyer_name),
+      email: String(order.buyer_email),
+      phone: String(order.buyer_phone),
+    },
+    delivery: {
+      method: deliveryMethod,
+      region: snapshotString(shippingSnapshot, 'region') || '',
+      commune: snapshotString(shippingSnapshot, 'commune') || '',
+      street: snapshotString(shippingSnapshot, 'street'),
+      number: snapshotString(shippingSnapshot, 'number'),
+      extra: snapshotString(shippingSnapshot, 'extra'),
+      formattedAddress: snapshotString(shippingSnapshot, 'formatted_address'),
+      pickupPointId: snapshotString(shippingSnapshot, 'pickup_point_id'),
+    },
     orderStatus: String(order.order_status),
     paymentStatus: String(order.payment_status),
     fulfillmentStatus: String(order.fulfillment_status),

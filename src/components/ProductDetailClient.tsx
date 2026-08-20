@@ -12,7 +12,7 @@ import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import MarkSoldButton from '@/components/MarkSoldButton'
 import { createClient } from '@/lib/supabase/client'
 import { useViewer } from '@/lib/use-session-auth'
-import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, type LucideIcon } from 'lucide-react'
+import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, X, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import DescriptionCard from '@/components/DescriptionCard'
 
@@ -126,6 +126,9 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
   const title = [product.brand, product.model].filter(Boolean).join(' ')
   const attrFields = PRODUCT_ATTRIBUTES[product.product_type] || []
   const attrs = (product.attributes || {}) as Record<string, unknown>
+  const doesNotIncludeBindings =
+    (product.product_type === 'esquis' || product.product_type === 'snowboards') &&
+    attrs.incluye_fijaciones === false
 
   async function handleContact() {
     if (!userId) {
@@ -258,6 +261,15 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
               </div>
             )
           })()}
+
+          {doesNotIncludeBindings && (
+            <div className="mt-4 flex items-center gap-2 text-brand-500">
+              <X className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden="true" />
+              <p className="text-xs font-bold uppercase tracking-wider">
+                No incluye fijaciones
+              </p>
+            </div>
+          )}
 
           {/* Sub-product card (e.g. bindings included) */}
           {(() => {

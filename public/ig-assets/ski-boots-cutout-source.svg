@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="650" viewBox="0 0 700 650">
+  <defs>
+    <clipPath id="paper-cut">
+      <path d="M52 108 L118 43 L294 25 L465 43 L638 86 L677 177 L657 343 L676 523 L612 618 L453 635 L268 621 L83 641 L25 564 L42 396 L22 228 Z"/>
+    </clipPath>
+    <filter id="newspaper" color-interpolation-filters="sRGB">
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncR type="linear" slope="1.12" intercept="-0.05"/>
+        <feFuncG type="linear" slope="1.12" intercept="-0.05"/>
+        <feFuncB type="linear" slope="1.12" intercept="-0.05"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <path d="M52 108 L118 43 L294 25 L465 43 L638 86 L677 177 L657 343 L676 523 L612 618 L453 635 L268 621 L83 641 L25 564 L42 396 L22 228 Z" fill="#fff" stroke="#fff" stroke-width="24" stroke-linejoin="round"/>
+  <g clip-path="url(#paper-cut)" filter="url(#newspaper)">
+    <image href="../images/ski-boots.jpeg" x="0" y="-112" width="700" height="840" preserveAspectRatio="xMidYMid slice"/>
+  </g>
+  <path d="M52 108 L118 43 L294 25 L465 43 L638 86 L677 177 L657 343 L676 523 L612 618 L453 635 L268 621 L83 641 L25 564 L42 396 L22 228 Z" fill="none" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
+</svg>

@@ -134,11 +134,11 @@ export default function SkiRackCartPage() {
               <span>{money.format(subtotal)}</span>
             </div>
             {inventoryLoading || inventoryError || hasUnavailableItems ? (
-              <button type="button" disabled className="mt-5 w-full cursor-not-allowed rounded-lg bg-gray-300 px-5 py-3 text-sm font-semibold text-gray-500">
+              <button type="button" disabled className="mt-5 w-full cursor-not-allowed bg-gray-300 px-5 py-3 text-sm font-semibold text-gray-500">
                 {inventoryLoading ? 'Revisando stock…' : 'Revisa el stock del carrito'}
               </button>
             ) : (
-              <Link href="/checkout?racks=1" className="pressable mt-5 flex w-full items-center justify-center rounded-lg bg-brand-500 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-600">
+              <Link href="/checkout?racks=1" className="pressable mt-5 flex w-full items-center justify-center bg-brand-500 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-600">
                 Continuar al checkout
               </Link>
             )}

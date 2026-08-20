@@ -4,13 +4,10 @@ import { FormEvent, Fragment, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  ArrowLeft,
   ArrowRight,
-  Check,
+  ChevronLeft,
   LockKeyhole,
-  ShieldCheck,
   ShoppingBag,
-  Truck,
 } from 'lucide-react'
 import PhoneInput from '@/components/PhoneInput'
 import AddressAutocomplete from '@/components/checkout/AddressAutocomplete'
@@ -62,7 +59,7 @@ function newIdempotencyKey(): string {
 }
 
 function CheckoutProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
-  const steps = ['Entrega', 'Revisión', 'Pago']
+  const steps = ['Datos', 'Envío', 'Pago']
 
   return (
     <div className="mt-7 max-w-xl">
@@ -85,7 +82,7 @@ function CheckoutProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
                       : 'border-gray-200 bg-white text-gray-400'
                   }`}
                 >
-                  {completed ? <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" /> : stepNumber}
+                  {stepNumber}
                 </span>
                 <span className={`mt-2 text-[11px] font-medium sm:text-xs ${active || completed ? 'text-gray-900' : 'text-gray-400'}`}>
                   {step}
@@ -106,6 +103,7 @@ function CheckoutProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
 }
 
 export default function CheckoutForm({ items, kind, enabled, sandbox, unavailableMessage, addressValidationEnabled = false }: Props) {
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -121,7 +119,6 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const [addressContext, setAddressContext] = useState<string | null>(null)
   const [addressValidationToken, setAddressValidationToken] = useState<string | null>(null)
   const [addressError, setAddressError] = useState('')
-  const [couponCode, setCouponCode] = useState('')
   const [quote, setQuote] = useState<Quote | null>(null)
   const [quotedPayload, setQuotedPayload] = useState<Record<string, unknown> | null>(null)
   const [idempotencyKey, setIdempotencyKey] = useState('')
@@ -151,7 +148,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
         addressContext: method === 'home' ? addressContext : null,
         addressValidationToken: method === 'home' ? addressValidationToken : null,
       },
-      couponCode: couponCode || null,
+      couponCode: null,
     }
   }
 
@@ -183,21 +180,31 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
     return data || {}
   }
 
-  async function handleQuote(event: FormEvent<HTMLFormElement>) {
+  async function handleContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!enabled || loading) return
+
     const validPhone = parseAndValidatePhone(phone, phoneCountry)
     if (!validPhone) {
       setPhoneError('Ingresa un teléfono válido para el país seleccionado.')
       return
     }
+
+    setPhoneError('')
+    setError('')
+
+    if (currentStep === 1) {
+      setCurrentStep(2)
+      return
+    }
+
+    if (currentStep !== 2) return
+
     if (method === 'home' && addressValidationEnabled && (!addressContext || !addressValidationToken)) {
       setAddressError('Busca y confirma la dirección antes de continuar.')
       return
     }
     setAddressError('')
-    setPhoneError('')
-    setError('')
     setLoading('quote')
     try {
       const key = newIdempotencyKey()
@@ -215,6 +222,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
       setIdempotencyKey(key)
       setQuotedPayload(body)
       setQuote(nextQuote)
+      setCurrentStep(3)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No pudimos cotizar.')
     } finally {
@@ -274,7 +282,25 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const backHref = items[0]?.backHref || (kind === 'racks' ? '/carrito' : '/catalogo')
   const backLabel = kind === 'racks' ? 'Volver al carrito' : 'Volver al producto'
   const itemSubtotal = items.reduce((total, item) => total + item.priceClp * item.quantity, 0)
-  const currentStep: 1 | 2 | 3 = loading === 'create' ? 3 : quote ? 2 : 1
+  const deliveryLines = method === 'home'
+    ? [
+        `${street} ${number}`.trim(),
+        extra,
+        [commune, region].filter(Boolean).join(', '),
+      ].filter(Boolean)
+    : [
+        pickupPointId ? `Punto de retiro: ${pickupPointId}` : '',
+        extra,
+        [commune, region].filter(Boolean).join(', '),
+      ].filter(Boolean)
+
+  function returnToDelivery() {
+    setQuote(null)
+    setQuotedPayload(null)
+    setIdempotencyKey('')
+    setError('')
+    setCurrentStep(2)
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -287,10 +313,18 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
       </div>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
         <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-6">
-          <Link href={backHref} className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-brand-500">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            {backLabel}
-          </Link>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link
+              href={backHref}
+              aria-label={backLabel}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-950 transition-colors hover:bg-gray-100 hover:text-brand-600"
+            >
+              <ChevronLeft className="h-6 w-6" strokeWidth={2.2} aria-hidden="true" />
+            </Link>
+            <h1 id="checkout-title" className="truncate font-body text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">
+              Finalizar compra
+            </h1>
+          </div>
           <div className="inline-flex items-center gap-2 text-xs font-medium text-gray-500 sm:text-sm">
             <LockKeyhole className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
             Checkout seguro
@@ -311,14 +345,14 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
 
         <div className="mt-9 grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-14">
           <section aria-labelledby="checkout-title">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-500">Compra online</p>
-            <h1 id="checkout-title" className="mt-2 font-body text-3xl font-black tracking-tight sm:text-4xl">
-              Finalizar compra
-            </h1>
             <CheckoutProgress currentStep={currentStep} />
 
-            <form onSubmit={handleQuote} onChange={invalidateQuote} className="mt-10 space-y-10">
-              <fieldset disabled={!enabled || loading !== null} className="space-y-5 disabled:opacity-60">
+            <form onSubmit={handleContinue} onChange={invalidateQuote} className="mt-10 space-y-10">
+              <fieldset
+                hidden={currentStep !== 1}
+                disabled={currentStep !== 1 || !enabled || loading !== null}
+                className="space-y-5 disabled:opacity-60"
+              >
                 <legend className="font-body text-xl font-black">Información de contacto</legend>
                 <p className="-mt-4 text-sm leading-6 text-gray-500">Usaremos estos datos para confirmar tu compra y coordinar la entrega.</p>
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -366,7 +400,11 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                 </div>
               </fieldset>
 
-              <fieldset disabled={!enabled || loading !== null} className="space-y-5 border-t border-gray-100 pt-9 disabled:opacity-60">
+              <fieldset
+                hidden={currentStep !== 2}
+                disabled={currentStep !== 2 || !enabled || loading !== null}
+                className="space-y-5 disabled:opacity-60"
+              >
                 <legend className="font-body text-xl font-black">Dirección de entrega</legend>
                 <p className="-mt-4 text-sm leading-6 text-gray-500">Elige cómo quieres recibir tu compra.</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -443,32 +481,89 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                 </div>
               </fieldset>
 
-              <fieldset disabled={!enabled || loading !== null} className="border-t border-gray-100 pt-9 disabled:opacity-60">
-                <legend className="font-body text-xl font-black">Descuentos</legend>
-                <label className="mt-5 block text-sm font-medium text-gray-800">
-                  Cupón <span className="font-normal text-gray-400">(opcional)</span>
+              <fieldset
+                hidden={currentStep !== 3}
+                disabled={currentStep !== 3 || !enabled || loading !== null}
+                className="space-y-5 disabled:opacity-60"
+              >
+                <legend className="font-body text-xl font-black">Medios de pago</legend>
+                <p className="-mt-4 text-sm leading-6 text-gray-500">Selecciona cómo quieres pagar tu compra.</p>
+                <label className="flex cursor-pointer items-center gap-4 rounded-2xl border-2 border-brand-500 bg-brand-50/50 p-5 shadow-sm">
                   <input
-                    maxLength={32}
-                    autoCapitalize="characters"
-                    value={couponCode}
-                    onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
-                    placeholder="Ingresa tu código"
-                    className={fieldClass}
+                    type="radio"
+                    name="payment-method"
+                    value="webpay-plus"
+                    checked
+                    readOnly
+                    className="h-4 w-4 shrink-0 accent-brand-500"
                   />
+                  <Image
+                    src="/webpay-plus-logo.svg"
+                    alt="Webpay Plus"
+                    width={150}
+                    height={38}
+                    className="h-auto w-[138px] sm:w-[150px]"
+                  />
+                  <span className="ml-auto hidden text-right text-xs leading-5 text-gray-500 sm:block">
+                    Crédito, débito<br />y prepago
+                  </span>
                 </label>
               </fieldset>
 
               {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">{error}</div>}
 
-              {!quote && (
+              {currentStep === 1 && (
                 <button
                   type="submit"
                   disabled={!enabled || loading !== null}
-                  className="pressable flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-4 font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="pressable flex w-full items-center justify-center gap-2 bg-brand-500 px-6 py-4 font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loading === 'quote' ? 'Calculando…' : enabled ? 'Continuar a revisión' : 'Pagos temporalmente deshabilitados'}
-                  {loading !== 'quote' && enabled && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                  {enabled ? 'Continuar al envío' : 'Pagos temporalmente deshabilitados'}
+                  {enabled && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
                 </button>
+              )}
+
+              {currentStep === 2 && (
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(1)}
+                    disabled={loading !== null}
+                    className="pressable border border-gray-200 px-6 py-4 font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
+                  >
+                    Volver a datos
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!enabled || loading !== null}
+                    className="pressable flex flex-1 items-center justify-center gap-2 bg-brand-500 px-6 py-4 font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading === 'quote' ? 'Calculando despacho…' : 'Continuar al pago'}
+                    {loading !== 'quote' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                  </button>
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={returnToDelivery}
+                    disabled={loading !== null}
+                    className="pressable border border-gray-200 px-6 py-4 font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
+                  >
+                    Volver al envío
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePayment}
+                    disabled={!enabled || loading !== null}
+                    className="pressable flex flex-1 items-center justify-center gap-2 bg-brand-500 px-6 py-4 font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loading === 'create' ? 'Conectando…' : 'Continuar al pago'}
+                    {loading !== 'create' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                  </button>
+                </div>
               )}
             </form>
           </section>
@@ -502,6 +597,23 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
               ))}
             </div>
 
+            {currentStep >= 2 && (
+              <div className="mt-5 border-t border-gray-100 pt-4 text-xs leading-5 text-gray-500">
+                <p className="font-bold uppercase tracking-[0.14em] text-gray-400">Contacto</p>
+                <p className="mt-1 font-semibold text-gray-800">{name}</p>
+                <p>{email}</p>
+                <p>{phone}</p>
+              </div>
+            )}
+
+            {currentStep >= 3 && (
+              <div className="mt-4 border-t border-gray-100 pt-4 text-xs leading-5 text-gray-500">
+                <p className="font-bold uppercase tracking-[0.14em] text-gray-400">Entrega</p>
+                <p className="mt-1 font-semibold text-gray-800">{method === 'home' ? 'A domicilio' : 'Punto de retiro'}</p>
+                {deliveryLines.map(line => <p key={line}>{line}</p>)}
+              </div>
+            )}
+
             <div className="mt-6 space-y-3 border-t border-gray-100 pt-5 text-sm">
               <div className="flex justify-between gap-4 text-gray-600">
                 <span>Subtotal</span>
@@ -525,39 +637,6 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
               </div>
             </div>
 
-            {quote ? (
-              <div className="mt-5">
-                <button
-                  type="button"
-                  onClick={handlePayment}
-                  disabled={loading !== null}
-                  className="pressable flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-4 font-semibold text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
-                >
-                  {loading === 'create' ? 'Conectando con Webpay…' : 'Pagar con Webpay'}
-                  {loading !== 'create' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
-                </button>
-                <p className="mt-3 text-center text-xs leading-5 text-gray-500">
-                  Serás redirigido a Transbank. ReskiChile no recibe ni almacena los datos de tu tarjeta.
-                </p>
-              </div>
-            ) : (
-              <p className="mt-4 text-xs leading-5 text-gray-500">Completa tus datos para calcular el despacho y confirmar el total.</p>
-            )}
-
-            <div className="mt-7 grid grid-cols-3 gap-2 border-t border-gray-100 pt-6 text-center">
-              <div className="flex flex-col items-center">
-                <ShieldCheck className="h-6 w-6 text-brand-500" strokeWidth={1.7} aria-hidden="true" />
-                <span className="mt-2 text-[10px] font-medium leading-4 text-gray-600">Compra protegida</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <Truck className="h-6 w-6 text-brand-500" strokeWidth={1.7} aria-hidden="true" />
-                <span className="mt-2 text-[10px] font-medium leading-4 text-gray-600">Despacho nacional</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <LockKeyhole className="h-6 w-6 text-brand-500" strokeWidth={1.7} aria-hidden="true" />
-                <span className="mt-2 text-[10px] font-medium leading-4 text-gray-600">Pago en Webpay</span>
-              </div>
-            </div>
           </aside>
         </div>
       </div>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="850" viewBox="0 0 1000 850">
+  <defs>
+    <clipPath id="skier-cut">
+      <path d="M30 523 L178 286 L392 143 L606 91 L686 119 L716 233 L680 343 L726 458 L882 647 L802 741 L575 805 L211 802 L43 714 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#skier-cut)">
+    <image href="ski-newspaper-collage-v1.png" x="0" y="0" width="1280" height="853" preserveAspectRatio="none"/>
+  </g>
+</svg>
