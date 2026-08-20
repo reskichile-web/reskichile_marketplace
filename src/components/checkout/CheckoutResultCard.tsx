@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Check } from 'lucide-react'
+import { AlertTriangle, Check, Clock3, LoaderCircle, XCircle } from 'lucide-react'
 import type { GuestOrderResult } from '@/lib/commerce/order-service'
 import ClearSkiRackCart from '@/components/checkout/ClearSkiRackCart'
 import CopyOrderNumberButton from '@/components/checkout/CopyOrderNumberButton'
@@ -107,7 +107,64 @@ function OrderTimeline({ currentStep }: { currentStep: 1 | 2 | 3 }) {
   )
 }
 
+function CompactPaymentResult({ order }: { order: GuestOrderResult }) {
+  const copy = statusCopy(order.paymentStatus)
+  const active = ['pending', 'processing', 'reconciliation_required'].includes(
+    order.paymentStatus
+  )
+  const terminal = ['rejected', 'aborted', 'expired'].includes(order.paymentStatus)
+
+  const StatusIcon = order.paymentStatus === 'rejected'
+    ? XCircle
+    : order.paymentStatus === 'aborted'
+      ? AlertTriangle
+      : order.paymentStatus === 'expired'
+        ? Clock3
+        : LoaderCircle
+
+  return (
+    <main className="flex min-h-[calc(100vh-12rem)] items-center justify-center px-4 py-12">
+      <section className="w-full max-w-md border border-gray-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10 sm:py-12">
+        <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-50 ${copy.tone}`}>
+          <StatusIcon
+            className={`h-7 w-7 ${active ? 'animate-spin' : ''}`}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </div>
+
+        <h1 className={`mt-5 font-body text-3xl font-black ${copy.tone}`}>
+          {copy.title}
+        </h1>
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
+          {copy.description}
+        </p>
+        <PaymentStatusRefresh active={active} />
+
+        <div className="mt-7 flex items-center justify-center gap-x-1 text-[10px] font-bold uppercase tracking-[0.16em]">
+          <span className="text-gray-400">Orden</span>
+          <span className="text-gray-700">{order.orderNumber}</span>
+          <CopyOrderNumberButton orderNumber={order.orderNumber} />
+        </div>
+
+        {terminal && (
+          <Link
+            href="/carrito"
+            className="mt-8 flex w-full items-center justify-center bg-gray-900 px-6 py-3 font-semibold text-white hover:bg-gray-800"
+          >
+            Volver al carrito
+          </Link>
+        )}
+      </section>
+    </main>
+  )
+}
+
 export default function CheckoutResultCard({ order }: { order: GuestOrderResult }) {
+  if (order.paymentStatus !== 'authorized') {
+    return <CompactPaymentResult order={order} />
+  }
+
   const copy = statusCopy(order.paymentStatus)
   const homeAddress = order.delivery.formattedAddress ||
     [order.delivery.street, order.delivery.number].filter(Boolean).join(' ')
@@ -121,7 +178,7 @@ export default function CheckoutResultCard({ order }: { order: GuestOrderResult 
   return (
     <main className="mx-auto max-w-lg px-4 py-16">
       <section className="border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        {order.paymentStatus === 'authorized' && order.containsRackItems && (
+        {order.containsRackItems && (
           <ClearSkiRackCart />
         )}
         <div className="flex flex-wrap items-center gap-x-1 text-xs font-bold uppercase tracking-[0.18em]">
@@ -133,15 +190,7 @@ export default function CheckoutResultCard({ order }: { order: GuestOrderResult 
           {copy.title}
         </h1>
         <p className="mt-3 text-sm leading-6 text-gray-600">{copy.description}</p>
-        <PaymentStatusRefresh
-          active={['pending', 'processing', 'reconciliation_required'].includes(
-            order.paymentStatus
-          )}
-        />
-
-        {order.paymentStatus === 'authorized' && (
-          <OrderTimeline currentStep={fulfillmentStep(order.fulfillmentStatus)} />
-        )}
+        <OrderTimeline currentStep={fulfillmentStep(order.fulfillmentStatus)} />
 
         <section aria-labelledby="shipping-details-title" className="mt-8 border-t border-gray-100 pt-6">
           <h2 id="shipping-details-title" className="font-body text-base font-black text-gray-900">

@@ -56,6 +56,23 @@ describe('Webpay provider response validation', () => {
     })
   })
 
+  it('accepts an INITIALIZED status without a response code', () => {
+    expect(parseWebpayTransactionResult({
+      amount: 15980,
+      status: 'INITIALIZED',
+      buy_order: 'ORDER2',
+      session_id: 'SESSION2',
+      installments_number: 0,
+      transaction_date: '2026-08-20T23:11:00Z',
+    })).toMatchObject({
+      amount: 15980,
+      status: 'INITIALIZED',
+      buyOrder: 'ORDER2',
+      sessionId: 'SESSION2',
+      responseCode: null,
+    })
+  })
+
   it('validates both documented refund response shapes', () => {
     expect(parseWebpayRefundResult({ type: 'REVERSED' })).toEqual({
       type: 'REVERSED',

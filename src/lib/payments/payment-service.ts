@@ -42,6 +42,7 @@ interface PaymentAttempt extends PaymentAttemptCore {
 interface ClaimedPayment extends PaymentAttemptCore {
   action: PaymentAction
   token: string | null
+  webpay_return_kind: 'aborted' | 'timeout' | 'special' | null
 }
 
 interface FinalizedPayment {
@@ -78,7 +79,7 @@ function outcomeFromCommit(result: WebpayTransactionResult): PaymentOutcome {
   return 'reconciliation_required'
 }
 
-function outcomeFromStatus(
+export function outcomeFromStatus(
   result: WebpayTransactionResult,
   fallback: 'aborted' | 'expired' | 'uncertain'
 ): PaymentOutcome {
@@ -95,6 +96,15 @@ function outcomeFromStatus(
   }
 
   return 'reconciliation_required'
+}
+
+export function fallbackForWebpayReturnKind(
+  returnKind: ClaimedPayment['webpay_return_kind'],
+  fallback: 'aborted' | 'expired' | 'uncertain'
+): 'aborted' | 'expired' | 'uncertain' {
+  if (returnKind === 'aborted') return 'aborted'
+  if (returnKind === 'timeout') return 'expired'
+  return fallback
 }
 
 function providerConfig(attempt: Pick<PaymentAttemptCore, 'environment'>): PaymentConfig {
@@ -206,6 +216,26 @@ async function markForReconciliation(
   }
 }
 
+async function recordNonNormalReturn(
+  attemptId: string,
+  returnKind: 'aborted' | 'timeout' | 'special',
+  correlationId: string
+): Promise<void> {
+  const supabase = createServiceRoleClient()
+  const { data, error } = await supabase.rpc(
+    'commerce_record_webpay_return_context',
+    {
+      p_attempt_id: attemptId,
+      p_return_kind: returnKind,
+      p_correlation_id: correlationId,
+    }
+  )
+
+  if (error || !data) {
+    throw new Error('payment return context persistence failed')
+  }
+}
+
 async function statusWithoutThrow(
   config: PaymentConfig,
   token: string,
@@ -264,7 +294,10 @@ async function processClaimedStatus(
 
   return finalizeOrSchedule(
     attempt,
-    outcomeFromStatus(result, fallback),
+    outcomeFromStatus(
+      result,
+      fallbackForWebpayReturnKind(attempt.webpay_return_kind, fallback)
+    ),
     correlationId,
     result
   )
@@ -353,8 +386,24 @@ async function processNonNormalReturn(
     return { publicId: attempt.public_id, state: attempt.state }
   }
 
+  try {
+    await recordNonNormalReturn(attempt.id, returned.kind, correlationId)
+  } catch (error) {
+    await markForReconciliation(
+      attempt.id,
+      correlationId,
+      safeWebpayError(error) || 'return_context_persistence_failed'
+    )
+    return { publicId: attempt.public_id, state: 'reconciliation_required' }
+  }
+
   if (!attempt.transbank_token) {
-    return { publicId: attempt.public_id, state: attempt.state }
+    await markForReconciliation(
+      attempt.id,
+      correlationId,
+      'missing_webpay_token_after_non_normal_return'
+    )
+    return { publicId: attempt.public_id, state: 'reconciliation_required' }
   }
 
   const supabase = createServiceRoleClient()

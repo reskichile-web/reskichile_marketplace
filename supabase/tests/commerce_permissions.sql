@@ -29,7 +29,8 @@ BEGIN
     WHERE namespace.nspname = 'public'
       AND procedure.proname IN (
         'commerce_create_rack_checkout',
-        'commerce_finalize_webpay'
+        'commerce_finalize_webpay',
+        'commerce_record_webpay_return_context'
       )
       AND NOT has_function_privilege('service_role', procedure.oid, 'EXECUTE')
   ) THEN

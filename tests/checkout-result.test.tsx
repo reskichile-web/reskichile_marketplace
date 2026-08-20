@@ -56,4 +56,38 @@ describe('checkout result', () => {
     expect(html).toContain('Providencia, Metropolitana de Santiago')
     expect(html).not.toContain('Ahora comenzaremos a preparar el despacho')
   })
+
+  it.each([
+    ['rejected', 'Pago rechazado'],
+    ['aborted', 'Pago cancelado'],
+    ['expired', 'Sesión expirada'],
+    ['reconciliation_required', 'Estamos verificando tu pago'],
+  ])('shows a compact result without private order details for %s', (paymentStatus, title) => {
+    const html = renderToStaticMarkup(
+      <CheckoutResultCard order={{
+        ...order,
+        orderStatus: 'awaiting_payment',
+        paymentStatus,
+        fulfillmentStatus: 'unfulfilled',
+        paidAt: null,
+      }} />
+    )
+
+    expect(html).toContain(title)
+    expect(html).toContain(order.orderNumber)
+    expect(html).not.toContain('Datos de envío')
+    expect(html).not.toContain(order.buyer.name)
+    expect(html).not.toContain(order.buyer.email)
+    expect(html).not.toContain(order.buyer.phone)
+    expect(html).not.toContain(order.delivery.street)
+    expect(html).not.toContain(order.items[0].name)
+    expect(html).not.toContain('$15.980')
+    expect(html).not.toContain('aria-label="Estado del pedido"')
+
+    if (paymentStatus === 'reconciliation_required') {
+      expect(html).not.toContain('Volver al carrito')
+    } else {
+      expect(html).toContain('Volver al carrito')
+    }
+  })
 })

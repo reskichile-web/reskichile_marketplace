@@ -21,7 +21,7 @@ export interface WebpayTransactionResult {
   status: string
   buyOrder: string
   sessionId: string
-  responseCode: number
+  responseCode: number | null
   authorizationCode: string | null
   paymentTypeCode: string | null
   installmentsNumber: number | null
@@ -246,7 +246,10 @@ export function parseWebpayTransactionResult(
     status: requiredString(response.status, 'status', 40),
     buyOrder: requiredString(response.buy_order, 'buy_order', 26),
     sessionId: requiredString(response.session_id, 'session_id', 61),
-    responseCode: integerValue(response.response_code, 'response_code'),
+    // A transaction that never reached authorization remains INITIALIZED.
+    // Transbank's status endpoint legitimately omits response_code in that
+    // state, while committed responses include it.
+    responseCode: optionalInteger(response.response_code),
     authorizationCode: optionalString(response.authorization_code, 64),
     paymentTypeCode: optionalString(response.payment_type_code, 8),
     installmentsNumber: optionalInteger(response.installments_number),
