@@ -16,10 +16,10 @@ const MAIL_ICON =
 // identically everywhere (the unicode ✓ is curvy and varies by client).
 const CHECK_ICON =
   'https://kdehuccekavwhhuvvogf.supabase.co/storage/v1/object/public/product-images/email/check-white.png'
-const SITE_URL =
-  process.env.APP_URL ||
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  'https://www.reskichile.cl'
+// Transactional marketplace emails always send users to the public site.
+// APP_URL is deployment-specific (for example, the Webpay sandbox preview),
+// so it must never determine links delivered to real users.
+const SITE_URL = 'https://www.reskichile.cl'
 const SUPPORT_EMAIL = 'reskichile@gmail.com'
 const BRAND = '#2674c0' // azul ReSkiChile para los correos
 

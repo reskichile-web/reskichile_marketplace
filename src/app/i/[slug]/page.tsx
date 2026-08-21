@@ -67,10 +67,7 @@ export default async function InviteRedeemPage({ params }: Props) {
           {firstName ? `Bienvenido, ${firstName}` : 'Bienvenido a ReSkiChile'}
         </h1>
         <p className="text-sm text-gray-600 mt-3 leading-relaxed">
-          Como publicaste con nosotros la temporada pasada y aún tienes productos activos, te creamos una cuenta para que puedas seguir gestionándolos sin volver a registrarte.
-        </p>
-        <p className="text-sm text-gray-600 mt-3 leading-relaxed">
-          Solo falta que definas tu contraseña para terminar el registro.
+          Define una contraseña para acceder a tu cuenta.
         </p>
         {profile?.email && (
           <div className="mt-5 bg-gray-50 border border-gray-100 rounded-md px-3 py-2">
