@@ -27,6 +27,14 @@ const patterns = [
     name: 'committed Supabase service key',
     regex: /SUPABASE_SERVICE_ROLE_KEY\s*=\s*eyJ[A-Za-z0-9._-]{40,}/,
   },
+  {
+    name: 'committed Meta access token',
+    regex: /(?:META_TOKEN|META_INSTAGRAM_ACCESS_TOKEN)\s*=\s*(?![<"']?(?:CHANGE_ME|example|placeholder|test-token)[>"']?\s*$)[A-Za-z0-9._-]{24,}/m,
+  },
+  {
+    name: 'committed cron secret',
+    regex: /CRON_SECRET\s*=\s*(?![<"']?(?:CHANGE_ME|example|placeholder|test-secret)[>"']?\s*$)[^\s#"']{32,}/m,
+  },
 ]
 
 const findings = []

@@ -38,7 +38,7 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, is
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className={`group pressable-subtle relative flex h-9 items-center gap-0.5 rounded-full py-0.5 pl-0.5 pr-1.5 transition-colors hover:bg-gray-100 ${open ? 'bg-gray-100' : ''}`}
+        className={`group pressable-subtle relative flex h-9 items-center rounded-full transition-colors hover:bg-gray-100 md:gap-0.5 md:py-0.5 md:pl-0.5 md:pr-1.5 ${open ? 'bg-gray-100' : ''}`}
         title="Mi cuenta"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -60,7 +60,7 @@ export default function ProfileDropdown({ avatarUrl, unreadCountFallback = 0, is
           )}
         </span>
         <svg
-          className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-gray-600' : 'text-gray-400 group-hover:text-gray-600'}`}
+          className={`hidden h-3.5 w-3.5 shrink-0 transition-transform duration-200 md:block ${open ? 'rotate-180 text-gray-600' : 'text-gray-400 group-hover:text-gray-600'}`}
           viewBox="0 0 20 20"
           fill="none"
           stroke="currentColor"

@@ -36,7 +36,8 @@ for migration in \
   202608180003_zero_unverified_ski_rack_inventory.sql \
   202608180004_lock_down_commerce_rpcs.sql \
   202608190001_checkout_validated_address.sql \
-  202608200001_webpay_return_context.sql
+  202608200001_webpay_return_context.sql \
+  202608210001_instagram_story_captures.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
@@ -52,3 +53,5 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/checkout_address.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/webpay_return_context.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/instagram_story_captures.sql"

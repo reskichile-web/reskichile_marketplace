@@ -41,8 +41,9 @@ export default function Header() {
           </div>
 
           {/* Logo — centered on mobile, left on desktop */}
-          <Link href="/" className="shrink-0 md:shrink-0 absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0">
-            <img src="/logo.svg" alt="ReskiChile" className="h-12 md:h-14" />
+          <Link href="/" className="absolute left-1/2 shrink-0 -translate-x-1/2 md:static md:translate-x-0">
+            <img src="/logo.svg" alt="ReskiChile" className="hidden h-10 min-[350px]:block md:h-14" />
+            <img src="/favicon.svg" alt="ReskiChile" className="h-9 min-[350px]:hidden" />
           </Link>
 
           {/* Desktop: search bar */}
@@ -51,7 +52,7 @@ export default function Header() {
           </div>
 
           {/* Right actions — mobile */}
-          <div className="md:hidden flex items-center gap-3 ml-auto">
+          <div className="ml-auto flex shrink-0 items-center gap-2 md:hidden">
             <SearchBar />
             <SkiRackCartLink showWhenEmpty={showEmptySkiRackCart} />
             {loading ? (

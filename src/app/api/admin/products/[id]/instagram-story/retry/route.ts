@@ -4,17 +4,14 @@ import {
   assertSameOrigin,
   requireAdmin,
 } from '@/lib/admin-security'
-import { sendEmail } from '@/lib/email/send'
-import { buildApprovedEmail } from '@/lib/email/templates'
 import {
   captureResultFromDatabaseRow,
   generateAndStoreStoryCapture,
 } from '@/lib/instagram/capture'
 import type {
-  AdminApprovalResponse,
+  AdminStoryRetryResponse,
   InstagramStoryCaptureStatus,
 } from '@/lib/instagram/contracts'
-import { revalidateProduct } from '@/lib/revalidate'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -23,10 +20,9 @@ export const maxDuration = 60
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-interface ApprovalClaim {
+interface RetryClaim {
   capture_id: string
   capture_status: InstagramStoryCaptureStatus
-  transitioned: boolean
   should_render: boolean
   jpeg_storage_path: string
   jpeg_public_url: string | null
@@ -36,26 +32,13 @@ interface ApprovalClaim {
   last_error: string | null
 }
 
-interface ApprovalProduct {
-  id: string
-  brand: string
-  model: string | null
-  slug: string | null
-  price: number
-  condition: string
-  product_type: string
-  seller_id: string | null
-  product_images: { url: string; order: number }[] | null
-  users:
-    | { name: string | null; email: string | null }
-    | { name: string | null; email: string | null }[]
-    | null
-}
-
-function rpcMessage(error: { message?: string } | null): { message: string; status: number; code: string } {
+function retryRpcError(error: { message?: string } | null) {
   const raw = error?.message || ''
   if (raw.includes('PRODUCT_NOT_FOUND')) {
     return { message: 'Producto no encontrado', status: 404, code: 'PRODUCT_NOT_FOUND' }
+  }
+  if (raw.includes('PRODUCT_NOT_APPROVED')) {
+    return { message: 'El producto ya no está aprobado', status: 409, code: 'PRODUCT_NOT_APPROVED' }
   }
   if (raw.includes('CAPTURE_GENERATION_BUSY')) {
     return {
@@ -64,42 +47,7 @@ function rpcMessage(error: { message?: string } | null): { message: string; stat
       code: 'CAPTURE_GENERATION_BUSY',
     }
   }
-  if (raw.includes('PRODUCT_NOT_APPROVABLE')) {
-    return {
-      message: 'El producto ya no se puede aprobar desde este estado.',
-      status: 409,
-      code: 'PRODUCT_NOT_APPROVABLE',
-    }
-  }
-  return { message: 'No pudimos aprobar el producto', status: 500, code: 'APPROVAL_FAILED' }
-}
-
-async function sendApprovalEmail(product: ApprovalProduct): Promise<boolean> {
-  const seller = Array.isArray(product.users) ? product.users[0] ?? null : product.users
-  if (!seller?.email) return false
-
-  const images = product.product_images ?? []
-  const imageUrl = [...images].sort((a, b) => a.order - b.order)[0]?.url ?? null
-  const { subject, html, text } = buildApprovedEmail(seller.name, {
-    brand: product.brand,
-    model: product.model,
-    price: product.price,
-    condition: product.condition,
-    productType: product.product_type,
-    imageUrl,
-    path: `/producto/${product.slug || product.id}`,
-  })
-  const result = await sendEmail({
-    to: seller.email,
-    subject,
-    html,
-    text,
-    bcc: 'reskichile@gmail.com',
-  })
-  if (!result.ok) {
-    console.error('[approve] approval email could not be sent')
-  }
-  return result.ok
+  return { message: 'No pudimos iniciar el reintento', status: 500, code: 'RETRY_FAILED' }
 }
 
 export async function POST(
@@ -118,75 +66,64 @@ export async function POST(
     }
 
     const service = createServiceRoleClient()
-    const { data: productData, error: productError } = await service
+    const { data: product, error: productError } = await service
       .from('products')
-      .select('id, brand, model, slug, price, condition, product_type, seller_id, product_images (url, order), users:seller_id (name, email)')
+      .select('id, brand, model, slug, status')
       .eq('id', id)
       .maybeSingle()
-    if (productError || !productData) {
+    if (productError || !product) {
       return NextResponse.json(
         { error: 'Producto no encontrado', code: 'PRODUCT_NOT_FOUND' },
         { status: 404, headers: { 'Cache-Control': 'no-store' } },
       )
     }
-    const product = productData as unknown as ApprovalProduct
 
     const { data: claimData, error: claimError } = await service.rpc(
-      'instagram_begin_approval_capture',
+      'instagram_begin_capture_retry',
       { p_product_id: id },
     )
-    const claim = (Array.isArray(claimData) ? claimData[0] : claimData) as ApprovalClaim | null
+    const claim = (Array.isArray(claimData) ? claimData[0] : claimData) as RetryClaim | null
     if (claimError || !claim) {
-      const known = rpcMessage(claimError)
+      const known = retryRpcError(claimError)
       return NextResponse.json(
         { error: known.message, code: known.code },
         { status: known.status, headers: { 'Cache-Control': 'no-store' } },
       )
     }
 
-    if (claim.transitioned) {
-      revalidateProduct({ id: product.id, slug: product.slug })
-    }
-
-    let emailed = false
     let story = captureResultFromDatabaseRow({
       id: claim.capture_id,
       status: claim.capture_status,
       jpeg_public_url: claim.jpeg_public_url,
       updated_at: claim.updated_at,
     })
-
     if (claim.should_render) {
-      const [emailResult, storyResult] = await Promise.all([
-        claim.transitioned ? sendApprovalEmail(product) : Promise.resolve(false),
-        generateAndStoreStoryCapture({
-          captureId: claim.capture_id,
-          productId: product.id,
-          slug: product.slug || '',
-          storagePath: claim.jpeg_storage_path,
-        }),
-      ])
-      emailed = emailResult
-      story = storyResult
+      story = await generateAndStoreStoryCapture({
+        captureId: claim.capture_id,
+        productId: product.id,
+        slug: product.slug || '',
+        storagePath: claim.jpeg_storage_path,
+      })
     } else if (claim.last_error) {
       story = { ...story, error: claim.last_error }
     }
 
     if (story.status === 'generating') {
       return NextResponse.json(
-        {
-          error: 'La Story de este producto todavía se está generando.',
-          code: 'CAPTURE_GENERATION_IN_PROGRESS',
-        },
+        { error: 'La Story todavía se está generando.', code: 'CAPTURE_GENERATION_IN_PROGRESS' },
+        { status: 409, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    if (story.status !== 'ready' && story.status !== 'failed') {
+      return NextResponse.json(
+        { error: 'Esta captura no admite un reintento de render.', code: 'CAPTURE_NOT_RETRYABLE' },
         { status: 409, headers: { 'Cache-Control': 'no-store' } },
       )
     }
 
-    const response: AdminApprovalResponse = {
+    const response: AdminStoryRetryResponse = {
       ok: true,
       approved: true,
-      transitioned: claim.transitioned,
-      emailed,
       product: {
         id: product.id,
         title: [product.brand, product.model].filter(Boolean).join(' '),

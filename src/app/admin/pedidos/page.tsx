@@ -1,7 +1,25 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  CircleAlert,
+  Clock3,
+  Mail,
+  MapPin,
+  Package,
+  PackageOpen,
+  Phone,
+  ReceiptText,
+  RotateCcw,
+  ShoppingBag,
+  TriangleAlert,
+  Truck,
+  UserRound,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 
 interface OrderItem {
   id: string
@@ -54,6 +72,10 @@ const money = new Intl.NumberFormat('es-CL', {
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente',
   authorized: 'Pagado',
+  rejected: 'Rechazado',
+  aborted: 'Abortado',
+  expired: 'Expirado',
+  initialization_failed: 'Error de inicio',
   partially_refunded: 'Reembolso parcial',
   refunded: 'Reembolsado',
   reconciliation_required: 'Requiere conciliación',
@@ -66,12 +88,169 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
+  unfulfilled: 'Sin preparar',
   pending: 'Por preparar',
   preparing: 'Preparando',
   ready_for_pickup: 'Listo para retiro',
   shipped: 'Enviado',
   delivered: 'Entregado',
   cancelled: 'Cancelado',
+}
+
+interface StatusAppearance {
+  className: string
+  iconClassName: string
+  icon: LucideIcon
+}
+
+interface PaymentStatusAppearance {
+  className: string
+  icon: LucideIcon
+}
+
+const PAYMENT_STATUS_APPEARANCE: Record<string, PaymentStatusAppearance> = {
+  pending: {
+    className: 'text-amber-600',
+    icon: Clock3,
+  },
+  authorized: {
+    className: 'text-emerald-600',
+    icon: Check,
+  },
+  rejected: {
+    className: 'text-red-600',
+    icon: X,
+  },
+  aborted: {
+    className: 'text-rose-600',
+    icon: X,
+  },
+  expired: {
+    className: 'text-orange-500',
+    icon: Clock3,
+  },
+  initialization_failed: {
+    className: 'text-slate-600',
+    icon: X,
+  },
+  partially_refunded: {
+    className: 'text-violet-600',
+    icon: RotateCcw,
+  },
+  refunded: {
+    className: 'text-indigo-600',
+    icon: RotateCcw,
+  },
+  reconciliation_required: {
+    className: 'text-orange-600',
+    icon: TriangleAlert,
+  },
+}
+
+const FULFILLMENT_STATUS_APPEARANCE: Record<string, StatusAppearance> = {
+  unfulfilled: {
+    className: 'bg-slate-600',
+    iconClassName: 'bg-black/20',
+    icon: PackageOpen,
+  },
+  pending: {
+    className: 'bg-amber-500',
+    iconClassName: 'bg-amber-700/35',
+    icon: Clock3,
+  },
+  preparing: {
+    className: 'bg-blue-600',
+    iconClassName: 'bg-blue-800/35',
+    icon: Package,
+  },
+  ready_for_pickup: {
+    className: 'bg-violet-600',
+    iconClassName: 'bg-violet-800/35',
+    icon: MapPin,
+  },
+  shipped: {
+    className: 'bg-brand-400',
+    iconClassName: 'bg-brand-600/35',
+    icon: Truck,
+  },
+  delivered: {
+    className: 'bg-emerald-600',
+    iconClassName: 'bg-emerald-800/35',
+    icon: Check,
+  },
+  cancelled: {
+    className: 'bg-red-600',
+    iconClassName: 'bg-red-800/35',
+    icon: X,
+  },
+}
+
+const FALLBACK_STATUS_APPEARANCE: StatusAppearance = {
+  className: 'bg-slate-700',
+  iconClassName: 'bg-black/20',
+  icon: CircleAlert,
+}
+
+const FALLBACK_PAYMENT_STATUS_APPEARANCE: PaymentStatusAppearance = {
+  className: 'text-slate-600',
+  icon: CircleAlert,
+}
+
+function PaymentStatus({
+  label,
+  appearance,
+}: {
+  label: string
+  appearance: PaymentStatusAppearance
+}) {
+  const Icon = appearance.icon
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-bold ${appearance.className}`}>
+      <span>{label}</span>
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />
+    </span>
+  )
+}
+
+function StatusPill({
+  label,
+  appearance,
+}: {
+  label: string
+  appearance: StatusAppearance
+}) {
+  const Icon = appearance.icon
+
+  return (
+    <span className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full py-1 pl-2.5 pr-1 text-[11px] font-bold text-white shadow-sm ${appearance.className}`}>
+      <span>{label}</span>
+      <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${appearance.iconClassName}`}>
+        <Icon className="h-3.5 w-3.5" strokeWidth={2.75} aria-hidden="true" />
+      </span>
+    </span>
+  )
+}
+
+interface ActionAppearance {
+  className: string
+  icon: LucideIcon
+}
+
+function actionAppearance(status: string): ActionAppearance {
+  if (status === 'cancelled') {
+    return { className: 'border-red-200 text-red-600 hover:border-red-300', icon: X }
+  }
+  if (status === 'delivered') {
+    return { className: 'border-emerald-200 text-emerald-700 hover:border-emerald-300', icon: Check }
+  }
+  if (status === 'ready_for_pickup') {
+    return { className: 'border-violet-200 text-violet-700 hover:border-violet-300', icon: MapPin }
+  }
+  if (status === 'shipped') {
+    return { className: 'border-brand-200 text-brand-500 hover:border-brand-300', icon: Truck }
+  }
+  return { className: 'border-blue-200 text-blue-700 hover:border-blue-300', icon: Package }
 }
 
 function nextFulfillment(order: Order): Array<{ value: string; label: string }> {
@@ -195,8 +374,18 @@ export default function AdminOrdersPage() {
         <div className="mt-8 rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">Aún no hay pedidos de Webpay.</div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-[1080px] w-full border-collapse text-left text-sm">
+          <div className="overflow-x-hidden">
+            <table className="w-full table-fixed border-collapse text-left text-sm">
+              <colgroup>
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '5%' }} />
+              </colgroup>
               <thead className="bg-gray-50 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">
                 <tr>
                   <th scope="col" className="px-5 py-3">Pedido</th>
@@ -213,13 +402,18 @@ export default function AdminOrdersPage() {
                 {orders.map(order => {
                   const expanded = expandedOrderId === order.public_id
                   const action = nextFulfillment(order)[0]
+                  const actionStyle = action ? actionAppearance(action.value) : null
+                  const ActionIcon = actionStyle?.icon
                   const detailId = `order-detail-${order.public_id}`
 
                   return (
                     <Fragment key={order.public_id}>
-                    <tr className="transition-colors hover:bg-gray-50/70">
+                    <tr
+                      onClick={() => setExpandedOrderId(expanded ? '' : order.public_id)}
+                      className="cursor-pointer transition-colors hover:bg-gray-50/70"
+                    >
                       <td className="px-5 py-4 align-middle">
-                        <p className="font-body text-sm font-black text-gray-900">{order.order_number}</p>
+                        <p className="whitespace-nowrap font-body text-sm font-black text-gray-900">{order.order_number}</p>
                         <p className="mt-1 text-xs text-gray-400">
                           {order.order_items.length} {order.order_items.length === 1 ? 'producto' : 'productos'}
                         </p>
@@ -229,14 +423,16 @@ export default function AdminOrdersPage() {
                         <p className="mt-1 max-w-52 truncate text-xs text-gray-500">{order.buyer_email}</p>
                       </td>
                       <td className="px-4 py-4 align-middle">
-                        <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                          {STATUS_LABELS[order.payment_status] || order.payment_status}
-                        </span>
+                        <PaymentStatus
+                          label={STATUS_LABELS[order.payment_status] || order.payment_status}
+                          appearance={PAYMENT_STATUS_APPEARANCE[order.payment_status] || FALLBACK_PAYMENT_STATUS_APPEARANCE}
+                        />
                       </td>
                       <td className="px-4 py-4 align-middle">
-                        <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
-                          {FULFILLMENT_STATUS_LABELS[order.fulfillment_status] || order.fulfillment_status}
-                        </span>
+                        <StatusPill
+                          label={FULFILLMENT_STATUS_LABELS[order.fulfillment_status] || order.fulfillment_status}
+                          appearance={FULFILLMENT_STATUS_APPEARANCE[order.fulfillment_status] || FALLBACK_STATUS_APPEARANCE}
+                        />
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-right align-middle font-body font-black text-gray-900">
                         {money.format(order.total_clp)}
@@ -249,13 +445,13 @@ export default function AdminOrdersPage() {
                           <button
                             type="button"
                             disabled={busy === order.public_id}
-                            onClick={() => void updateFulfillment(order, action.value)}
-                            className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold text-white transition-colors disabled:opacity-50 ${
-                              action.value === 'cancelled'
-                                ? 'bg-red-600 hover:bg-red-700'
-                                : 'bg-gray-900 hover:bg-gray-800'
-                            }`}
+                            onClick={event => {
+                              event.stopPropagation()
+                              void updateFulfillment(order, action.value)
+                            }}
+                            className={`inline-flex h-8 max-w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border bg-white px-3 text-[11px] font-bold shadow-[0_2px_5px_rgba(15,23,42,0.09)] transition-all hover:-translate-y-px hover:shadow-[0_3px_7px_rgba(15,23,42,0.11)] active:translate-y-px active:shadow-none disabled:translate-y-0 disabled:opacity-50 ${actionStyle?.className || ''}`}
                           >
+                            {ActionIcon && <ActionIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />}
                             {busy === order.public_id ? 'Actualizando…' : action.label}
                           </button>
                         ) : (
@@ -268,7 +464,10 @@ export default function AdminOrdersPage() {
                           aria-expanded={expanded}
                           aria-controls={detailId}
                           aria-label={`${expanded ? 'Ocultar' : 'Ver'} detalle de ${order.order_number}`}
-                          onClick={() => setExpandedOrderId(expanded ? '' : order.public_id)}
+                          onClick={event => {
+                            event.stopPropagation()
+                            setExpandedOrderId(expanded ? '' : order.public_id)
+                          }}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
                         >
                           <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -279,43 +478,87 @@ export default function AdminOrdersPage() {
 
                       {expanded && (
                         <tr>
-                        <td id={detailId} colSpan={8} className="border-t border-gray-100 bg-gray-50/70 px-5 py-5">
-                          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(230px,0.8fr)_minmax(190px,0.55fr)]">
-                            <section aria-label={`Productos de ${order.order_number}`}>
-                              <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Productos</h3>
-                              <div className="mt-2 divide-y divide-gray-200">
+                        <td id={detailId} colSpan={8} className="border-t border-gray-200 bg-slate-50 px-5 py-5">
+                          <section aria-label={`Cliente de ${order.order_number}`} className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div className="grid gap-4 sm:grid-cols-3">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                  <UserRound className="h-4 w-4" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Cliente</p>
+                                  <p className="truncate font-semibold text-gray-900">{order.buyer_name}</p>
+                                </div>
+                              </div>
+                              <a href={`mailto:${order.buyer_email}`} className="flex min-w-0 items-center gap-3 rounded-lg transition-colors hover:text-blue-700">
+                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                                  <Mail className="h-4 w-4" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Correo</p>
+                                  <p className="truncate text-sm text-gray-700">{order.buyer_email}</p>
+                                </div>
+                              </a>
+                              <a href={`tel:${order.buyer_phone}`} className="flex min-w-0 items-center gap-3 rounded-lg transition-colors hover:text-blue-700">
+                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                                  <Phone className="h-4 w-4" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Teléfono</p>
+                                  <p className="truncate text-sm text-gray-700">{order.buyer_phone}</p>
+                                </div>
+                              </a>
+                            </div>
+                          </section>
+
+                          <div className="grid gap-4 lg:grid-cols-12">
+                            <section aria-label={`Productos de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-5">
+                              <div className="flex items-center gap-2">
+                                <ShoppingBag className="h-4 w-4 text-blue-600" aria-hidden="true" />
+                                <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Productos</h3>
+                              </div>
+                              <div className="mt-3 divide-y divide-gray-100">
                                 {order.order_items.map(item => (
-                                  <div key={item.id} className="flex justify-between gap-4 py-2 text-sm">
-                                    <span className="text-gray-700">{item.product_name} × {item.quantity}</span>
-                                    <span className="font-semibold text-gray-900">{money.format(item.line_total_clp)}</span>
+                                  <div key={item.id} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                                    <div className="min-w-0">
+                                      <p className="font-semibold leading-5 text-gray-900">{item.product_name}</p>
+                                      <p className="mt-1 text-xs text-gray-500">
+                                        {item.quantity} × {money.format(item.unit_price_clp)}
+                                        {item.sku ? ` · SKU ${item.sku}` : ''}
+                                      </p>
+                                    </div>
+                                    <span className="shrink-0 font-body font-black text-gray-900">{money.format(item.line_total_clp)}</span>
                                   </div>
                                 ))}
                               </div>
-                              <div className="mt-4 text-xs leading-5 text-gray-500">
-                                <p className="font-semibold text-gray-800">{order.buyer_name}</p>
-                                <p>{order.buyer_email}</p>
-                                <p>{order.buyer_phone}</p>
-                              </div>
                             </section>
 
-                            <section aria-label={`Entrega de ${order.order_number}`}>
-                              <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Entrega</h3>
-                              <div className="mt-2 rounded-lg border border-gray-200 bg-white p-4 text-sm leading-6">
-                                <p className="font-semibold text-gray-900">{order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
-                                {order.shipping_snapshot.street && <p className="text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
-                                {order.shipping_snapshot.pickup_point_id && <p className="text-gray-600">{order.shipping_snapshot.pickup_point_id}</p>}
+                            <section aria-label={`Entrega de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-4">
+                              <div className="flex items-center gap-2">
+                                {order.delivery_method === 'pickup'
+                                  ? <MapPin className="h-4 w-4 text-violet-600" aria-hidden="true" />
+                                  : <Truck className="h-4 w-4 text-indigo-600" aria-hidden="true" />}
+                                <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Entrega</h3>
+                              </div>
+                              <div className="mt-3 text-sm leading-6">
+                                <p className="font-bold text-gray-900">{order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
+                                {order.shipping_snapshot.street && <p className="mt-1 text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
+                                {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{order.shipping_snapshot.pickup_point_id}</p>}
                                 {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
                                 <p className="text-gray-600">{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
                               </div>
                             </section>
 
-                            <section aria-label={`Totales de ${order.order_number}`}>
-                              <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Totales</h3>
-                              <dl className="mt-2 space-y-2 text-sm">
+                            <section aria-label={`Totales de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-3">
+                              <div className="flex items-center gap-2">
+                                <ReceiptText className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                                <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Totales</h3>
+                              </div>
+                              <dl className="mt-3 space-y-2.5 text-sm">
                                 <div className="flex justify-between gap-3 text-gray-600"><dt>Subtotal</dt><dd>{money.format(order.subtotal_clp)}</dd></div>
                                 {order.discount_clp > 0 && <div className="flex justify-between gap-3 text-emerald-700"><dt>Descuento</dt><dd>-{money.format(order.discount_clp)}</dd></div>}
                                 <div className="flex justify-between gap-3 text-gray-600"><dt>Despacho</dt><dd>{money.format(order.shipping_clp)}</dd></div>
-                                <div className="flex justify-between gap-3 border-t border-gray-200 pt-2 font-black text-gray-900"><dt>Total</dt><dd>{money.format(order.total_clp)}</dd></div>
+                                <div className="flex justify-between gap-3 border-t border-gray-200 pt-3 font-body text-base font-black text-gray-950"><dt>Total</dt><dd>{money.format(order.total_clp)}</dd></div>
                               </dl>
                             </section>
                           </div>

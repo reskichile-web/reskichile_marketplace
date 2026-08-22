@@ -8,9 +8,13 @@ import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
 import { phoneToWhatsApp } from '@/lib/phone'
 import { daysUntilSaleReminder } from '@/lib/sale-reminder'
+import ApprovalStoryModal from '@/components/admin/ApprovalStoryModal'
+import { useStoryApproval } from '@/components/admin/useStoryApproval'
+import type { AdminApprovalResponse } from '@/lib/instagram/contracts'
 
 interface AdminProduct {
   id: string
+  slug: string | null
   product_type: string
   brand: string
   model: string | null
@@ -126,7 +130,7 @@ export default function PublicacionesPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('products')
-      .select('id, product_type, brand, model, price, sale_price, status, created_at, days_published, sale_reminder_sent_at, seller_id, condition, region, comuna, description, rejection_reason, attributes, anon_contact, users(name, email, phone, hide_phone), product_images(url, order)')
+      .select('id, slug, product_type, brand, model, price, sale_price, status, created_at, days_published, sale_reminder_sent_at, seller_id, condition, region, comuna, description, rejection_reason, attributes, anon_contact, users(name, email, phone, hide_phone), product_images(url, order)')
       .order('created_at', { ascending: false })
 
     const list = (data as unknown as AdminProduct[]) || []
@@ -183,21 +187,22 @@ export default function PublicacionesPage() {
     }
   }
 
+  const handleApprovalFinished = useCallback((response: AdminApprovalResponse) => {
+    setProducts(current => current.map(product => product.id === response.product.id
+      ? { ...product, status: 'approved', rejection_reason: null }
+      : product))
+  }, [])
+
+  const storyApproval = useStoryApproval({ onApproved: handleApprovalFinished })
+
   async function handleApprove(productId: string) {
-    // Approval goes through a server route (not the client update) so it can
-    // send the "producto aprobado" email server-side. Keep the optimistic UI.
-    const prevProducts = products
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, status: 'approved', rejection_reason: null } as AdminProduct : p))
-    try {
-      const res = await fetch(`/api/admin/products/${productId}/approve`, { method: 'POST' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Error al aprobar')
-      }
-    } catch (e) {
-      setProducts(prevProducts)
-      alert('Error al aprobar: ' + (e instanceof Error ? e.message : 'desconocido'))
-    }
+    const product = products.find(item => item.id === productId)
+    if (!product) return
+    await storyApproval.approve({
+      id: product.id,
+      title: [product.brand, product.model].filter(Boolean).join(' '),
+      slug: product.slug || product.id,
+    })
   }
 
   async function handleReject(productId: string) {
@@ -240,22 +245,19 @@ export default function PublicacionesPage() {
   async function handleDelete(productId: string) {
     if (!confirm('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.')) return
     setDeletingId(productId)
-    const supabase = createClient()
-
-    const product = products.find(p => p.id === productId)
-    if (product?.product_images?.length) {
-      const paths = product.product_images
-        .map(img => img.url.split('/product-images/')[1])
-        .filter(Boolean)
-        .map(p => decodeURIComponent(p))
-      if (paths.length) await supabase.storage.from('product-images').remove(paths)
+    try {
+      const response = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || 'Error al eliminar')
+      }
+      setExpandedId(null)
+      await loadProducts()
+    } catch (error) {
+      alert('Error al eliminar: ' + (error instanceof Error ? error.message : 'desconocido'))
+    } finally {
+      setDeletingId(null)
     }
-
-    await supabase.from('product_images').delete().eq('product_id', productId)
-    await supabase.from('products').delete().eq('id', productId)
-    setExpandedId(null)
-    await loadProducts()
-    setDeletingId(null)
   }
 
 
@@ -429,7 +431,7 @@ export default function PublicacionesPage() {
                         <div className="flex gap-1.5">
                           {product.status === 'pending' && (
                             <>
-                              <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
+                              <button onClick={() => handleApprove(product.id)} disabled={storyApproval.busy} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40">
                                 Aprobar
                               </button>
                               <button onClick={() => setRejectingId(product.id)} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700">
@@ -438,12 +440,12 @@ export default function PublicacionesPage() {
                             </>
                           )}
                           {product.status === 'rejected' && (
-                            <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
+                            <button onClick={() => handleApprove(product.id)} disabled={storyApproval.busy} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40">
                               Aprobar
                             </button>
                           )}
                           {product.status === 'missing_photos' && (
-                            <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
+                            <button onClick={() => handleApprove(product.id)} disabled={storyApproval.busy} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40">
                               Aprobar
                             </button>
                           )}
@@ -677,6 +679,11 @@ export default function PublicacionesPage() {
               </div>
             </div>
           )}
+          <ApprovalStoryModal
+            state={storyApproval.state}
+            onClose={storyApproval.close}
+            onRetry={storyApproval.retry}
+          />
         </div>
       )}
     </div>

@@ -4,6 +4,10 @@ const developmentScriptPolicy = process.env.NODE_ENV === 'development' ? " 'unsa
 const nextConfig = {
   poweredByHeader: false,
   devIndicators: false,
+  // Chromium ships pre-compressed platform binaries that must remain external
+  // to Next's server bundle so the serverless renderer can unpack them at run
+  // time.
+  serverExternalPackages: ['@sparticuz/chromium'],
   turbopack: {
     root: process.cwd(),
   },

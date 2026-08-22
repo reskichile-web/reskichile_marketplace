@@ -36,13 +36,16 @@ describe('ski rack product images', () => {
     }
   })
 
-  it('shows only the selected size photo for filament racks', () => {
+  it('shows the selected filament size followed by the mounted reference photo', () => {
     const product = getSkiRackProduct('filamento')
     expect(product).toBeDefined()
 
     for (const size of SKI_RACK_SIZES) {
-      expect(getSkiRackGalleryForSize(product!, size)).toEqual([
-        getSkiRackSizeImage(product!, size),
+      const gallery = getSkiRackGalleryForSize(product!, size)
+
+      expect(gallery[0]).toEqual(getSkiRackSizeImage(product!, size))
+      expect(gallery.slice(1).map(image => image.url)).toEqual([
+        '/images/ski-rack-mounted-purple-square.jpg',
       ])
     }
   })

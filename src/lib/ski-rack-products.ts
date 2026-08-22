@@ -20,7 +20,35 @@ export interface SkiRackProduct {
 }
 
 export const SKI_RACK_DESCRIPTION =
-  'Organiza y exhibe tus esquís de forma segura con Ski Rack. Su diseño minimalista mantiene el equipo ordenado y aprovecha mejor el espacio sin recargar el ambiente. Incluye un par de soportes para instalación mural.'
+  'Un par de soportes murales para ordenar y exhibir tus esquís de forma segura, con un diseño minimalista que aprovecha mejor el espacio.'
+
+export function getSkiRackDescription(product: SkiRackProduct): string {
+  return `Un par de soportes murales en ${product.material.toLowerCase()} para ordenar y exhibir tus esquís de forma segura. Instalación simple y diseño minimalista para aprovechar mejor el espacio. 🎿`
+}
+
+export const SKI_RACK_SIZE_GUIDE_IMAGES: SkiRackGalleryImage[] = [
+  {
+    url: '/images/ski-rack-size-guide-how-to.png',
+    alt: 'Cómo medir el ancho de los esquís para escoger la talla de Ski Rack',
+  },
+  {
+    url: '/images/ski-rack-size-guide-s.png',
+    alt: 'Ski Rack talla S de 8,5 centímetros para esquís de pista',
+  },
+  {
+    url: '/images/ski-rack-size-guide-m.png',
+    alt: 'Ski Rack talla M de 10 centímetros para esquís all-mountain',
+  },
+  {
+    url: '/images/ski-rack-size-guide-l.png',
+    alt: 'Ski Rack talla L de 12 centímetros para esquís fuera de pista',
+  },
+]
+
+const MOUNTED_PURPLE_SKIS_IMAGE: SkiRackGalleryImage = {
+  url: '/images/ski-rack-mounted-purple-square.jpg',
+  alt: 'Esquís Salomon morados instalados con Ski Rack sobre una pared de madera',
+}
 
 export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
   {
@@ -54,6 +82,7 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
         url: '/images/ski-rack-madera-common-2.jpg',
         alt: 'Comparación de las tres tallas de Ski Rack de madera',
       },
+      MOUNTED_PURPLE_SKIS_IMAGE,
     ],
   },
   {
@@ -78,7 +107,7 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
         alt: 'Ski Rack de filamento talla L sobre fondo claro',
       },
     },
-    gallery: [],
+    gallery: [MOUNTED_PURPLE_SKIS_IMAGE],
   },
 ]
 

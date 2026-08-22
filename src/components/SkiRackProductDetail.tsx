@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Ruler } from 'lucide-react'
 import SkiRackGallery from '@/components/SkiRackGallery'
-import DescriptionCard from '@/components/DescriptionCard'
+import SkiRackRelatedProducts from '@/components/SkiRackRelatedProducts'
+import SkiRackSizeGuide from '@/components/SkiRackSizeGuide'
 import {
-  SKI_RACK_DESCRIPTION,
   SKI_RACK_SIZES,
+  getSkiRackDescription,
   getSkiRackGalleryForSize,
   type SkiRackProduct,
   type SkiRackSize,
@@ -24,6 +26,7 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
   const [selectedSize, setSelectedSize] = useState<SkiRackSize>('S')
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
   const { inventory, loading: inventoryLoading } = useRackInventory()
   const productInventory = inventory[product.slug]
   const priceClp = productInventory?.priceClp ?? product.priceClp
@@ -96,30 +99,25 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
               <span>Producto original ReskiChile</span>
             </div>
 
-            <DescriptionCard
-              description={SKI_RACK_DESCRIPTION}
-              className="mt-4"
-              alwaysShowToggle
-            />
-
-            <dl className="mt-5 grid grid-cols-2 gap-4 border-b border-gray-100 pb-5 text-sm">
-              <div>
-                <dt className="text-xs text-gray-400">Material</dt>
-                <dd className="mt-1 font-medium text-gray-900">{product.material}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400">Contenido</dt>
-                <dd className="mt-1 font-medium text-gray-900">2 soportes</dd>
-              </div>
-            </dl>
+            <div className="mt-4 border-b border-gray-100 pb-5 text-sm leading-relaxed text-gray-600">
+              <p>{getSkiRackDescription(product)}</p>
+            </div>
 
             <fieldset className="mt-5">
-              <legend className="flex w-full items-center justify-between text-sm font-semibold text-gray-900">
-                <span>Talla</span>
-                {!soldOut && (
-                  <span className="text-xs font-normal text-gray-400">Seleccionada: {selectedSize}</span>
-                )}
-              </legend>
+              <legend className="sr-only">Selecciona la talla</legend>
+              <div className="flex w-full items-center justify-between text-sm">
+                <p className="font-semibold text-gray-900">
+                  Talla{!soldOut && <span className="font-normal text-gray-500">: {selectedSize}</span>}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSizeGuideOpen(true)}
+                  className="inline-flex items-center gap-1.5 font-bold text-brand-400 underline decoration-brand-200 underline-offset-4 transition-colors hover:text-brand-500"
+                >
+                  <Ruler className="h-4 w-4" aria-hidden="true" />
+                  Guía de tallas
+                </button>
+              </div>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {SKI_RACK_SIZES.map((size) => {
                   const selected = selectedSize === size
@@ -215,7 +213,11 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
             )}
           </div>
         </div>
+
+        <SkiRackRelatedProducts currentProduct={product} />
       </div>
+
+      <SkiRackSizeGuide open={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} />
     </div>
   )
 }

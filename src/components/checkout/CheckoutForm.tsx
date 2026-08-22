@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   LockKeyhole,
   ShoppingBag,
+  Truck,
 } from 'lucide-react'
 import PhoneInput from '@/components/PhoneInput'
 import AddressAutocomplete from '@/components/checkout/AddressAutocomplete'
@@ -504,9 +505,6 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                     height={38}
                     className="h-auto w-[138px] sm:w-[150px]"
                   />
-                  <span className="ml-auto hidden text-right text-xs leading-5 text-gray-500 sm:block">
-                    Crédito, débito<br />y prepago
-                  </span>
                 </label>
               </fieldset>
 
@@ -606,11 +604,19 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
               </div>
             )}
 
-            {currentStep >= 3 && (
+            {currentStep >= 3 && quote && (
               <div className="mt-4 border-t border-gray-100 pt-4 text-xs leading-5 text-gray-500">
                 <p className="font-bold uppercase tracking-[0.14em] text-gray-400">Entrega</p>
-                <p className="mt-1 font-semibold text-gray-800">{method === 'home' ? 'A domicilio' : 'Punto de retiro'}</p>
-                {deliveryLines.map(line => <p key={line}>{line}</p>)}
+                <div className="mt-2 flex items-start gap-3">
+                  <Truck className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" strokeWidth={1.8} aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-800">{method === 'home' ? 'A domicilio' : 'Punto de retiro'}</p>
+                    {deliveryLines.map(line => <p key={line}>{line}</p>)}
+                  </div>
+                  <span className="shrink-0 font-body text-sm font-black text-gray-900">
+                    {money.format(quote.shippingClp)}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -618,12 +624,6 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
               <div className="flex justify-between gap-4 text-gray-600">
                 <span>Subtotal</span>
                 <span className="font-semibold text-gray-900">{money.format(quote?.subtotalClp ?? itemSubtotal)}</span>
-              </div>
-              <div className="flex justify-between gap-4 text-gray-600">
-                <span>Despacho</span>
-                <span className={quote ? 'font-semibold text-gray-900' : 'text-xs text-gray-400'}>
-                  {quote ? money.format(quote.shippingClp) : 'Se calcula al continuar'}
-                </span>
               </div>
               {quote && quote.discountClp > 0 && (
                 <div className="flex justify-between gap-4 text-emerald-700">

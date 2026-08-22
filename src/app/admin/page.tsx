@@ -7,6 +7,9 @@ import { PRODUCT_TYPES } from '@/lib/constants'
 import AdminDashboardSkeleton from '@/components/skeletons/AdminDashboardSkeleton'
 import Spinner from '@/components/Spinner'
 import RecentMessagesCard from '@/components/admin/RecentMessagesCard'
+import ApprovalStoryModal from '@/components/admin/ApprovalStoryModal'
+import { useStoryApproval } from '@/components/admin/useStoryApproval'
+import type { AdminApprovalResponse } from '@/lib/instagram/contracts'
 
 interface PendingProduct {
   id: string
@@ -118,22 +121,23 @@ export default function AdminHomePage() {
     load()
   }, [load])
 
-  async function handleApprove(productId: string) {
-    // Same server route as /admin/publicaciones — sends the approval email.
-    const prev = pending
-    setPending(p => p.filter(x => x.id !== productId))
-    setStats(s => ({ ...s, approved: s.approved + 1 }))
-    try {
-      const res = await fetch(`/api/admin/products/${productId}/approve`, { method: 'POST' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Error al aprobar')
-      }
-    } catch (e) {
-      setPending(prev)
-      setStats(s => ({ ...s, approved: s.approved - 1 }))
-      alert('Error al aprobar: ' + (e instanceof Error ? e.message : 'desconocido'))
+  const handleApprovalFinished = useCallback((response: AdminApprovalResponse) => {
+    setPending(current => current.filter(product => product.id !== response.product.id))
+    if (response.transitioned) {
+      setStats(current => ({ ...current, approved: current.approved + 1 }))
     }
+  }, [])
+
+  const storyApproval = useStoryApproval({ onApproved: handleApprovalFinished })
+
+  async function handleApprove(productId: string) {
+    const product = pending.find(item => item.id === productId)
+    if (!product) return
+    await storyApproval.approve({
+      id: product.id,
+      title: [product.brand, product.model].filter(Boolean).join(' '),
+      slug: product.id,
+    })
   }
 
   async function handleReject(productId: string) {
@@ -161,26 +165,19 @@ export default function AdminHomePage() {
   async function handleDelete(productId: string) {
     if (!confirm('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.')) return
     setDeletingId(productId)
-    const supabase = createClient()
-
-    const product = pending.find(p => p.id === productId)
-    if (product?.product_images?.length) {
-      const paths = product.product_images
-        .map(img => img.url.split('/product-images/')[1])
-        .filter(Boolean)
-        .map(p => decodeURIComponent(p))
-      if (paths.length) await supabase.storage.from('product-images').remove(paths)
+    try {
+      const response = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || 'Error al eliminar')
+      }
+      setPending(p => p.filter(x => x.id !== productId))
+      setStats(s => ({ ...s, total: Math.max(0, s.total - 1) }))
+    } catch (error) {
+      alert('Error al eliminar: ' + (error instanceof Error ? error.message : 'desconocido'))
+    } finally {
+      setDeletingId(null)
     }
-
-    await supabase.from('product_images').delete().eq('product_id', productId)
-    const { error } = await supabase.from('products').delete().eq('id', productId)
-    setDeletingId(null)
-    if (error) {
-      alert('Error al eliminar: ' + error.message)
-      return
-    }
-    setPending(p => p.filter(x => x.id !== productId))
-    setStats(s => ({ ...s, total: s.total - 1 }))
   }
 
   if (loading) return <AdminDashboardSkeleton />
@@ -298,7 +295,11 @@ export default function AdminHomePage() {
                     </div>
 
                     <div className="flex gap-1.5 shrink-0 flex-wrap">
-                      <button onClick={() => handleApprove(product.id)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">
+                      <button
+                        onClick={() => handleApprove(product.id)}
+                        disabled={storyApproval.busy}
+                        className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
                         Aprobar
                       </button>
                       <button onClick={() => setRejectingId(product.id)} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700">
@@ -408,6 +409,11 @@ export default function AdminHomePage() {
           </div>
         </div>
       )}
+      <ApprovalStoryModal
+        state={storyApproval.state}
+        onClose={storyApproval.close}
+        onRetry={storyApproval.retry}
+      />
     </div>
   )
 }
