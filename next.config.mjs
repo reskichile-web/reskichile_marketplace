@@ -8,6 +8,17 @@ const nextConfig = {
   // to Next's server bundle so the serverless renderer can unpack them at run
   // time.
   serverExternalPackages: ['@sparticuz/chromium'],
+  // Next's file tracer follows Chromium's JavaScript entrypoint but cannot
+  // infer the Brotli archives loaded dynamically by executablePath(). Include
+  // them only in the two serverless functions that render Stories.
+  outputFileTracingIncludes: {
+    '/api/admin/products/*/approve': [
+      './node_modules/@sparticuz/chromium/bin/**/*',
+    ],
+    '/api/admin/products/*/instagram-story/retry': [
+      './node_modules/@sparticuz/chromium/bin/**/*',
+    ],
+  },
   turbopack: {
     root: process.cwd(),
   },

@@ -5,6 +5,7 @@ import {
   INSTAGRAM_STORY_WIDTH,
   storyStoragePath,
 } from '@/lib/instagram/contracts'
+import { sanitizeCaptureError } from '@/lib/instagram/capture'
 
 describe('Instagram Story capture contract', () => {
   it('uses one deterministic JPEG path per product', () => {
@@ -21,5 +22,15 @@ describe('Instagram Story capture contract', () => {
       height: INSTAGRAM_STORY_HEIGHT,
       format: INSTAGRAM_STORY_FORMAT,
     }).toEqual({ width: 1080, height: 1920, format: 'jpeg' })
+  })
+
+  it('does not expose Chromium server paths in admin errors', () => {
+    const error = new Error(
+      'The input directory "/var/task/node_modules/@sparticuz/chromium/bin" does not exist. Please provide the location of the brotli files.',
+    )
+
+    expect(sanitizeCaptureError(error)).toBe(
+      'No pudimos iniciar el motor de render de la Story',
+    )
   })
 })

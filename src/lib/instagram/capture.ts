@@ -59,6 +59,9 @@ export function captureResultFromDatabaseRow(row: CaptureRow): InstagramStoryCap
 export function sanitizeCaptureError(error: unknown): string {
   const fallback = 'No pudimos generar la Story'
   const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : fallback
+  if (/[@/]sparticuz[/]|chromium|brotli files?/i.test(raw)) {
+    return 'No pudimos iniciar el motor de render de la Story'
+  }
   return raw
     .replace(/authorization\s*:\s*bearer\s+[^\s,;]+/gi, 'Authorization: Bearer [redacted]')
     .replace(/((?:access_token|token)=)[^&\s]+/gi, '$1[redacted]')
