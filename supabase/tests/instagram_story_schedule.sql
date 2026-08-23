@@ -55,6 +55,100 @@ WHERE scheduled_local_date = ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 11
 SELECT 1 / CASE WHEN COUNT(DISTINCT (scheduled_local_date, scheduled_slot)) = 6 THEN 1 ELSE 0 END
 FROM scheduled_results;
 
+-- "Add to cron" starts today and always fills the earliest future slot.
+-- Keep the expected slot independent from the time at which this test runs.
+SELECT public.instagram_unschedule_capture(
+  (SELECT id FROM public.instagram_story_captures
+   WHERE product_id = '94000000-0000-4000-8000-000000000003')
+);
+
+CREATE TEMP TABLE expected_manual_earliest AS
+WITH candidates AS (
+  SELECT
+    ((NOW() AT TIME ZONE 'America/Santiago')::DATE + day_offset)::DATE AS local_date,
+    rule.slot,
+    public.instagram_story_slot_time(
+      ((NOW() AT TIME ZONE 'America/Santiago')::DATE + day_offset)::DATE,
+      rule.slot
+    ) AS scheduled_for
+  FROM generate_series(0, 365) AS day_offset
+  JOIN public.instagram_story_schedule_rules rule
+    ON rule.iso_weekday = EXTRACT(
+      ISODOW FROM ((NOW() AT TIME ZONE 'America/Santiago')::DATE + day_offset)
+    )::SMALLINT
+  WHERE public.instagram_story_slot_time(
+      ((NOW() AT TIME ZONE 'America/Santiago')::DATE + day_offset)::DATE,
+      rule.slot
+    ) > NOW()
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.instagram_story_captures occupied
+      WHERE occupied.scheduled_local_date =
+        ((NOW() AT TIME ZONE 'America/Santiago')::DATE + day_offset)::DATE
+        AND occupied.scheduled_slot = rule.slot
+    )
+  ORDER BY scheduled_for
+  LIMIT 1
+)
+SELECT * FROM candidates;
+
+CREATE TEMP TABLE manual_earliest AS
+SELECT * FROM public.instagram_schedule_capture_next(
+  (SELECT id FROM public.instagram_story_captures
+   WHERE product_id = '94000000-0000-4000-8000-000000000003'),
+  NULL,
+  'manual'
+);
+
+SELECT 1 / CASE WHEN manual.scheduled_local_date = expected.local_date
+  AND manual.scheduled_slot = expected.slot
+  AND manual.scheduled_for = expected.scheduled_for
+  THEN 1 ELSE 0 END
+FROM manual_earliest manual
+CROSS JOIN expected_manual_earliest expected;
+
+-- Automatic approval intentionally keeps starting on the following day.
+SELECT public.instagram_unschedule_capture(
+  (SELECT id FROM public.instagram_story_captures
+   WHERE product_id = '94000000-0000-4000-8000-000000000003')
+);
+
+CREATE TEMP TABLE automatic_earliest AS
+SELECT * FROM public.instagram_schedule_capture_next(
+  (SELECT id FROM public.instagram_story_captures
+   WHERE product_id = '94000000-0000-4000-8000-000000000003'),
+  NULL,
+  'automatic'
+);
+
+SELECT 1 / CASE WHEN scheduled_local_date =
+    ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 1)
+  AND scheduled_slot = 1
+  THEN 1 ELSE 0 END
+FROM automatic_earliest;
+
+-- A hole in the middle of an existing day is preferred over extending the
+-- queue. Restoring product three to its original position also keeps the
+-- remaining assertions in this test unchanged.
+SELECT public.instagram_unschedule_capture(
+  (SELECT id FROM public.instagram_story_captures
+   WHERE product_id = '94000000-0000-4000-8000-000000000003')
+);
+
+CREATE TEMP TABLE internal_gap AS
+SELECT * FROM public.instagram_schedule_capture_next(
+  (SELECT id FROM public.instagram_story_captures
+   WHERE product_id = '94000000-0000-4000-8000-000000000003'),
+  ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10),
+  'manual'
+);
+
+SELECT 1 / CASE WHEN scheduled_local_date =
+    ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10)
+  AND scheduled_slot = 3
+  THEN 1 ELSE 0 END
+FROM internal_gap;
+
 CREATE TEMP TABLE regeneration AS
 SELECT * FROM public.instagram_begin_capture_regeneration(
   '94000000-0000-4000-8000-000000000002'
