@@ -76,8 +76,8 @@ async function launchBrowser(): Promise<Browser> {
   const executablePath = localExecutable || await chromium.executablePath()
   const headless = localExecutable ? true : 'shell'
   const args = localExecutable
-    ? puppeteer.defaultArgs({ headless: true })
-    : puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' })
+    ? await puppeteer.defaultArgs({ headless: true })
+    : await puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' })
 
   return puppeteer.launch({
     args,
