@@ -18,6 +18,7 @@ describe('approval Story modal', () => {
       />,
     )
     expect(html).toContain('Aprobando producto y generando Story…')
+    expect(html).toContain('data-testid="publish-loading-dots"')
     expect(html).toContain('aria-modal="true"')
     expect(html).not.toContain('Cerrar')
   })
@@ -45,7 +46,8 @@ describe('approval Story modal', () => {
     expect(html).toContain('Producto aprobado · Story preparada')
     expect(html).toContain('story.jpg?v=')
     expect(html).toContain('1080×1920')
-    expect(html).toContain('Abrir Story')
+    expect(html).toContain('Descargar Story')
+    expect(html).not.toContain('Abrir Story')
     expect(html).not.toContain('Publicar ahora')
   })
 

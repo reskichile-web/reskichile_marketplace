@@ -97,7 +97,7 @@
 .titleBlock {
   position: absolute;
   z-index: 9;
-  top: calc(320px + var(--ig-title-offset, 0px));
+  top: calc(320px + var(--ig-layout-offset, 0px) + var(--ig-title-offset, 0px));
   right: 70px;
   left: 95px;
   text-align: left;
@@ -106,10 +106,14 @@
 .detailsBlock {
   position: absolute;
   z-index: 9;
-  top: 780px;
+  top: calc(780px + var(--ig-layout-offset, 0px));
   right: auto;
   left: 690px;
   width: 340px;
+}
+
+.poster[data-artwork-shape='compact-wide'] {
+  --ig-layout-offset: 72px;
 }
 
 .category {
@@ -255,10 +259,10 @@
 }
 
 .riderSki {
-  bottom: -19px;
+  bottom: 34px;
   left: 55%;
-  width: 650px;
-  height: 474px;
+  width: 500px;
+  height: 365px;
   overflow: hidden;
   transform: translateX(-50%);
 }
@@ -298,4 +302,29 @@
     linear-gradient(7deg, rgb(245 249 252 / 92%) 0 26%, transparent 27%),
     radial-gradient(ellipse 75% 45% at 14% 100%, rgb(255 255 255 / 90%) 0 35%, transparent 70%);
   pointer-events: none;
+}
+
+.sellerDisclaimer {
+  position: absolute;
+  z-index: 9;
+  top: 92px;
+  right: 60px;
+  left: 60px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  color: #718096;
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 200;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sellerDisclaimer span:last-child {
+  color: #2674bf;
+  font-style: normal;
+  font-weight: 700;
 }

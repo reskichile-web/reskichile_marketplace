@@ -23,7 +23,7 @@ function jsonResponse(body: unknown, status = 200) {
 describe('Instagram Meta client', () => {
   it('uses the token only in the Authorization header and builds Story requests correctly', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ quota_usage: 4 }))
+      .mockResolvedValueOnce(jsonResponse({ data: [{ quota_usage: 4 }] }))
       .mockResolvedValueOnce(jsonResponse({ id: 'container-id' }))
       .mockResolvedValueOnce(jsonResponse({ status_code: 'FINISHED', status: 'Finished' }))
       .mockResolvedValueOnce(jsonResponse({ id: 'media-id' }))
@@ -51,6 +51,13 @@ describe('Instagram Meta client', () => {
     expect(fetchMock.mock.calls[3][0]).toBe(
       'https://graph.instagram.com/v26.0/17841466542260568/media_publish',
     )
+  })
+
+  it('accepts the legacy top-level publishing quota shape as a fallback', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ quota_usage: 7 }))
+    const client = createInstagramMetaClient(config, fetchMock as typeof fetch)
+
+    await expect(client.getPublishingLimit()).resolves.toBe(7)
   })
 
   it('sanitizes Meta errors before exposing them to the publisher', async () => {

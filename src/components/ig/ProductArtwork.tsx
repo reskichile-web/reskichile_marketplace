@@ -15,6 +15,7 @@ const TITLE_BUFFER = 70
 const RIDER_OVERLAP = 70
 const PRODUCT_TITLE_GAP = 110
 const MAX_TITLE_SHIFT = 190
+const COMPACT_WIDE_ASPECT_RATIO = 1.35
 
 function nextFrame(): Promise<void> {
   return new Promise(resolve => requestAnimationFrame(() => resolve()))
@@ -28,11 +29,12 @@ export default function ProductArtwork({ src, alt, longProduct }: ProductArtwork
 
   useEffect(() => {
     let cancelled = false
+    const canvasElement = canvasRef.current
     setReady(false)
-    canvasRef.current
+    canvasElement
       ?.closest<HTMLElement>('[data-testid="ig-product-post"]')
       ?.removeAttribute('data-artwork-shape')
-    canvasRef.current
+    canvasElement
       ?.closest<HTMLElement>('[data-testid="ig-product-post"]')
       ?.style.removeProperty('--ig-title-offset')
 
@@ -45,7 +47,7 @@ export default function ProductArtwork({ src, alt, longProduct }: ProductArtwork
       sample.width = source.naturalWidth
       sample.height = source.naturalHeight
       const sampleContext = sample.getContext('2d', { willReadFrequently: true })
-      const canvas = canvasRef.current
+      const canvas = canvasElement
       const context = canvas?.getContext('2d')
       if (!sampleContext || !canvas || !context) return
 
@@ -80,7 +82,13 @@ export default function ProductArtwork({ src, alt, longProduct }: ProductArtwork
       const sourceWidth = Math.min(sample.width - sourceX, maxX - minX + cropPadding * 2)
       const sourceHeight = Math.min(sample.height - sourceY, maxY - minY + cropPadding * 2)
       const contentAspectRatio = sourceWidth / sourceHeight
-      const artworkShape = longProduct && contentAspectRatio < 0.34 ? 'narrow' : 'standard'
+      const artworkShape = longProduct
+        ? contentAspectRatio < 0.34
+          ? 'narrow'
+          : 'standard'
+        : contentAspectRatio >= COMPACT_WIDE_ASPECT_RATIO
+          ? 'compact-wide'
+          : 'standard'
       const poster = canvas.closest<HTMLElement>('[data-testid="ig-product-post"]')
       if (poster) poster.dataset.artworkShape = artworkShape
       const destinationPadding = 12
@@ -166,10 +174,10 @@ export default function ProductArtwork({ src, alt, longProduct }: ProductArtwork
     return () => {
       cancelled = true
       source.onload = null
-      canvasRef.current
+      canvasElement
         ?.closest<HTMLElement>('[data-testid="ig-product-post"]')
         ?.removeAttribute('data-artwork-shape')
-      canvasRef.current
+      canvasElement
         ?.closest<HTMLElement>('[data-testid="ig-product-post"]')
         ?.style.removeProperty('--ig-title-offset')
     }

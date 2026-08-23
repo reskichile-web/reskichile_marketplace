@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO } from '@/lib/animations'
+import PublishLoadingDots from '@/components/PublishLoadingDots'
 
 type PublishPhase = 'compressing' | 'uploading' | 'creating' | 'success'
 
@@ -127,25 +128,7 @@ export default function PublishLoadingOverlay({ phase, imageProgress }: Props) {
               exit={{ opacity: 0, y: -10 }}
               className="mb-8"
             >
-              {/* Animated dots */}
-              <div className="flex items-center justify-center gap-1.5">
-                {[0, 1, 2].map(i => (
-                  <motion.div
-                    key={i}
-                    className="w-3 h-3 rounded-full bg-brand-500"
-                    animate={{
-                      y: [0, -12, 0],
-                      opacity: [0.3, 1, 0.3],
-                    }}
-                    transition={{
-                      duration: 0.8,
-                      repeat: Infinity,
-                      delay: i * 0.15,
-                      ease: 'easeInOut',
-                    }}
-                  />
-                ))}
-              </div>
+              <PublishLoadingDots />
             </motion.div>
           )}
         </AnimatePresence>

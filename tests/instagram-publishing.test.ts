@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   publishEligibleInstagramStories,
+  publishInstagramStoryNow,
   startOfTodayInChile,
   type PublishableStoryCapture,
   type StoryPublishingRepository,
@@ -35,6 +36,10 @@ function capture(overrides: Partial<StoredCapture> = {}): StoredCapture {
     attempts: 0,
     approved_at: '2026-08-21T12:00:00.000Z',
     updated_at: '2026-08-21T12:05:00.000Z',
+    scheduled_local_date: '2026-08-22',
+    scheduled_slot: 1,
+    scheduled_for: '2026-08-22T16:30:00.000Z',
+    schedule_source: 'automatic',
     published_at: null,
     last_error: null,
     ...overrides,
@@ -46,23 +51,59 @@ class MemoryRepository implements StoryPublishingRepository {
   readonly approvedProducts = new Map<string, boolean>()
   readonly cutoffs: Date[] = []
   recoverInterrupted = vi.fn(async () => undefined)
+  rescheduleExpired = vi.fn(async (now: Date) => {
+    let count = 0
+    for (const row of this.rows) {
+      if (
+        (row.status === 'ready' || row.status === 'retry')
+        && row.scheduled_for
+        && new Date(row.scheduled_for).getTime() + 59 * 60_000 < now.getTime()
+      ) {
+        row.scheduled_local_date = '2026-08-23'
+        row.scheduled_slot = 1
+        row.scheduled_for = '2026-08-23T23:00:00.000Z'
+        row.container_id = null
+        count += 1
+      }
+    }
+    return count
+  })
 
   constructor(rows: StoredCapture[]) {
     this.rows = rows
     for (const row of rows) this.approvedProducts.set(row.product_id, true)
   }
 
-  async listEligible(cutoff: Date, limit: number) {
-    this.cutoffs.push(cutoff)
+  async rescheduleCapture(captureId: string) {
+    const row = this.required(captureId)
+    row.status = 'retry'
+    row.scheduled_local_date = '2026-08-23'
+    row.scheduled_slot = 1
+    row.scheduled_for = '2026-08-23T23:00:00.000Z'
+    row.container_id = null
+  }
+
+  async listEligible(now: Date, limit: number) {
+    this.cutoffs.push(now)
+    const earliest = now.getTime() - 59 * 60_000
     return this.rows
       .filter((row) =>
         (row.status === 'ready' || row.status === 'retry')
-        && new Date(row.approved_at) < cutoff
+        && row.scheduled_for
+        && new Date(row.scheduled_for).getTime() >= earliest
+        && new Date(row.scheduled_for).getTime() <= now.getTime()
         && !row.published_at
         && !row.media_id
         && this.approvedProducts.get(row.product_id) === true)
-      .sort((left, right) => left.approved_at.localeCompare(right.approved_at))
+      .sort((left, right) => (left.scheduled_for || '').localeCompare(right.scheduled_for || ''))
       .slice(0, limit) as PublishableStoryCapture[]
+  }
+
+  async getPublishable(captureId: string) {
+    const row = this.rows.find((item) => item.id === captureId)
+    if (!row || (row.status !== 'ready' && row.status !== 'retry') || row.published_at || row.media_id) return null
+    if (this.approvedProducts.get(row.product_id) !== true) return null
+    return row as PublishableStoryCapture
   }
 
   async claim(captureId: string) {
@@ -146,6 +187,8 @@ function metaClient(overrides: Partial<InstagramMetaClient> = {}): InstagramMeta
 }
 
 describe('Instagram daily Story publisher', () => {
+  const fixedNow = () => new Date('2026-08-22T17:00:00.000Z')
+
   it('calculates Chile midnight correctly across daylight-saving offsets', () => {
     expect(startOfTodayInChile(new Date('2026-08-22T17:00:00.000Z')).toISOString())
       .toBe('2026-08-22T04:00:00.000Z')
@@ -159,7 +202,7 @@ describe('Instagram daily Story publisher', () => {
 
     const result = await publishEligibleInstagramStories(
       { ...enabledConfig, enabled: false, accessToken: null, userId: null },
-      { repository, metaClient: meta },
+      { repository, metaClient: meta, now: fixedNow },
     )
 
     expect(result.disabled).toBe(true)
@@ -167,24 +210,25 @@ describe('Instagram daily Story publisher', () => {
     expect(meta.getPublishingLimit).not.toHaveBeenCalled()
   })
 
-  it('publishes old approved captures, excluding today and unapproved products', async () => {
-    const old = capture({ id: 'old', product_id: 'approved', approved_at: '2026-08-21T23:00:00.000Z' })
-    const today = capture({ id: 'today', product_id: 'today-product', approved_at: '2026-08-22T05:00:00.000Z' })
-    const unapproved = capture({ id: 'unapproved', product_id: 'sold', approved_at: '2026-08-20T10:00:00.000Z' })
-    const repository = new MemoryRepository([old, today, unapproved])
+  it('publishes only the oldest due slot and excludes future or unapproved products', async () => {
+    const due = capture({ id: 'due', product_id: 'approved' })
+    const secondDue = capture({ id: 'second-due', product_id: 'second-approved', scheduled_for: '2026-08-22T16:45:00.000Z' })
+    const future = capture({ id: 'future', product_id: 'future-product', scheduled_for: '2026-08-22T18:00:00.000Z' })
+    const unapproved = capture({ id: 'unapproved', product_id: 'sold' })
+    const repository = new MemoryRepository([due, secondDue, future, unapproved])
     repository.approvedProducts.set('sold', false)
     const meta = metaClient()
 
     const result = await publishEligibleInstagramStories(enabledConfig, {
       repository,
       metaClient: meta,
-      now: () => new Date('2026-08-22T17:00:00.000Z'),
+      now: fixedNow,
     })
 
-    expect(repository.cutoffs[0].toISOString()).toBe('2026-08-22T04:00:00.000Z')
     expect(result).toMatchObject({ candidates: 1, claimed: 1, published: 1 })
-    expect(old.media_id).toBe('media-1')
-    expect(today.status).toBe('ready')
+    expect(due.media_id).toBe('media-1')
+    expect(secondDue.status).toBe('ready')
+    expect(future.status).toBe('ready')
     expect(unapproved.status).toBe('ready')
   })
 
@@ -192,7 +236,7 @@ describe('Instagram daily Story publisher', () => {
     const repository = new MemoryRepository([capture()])
     const meta = metaClient({ getPublishingLimit: vi.fn(async () => 100) })
 
-    const result = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta })
+    const result = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta, now: fixedNow })
 
     expect(result.quotaUsage).toBe(100)
     expect(result.candidates).toBe(0)
@@ -204,7 +248,7 @@ describe('Instagram daily Story publisher', () => {
     const repository = new MemoryRepository([row])
     const meta = metaClient()
 
-    await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta })
+    await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta, now: fixedNow })
 
     expect(meta.createStoryContainer).not.toHaveBeenCalled()
     expect(meta.getContainerStatus).toHaveBeenCalledWith('existing-container')
@@ -218,7 +262,7 @@ describe('Instagram daily Story publisher', () => {
       getContainerStatus: vi.fn(async () => ({ statusCode: 'PUBLISHED' as const, status: null })),
     })
 
-    const result = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta })
+    const result = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta, now: fixedNow })
 
     expect(result.recoveredPublished).toBe(1)
     expect(meta.createStoryContainer).not.toHaveBeenCalled()
@@ -226,7 +270,7 @@ describe('Instagram daily Story publisher', () => {
     expect(row.published_at).not.toBeNull()
   })
 
-  it('marks the third failure as failed and continues with the next Story', async () => {
+  it('marks the third failure as failed and lets the next invocation continue', async () => {
     const broken = capture({ id: 'broken', product_id: 'broken-product', attempts: 2 })
     const healthy = capture({ id: 'healthy', product_id: 'healthy-product' })
     const repository = new MemoryRepository([broken, healthy])
@@ -235,9 +279,11 @@ describe('Instagram daily Story publisher', () => {
       .mockResolvedValueOnce('healthy-container')
     const meta = metaClient({ createStoryContainer: create })
 
-    const result = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta })
+    const first = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta, now: fixedNow })
+    const second = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta, now: fixedNow })
 
-    expect(result).toMatchObject({ candidates: 2, claimed: 2, failed: 1, published: 1 })
+    expect(first).toMatchObject({ candidates: 1, claimed: 1, failed: 1, published: 0 })
+    expect(second).toMatchObject({ candidates: 1, claimed: 1, published: 1 })
     expect(broken.status).toBe('failed')
     expect(broken.attempts).toBe(3)
     expect(healthy.media_id).toBe('media-1')
@@ -266,5 +312,37 @@ describe('Instagram daily Story publisher', () => {
     expect(meta.getContainerStatus).toHaveBeenCalledTimes(1)
     expect(meta.createStoryContainer).not.toHaveBeenCalled()
     expect(meta.publishContainer).not.toHaveBeenCalled()
+  })
+
+  it('reassigns an expired slot instead of publishing it late', async () => {
+    const row = capture({ scheduled_for: '2026-08-22T15:59:59.000Z' })
+    const repository = new MemoryRepository([row])
+    const meta = metaClient()
+
+    const result = await publishEligibleInstagramStories(enabledConfig, {
+      repository,
+      metaClient: meta,
+      now: fixedNow,
+    })
+
+    expect(repository.rescheduleExpired).toHaveBeenCalled()
+    expect(result.candidates).toBe(0)
+    expect(row.scheduled_local_date).toBe('2026-08-23')
+    expect(meta.createStoryContainer).not.toHaveBeenCalled()
+  })
+
+  it('allows an explicitly selected prepared Story to publish immediately', async () => {
+    const row = capture({ scheduled_local_date: null, scheduled_slot: null, scheduled_for: null, schedule_source: null })
+    const repository = new MemoryRepository([row])
+    const meta = metaClient()
+
+    const result = await publishInstagramStoryNow(enabledConfig, row.id, {
+      repository,
+      metaClient: meta,
+      now: fixedNow,
+    })
+
+    expect(result).toMatchObject({ candidates: 1, claimed: 1, published: 1 })
+    expect(repository.rescheduleExpired).not.toHaveBeenCalled()
   })
 })

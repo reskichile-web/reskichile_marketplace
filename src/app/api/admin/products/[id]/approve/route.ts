@@ -14,6 +14,7 @@ import type {
   AdminApprovalResponse,
   InstagramStoryCaptureStatus,
 } from '@/lib/instagram/contracts'
+import { scheduleCaptureNext } from '@/lib/instagram/scheduling'
 import { revalidateProduct } from '@/lib/revalidate'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
@@ -182,6 +183,15 @@ export async function POST(
       )
     }
 
+    let schedule = null
+    if (story.status === 'ready' && story.jpegPublicUrl) {
+      try {
+        schedule = await scheduleCaptureNext(story.id, 'automatic')
+      } catch {
+        console.error('[approve] Story ready but calendar assignment failed')
+      }
+    }
+
     const response: AdminApprovalResponse = {
       ok: true,
       approved: true,
@@ -193,6 +203,7 @@ export async function POST(
         slug: product.slug || product.id,
       },
       story,
+      schedule,
     }
     return NextResponse.json(response, {
       headers: { 'Cache-Control': 'no-store, private' },

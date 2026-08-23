@@ -235,6 +235,10 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
           />
         </div>
         <div className={styles.foregroundSnow} aria-hidden="true" />
+        <p className={styles.sellerDisclaimer}>
+          <span>Producto de vendedor independiente</span>
+          <span>Publicado en www.reskichile.cl</span>
+        </p>
       </article>
     </div>
   )

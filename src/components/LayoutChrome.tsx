@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import FeedbackWidget from '@/components/FeedbackWidget'
 
 interface Props {
   header: React.ReactNode
@@ -84,6 +85,9 @@ export default function LayoutChrome({ header, footer, children }: Props) {
         <div className={isFullscreenChatRoute ? 'hidden md:block' : 'contents'}>
           {footer}
         </div>
+      )}
+      {!hidesMarketplaceChrome && !isFullscreenChatRoute && (
+        <FeedbackWidget pagePath={pathname} />
       )}
     </>
   )

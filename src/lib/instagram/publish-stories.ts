@@ -14,6 +14,7 @@ const DEFAULT_RUN_BUDGET_MS = 280_000
 const DEFAULT_POLL_INTERVAL_MS = 60_000
 const DEADLINE_RESERVE_MS = 12_000
 const MAX_CONTAINER_CHECKS = 5
+const STORY_SLOT_GRACE_MS = 59 * 60_000
 
 export interface PublishableStoryCapture {
   id: string
@@ -25,11 +26,18 @@ export interface PublishableStoryCapture {
   attempts: number
   approved_at: string
   updated_at: string
+  scheduled_local_date: string | null
+  scheduled_slot: number | null
+  scheduled_for: string | null
+  schedule_source: 'automatic' | 'manual' | null
 }
 
 export interface StoryPublishingRepository {
   recoverInterrupted(before: Date, now: Date): Promise<void>
-  listEligible(cutoff: Date, limit: number): Promise<PublishableStoryCapture[]>
+  rescheduleExpired(now: Date): Promise<number>
+  rescheduleCapture(captureId: string, now: Date): Promise<void>
+  listEligible(now: Date, limit: number): Promise<PublishableStoryCapture[]>
+  getPublishable(captureId: string): Promise<PublishableStoryCapture | null>
   claim(captureId: string): Promise<PublishableStoryCapture | null>
   isProductApproved(productId: string): Promise<boolean>
   saveContainer(captureId: string, containerId: string): Promise<boolean>
@@ -67,6 +75,11 @@ interface PublishingDependencies {
   sleep?: (milliseconds: number) => Promise<void>
   runBudgetMs?: number
   pollIntervalMs?: number
+}
+
+interface PublishingSelection {
+  mode: 'scheduled' | 'manual'
+  captureId?: string
 }
 
 interface PendingContainer {
@@ -138,7 +151,7 @@ function sleepFor(milliseconds: number): Promise<void> {
 
 export function createSupabaseStoryPublishingRepository(): StoryPublishingRepository {
   const service = createServiceRoleClient()
-  const captureFields = 'id, product_id, jpeg_public_url, status, container_id, media_id, attempts, approved_at, updated_at'
+  const captureFields = 'id, product_id, jpeg_public_url, status, container_id, media_id, attempts, approved_at, updated_at, scheduled_local_date, scheduled_slot, scheduled_for, schedule_source'
 
   async function requireNoError(error: { message?: string } | null, operation: string) {
     if (error) throw new Error(`No pudimos ${operation}`)
@@ -162,19 +175,52 @@ export function createSupabaseStoryPublishingRepository(): StoryPublishingReposi
       await requireNoError(staleError, 'recuperar publicaciones interrumpidas')
     },
 
-    async listEligible(cutoff, limit) {
+    async rescheduleExpired(now) {
+      const { data, error } = await service.rpc('instagram_reschedule_expired_captures', {
+        p_now: now.toISOString(),
+      })
+      await requireNoError(error, 'reasignar ventanas vencidas')
+      return Number(data || 0)
+    },
+
+    async rescheduleCapture(captureId, now) {
+      const { error } = await service.rpc('instagram_reschedule_capture_next', {
+        p_capture_id: captureId,
+        p_now: now.toISOString(),
+      })
+      await requireNoError(error, 'reasignar una ventana vencida')
+    },
+
+    async listEligible(now, limit) {
+      const earliest = new Date(now.getTime() - STORY_SLOT_GRACE_MS)
       const { data, error } = await service
         .from('instagram_story_captures')
         .select(`${captureFields}, products!inner(status)`)
         .in('status', ['ready', 'retry'])
-        .lt('approved_at', cutoff.toISOString())
+        .not('scheduled_for', 'is', null)
+        .gte('scheduled_for', earliest.toISOString())
+        .lte('scheduled_for', now.toISOString())
         .is('published_at', null)
         .is('media_id', null)
         .eq('products.status', 'approved')
-        .order('approved_at', { ascending: true })
+        .order('scheduled_for', { ascending: true })
         .limit(limit)
       await requireNoError(error, 'leer la cola de Instagram')
       return (data ?? []) as unknown as PublishableStoryCapture[]
+    },
+
+    async getPublishable(captureId) {
+      const { data, error } = await service
+        .from('instagram_story_captures')
+        .select(`${captureFields}, products!inner(status)`)
+        .eq('id', captureId)
+        .in('status', ['ready', 'retry'])
+        .is('published_at', null)
+        .is('media_id', null)
+        .eq('products.status', 'approved')
+        .maybeSingle()
+      await requireNoError(error, 'leer la captura de Instagram')
+      return data as unknown as PublishableStoryCapture | null
     },
 
     async claim(captureId) {
@@ -288,6 +334,22 @@ export async function publishEligibleInstagramStories(
   config: InstagramPublishingConfig,
   dependencies: PublishingDependencies = {},
 ): Promise<InstagramPublishSummary> {
+  return publishInstagramStories(config, dependencies, { mode: 'scheduled' })
+}
+
+export async function publishInstagramStoryNow(
+  config: InstagramPublishingConfig,
+  captureId: string,
+  dependencies: PublishingDependencies = {},
+): Promise<InstagramPublishSummary> {
+  return publishInstagramStories(config, dependencies, { mode: 'manual', captureId })
+}
+
+async function publishInstagramStories(
+  config: InstagramPublishingConfig,
+  dependencies: PublishingDependencies,
+  selection: PublishingSelection,
+): Promise<InstagramPublishSummary> {
   const summary: InstagramPublishSummary = {
     ok: true,
     disabled: !config.enabled,
@@ -321,10 +383,12 @@ export async function publishEligibleInstagramStories(
     new Date(recoveryNow.getTime() - STALE_PUBLISHING_MS),
     recoveryNow,
   )
-  const candidates = await repository.listEligible(
-    startOfTodayInChile(recoveryNow),
-    availableQuota,
-  )
+  if (selection.mode === 'scheduled') await repository.rescheduleExpired(recoveryNow)
+  const candidates = selection.mode === 'manual'
+    ? [await repository.getPublishable(selection.captureId || '')].filter(
+        (capture): capture is PublishableStoryCapture => Boolean(capture),
+      )
+    : await repository.listEligible(recoveryNow, Math.min(1, availableQuota))
   summary.candidates = candidates.length
 
   const pending: PendingContainer[] = []
@@ -347,6 +411,16 @@ export async function publishEligibleInstagramStories(
   async function advanceContainer(item: PendingContainer): Promise<'done' | 'pending'> {
     const capture = item.capture
     try {
+      if (
+        selection.mode === 'scheduled'
+        && capture.scheduled_for
+        && now().getTime() > new Date(capture.scheduled_for).getTime() + STORY_SLOT_GRACE_MS
+      ) {
+        await repository.rescheduleCapture(capture.id, now())
+        summary.skipped += 1
+        return 'done'
+      }
+
       if (!(await repository.isProductApproved(capture.product_id))) {
         await repository.releaseUnapproved(capture.id)
         summary.skipped += 1
@@ -390,6 +464,17 @@ export async function publishEligibleInstagramStories(
 
       if (!(await repository.isProductApproved(capture.product_id))) {
         await repository.releaseUnapproved(capture.id)
+        summary.skipped += 1
+        return 'done'
+      }
+
+
+      if (
+        selection.mode === 'scheduled'
+        && capture.scheduled_for
+        && now().getTime() > new Date(capture.scheduled_for).getTime() + STORY_SLOT_GRACE_MS
+      ) {
+        await repository.rescheduleCapture(capture.id, now())
         summary.skipped += 1
         return 'done'
       }

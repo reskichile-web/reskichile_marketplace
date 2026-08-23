@@ -8,12 +8,14 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   BarChart3,
   Boxes,
+  CalendarClock,
   CircleDollarSign,
   ClipboardCheck,
   LayoutDashboard,
   LogOut,
   Menu,
   MessageCircle,
+  MessageSquareText,
   PackageOpen,
   Plus,
   ShoppingBag,
@@ -33,10 +35,12 @@ interface AdminLink {
 const NAV_ITEMS: AdminLink[] = [
   { label: 'Inicio', href: '/admin', icon: LayoutDashboard },
   { label: 'Publicaciones', href: '/admin/publicaciones', icon: ClipboardCheck },
+  { label: 'Historias IG', href: '/admin/instagram', icon: CalendarClock },
   { label: 'Inventario', href: '/admin/inventario', icon: Boxes },
   { label: 'Pedidos', href: '/admin/pedidos', icon: ShoppingBag },
   { label: 'Usuarios', href: '/admin/usuarios', icon: Users },
   { label: 'Chats', href: '/admin/chats', icon: MessageCircle },
+  { label: 'Comentarios', href: '/admin/comentarios', icon: MessageSquareText },
   { label: 'Mercado', href: '/admin/finanzas', icon: CircleDollarSign },
   { label: 'Métricas', href: '/admin/metricas', icon: BarChart3 },
 ]

@@ -113,10 +113,13 @@ export function createInstagramMetaClient(
 
   return {
     async getPublishingLimit() {
-      const body = await request<{ quota_usage?: number }>(
+      const body = await request<{
+        quota_usage?: number
+        data?: Array<{ quota_usage?: number }>
+      }>(
         `/${encodeURIComponent(config.userId!)}/content_publishing_limit?fields=quota_usage`,
       )
-      const usage = Number(body.quota_usage)
+      const usage = Number(body.data?.[0]?.quota_usage ?? body.quota_usage)
       if (!Number.isFinite(usage) || usage < 0) {
         throw new MetaApiError('Meta devolvió una cuota inválida', null, null, true, false)
       }

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   generate: vi.fn(),
   revalidate: vi.fn(),
+  schedule: vi.fn(),
 }))
 
 vi.mock('@/lib/admin-security', () => ({
@@ -44,6 +45,7 @@ vi.mock('@/lib/instagram/capture', () => ({
   }),
   generateAndStoreStoryCapture: mocks.generate,
 }))
+vi.mock('@/lib/instagram/scheduling', () => ({ scheduleCaptureNext: mocks.schedule }))
 
 import { POST } from '@/app/api/admin/products/[id]/approve/route'
 
@@ -82,6 +84,12 @@ describe('admin product approval Story contract', () => {
     vi.clearAllMocks()
     mocks.from.mockReturnValue(productQuery())
     mocks.sendEmail.mockResolvedValue({ ok: true })
+    mocks.schedule.mockResolvedValue({
+      scheduledLocalDate: '2026-08-22',
+      scheduledSlot: 1,
+      scheduledFor: '2026-08-22T23:30:00.000Z',
+      scheduleSource: 'automatic',
+    })
   })
 
   it('returns an existing ready capture without rendering or resending email', async () => {
@@ -110,6 +118,7 @@ describe('admin product approval Story contract', () => {
     expect(mocks.generate).not.toHaveBeenCalled()
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.revalidate).not.toHaveBeenCalled()
+    expect(mocks.schedule).toHaveBeenCalledWith('capture-id', 'automatic')
   })
 
   it('keeps approval successful when rendering fails', async () => {

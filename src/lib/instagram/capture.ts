@@ -37,6 +37,7 @@ export interface GenerateStoryCaptureInput {
   productId: string
   slug: string
   storagePath: string
+  replaceExisting?: boolean
 }
 
 function resultFromRow(row: CaptureRow, error?: string): InstagramStoryCaptureResult {
@@ -177,18 +178,24 @@ export async function generateAndStoreStoryCapture(
 
   try {
     const jpeg = await renderStoryJpeg(input.slug)
-    const { error: uploadError } = await service.storage
-      .from(STORAGE_BUCKET)
+    const storage = service.storage.from(STORAGE_BUCKET)
+
+    if (input.replaceExisting) {
+      const { error: removeError } = await storage.remove([input.storagePath])
+      if (removeError) {
+        throw new Error(`No se pudo eliminar el JPEG anterior: ${removeError.message}`)
+      }
+    }
+
+    const { error: uploadError } = await storage
       .upload(input.storagePath, jpeg, {
         cacheControl: '0',
         contentType: 'image/jpeg',
-        upsert: true,
+        upsert: !input.replaceExisting,
       })
     if (uploadError) throw new Error(`No se pudo guardar el JPEG: ${uploadError.message}`)
 
-    const { data: publicData } = service.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(input.storagePath)
+    const { data: publicData } = storage.getPublicUrl(input.storagePath)
     const publicUrl = publicData.publicUrl
     await verifyPublicJpeg(publicUrl)
 
@@ -208,7 +215,7 @@ export async function generateAndStoreStoryCapture(
       .maybeSingle()
 
     if (updateError || !row) {
-      await service.storage.from(STORAGE_BUCKET).remove([input.storagePath])
+      await storage.remove([input.storagePath])
       throw new Error(updateError?.message || 'La captura dejó de estar disponible')
     }
 

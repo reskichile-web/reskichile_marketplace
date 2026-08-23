@@ -6,8 +6,40 @@
       "schedule": "0 14 * * *"
     },
     {
-      "path": "/api/cron/instagram-publish",
+      "path": "/api/cron/instagram-publish/t2030",
+      "schedule": "30 20 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t2100",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t2130",
+      "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t2200",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t2230",
+      "schedule": "30 22 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t2300",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t2330",
+      "schedule": "30 23 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t0000",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-publish/t0030",
+      "schedule": "30 0 * * *"
     }
   ]
 }

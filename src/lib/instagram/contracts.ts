@@ -27,6 +27,13 @@ export interface InstagramStoryCaptureResult {
   error?: string
 }
 
+export interface InstagramStoryScheduleResult {
+  scheduledLocalDate: string
+  scheduledSlot: number
+  scheduledFor: string
+  scheduleSource: 'automatic' | 'manual'
+}
+
 export interface AdminApprovalResponse {
   ok: true
   approved: true
@@ -34,6 +41,7 @@ export interface AdminApprovalResponse {
   emailed: boolean
   product: InstagramStoryProductSummary
   story: InstagramStoryCaptureResult
+  schedule: InstagramStoryScheduleResult | null
 }
 
 export interface AdminStoryRetryResponse {
@@ -41,6 +49,7 @@ export interface AdminStoryRetryResponse {
   approved: true
   product: InstagramStoryProductSummary
   story: InstagramStoryCaptureResult
+  schedule: InstagramStoryScheduleResult | null
 }
 
 export function storyStoragePath(productId: string): string {

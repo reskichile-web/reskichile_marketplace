@@ -1,6 +1,8 @@
 'use client'
 
-import Spinner from '@/components/Spinner'
+import { useState } from 'react'
+import { Download } from 'lucide-react'
+import PublishLoadingDots from '@/components/PublishLoadingDots'
 import type {
   InstagramStoryCaptureResult,
   InstagramStoryProductSummary,
@@ -44,6 +46,9 @@ export default function ApprovalStoryModal({
   onClose,
   onRetry,
 }: ApprovalStoryModalProps) {
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState('')
+
   if (!state) return null
 
   const working = state.phase === 'working'
@@ -51,6 +56,29 @@ export default function ApprovalStoryModal({
   const storyUrl = ready && state.story.jpegPublicUrl
     ? cacheBustedUrl(state.story.jpegPublicUrl, state.story.updatedAt)
     : null
+
+  async function downloadStory() {
+    if (!storyUrl || !state || state.phase !== 'ready') return
+    setDownloading(true)
+    setDownloadError('')
+
+    try {
+      const response = await fetch(storyUrl)
+      if (!response.ok) throw new Error('No pudimos descargar la Story')
+      const blobUrl = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `${state.product.slug || 'reskichile-story'}.jpg`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : 'No pudimos descargar la Story')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <div
@@ -63,7 +91,7 @@ export default function ApprovalStoryModal({
       <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         {working ? (
           <div className="flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center">
-            <Spinner size="lg" color="brand" />
+            <PublishLoadingDots />
             <h2 id="approval-story-title" className="mt-6 text-xl font-black text-gray-900">
               {state.operation === 'approve'
                 ? 'Aprobando producto y generando Story…'
@@ -99,15 +127,21 @@ export default function ApprovalStoryModal({
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4">
+              {downloadError && (
+                <p role="alert" className="mr-auto self-center text-xs font-medium text-red-600">
+                  {downloadError}
+                </p>
+              )}
               {storyUrl && (
-                <a
-                  href={storyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+                <button
+                  type="button"
+                  onClick={() => void downloadStory()}
+                  disabled={downloading}
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-wait disabled:opacity-60"
                 >
-                  Abrir Story
-                </a>
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  {downloading ? 'Descargando…' : 'Descargar Story'}
+                </button>
               )}
               <button
                 type="button"

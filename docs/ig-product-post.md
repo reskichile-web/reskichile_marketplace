@@ -41,12 +41,14 @@ El render usa Chrome en modo headless y produce siempre un PNG de 1080 × 1920 p
 - Las fotografías procesadas del catálogo se analizan en el navegador: el sistema recorta automáticamente el espacio blanco del PNG y escala el contenido útil para ocupar toda su zona, sin ajustes manuales por producto.
 - Los esquís, snowboards y bastones se anclan al borde inferior de su zona para entrar ligeramente detrás del rider.
 - Los productos compactos se centran verticalmente respecto del bloque completo de precio y atributos usando solo su contenido visible, no el lienzo original del PNG. El resultado se limita con un buffer mínimo bajo el título y una zona máxima de solapamiento con el rider.
+- Si el contenido visible de un producto compacto es marcadamente horizontal, título, producto, precio y atributos bajan juntos exactamente 72 px para conservar su alineación sin alterar los productos largos.
 - Las composiciones largas que contienen varios elementos distribuidos —por ejemplo esquís, fijaciones y pieles dentro de una misma imagen— también se centran verticalmente. Solo los productos largos realmente estrechos conservan el anclaje inferior.
 - Cuando un producto compacto y horizontal deja demasiado aire sobre sí mismo, el título baja automáticamente hasta recuperar una separación visual constante, sin alterar el espacio reservado para el logo.
 - Si el contenido detectado es alto y estrecho —por ejemplo, solo un par de esquís— el layout libera el espacio vacío de la fotografía, desplaza el producto a la izquierda y amplía la ficha técnica en la zona recuperada.
 - Cuando un producto tiene solo dos datos técnicos, el precio y esos atributos crecen automáticamente para equilibrar la composición.
 - Cada atributo combina una etiqueta técnica pequeña con un valor protagonista; las etiquetas se asignan según el tipo de producto.
-- El rider se recorta a transparencia en el navegador y se compone realmente por encima del producto, conservando el spray de nieve útil sin dejar pasar el producto por el cuerpo.
+- El rider se recorta a transparencia en el navegador y se compone realmente por encima del producto, conservando el spray de nieve útil sin dejar pasar el producto por el cuerpo. Su caja está limitada a menos de la mitad del ancho y a menos de una quinta parte del alto de la historia para que siempre sea un acento secundario.
+- Todas las historias incluyen, sobre el logo y sin contenedor, “Producto de vendedor independiente” en cursiva ultraliviana y “Publicado en www.reskichile.cl” en azul y negrita.
 - Todas las categorías utilizan el mismo esquiador azul para mantener consistencia de marca.
 - El producto ocupa una zona segura de 600 px con 50 px de margen izquierdo; la ficha comienza después de un buffer mínimo de 40 px y termina al menos 50 px antes del borde derecho.
 - El precio se mide con la tipografía cargada y reduce su tamaño únicamente cuando excede el ancho seguro de su columna.

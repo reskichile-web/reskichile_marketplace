@@ -2,16 +2,19 @@ import { NextResponse } from 'next/server'
 import {
   adminErrorResponse,
   assertSameOrigin,
+  readSmallJson,
   requireAdmin,
 } from '@/lib/admin-security'
 import {
   captureResultFromDatabaseRow,
   generateAndStoreStoryCapture,
+  sanitizeCaptureError,
 } from '@/lib/instagram/capture'
 import type {
   AdminStoryRetryResponse,
   InstagramStoryCaptureStatus,
 } from '@/lib/instagram/contracts'
+import { scheduleCaptureNext } from '@/lib/instagram/scheduling'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -34,6 +37,16 @@ interface RetryClaim {
 
 function retryRpcError(error: { message?: string } | null) {
   const raw = error?.message || ''
+  if (
+    raw.includes('instagram_begin_capture_regeneration') &&
+    (raw.includes('schema cache') || raw.includes('Could not find the function'))
+  ) {
+    return {
+      message: 'Falta aplicar la migración de regeneración de Stories.',
+      status: 503,
+      code: 'STORY_REGENERATION_MIGRATION_REQUIRED',
+    }
+  }
   if (raw.includes('PRODUCT_NOT_FOUND')) {
     return { message: 'Producto no encontrado', status: 404, code: 'PRODUCT_NOT_FOUND' }
   }
@@ -47,6 +60,13 @@ function retryRpcError(error: { message?: string } | null) {
       code: 'CAPTURE_GENERATION_BUSY',
     }
   }
+  if (raw.includes('CAPTURE_NOT_REGENERATABLE')) {
+    return {
+      message: 'Esta Story no se puede regenerar en su estado actual.',
+      status: 409,
+      code: 'CAPTURE_NOT_REGENERATABLE',
+    }
+  }
   return { message: 'No pudimos iniciar el reintento', status: 500, code: 'RETRY_FAILED' }
 }
 
@@ -57,6 +77,11 @@ export async function POST(
   try {
     assertSameOrigin(request)
     await requireAdmin()
+    const body = request.headers.get('content-type')?.startsWith('application/json')
+      ? await readSmallJson(request)
+      : {}
+    const shouldSchedule = body.schedule !== false
+    const forceRegeneration = body.force === true
     const { id } = await params
     if (!UUID_RE.test(id)) {
       return NextResponse.json(
@@ -79,7 +104,9 @@ export async function POST(
     }
 
     const { data: claimData, error: claimError } = await service.rpc(
-      'instagram_begin_capture_retry',
+      forceRegeneration
+        ? 'instagram_begin_capture_regeneration'
+        : 'instagram_begin_capture_retry',
       { p_product_id: id },
     )
     const claim = (Array.isArray(claimData) ? claimData[0] : claimData) as RetryClaim | null
@@ -103,6 +130,7 @@ export async function POST(
         productId: product.id,
         slug: product.slug || '',
         storagePath: claim.jpeg_storage_path,
+        replaceExisting: forceRegeneration,
       })
     } else if (claim.last_error) {
       story = { ...story, error: claim.last_error }
@@ -121,6 +149,16 @@ export async function POST(
       )
     }
 
+
+    let schedule = null
+    if (shouldSchedule && story.status === 'ready' && story.jpegPublicUrl) {
+      try {
+        schedule = await scheduleCaptureNext(story.id, 'manual')
+      } catch {
+        console.error('[instagram-story-retry] Story ready but calendar assignment failed')
+      }
+    }
+
     const response: AdminStoryRetryResponse = {
       ok: true,
       approved: true,
@@ -130,12 +168,16 @@ export async function POST(
         slug: product.slug || product.id,
       },
       story,
+      schedule,
     }
     return NextResponse.json(response, {
       headers: { 'Cache-Control': 'no-store, private' },
     })
   } catch (error) {
     const known = adminErrorResponse(error)
+    if (known.status >= 500) {
+      console.error(`[instagram-story-retry] ${known.code}: ${sanitizeCaptureError(error)}`)
+    }
     return NextResponse.json(
       { error: known.message, code: known.code },
       { status: known.status, headers: { 'Cache-Control': 'no-store, private' } },
