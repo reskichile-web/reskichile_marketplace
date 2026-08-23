@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Send, Star, X } from 'lucide-react'
-import { BsFillChatSquareDotsFill } from 'react-icons/bs'
+import { Send, Star, Wrench, X } from 'lucide-react'
+import { RiChat3Fill } from 'react-icons/ri'
 
 type Phase = 'comment' | 'rating'
 
@@ -12,7 +12,12 @@ interface FeedbackResponse {
   error?: string
 }
 
-export default function FeedbackWidget({ pagePath }: { pagePath: string }) {
+interface FeedbackWidgetProps {
+  pagePath: string
+  expanded?: boolean
+}
+
+export default function FeedbackWidget({ pagePath, expanded = false }: FeedbackWidgetProps) {
   const [open, setOpen] = useState(false)
   const [phase, setPhase] = useState<Phase>('comment')
   const [message, setMessage] = useState('')
@@ -108,17 +113,32 @@ export default function FeedbackWidget({ pagePath }: { pagePath: string }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="feedback-dialog"
+        aria-label={expanded ? undefined : 'Danos tu opinión'}
       >
-        <span className="mr-[-20px] w-[216px] min-w-0 rounded-2xl border border-r-0 border-brand-200 bg-white py-2 pl-3 pr-7 shadow-[0_7px_18px_rgba(38,116,191,0.13)] transition-colors group-hover:border-brand-300">
-          <span className="block whitespace-nowrap font-body text-[13px] font-black tracking-[-0.04em] text-gray-900">
-            ¿Algo por mejorar/reparar?
+        <span className={`mr-[-20px] min-w-0 overflow-hidden rounded-2xl border border-r-0 bg-white py-2 pl-3 pr-7 shadow-[0_7px_18px_rgba(38,116,191,0.13)] transition-[width,opacity,transform,border-color] duration-200 ${
+          expanded
+            ? 'w-[240px] border-brand-200 opacity-100 group-hover:border-brand-300'
+            : 'pointer-events-none w-0 -translate-x-2 border-transparent opacity-0 group-hover:w-[240px] group-hover:translate-x-0 group-hover:border-brand-200 group-hover:opacity-100 group-focus-visible:w-[240px] group-focus-visible:translate-x-0 group-focus-visible:border-brand-200 group-focus-visible:opacity-100'
+        }`}>
+          <span className="flex w-[200px] items-center gap-1.5 whitespace-nowrap font-body text-[13px] font-normal tracking-[-0.025em] text-gray-500">
+            <Wrench data-testid="feedback-wrench" className="h-4 w-4 shrink-0 text-brand-500" strokeWidth={2.2} aria-hidden="true" />
+            <span>¿Algo por mejorar/reparar?</span>
           </span>
-          <span className="mt-0.5 block whitespace-nowrap text-xs font-bold leading-tight text-brand-500">
+          <span className="mt-0.5 block w-[200px] whitespace-nowrap pl-[22px] text-xs font-bold leading-tight text-brand-500">
             Danos tu opinión
           </span>
         </span>
-        <span className="relative flex h-[82px] w-[82px] shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[radial-gradient(circle_at_34%_24%,#a9cbeb_0%,#4a93d3_48%,#2674bf_100%)] shadow-[0_9px_22px_rgba(38,116,191,0.28),inset_0_1px_0_rgba(255,255,255,0.55)] ring-2 ring-brand-200 transition-transform group-hover:scale-[1.03]">
-          <BsFillChatSquareDotsFill className="h-[48px] w-[48px] text-white" aria-hidden="true" />
+        <span className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border-white bg-[radial-gradient(circle_at_34%_24%,#a9cbeb_0%,#4a93d3_48%,#2674bf_100%)] ring-2 ring-brand-200 transition-transform group-hover:scale-[1.03] ${
+          expanded
+            ? 'h-[82px] w-[82px] border-4 shadow-[0_9px_22px_rgba(38,116,191,0.28),inset_0_1px_0_rgba(255,255,255,0.55)]'
+            : 'h-14 w-14 border-[3px] shadow-[0_6px_16px_rgba(38,116,191,0.22),inset_0_1px_0_rgba(255,255,255,0.5)] sm:h-16 sm:w-16'
+        }`}>
+          <RiChat3Fill
+            className={expanded
+              ? 'h-14 w-14 translate-x-px -translate-y-px text-white'
+              : 'h-9 w-9 translate-x-px -translate-y-px text-white sm:h-10 sm:w-10'}
+            aria-hidden="true"
+          />
         </span>
       </button>
 
@@ -149,7 +169,7 @@ export default function FeedbackWidget({ pagePath }: { pagePath: string }) {
             {phase === 'comment' ? (
               <form onSubmit={event => { event.preventDefault(); void submitComment() }}>
                 <h2 id="feedback-title" className="max-w-xs pr-8 font-body text-2xl font-black leading-tight text-gray-950">
-                  Reporta algo o deja un comentario
+                  Reporta algo o deja un comentario <span aria-hidden="true">❤️</span>
                 </h2>
                 <label htmlFor="feedback-message" className="sr-only">Comentario</label>
                 <textarea
@@ -161,6 +181,9 @@ export default function FeedbackWidget({ pagePath }: { pagePath: string }) {
                   placeholder="Escribe aquí…"
                   className="mt-6 min-h-36 w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-50"
                 />
+                <p className="mt-1.5 text-[11px] font-light text-gray-400">
+                  Para el equipo es muy importante tu opinión. ¡Gracias!
+                </p>
                 {error && <p role="alert" className="mt-2 text-xs font-medium text-red-600">{error}</p>}
                 <button
                   type="submit"

@@ -10,9 +10,10 @@ const MobileMenuDrawer = dynamic(() => import('./MobileMenuDrawer'), { ssr: fals
 
 interface Props {
   isAdmin: boolean
+  showSkiRacks: boolean
 }
 
-export default function MobileMenu({ isAdmin }: Props) {
+export default function MobileMenu({ isAdmin, showSkiRacks }: Props) {
   const [open, setOpen] = useState(false)
   const [everOpened, setEverOpened] = useState(false)
 
@@ -39,7 +40,14 @@ export default function MobileMenu({ isAdmin }: Props) {
 
       {/* Mounted after first open so the drawer chunk (framer-motion) only loads
           on demand; kept mounted afterward so enter/exit animations still play. */}
-      {everOpened && <MobileMenuDrawer open={open} isAdmin={isAdmin} onClose={() => setOpen(false)} />}
+      {everOpened && (
+        <MobileMenuDrawer
+          open={open}
+          isAdmin={isAdmin}
+          showSkiRacks={showSkiRacks}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   )
 }

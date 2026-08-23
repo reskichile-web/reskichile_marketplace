@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { PackageOpen } from 'lucide-react'
@@ -22,7 +22,25 @@ import SkiRackCartDrawerHost from './SkiRackCartDrawerHost'
 export default function Header() {
   const { userId, email, isAdmin, avatarUrl, unreadCount, loading } = useSessionAuth()
   const pathname = usePathname()
+  const [showSkiRacks, setShowSkiRacks] = useState(process.env.NODE_ENV !== 'production')
   const showEmptySkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetch('/api/racks/visibility', { cache: 'no-store' })
+      .then(async response => {
+        const data = await response.json() as { enabled?: boolean }
+        if (!cancelled) setShowSkiRacks(response.ok && data.enabled === true)
+      })
+      .catch(() => {
+        if (!cancelled) setShowSkiRacks(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <ChatProvider userId={userId} initialUnreadCount={unreadCount}>
@@ -37,7 +55,7 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-[60px] md:h-[72px] flex items-center gap-3 md:gap-12">
           {/* Mobile: menu left */}
           <div className="md:hidden">
-            <MobileMenu isAdmin={isAdmin} />
+            <MobileMenu isAdmin={isAdmin} showSkiRacks={showSkiRacks} />
           </div>
 
           {/* Logo — centered on mobile, left on desktop */}
@@ -54,7 +72,7 @@ export default function Header() {
           {/* Right actions — mobile */}
           <div className="ml-auto flex shrink-0 items-center gap-2 md:hidden">
             <SearchBar />
-            <SkiRackCartLink showWhenEmpty={showEmptySkiRackCart} />
+            {showSkiRacks && <SkiRackCartLink showWhenEmpty={showEmptySkiRackCart} />}
             {loading ? (
               <span className="h-9 w-10 shrink-0 rounded-full bg-gray-100" aria-hidden="true" />
             ) : userId ? (
@@ -94,7 +112,7 @@ export default function Header() {
                 Mis productos
               </Link>
             )}
-            <SkiRackCartLink showWhenEmpty={showEmptySkiRackCart} />
+            {showSkiRacks && <SkiRackCartLink showWhenEmpty={showEmptySkiRackCart} />}
             {loading && (
               <span className="h-9 w-[198px] shrink-0 rounded-sm bg-gray-100" aria-hidden="true" />
             )}
@@ -110,12 +128,12 @@ export default function Header() {
       <div className="hidden md:block">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <Suspense fallback={null}>
-            <CategoryNav />
+            <CategoryNav showSkiRacks={showSkiRacks} />
           </Suspense>
         </div>
       </div>
     </header>
-    <SkiRackCartDrawerHost />
+    {showSkiRacks && <SkiRackCartDrawerHost />}
     </>
     </ChatProvider>
   )

@@ -3,17 +3,15 @@ import { notFound } from 'next/navigation'
 import SkiRackProductDetail from '@/components/SkiRackProductDetail'
 import {
   SKI_RACK_DESCRIPTION,
-  SKI_RACK_PRODUCTS,
   getSkiRackProduct,
 } from '@/lib/ski-rack-products'
+import { isSkiRackStorefrontEnabled } from '@/lib/ski-rack-visibility'
 
 interface Props {
   params: Promise<{ slug: string }>
 }
 
-export function generateStaticParams() {
-  return SKI_RACK_PRODUCTS.map((product) => ({ slug: product.slug }))
-}
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
@@ -32,6 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function SkiRackProductPage({ params }: Props) {
+  if (!isSkiRackStorefrontEnabled()) notFound()
   const { slug } = await params
   const product = getSkiRackProduct(slug)
   if (!product) notFound()

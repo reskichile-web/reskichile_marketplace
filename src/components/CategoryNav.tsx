@@ -16,7 +16,7 @@ const CATEGORIES = [
   { key: 'fijaciones', label: 'Fijaciones' },
 ]
 
-export default function CategoryNav() {
+export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const activeType = pathname.startsWith('/ski-rack') || pathname === '/carrito'
@@ -27,7 +27,7 @@ export default function CategoryNav() {
 
   return (
     <nav className="flex h-14 items-center justify-center gap-2 overflow-x-auto" aria-label="Categorías de equipamiento">
-      {CATEGORIES.map((category) => {
+      {CATEGORIES.filter(category => showSkiRacks || category.key !== 'racks').map((category) => {
         const isActive = category.key === activeType
 
         return (

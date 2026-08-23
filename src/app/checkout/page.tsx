@@ -4,6 +4,7 @@ import { getAddressConfig, getPaymentConfig } from '@/lib/env/server'
 import CheckoutForm from '@/components/checkout/CheckoutForm'
 import SkiRackCheckout from '@/components/checkout/SkiRackCheckout'
 import { getSkiRackProduct } from '@/lib/ski-rack-products'
+import { isSkiRackStorefrontEnabled } from '@/lib/ski-rack-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +19,15 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const query = await searchParams
   const productId = query.producto || ''
   const rackProduct = getSkiRackProduct(productId)
+  const showSkiRacks = isSkiRackStorefrontEnabled()
 
-  if (rackProduct) redirect(`/ski-rack/${rackProduct.slug}`)
+  if (rackProduct) {
+    if (!showSkiRacks) notFound()
+    redirect(`/ski-rack/${rackProduct.slug}`)
+  }
 
   if (query.racks === '1') {
+    if (!showSkiRacks) notFound()
     let enabled = false
     let sandbox = true
     let addressValidationEnabled = false

@@ -22,10 +22,12 @@ const CATEGORIES = [
 export default function MobileMenuDrawer({
   open,
   isAdmin,
+  showSkiRacks,
   onClose,
 }: {
   open: boolean
   isAdmin: boolean
+  showSkiRacks: boolean
   onClose: () => void
 }) {
   const sidebar = (
@@ -86,7 +88,7 @@ export default function MobileMenuDrawer({
                   <Link href="/catalogo" onClick={onClose} className="block py-2 text-sm font-medium hover:text-brand-500">
                     Todo
                   </Link>
-                  {CATEGORIES.map((category) => (
+                  {CATEGORIES.filter(category => showSkiRacks || category.key !== 'racks').map((category) => (
                     <Link
                       key={category.key}
                       href={category.href || `/catalogo?product_type=${category.key}`}

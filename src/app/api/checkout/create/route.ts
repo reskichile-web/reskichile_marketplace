@@ -19,6 +19,7 @@ import {
   AddressServiceError,
   verifyCheckoutShippingAddress,
 } from '@/lib/commerce/address-service'
+import { isSkiRackStorefrontEnabled } from '@/lib/ski-rack-visibility'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,10 +61,14 @@ export async function POST(request: NextRequest) {
     const config = getPaymentConfig()
     assertTrustedCheckoutRequest(config, request)
     await consumeCheckoutRateLimit(config, request, 'create')
-    const input = verifyCheckoutShippingAddress(
-      getAddressConfig(),
-      parseCheckoutInput(await readCheckoutJson(request))
-    )
+    const parsedInput = parseCheckoutInput(await readCheckoutJson(request))
+    if (parsedInput.rackItems.length > 0 && !isSkiRackStorefrontEnabled()) {
+      return NextResponse.json(
+        { error: 'No encontrado.', code: 'NOT_FOUND' },
+        { status: 404, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    const input = verifyCheckoutShippingAddress(getAddressConfig(), parsedInput)
     const cookieName = paymentAccessCookieName(config)
     const guestAccessToken = derivePaymentAccessToken(
       config,

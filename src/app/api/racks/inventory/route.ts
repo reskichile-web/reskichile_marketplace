@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { aggregateRackVariants, type RackInventoryVariant } from '@/lib/rack-inventory'
 import type { SkiRackSize } from '@/lib/ski-rack-products'
+import { isSkiRackStorefrontEnabled } from '@/lib/ski-rack-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,13 @@ interface AvailabilityRow {
 }
 
 export async function GET() {
+  if (!isSkiRackStorefrontEnabled()) {
+    return NextResponse.json(
+      { error: 'No encontrado.' },
+      { status: 404, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
   const supabase = createServiceRoleClient()
   const { data, error } = await supabase.rpc('commerce_rack_availability')
 

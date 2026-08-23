@@ -25,6 +25,9 @@ export default function LayoutChrome({ header, footer, children }: Props) {
   const isCheckoutRoute = pathname === '/checkout'
   const isAutomatedPostRoute = pathname.startsWith('/ig-post')
   const hidesMarketplaceChrome = isAdminRoute || isCheckoutRoute || isAutomatedPostRoute
+  const expandsFeedbackWidget =
+    pathname === '/' ||
+    pathname === '/catalogo'
 
   // Lock html/body to the dynamic viewport on a fullscreen chat (mobile only),
   // otherwise body's min-h-screen (100vh) leaves a gap below the chat (which
@@ -87,7 +90,7 @@ export default function LayoutChrome({ header, footer, children }: Props) {
         </div>
       )}
       {!hidesMarketplaceChrome && !isFullscreenChatRoute && (
-        <FeedbackWidget pagePath={pathname} />
+        <FeedbackWidget pagePath={pathname} expanded={expandsFeedbackWidget} />
       )}
     </>
   )

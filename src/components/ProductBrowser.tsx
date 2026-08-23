@@ -27,13 +27,34 @@ interface Props {
   products: Product[]
 }
 
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FilterSection({
+  title,
+  active,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  active: boolean
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
   return (
-    <div>
-      <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">{title}</h4>
-      <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
-        {children}
-      </div>
+    <div className="border-t border-gray-200">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className="flex w-full items-center justify-between py-4 text-left"
+        aria-expanded={open}
+      >
+        <span className={`text-xs font-body font-bold uppercase tracking-widest ${active ? 'text-black' : 'text-gray-700'}`}>
+          {title}
+          {active && <span className="ml-2 inline-block h-1.5 w-1.5 rounded-full bg-brand-500 align-middle" />}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+      {open && <div className="space-y-2 pb-5 pr-1">{children}</div>}
     </div>
   )
 }
@@ -155,7 +176,7 @@ export default function ProductBrowser({ products }: Props) {
 
   const filterContent = (
     <>
-      <FilterSection title="Tipo">
+      <FilterSection title="Tipo" active={typeFilters.size > 0} defaultOpen>
         {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
           <CheckItem
             key={v}
@@ -165,7 +186,7 @@ export default function ProductBrowser({ products }: Props) {
           />
         ))}
       </FilterSection>
-      <FilterSection title="Marca">
+      <FilterSection title="Marca" active={brandFilters.size > 0}>
         {brands.map(b => (
           <CheckItem
             key={b}
@@ -175,7 +196,7 @@ export default function ProductBrowser({ products }: Props) {
           />
         ))}
       </FilterSection>
-      <FilterSection title="Condición">
+      <FilterSection title="Condición" active={conditionFilters.size > 0}>
         {Object.entries(CONDITIONS).map(([v, l]) => (
           <CheckItem
             key={v}
@@ -185,7 +206,7 @@ export default function ProductBrowser({ products }: Props) {
           />
         ))}
       </FilterSection>
-      <FilterSection title="Región">
+      <FilterSection title="Región" active={regionFilters.size > 0}>
         {REGIONS.map(r => (
           <CheckItem
             key={r}
@@ -364,9 +385,9 @@ export default function ProductBrowser({ products }: Props) {
 
       {/* Main layout: filters sidebar + products */}
       <div className="flex gap-5 pt-6 pb-16">
-        {/* Filters sidebar — left, sticky, desktop only */}
+        {/* Filters sidebar — desktop accordions expand with their full content. */}
         <aside className="hidden lg:block w-48 shrink-0">
-          <div className="sticky top-16 space-y-4 max-h-[calc(100vh-100px)] overflow-y-auto pr-1 pt-2">
+          <div className="sticky top-16 pr-1 pt-2">
             {filterContent}
           </div>
         </aside>
