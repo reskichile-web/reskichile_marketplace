@@ -117,14 +117,13 @@ export default function FeedbackWidget({ pagePath, expanded = false }: FeedbackW
       >
         <span className={`mr-[-20px] min-w-0 overflow-hidden rounded-2xl border border-r-0 bg-white py-2 pl-3 pr-7 shadow-[0_7px_18px_rgba(38,116,191,0.13)] transition-[width,opacity,transform,border-color] duration-200 ${
           expanded
-            ? 'w-[240px] border-brand-200 opacity-100 group-hover:border-brand-300'
-            : 'pointer-events-none w-0 -translate-x-2 border-transparent opacity-0 group-hover:w-[240px] group-hover:translate-x-0 group-hover:border-brand-200 group-hover:opacity-100 group-focus-visible:w-[240px] group-focus-visible:translate-x-0 group-focus-visible:border-brand-200 group-focus-visible:opacity-100'
+            ? 'w-[216px] border-brand-200 opacity-100 group-hover:border-brand-300'
+            : 'pointer-events-none w-0 -translate-x-2 border-transparent opacity-0 group-hover:w-[216px] group-hover:translate-x-0 group-hover:border-brand-200 group-hover:opacity-100 group-focus-visible:w-[216px] group-focus-visible:translate-x-0 group-focus-visible:border-brand-200 group-focus-visible:opacity-100'
         }`}>
-          <span className="flex w-[200px] items-center gap-1.5 whitespace-nowrap font-body text-[13px] font-normal tracking-[-0.025em] text-gray-500">
-            <Wrench data-testid="feedback-wrench" className="h-4 w-4 shrink-0 text-brand-500" strokeWidth={2.2} aria-hidden="true" />
-            <span>¿Algo por mejorar/reparar?</span>
+          <span className="block w-[176px] whitespace-nowrap font-body text-[13px] font-normal tracking-[-0.025em] text-gray-500">
+            ¿Algo por mejorar/reparar?
           </span>
-          <span className="mt-0.5 block w-[200px] whitespace-nowrap pl-[22px] text-xs font-bold leading-tight text-brand-500">
+          <span className="mt-0.5 block w-[176px] whitespace-nowrap text-xs font-bold leading-tight text-brand-500">
             Danos tu opinión
           </span>
         </span>
@@ -137,6 +136,14 @@ export default function FeedbackWidget({ pagePath, expanded = false }: FeedbackW
             className={expanded
               ? 'h-14 w-14 translate-x-px -translate-y-px text-white'
               : 'h-9 w-9 translate-x-px -translate-y-px text-white sm:h-10 sm:w-10'}
+            aria-hidden="true"
+          />
+          <Wrench
+            data-testid="feedback-wrench"
+            className={expanded
+              ? 'absolute h-6 w-6 translate-x-px -translate-y-px text-brand-500'
+              : 'absolute h-4 w-4 translate-x-px -translate-y-px text-brand-500 sm:h-[18px] sm:w-[18px]'}
+            strokeWidth={2.2}
             aria-hidden="true"
           />
         </span>
