@@ -138,9 +138,9 @@ export default function InstagramStoryCalendarTable({
                 const state = product ? storyStatus(product) : null
                 const slotPassed = localDate === today && slot.time <= currentTime
                 return (
-                  <tr key={key} className={`${index === 0 ? 'border-t-2 border-t-blue-200' : ''} ${index === 2 ? 'border-b-2 border-b-blue-200' : 'border-b border-b-gray-100'} transition hover:bg-blue-50/25`}>
+                  <tr key={key} className={`${index === 0 ? 'border-t-2 border-t-blue-200' : ''} ${index === rule.slots.length - 1 ? 'border-b-2 border-b-blue-200' : 'border-b border-b-gray-100'} transition hover:bg-blue-50/25`}>
                     {index === 0 && (
-                      <th rowSpan={3} className="border-r border-blue-200 bg-blue-50 px-5 py-4 align-top">
+                      <th rowSpan={rule.slots.length} className="border-r border-blue-200 bg-blue-50 px-5 py-4 align-top">
                         <p className="text-sm font-black text-blue-950">{displayLocalDate(localDate)}</p>
                         <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">
                           {localDate === today ? 'Hoy · ' : ''}{rule.window}

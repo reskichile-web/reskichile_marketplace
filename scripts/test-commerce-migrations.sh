@@ -39,7 +39,8 @@ for migration in \
   202608200001_webpay_return_context.sql \
   202608210001_instagram_story_captures.sql \
   202608220001_instagram_story_schedule.sql \
-  202608220003_instagram_story_regeneration.sql
+  202608220003_instagram_story_regeneration.sql \
+  202608220004_instagram_story_five_slots.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"

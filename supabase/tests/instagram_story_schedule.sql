@@ -1,4 +1,4 @@
--- Three-slot Instagram editorial calendar. This test only exercises local
+-- Five-slot Instagram editorial calendar. This test only exercises local
 -- database state; it never contacts Meta or publishes media.
 
 BEGIN;
@@ -12,7 +12,9 @@ INSERT INTO public.products (
   ('94000000-0000-4000-8000-000000000001', '93000000-0000-4000-8000-000000000001', 'esquis', 'Slot One', 'usado', 100000, 'Metropolitana', 'Las Condes', 'approved'),
   ('94000000-0000-4000-8000-000000000002', '93000000-0000-4000-8000-000000000001', 'esquis', 'Slot Two', 'usado', 110000, 'Metropolitana', 'Las Condes', 'approved'),
   ('94000000-0000-4000-8000-000000000003', '93000000-0000-4000-8000-000000000001', 'esquis', 'Slot Three', 'usado', 120000, 'Metropolitana', 'Las Condes', 'approved'),
-  ('94000000-0000-4000-8000-000000000004', '93000000-0000-4000-8000-000000000001', 'esquis', 'Next Day', 'usado', 130000, 'Metropolitana', 'Las Condes', 'approved');
+  ('94000000-0000-4000-8000-000000000004', '93000000-0000-4000-8000-000000000001', 'esquis', 'Slot Four', 'usado', 130000, 'Metropolitana', 'Las Condes', 'approved'),
+  ('94000000-0000-4000-8000-000000000005', '93000000-0000-4000-8000-000000000001', 'esquis', 'Slot Five', 'usado', 140000, 'Metropolitana', 'Las Condes', 'approved'),
+  ('94000000-0000-4000-8000-000000000006', '93000000-0000-4000-8000-000000000001', 'esquis', 'Next Day', 'usado', 150000, 'Metropolitana', 'Las Condes', 'approved');
 
 INSERT INTO public.instagram_story_captures (
   product_id, jpeg_storage_path, jpeg_public_url, approved_at, generated_at, status
@@ -38,10 +40,10 @@ CROSS JOIN LATERAL public.instagram_schedule_capture_next(
 WHERE capture.product_id::TEXT LIKE '94000000-0000-4000-8000-00000000000%'
 ORDER BY capture.product_id;
 
-SELECT 1 / CASE WHEN COUNT(*) = 4 THEN 1 ELSE 0 END
+SELECT 1 / CASE WHEN COUNT(*) = 6 THEN 1 ELSE 0 END
 FROM scheduled_results;
 
-SELECT 1 / CASE WHEN COUNT(*) = 3 THEN 1 ELSE 0 END
+SELECT 1 / CASE WHEN COUNT(*) = 5 THEN 1 ELSE 0 END
 FROM scheduled_results
 WHERE scheduled_local_date = ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10);
 
@@ -50,7 +52,7 @@ FROM scheduled_results
 WHERE scheduled_local_date = ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 11)
   AND scheduled_slot = 1;
 
-SELECT 1 / CASE WHEN COUNT(DISTINCT (scheduled_local_date, scheduled_slot)) = 4 THEN 1 ELSE 0 END
+SELECT 1 / CASE WHEN COUNT(DISTINCT (scheduled_local_date, scheduled_slot)) = 6 THEN 1 ELSE 0 END
 FROM scheduled_results;
 
 CREATE TEMP TABLE regeneration AS
@@ -80,7 +82,7 @@ DECLARE
 BEGIN
   SELECT id INTO v_capture
   FROM public.instagram_story_captures
-  WHERE product_id = '94000000-0000-4000-8000-000000000004';
+  WHERE product_id = '94000000-0000-4000-8000-000000000006';
 
   BEGIN
     PERFORM public.instagram_move_capture_schedule(

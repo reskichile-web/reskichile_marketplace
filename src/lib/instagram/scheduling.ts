@@ -43,7 +43,7 @@ export async function scheduleCaptureNext(
 export async function moveCaptureSchedule(
   captureId: string,
   localDate: string,
-  slot: 1 | 2 | 3,
+  slot: number,
 ): Promise<InstagramCaptureSchedule> {
   const service = createServiceRoleClient()
   const { data, error } = await service.rpc('instagram_move_capture_schedule', {

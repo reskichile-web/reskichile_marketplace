@@ -12,6 +12,7 @@ import {
   scheduleCaptureNext,
   unscheduleCapture,
 } from '@/lib/instagram/scheduling'
+import { isInstagramStorySlotForDate } from '@/lib/instagram/schedule-rules'
 
 export const runtime = 'nodejs'
 
@@ -44,10 +45,10 @@ export async function POST(request: Request) {
     if (action === 'move') {
       const localDate = typeof body.localDate === 'string' ? body.localDate : ''
       const slot = Number(body.slot)
-      if (!DATE_RE.test(localDate) || ![1, 2, 3].includes(slot)) {
+      if (!DATE_RE.test(localDate) || !isInstagramStorySlotForDate(localDate, slot)) {
         throw new AdminRequestError('Cupo inválido', 422, 'INVALID_STORY_SLOT')
       }
-      const schedule = await moveCaptureSchedule(captureId, localDate, slot as 1 | 2 | 3)
+      const schedule = await moveCaptureSchedule(captureId, localDate, slot)
       return NextResponse.json({ ok: true, schedule }, { headers: { 'Cache-Control': 'no-store' } })
     }
 

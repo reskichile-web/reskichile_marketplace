@@ -23,7 +23,7 @@ import { instagramStoryRuleForDate } from '@/lib/instagram/schedule-rules'
 export interface InstagramSlotOption {
   key: string
   localDate: string
-  slot: 1 | 2 | 3
+  slot: number
   time: string
   label: string
 }

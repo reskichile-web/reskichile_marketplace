@@ -15,6 +15,7 @@ const DEFAULT_POLL_INTERVAL_MS = 60_000
 const DEADLINE_RESERVE_MS = 12_000
 const MAX_CONTAINER_CHECKS = 5
 const STORY_SLOT_GRACE_MS = 59 * 60_000
+const SCHEDULED_CLAIM_SCAN_LIMIT = 10
 
 export interface PublishableStoryCapture {
   id: string
@@ -388,7 +389,7 @@ async function publishInstagramStories(
     ? [await repository.getPublishable(selection.captureId || '')].filter(
         (capture): capture is PublishableStoryCapture => Boolean(capture),
       )
-    : await repository.listEligible(recoveryNow, Math.min(1, availableQuota))
+    : await repository.listEligible(recoveryNow, SCHEDULED_CLAIM_SCAN_LIMIT)
   summary.candidates = candidates.length
 
   const pending: PendingContainer[] = []
@@ -506,6 +507,10 @@ async function publishInstagramStories(
       item.nextCheckAt = now().getTime() + pollIntervalMs
       pending.push(item)
     }
+    // Each Hobby-safe tick publishes at most one Story. Scanning several due
+    // rows only prevents concurrent invocations from colliding on the same
+    // oldest capture; the first claim that succeeds owns this invocation.
+    if (selection.mode === 'scheduled') break
   }
 
   while (pending.length > 0) {

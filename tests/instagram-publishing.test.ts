@@ -225,11 +225,31 @@ describe('Instagram daily Story publisher', () => {
       now: fixedNow,
     })
 
-    expect(result).toMatchObject({ candidates: 1, claimed: 1, published: 1 })
+    expect(result).toMatchObject({ candidates: 2, claimed: 1, published: 1 })
     expect(due.media_id).toBe('media-1')
     expect(secondDue.status).toBe('ready')
     expect(future.status).toBe('ready')
     expect(unapproved.status).toBe('ready')
+  })
+
+  it('claims the next due Story when a concurrent tick already claimed the oldest one', async () => {
+    const oldest = capture({ id: 'oldest', product_id: 'oldest-product' })
+    const next = capture({ id: 'next', product_id: 'next-product', scheduled_for: '2026-08-22T16:45:00.000Z' })
+    const repository = new MemoryRepository([oldest, next])
+    const originalClaim = repository.claim.bind(repository)
+    repository.claim = vi.fn(async (captureId: string) => (
+      captureId === oldest.id ? null : originalClaim(captureId)
+    ))
+
+    const result = await publishEligibleInstagramStories(enabledConfig, {
+      repository,
+      metaClient: metaClient(),
+      now: fixedNow,
+    })
+
+    expect(result).toMatchObject({ candidates: 2, skipped: 1, claimed: 1, published: 1 })
+    expect(oldest.status).toBe('ready')
+    expect(next.media_id).toBe('media-1')
   })
 
   it('stops before reading the queue when the publishing quota is exhausted', async () => {
@@ -282,7 +302,7 @@ describe('Instagram daily Story publisher', () => {
     const first = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta, now: fixedNow })
     const second = await publishEligibleInstagramStories(enabledConfig, { repository, metaClient: meta, now: fixedNow })
 
-    expect(first).toMatchObject({ candidates: 1, claimed: 1, failed: 1, published: 0 })
+    expect(first).toMatchObject({ candidates: 2, claimed: 1, failed: 1, published: 0 })
     expect(second).toMatchObject({ candidates: 1, claimed: 1, published: 1 })
     expect(broken.status).toBe('failed')
     expect(broken.attempts).toBe(3)
