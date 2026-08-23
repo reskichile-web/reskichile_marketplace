@@ -56,7 +56,9 @@ export function storyStatus(product: InstagramAdminProduct): {
   }
   if (status === 'retry') return { label: 'Reintento', className: 'bg-amber-50 text-amber-700' }
   if (status === 'publishing') return { label: 'Publicando', className: 'bg-blue-50 text-blue-700' }
-  if (status === 'published') return { label: 'Publicada', className: 'bg-emerald-50 text-emerald-700' }
+  // Legacy rows may briefly retain the former terminal state during a rolling
+  // deployment. A published asset is reusable, so present it as prepared.
+  if (status === 'published') return { label: 'Preparada', className: 'bg-emerald-50 text-emerald-700' }
   return product.capture?.jpegPublicUrl
     ? { label: 'Falló publicación', className: 'bg-red-50 text-red-700' }
     : { label: 'Falló captura', className: 'bg-red-50 text-red-700' }

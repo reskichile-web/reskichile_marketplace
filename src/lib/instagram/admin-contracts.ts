@@ -15,6 +15,8 @@ export interface InstagramAdminCapture {
   containerId: string | null
   mediaId: string | null
   publishedAt: string | null
+  publicationCount: number
+  lastPublishedAt: string | null
   attempts: number
   lastError: string | null
 }

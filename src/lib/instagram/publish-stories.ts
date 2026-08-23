@@ -160,13 +160,6 @@ export function createSupabaseStoryPublishingRepository(): StoryPublishingReposi
 
   return {
     async recoverInterrupted(before, now) {
-      const { error: completedError } = await service
-        .from('instagram_story_captures')
-        .update({ status: 'published', published_at: now.toISOString(), last_error: null })
-        .not('media_id', 'is', null)
-        .is('published_at', null)
-      await requireNoError(completedError, 'recuperar publicaciones terminadas')
-
       const { error: staleError } = await service
         .from('instagram_story_captures')
         .update({ status: 'retry', last_error: 'Ejecución anterior interrumpida; se reutilizará el container' })
@@ -262,33 +255,24 @@ export function createSupabaseStoryPublishingRepository(): StoryPublishingReposi
     },
 
     async markPublished(captureId, containerId, mediaId, now) {
-      const { error } = await service
-        .from('instagram_story_captures')
-        .update({
-          status: 'published',
-          container_id: containerId,
-          media_id: mediaId,
-          published_at: now.toISOString(),
-          last_error: null,
-        })
-        .eq('id', captureId)
-        .eq('status', 'publishing')
-        .is('published_at', null)
+      const { error } = await service.rpc('instagram_complete_story_publication', {
+        p_capture_id: captureId,
+        p_container_id: containerId,
+        p_media_id: mediaId,
+        p_published_at: now.toISOString(),
+        p_recovered: false,
+      })
       await requireNoError(error, 'guardar la publicación de Instagram')
     },
 
     async markRecoveredPublished(captureId, containerId, now) {
-      const { error } = await service
-        .from('instagram_story_captures')
-        .update({
-          status: 'published',
-          container_id: containerId,
-          published_at: now.toISOString(),
-          last_error: 'Publicación recuperada desde el estado PUBLISHED de Meta',
-        })
-        .eq('id', captureId)
-        .eq('status', 'publishing')
-        .is('published_at', null)
+      const { error } = await service.rpc('instagram_complete_story_publication', {
+        p_capture_id: captureId,
+        p_container_id: containerId,
+        p_media_id: null,
+        p_published_at: now.toISOString(),
+        p_recovered: true,
+      })
       await requireNoError(error, 'guardar la publicación recuperada')
     },
 

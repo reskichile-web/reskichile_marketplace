@@ -176,11 +176,7 @@ export default function InstagramStoryCalendarTable({
                       {state && <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide ${state.className}`}>{state.label}</span>}
                     </td>
                     <td className="px-5 py-3 align-middle">
-                      {product && capture ? capture.status === 'published' ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                          <CheckCircle2 className="h-4 w-4" /> Publicada
-                        </span>
-                      ) : (
+                      {product && capture ? (
                         <div className="flex items-center gap-2">
                           <select
                             value=""

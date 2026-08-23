@@ -31,6 +31,8 @@ const preparedProduct: InstagramAdminProduct = {
     containerId: null,
     mediaId: null,
     publishedAt: null,
+    publicationCount: 0,
+    lastPublishedAt: null,
     attempts: 0,
     lastError: null,
   },
@@ -76,6 +78,30 @@ describe('Instagram Story admin UI', () => {
     expect(html).toContain('Subir ahora')
     expect(html).toContain('Agregar al cron')
     expect(html).toContain('Agregar al cron en fecha específica')
+    expect(html).toContain('Regenerar historia')
+  })
+
+  it('keeps every action available after previous publications', () => {
+    const html = renderToStaticMarkup(
+      <InstagramStoryEditorModal
+        product={{
+          ...preparedProduct,
+          capture: {
+            ...preparedProduct.capture!,
+            publicationCount: 2,
+            lastPublishedAt: '2026-08-23T01:00:00.000Z',
+          },
+        }}
+        publishingEnabled
+        slots={slots}
+        onClose={vi.fn()}
+        onChanged={vi.fn(async () => undefined)}
+      />,
+    )
+
+    expect(html).toContain('Publicada 2 veces')
+    expect(html).toContain('Subir ahora')
+    expect(html).toContain('Agregar al cron')
     expect(html).toContain('Regenerar historia')
   })
 

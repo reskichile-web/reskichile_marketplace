@@ -48,6 +48,12 @@ function capture(overrides: Partial<StoredCapture> = {}): StoredCapture {
 
 class MemoryRepository implements StoryPublishingRepository {
   readonly rows: StoredCapture[]
+  readonly publications: Array<{
+    captureId: string
+    containerId: string
+    mediaId: string | null
+    recovered: boolean
+  }> = []
   readonly approvedProducts = new Map<string, boolean>()
   readonly cutoffs: Date[] = []
   recoverInterrupted = vi.fn(async () => undefined)
@@ -129,19 +135,14 @@ class MemoryRepository implements StoryPublishingRepository {
 
   async markPublished(captureId: string, containerId: string, mediaId: string, now: Date) {
     const row = this.required(captureId)
-    row.status = 'published'
-    row.container_id = containerId
-    row.media_id = mediaId
-    row.published_at = now.toISOString()
-    row.last_error = null
+    this.publications.push({ captureId, containerId, mediaId, recovered: false })
+    this.recycle(row)
   }
 
   async markRecoveredPublished(captureId: string, containerId: string, now: Date) {
     const row = this.required(captureId)
-    row.status = 'published'
-    row.container_id = containerId
-    row.published_at = now.toISOString()
-    row.last_error = 'Publicación recuperada'
+    this.publications.push({ captureId, containerId, mediaId: null, recovered: true })
+    this.recycle(row)
   }
 
   async releaseUnapproved(captureId: string) {
@@ -173,6 +174,19 @@ class MemoryRepository implements StoryPublishingRepository {
     const row = this.rows.find((item) => item.id === captureId)
     if (!row) throw new Error(`Missing capture ${captureId}`)
     return row
+  }
+
+  private recycle(row: StoredCapture) {
+    row.status = 'ready'
+    row.container_id = null
+    row.media_id = null
+    row.published_at = null
+    row.attempts = 0
+    row.last_error = null
+    row.scheduled_local_date = null
+    row.scheduled_slot = null
+    row.scheduled_for = null
+    row.schedule_source = null
   }
 }
 
@@ -226,7 +240,14 @@ describe('Instagram daily Story publisher', () => {
     })
 
     expect(result).toMatchObject({ candidates: 2, claimed: 1, published: 1 })
-    expect(due.media_id).toBe('media-1')
+    expect(due.status).toBe('ready')
+    expect(due.scheduled_for).toBeNull()
+    expect(repository.publications).toContainEqual({
+      captureId: due.id,
+      containerId: 'container-1',
+      mediaId: 'media-1',
+      recovered: false,
+    })
     expect(secondDue.status).toBe('ready')
     expect(future.status).toBe('ready')
     expect(unapproved.status).toBe('ready')
@@ -249,7 +270,8 @@ describe('Instagram daily Story publisher', () => {
 
     expect(result).toMatchObject({ candidates: 2, skipped: 1, claimed: 1, published: 1 })
     expect(oldest.status).toBe('ready')
-    expect(next.media_id).toBe('media-1')
+    expect(next.status).toBe('ready')
+    expect(repository.publications[0]?.captureId).toBe(next.id)
   })
 
   it('stops before reading the queue when the publishing quota is exhausted', async () => {
@@ -287,7 +309,14 @@ describe('Instagram daily Story publisher', () => {
     expect(result.recoveredPublished).toBe(1)
     expect(meta.createStoryContainer).not.toHaveBeenCalled()
     expect(meta.publishContainer).not.toHaveBeenCalled()
-    expect(row.published_at).not.toBeNull()
+    expect(row.status).toBe('ready')
+    expect(row.container_id).toBeNull()
+    expect(repository.publications).toContainEqual({
+      captureId: row.id,
+      containerId: 'already-published-container',
+      mediaId: null,
+      recovered: true,
+    })
   })
 
   it('marks the third failure as failed and lets the next invocation continue', async () => {
@@ -306,7 +335,8 @@ describe('Instagram daily Story publisher', () => {
     expect(second).toMatchObject({ candidates: 1, claimed: 1, published: 1 })
     expect(broken.status).toBe('failed')
     expect(broken.attempts).toBe(3)
-    expect(healthy.media_id).toBe('media-1')
+    expect(healthy.status).toBe('ready')
+    expect(repository.publications[0]?.captureId).toBe(healthy.id)
   })
 
   it('leaves an in-progress container for a later run without creating a new one', async () => {
@@ -364,5 +394,30 @@ describe('Instagram daily Story publisher', () => {
 
     expect(result).toMatchObject({ candidates: 1, claimed: 1, published: 1 })
     expect(repository.rescheduleExpired).not.toHaveBeenCalled()
+  })
+
+  it('can publish the same capture repeatedly without reaching a terminal state', async () => {
+    const row = capture({ scheduled_local_date: null, scheduled_slot: null, scheduled_for: null, schedule_source: null })
+    const repository = new MemoryRepository([row])
+    const meta = metaClient({
+      createStoryContainer: vi.fn()
+        .mockResolvedValueOnce('container-1')
+        .mockResolvedValueOnce('container-2'),
+      publishContainer: vi.fn()
+        .mockResolvedValueOnce('media-1')
+        .mockResolvedValueOnce('media-2'),
+    })
+
+    const first = await publishInstagramStoryNow(enabledConfig, row.id, { repository, metaClient: meta, now: fixedNow })
+    const second = await publishInstagramStoryNow(enabledConfig, row.id, { repository, metaClient: meta, now: fixedNow })
+
+    expect(first.published).toBe(1)
+    expect(second.published).toBe(1)
+    expect(row.status).toBe('ready')
+    expect(row.container_id).toBeNull()
+    expect(repository.publications).toEqual([
+      { captureId: row.id, containerId: 'container-1', mediaId: 'media-1', recovered: false },
+      { captureId: row.id, containerId: 'container-2', mediaId: 'media-2', recovered: false },
+    ])
   })
 })

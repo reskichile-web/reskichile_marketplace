@@ -116,4 +116,81 @@ SELECT 1 / CASE WHEN status = 'retry' AND attempts = 0 AND scheduled_for IS NULL
 FROM public.instagram_story_captures
 WHERE product_id = '94000000-0000-4000-8000-000000000001';
 
+-- A successful publication records an event and returns the same capture to
+-- ready, so it can be scheduled and published again indefinitely.
+SELECT * FROM public.instagram_schedule_capture_next(
+  (SELECT id FROM public.instagram_story_captures WHERE product_id = '94000000-0000-4000-8000-000000000001'),
+  ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 20),
+  'manual'
+);
+
+UPDATE public.instagram_story_captures
+SET status = 'publishing', container_id = 'cycle-container-1'
+WHERE product_id = '94000000-0000-4000-8000-000000000001';
+
+SELECT public.instagram_complete_story_publication(
+  (SELECT id FROM public.instagram_story_captures WHERE product_id = '94000000-0000-4000-8000-000000000001'),
+  'cycle-container-1',
+  'cycle-media-1',
+  NOW(),
+  FALSE
+);
+
+SELECT 1 / CASE WHEN status = 'ready'
+  AND publication_count = 1
+  AND last_published_at IS NOT NULL
+  AND scheduled_for IS NULL
+  AND container_id IS NULL
+  AND media_id IS NULL
+  AND published_at IS NULL
+  THEN 1 ELSE 0 END
+FROM public.instagram_story_captures
+WHERE product_id = '94000000-0000-4000-8000-000000000001';
+
+SELECT * FROM public.instagram_schedule_capture_next(
+  (SELECT id FROM public.instagram_story_captures WHERE product_id = '94000000-0000-4000-8000-000000000001'),
+  ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 21),
+  'manual'
+);
+
+UPDATE public.instagram_story_captures
+SET status = 'publishing', container_id = 'cycle-container-2'
+WHERE product_id = '94000000-0000-4000-8000-000000000001';
+
+SELECT public.instagram_complete_story_publication(
+  (SELECT id FROM public.instagram_story_captures WHERE product_id = '94000000-0000-4000-8000-000000000001'),
+  'cycle-container-2',
+  'cycle-media-2',
+  NOW(),
+  FALSE
+);
+
+-- Repeating completion for the same Meta container is idempotent.
+SELECT public.instagram_complete_story_publication(
+  (SELECT id FROM public.instagram_story_captures WHERE product_id = '94000000-0000-4000-8000-000000000001'),
+  'cycle-container-2',
+  'cycle-media-2',
+  NOW(),
+  FALSE
+);
+
+SELECT 1 / CASE WHEN publication_count = 2 AND status = 'ready'
+  THEN 1 ELSE 0 END
+FROM public.instagram_story_captures
+WHERE product_id = '94000000-0000-4000-8000-000000000001';
+
+SELECT 1 / CASE WHEN COUNT(*) = 2 THEN 1 ELSE 0 END
+FROM public.instagram_story_publications
+WHERE product_id = '94000000-0000-4000-8000-000000000001';
+
+SELECT 1 / CASE WHEN
+  NOT has_table_privilege('anon', 'public.instagram_story_publications', 'SELECT')
+  AND NOT has_table_privilege('authenticated', 'public.instagram_story_publications', 'SELECT')
+  AND has_function_privilege(
+    'service_role',
+    'public.instagram_complete_story_publication(uuid,text,text,timestamptz,boolean)',
+    'EXECUTE'
+  )
+  THEN 1 ELSE 0 END;
+
 ROLLBACK;

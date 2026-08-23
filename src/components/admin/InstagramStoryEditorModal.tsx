@@ -51,6 +51,14 @@ function currentSchedule(product: InstagramAdminProduct): string | null {
   return `${displayLocalDate(capture.scheduledLocalDate, true)} · ${time || ''}`
 }
 
+function displayPublicationTime(value: string): string {
+  return new Intl.DateTimeFormat('es-CL', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Santiago',
+  }).format(new Date(value))
+}
+
 export default function InstagramStoryEditorModal({
   product,
   publishingEnabled,
@@ -76,7 +84,6 @@ export default function InstagramStoryEditorModal({
   const previewUpdatedAt = generatedPreview?.updatedAt || capture?.updatedAt || ''
   const captureId = generatedPreview?.captureId || capture?.id || ''
   const prepared = Boolean(previewUrl && (generatedPreview || capture?.generatedAt))
-  const published = capture?.status === 'published'
   const state = storyStatus(product)
 
   async function scheduleRequest(body: Record<string, unknown>) {
@@ -264,16 +271,14 @@ export default function InstagramStoryEditorModal({
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide ${state.className}`}>{state.label}</span>
                 <span className="text-xs font-semibold text-gray-400">JPEG · 1080×1920</span>
-                {!published && (
-                  <button
-                    type="button"
-                    onClick={() => void generateStory(true)}
-                    disabled={Boolean(working)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-[10px] font-bold text-gray-500 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" /> Regenerar historia
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => void generateStory(true)}
+                  disabled={Boolean(working)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-[10px] font-bold text-gray-500 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Regenerar historia
+                </button>
               </div>
 
               {currentSchedule(product) && (
@@ -283,46 +288,52 @@ export default function InstagramStoryEditorModal({
                 </div>
               )}
 
-              {published ? (
+              {capture && capture.publicationCount > 0 && (
                 <div className="mt-8 flex items-center gap-3 rounded-2xl bg-emerald-50 p-5 text-emerald-800">
                   <CheckCircle2 className="h-6 w-6" />
                   <div>
-                    <p className="font-black">Story publicada</p>
-                    <p className="mt-0.5 text-xs text-emerald-600">Meta confirmó la publicación.</p>
+                    <p className="font-black">
+                      Publicada {capture.publicationCount} {capture.publicationCount === 1 ? 'vez' : 'veces'}
+                    </p>
+                    {capture.lastPublishedAt && (
+                      <p className="mt-0.5 text-xs text-emerald-600">
+                        Última publicación: {displayPublicationTime(capture.lastPublishedAt)}.
+                      </p>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div className="mt-8 space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => void publishNow()}
-                    disabled={!publishingEnabled || Boolean(working)}
-                    title={!publishingEnabled ? 'INSTAGRAM_PUBLISHING_ENABLED está desactivado' : undefined}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-950 px-5 py-3.5 text-sm font-black text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-35"
-                  >
-                    <Send className="h-5 w-5" /> Subir ahora
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void addToNextSlot()}
-                    disabled={Boolean(working)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3.5 text-sm font-black text-white transition hover:bg-brand-600 disabled:opacity-40"
-                  >
-                    <CalendarClock className="h-5 w-5" />
-                    {capture?.scheduledFor ? 'Mover al próximo cupo' : 'Agregar al cron'}
-                  </button>
-                  <select
-                    value=""
-                    onChange={(event) => void addToSpecificSlot(event.target.value)}
-                    disabled={Boolean(working) || slots.length === 0}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm font-bold text-gray-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50 disabled:text-gray-300"
-                    aria-label="Agregar a una fecha específica"
-                  >
-                    <option value="">Agregar al cron en fecha específica…</option>
-                    {slots.map((slot) => <option key={slot.key} value={slot.key}>{slot.label}</option>)}
-                  </select>
-                </div>
               )}
+
+              <div className="mt-8 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => void publishNow()}
+                  disabled={!publishingEnabled || Boolean(working)}
+                  title={!publishingEnabled ? 'INSTAGRAM_PUBLISHING_ENABLED está desactivado' : undefined}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-950 px-5 py-3.5 text-sm font-black text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <Send className="h-5 w-5" /> Subir ahora
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void addToNextSlot()}
+                  disabled={Boolean(working)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3.5 text-sm font-black text-white transition hover:bg-brand-600 disabled:opacity-40"
+                >
+                  <CalendarClock className="h-5 w-5" />
+                  {capture?.scheduledFor ? 'Mover al próximo cupo' : 'Agregar al cron'}
+                </button>
+                <select
+                  value=""
+                  onChange={(event) => void addToSpecificSlot(event.target.value)}
+                  disabled={Boolean(working) || slots.length === 0}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm font-bold text-gray-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50 disabled:text-gray-300"
+                  aria-label="Agregar a una fecha específica"
+                >
+                  <option value="">Agregar al cron en fecha específica…</option>
+                  {slots.map((slot) => <option key={slot.key} value={slot.key}>{slot.label}</option>)}
+                </select>
+              </div>
 
               {working && (
                 <div className="mt-5 flex items-center gap-3 rounded-xl bg-brand-50 px-4 py-3 text-sm font-bold text-brand-700">

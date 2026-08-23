@@ -35,6 +35,8 @@ interface CaptureRow {
   container_id: string | null
   media_id: string | null
   published_at: string | null
+  publication_count: number
+  last_published_at: string | null
   attempts: number
   last_error: string | null
 }
@@ -55,6 +57,8 @@ function captureFromRow(row: CaptureRow): InstagramAdminCapture {
     containerId: row.container_id,
     mediaId: row.media_id,
     publishedAt: row.published_at,
+    publicationCount: row.publication_count,
+    lastPublishedAt: row.last_published_at,
     attempts: row.attempts,
     lastError: row.last_error,
   }
@@ -72,7 +76,7 @@ export async function GET() {
         .order('created_at', { ascending: false }),
       service
         .from('instagram_story_captures')
-        .select('id, product_id, status, jpeg_public_url, approved_at, generated_at, updated_at, scheduled_local_date, scheduled_slot, scheduled_for, schedule_source, container_id, media_id, published_at, attempts, last_error')
+        .select('id, product_id, status, jpeg_public_url, approved_at, generated_at, updated_at, scheduled_local_date, scheduled_slot, scheduled_for, schedule_source, container_id, media_id, published_at, publication_count, last_published_at, attempts, last_error')
         .order('approved_at', { ascending: true }),
     ])
     if (productsResult.error || capturesResult.error) {
