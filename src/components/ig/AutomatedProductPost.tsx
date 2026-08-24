@@ -54,7 +54,7 @@ function productFact(label: string, value: string | undefined): ProductFact | un
   return value ? { label, value } : undefined
 }
 
-function productFacts(product: AutomatedPostProduct): ProductFact[] {
+export function productFacts(product: AutomatedPostProduct): ProductFact[] {
   const attributes = product.attributes || {}
   const facts: Array<ProductFact | undefined> = []
   const value = (key: string) => firstValue(attributes[key])
@@ -158,7 +158,6 @@ function productFacts(product: AutomatedPostProduct): ProductFact[] {
   }
 
   const present = facts.filter((fact): fact is ProductFact => Boolean(fact))
-  if (present.length < 2) present.push({ label: 'UBICACIÓN', value: product.region.toUpperCase() })
   return present.slice(0, 3)
 }
 
@@ -214,14 +213,16 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
           data-ig-details-block
         >
           <FitPrice>{`$${product.price.toLocaleString('es-CL')}`}</FitPrice>
-          <ul className={styles.facts} aria-label="Características destacadas">
-            {facts.map((fact, index) => (
-              <li key={`${fact.label}-${fact.value}-${index}`}>
-                <span className={styles.factLabel}>{fact.label}</span>
-                <span className={styles.factValue}>{fact.value}</span>
-              </li>
-            ))}
-          </ul>
+          {facts.length > 0 && (
+            <ul className={styles.facts} aria-label="Características destacadas">
+              {facts.map((fact, index) => (
+                <li key={`${fact.label}-${fact.value}-${index}`}>
+                  <span className={styles.factLabel}>{fact.label}</span>
+                  <span className={styles.factValue}>{fact.value}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <div

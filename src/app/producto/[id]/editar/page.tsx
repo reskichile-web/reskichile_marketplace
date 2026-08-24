@@ -636,7 +636,7 @@ export default function EditProductPage() {
                       key={attr.key}
                       value={(attributes[attr.key] as string) || ''}
                       onChange={v => updateAttribute(attr.key, v)}
-                      productType={form.product_type}
+                      productType={attr.key === 'fijaciones_marca' ? 'fijaciones' : form.product_type}
                       placeholder={attr.label}
                       label={attr.label}
                     />

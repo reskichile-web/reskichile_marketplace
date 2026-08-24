@@ -1,6 +1,7 @@
 'use client'
 
 import type { AttributeField } from '@/lib/constants'
+import BrandInput from '@/components/BrandInput'
 
 /** Tiny info icon with a hover tooltip (used next to attribute labels). */
 export function InfoTip({ text }: { text: string }) {
@@ -126,6 +127,19 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
                 ))}
               </select>
             </div>
+          )
+        }
+
+        if (field.key === 'fijaciones_marca') {
+          return (
+            <BrandInput
+              key={field.key}
+              value={(values[field.key] as string) || ''}
+              onChange={value => onChange(field.key, value || undefined)}
+              productType="fijaciones"
+              placeholder="Marca de las fijaciones"
+              label={field.label}
+            />
           )
         }
 

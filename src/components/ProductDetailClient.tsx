@@ -368,7 +368,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
               opted out via the "ocultar mi número" toggle. */}
           {!isCommerceProduct && !isOwner && product.seller_id && (
             <div className="mt-6 flex gap-2 w-full">
-              {!hidePhone && (
+              {isApproved && !hidePhone && (
               <button
                 onClick={handleContact}
                 disabled={contacting}
@@ -396,7 +396,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
           )}
 
           {/* Anonymous seller fallback — only WhatsApp */}
-          {!isCommerceProduct && !isOwner && !product.seller_id && (
+          {!isCommerceProduct && isApproved && !isOwner && !product.seller_id && (
             <div className="mt-6 w-full">
               <button
                 onClick={handleContact}

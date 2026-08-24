@@ -120,10 +120,14 @@ Object.values(BRAND_SUGGESTIONS).forEach(brands => {
 })
 export const ALL_BRANDS = Array.from(ALL_BRANDS_SET).sort((a, b) => a.localeCompare(b, 'es'))
 
+function uniqueBrands(brands: string[]): string[] {
+  return Array.from(new Set(brands))
+}
+
 // Get suggestions filtered by query, prioritizing the product type
 export function getBrandSuggestions(query: string, productType?: string): string[] {
   const q = query.toLowerCase().trim()
-  if (!q) return productType ? BRAND_SUGGESTIONS[productType] || [] : []
+  if (!q) return productType ? uniqueBrands(BRAND_SUGGESTIONS[productType] || []) : []
 
   // Primary: brands for this product type
   const primary = productType ? (BRAND_SUGGESTIONS[productType] || []) : []
@@ -133,5 +137,5 @@ export function getBrandSuggestions(query: string, productType?: string): string
   const secondaryMatches = ALL_BRANDS
     .filter(b => b.toLowerCase().includes(q) && !primaryMatches.includes(b))
 
-  return [...primaryMatches, ...secondaryMatches].slice(0, 8)
+  return uniqueBrands([...primaryMatches, ...secondaryMatches]).slice(0, 8)
 }
