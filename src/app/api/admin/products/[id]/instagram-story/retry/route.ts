@@ -14,6 +14,7 @@ import type {
   AdminStoryRetryResponse,
   InstagramStoryCaptureStatus,
 } from '@/lib/instagram/contracts'
+import { versionedStoryStoragePath } from '@/lib/instagram/contracts'
 import { scheduleCaptureNext } from '@/lib/instagram/scheduling'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
@@ -125,12 +126,15 @@ export async function POST(
       updated_at: claim.updated_at,
     })
     if (claim.should_render) {
+      const storagePath = forceRegeneration
+        ? versionedStoryStoragePath(product.id, Date.now().toString(36))
+        : claim.jpeg_storage_path
       story = await generateAndStoreStoryCapture({
         captureId: claim.capture_id,
         productId: product.id,
         slug: product.slug || '',
-        storagePath: claim.jpeg_storage_path,
-        replaceExisting: forceRegeneration,
+        storagePath,
+        ...(forceRegeneration ? { previousStoragePath: claim.jpeg_storage_path } : {}),
       })
     } else if (claim.last_error) {
       story = { ...story, error: claim.last_error }

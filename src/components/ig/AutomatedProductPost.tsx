@@ -79,14 +79,12 @@ export function productFacts(product: AutomatedPostProduct): ProductFact[] {
         productFact('TALLA', value('talla_mondo') ? `MONDO ${value('talla_mondo')}` : undefined),
         productFact('FLEX', value('flex')),
         productFact('PINES', booleanValue(attributes.incluye_pines, 'INCLUIDOS', 'NO INCLUIDOS')),
-        productFact('BOA', booleanValue(attributes.boa, 'SÍ', 'NO')),
       )
       break
     case 'botas_snowboard':
       facts.push(
         productFact('TALLA', value('talla_mondo') ? `MONDO ${value('talla_mondo')}` : undefined),
         productFact('CONEXIÓN', value('tipo_conexion_fijacion')?.toUpperCase()),
-        productFact('BOA', booleanValue(attributes.boa, 'SÍ', 'NO')),
         productFact('GÉNERO', genderFact(attributes.genero)),
       )
       break

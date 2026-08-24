@@ -37,7 +37,7 @@ export interface GenerateStoryCaptureInput {
   productId: string
   slug: string
   storagePath: string
-  replaceExisting?: boolean
+  previousStoragePath?: string
 }
 
 function resultFromRow(row: CaptureRow, error?: string): InstagramStoryCaptureResult {
@@ -103,6 +103,7 @@ export async function renderStoryJpeg(slug: string): Promise<Buffer> {
     page.setDefaultTimeout(RENDER_TIMEOUT_MS)
 
     const storyUrl = new URL(`/ig-post/${encodeURIComponent(slug)}`, getAppUrl())
+    storyUrl.searchParams.set('render', Date.now().toString(36))
     const response = await page.goto(storyUrl.toString(), { waitUntil: 'networkidle0' })
     if (!response?.ok()) {
       throw new Error(`La plantilla respondió HTTP ${response?.status() ?? 'desconocido'}`)
@@ -175,25 +176,20 @@ export async function generateAndStoreStoryCapture(
   input: GenerateStoryCaptureInput,
 ): Promise<InstagramStoryCaptureResult> {
   const service = createServiceRoleClient()
+  let uploadedNewVersion = false
 
   try {
     const jpeg = await renderStoryJpeg(input.slug)
     const storage = service.storage.from(STORAGE_BUCKET)
 
-    if (input.replaceExisting) {
-      const { error: removeError } = await storage.remove([input.storagePath])
-      if (removeError) {
-        throw new Error(`No se pudo eliminar el JPEG anterior: ${removeError.message}`)
-      }
-    }
-
     const { error: uploadError } = await storage
       .upload(input.storagePath, jpeg, {
-        cacheControl: '0',
+        cacheControl: input.previousStoragePath ? '31536000' : '0',
         contentType: 'image/jpeg',
-        upsert: !input.replaceExisting,
+        upsert: !input.previousStoragePath,
       })
     if (uploadError) throw new Error(`No se pudo guardar el JPEG: ${uploadError.message}`)
+    uploadedNewVersion = Boolean(input.previousStoragePath)
 
     const { data: publicData } = storage.getPublicUrl(input.storagePath)
     const publicUrl = publicData.publicUrl
@@ -204,6 +200,7 @@ export async function generateAndStoreStoryCapture(
       .from('instagram_story_captures')
       .update({
         status: 'ready',
+        jpeg_storage_path: input.storagePath,
         jpeg_public_url: publicUrl,
         generated_at: now,
         last_error: null,
@@ -219,8 +216,18 @@ export async function generateAndStoreStoryCapture(
       throw new Error(updateError?.message || 'La captura dejó de estar disponible')
     }
 
+    if (input.previousStoragePath && input.previousStoragePath !== input.storagePath) {
+      const { error: cleanupError } = await storage.remove([input.previousStoragePath])
+      if (cleanupError) {
+        console.error('[instagram-story-capture] No se pudo eliminar la versión anterior')
+      }
+    }
+
     return resultFromRow(row as CaptureRow)
   } catch (error) {
+    if (uploadedNewVersion) {
+      await service.storage.from(STORAGE_BUCKET).remove([input.storagePath]).catch(() => undefined)
+    }
     const sanitized = sanitizeCaptureError(error)
     const { data: failedRow } = await service
       .from('instagram_story_captures')

@@ -31,4 +31,25 @@ describe('automated product post facts', () => {
   it('leaves the facts empty when the product has no intrinsic attributes', () => {
     expect(productFacts(product())).toEqual([])
   })
+
+  it('never uses BOA as a highlighted boot attribute', () => {
+    expect(productFacts(product({
+      product_type: 'botas_esqui',
+      attributes: { boa: true },
+    }))).toEqual([])
+    expect(productFacts(product({
+      product_type: 'botas_snowboard',
+      attributes: { boa: false },
+    }))).toEqual([])
+  })
+
+  it('keeps the long avalanche attribute as intrinsic content', () => {
+    expect(productFacts(product({
+      product_type: 'equipo_avalanchas',
+      attributes: { tipo_equipo: 'Sonda' },
+    }))).toEqual([
+      { label: 'EQUIPO', value: 'SONDA' },
+      { label: 'USO', value: 'SEGURIDAD EN MONTAÑA' },
+    ])
+  })
 })

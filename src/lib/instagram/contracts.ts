@@ -55,3 +55,9 @@ export interface AdminStoryRetryResponse {
 export function storyStoragePath(productId: string): string {
   return `_instagram/products/${productId}/story.jpg`
 }
+
+export function versionedStoryStoragePath(productId: string, version: string): string {
+  const safeVersion = version.trim().replace(/[^a-zA-Z0-9_-]+/g, '-')
+  if (!safeVersion) throw new Error('La versión de la Story es inválida')
+  return `_instagram/products/${productId}/story-${safeVersion}.jpg`
+}

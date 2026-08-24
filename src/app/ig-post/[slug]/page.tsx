@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation'
 import AutomatedProductPost, { type AutomatedPostProduct } from '@/components/ig/AutomatedProductPost'
 import { createPublicServerClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: 'Publicación automatizada · ReskiChile',
   robots: { index: false, follow: false },

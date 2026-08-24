@@ -104,8 +104,10 @@ describe('Instagram Story regeneration route', () => {
       captureId,
       productId,
       slug: 'dynafit-radical',
-      storagePath: `_instagram/products/${productId}/story.jpg`,
-      replaceExisting: true,
+      storagePath: expect.stringMatching(
+        new RegExp(`^_instagram/products/${productId}/story-[a-z0-9]+\\.jpg$`),
+      ),
+      previousStoragePath: `_instagram/products/${productId}/story.jpg`,
     })
     expect(mocks.schedule).not.toHaveBeenCalled()
   })
