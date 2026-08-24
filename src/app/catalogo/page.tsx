@@ -10,6 +10,7 @@ import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import EmptyState from '@/components/illustrations/EmptyState'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { computeSkiCounts, passesSkiFilters } from '@/lib/ski-filters'
+import { computeBootCounts, passesBootFilters } from '@/lib/boot-filters'
 
 export const metadata: Metadata = {
   title: 'Catálogo - ReskiChile',
@@ -31,6 +32,9 @@ interface Props {
     ancho?: string
     fij?: string
     conexion?: string
+    boot_size?: string
+    boot_flex?: string
+    boot_boa?: string
   }>
 }
 
@@ -55,6 +59,9 @@ export default async function CatalogPage({ searchParams }: Props) {
   const ancho = (queryParams.ancho || '').split(',').filter(Boolean)
   const fij = queryParams.fij || ''
   const conexion = (queryParams.conexion || '').split(',').filter(Boolean)
+  const bootSize = (queryParams.boot_size || '').split(',').filter(Boolean)
+  const bootFlex = (queryParams.boot_flex || '').split(',').filter(Boolean)
+  const bootBoa = queryParams.boot_boa || ''
 
   let query = supabase
     .from('products')
@@ -103,7 +110,13 @@ export default async function CatalogPage({ searchParams }: Props) {
   })
 
   const isEsquisOnly = types.length === 1 && types[0] === 'esquis'
+  const isSkiBootsOnly = types.length === 1 && types[0] === 'botas_esqui'
+  const isSnowboardBootsOnly = types.length === 1 && types[0] === 'botas_snowboard'
+  const isBootsOnly = isSkiBootsOnly || isSnowboardBootsOnly
   const skiCounts = computeSkiCounts(allProducts.filter((p) => p.product_type === 'esquis'))
+  const bootCounts = computeBootCounts(
+    allProducts.filter((p) => p.product_type === types[0] && isBootsOnly)
+  )
 
   if (isEsquisOnly) {
     products = products.filter((p) =>
@@ -114,6 +127,17 @@ export default async function CatalogPage({ searchParams }: Props) {
         ancho,
         fij,
         conexion,
+      })
+    )
+  }
+
+  if (isBootsOnly) {
+    products = products.filter((p) =>
+      passesBootFilters(p.attributes as Record<string, unknown> | null, {
+        size: bootSize,
+        flex: isSkiBootsOnly ? bootFlex : [],
+        gender: genero,
+        boa: bootBoa,
       })
     )
   }
@@ -130,7 +154,12 @@ export default async function CatalogPage({ searchParams }: Props) {
         largo.length > 0 ||
         ancho.length > 0 ||
         !!fij ||
-        conexion.length > 0))
+        conexion.length > 0)) ||
+    (isBootsOnly &&
+      (bootSize.length > 0 ||
+        bootFlex.length > 0 ||
+        genero.length > 0 ||
+        !!bootBoa))
 
   const title =
     types.length === 1 && PRODUCT_TYPES[types[0]]
@@ -166,6 +195,12 @@ export default async function CatalogPage({ searchParams }: Props) {
           selectedAncho={ancho}
           selectedFij={fij}
           selectedConexion={conexion}
+          isSkiBootsOnly={isSkiBootsOnly}
+          isSnowboardBootsOnly={isSnowboardBootsOnly}
+          bootCounts={bootCounts}
+          selectedBootSize={bootSize}
+          selectedBootFlex={bootFlex}
+          selectedBootBoa={bootBoa}
         />
         <CatalogSortSelect value={sort} />
       </div>
@@ -190,6 +225,12 @@ export default async function CatalogPage({ searchParams }: Props) {
               selectedAncho={ancho}
               selectedFij={fij}
               selectedConexion={conexion}
+              isSkiBootsOnly={isSkiBootsOnly}
+              isSnowboardBootsOnly={isSnowboardBootsOnly}
+              bootCounts={bootCounts}
+              selectedBootSize={bootSize}
+              selectedBootFlex={bootFlex}
+              selectedBootBoa={bootBoa}
             />
           </div>
         </aside>

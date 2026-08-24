@@ -68,6 +68,21 @@ export const TIPO_CONEXION_BOTAS_SNOWBOARD = ['Común', 'Step On']
 export const TIPO_EQUIPO_AVALANCHAS = ['Arva', 'Pala', 'Sonda']
 export const TIPO_GRABACION = ['360', 'Normal']
 
+// Las botas se publican y filtran por la misma banda Mondo. Muchas marcas
+// comparten carcasa entre la talla entera y la media talla, por eso el valor
+// canónico es, por ejemplo, "27/27.5" en vez de texto libre.
+export const MONDO_SIZE_BANDS = Array.from({ length: 16 }, (_, index) => {
+  const size = 18 + index
+  return `${size}/${size}.5`
+})
+
+// Los flex comerciales se expresan en pasos de 5 o 10. El catálogo solo
+// mostrará los valores que realmente tengan productos disponibles.
+export const SKI_BOOT_FLEX_OPTIONS = Array.from(
+  { length: ((150 - 40) / 5) + 1 },
+  (_, index) => String(40 + index * 5),
+)
+
 export const ITEMS_PER_PAGE = 12
 
 // "Mark as sold" flow — all optional. Stored on products.sold_channel /
@@ -91,7 +106,7 @@ export const SOLD_SPEED_LABELS: Record<string, string> =
 export interface AttributeField {
   key: string
   label: string
-  type: 'text' | 'number' | 'select' | 'boolean' | 'multiselect'
+  type: 'text' | 'number' | 'select' | 'button-select' | 'boolean' | 'multiselect'
   required: boolean
   options?: string[]
   /** multiselect: stored values are slugs (value), shown as label */
@@ -106,6 +121,7 @@ export interface AttributeField {
 export const GENERO_CHOICES: { value: string; label: string }[] = [
   { value: 'hombre', label: 'Hombre' },
   { value: 'mujer', label: 'Mujer' },
+  { value: 'unisex', label: 'Unisex' },
   { value: 'junior', label: 'Junior' },
 ]
 
@@ -161,16 +177,18 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
     { key: 'fijaciones_estado', label: 'Estado de las fijaciones', type: 'select', required: false, options: Object.values(CONDITIONS) },
   ],
   botas_esqui: [
-    { key: 'talla_mondo', label: 'Talla (Mondo)', type: 'text', required: false, placeholder: 'Ej: 26.5' },
-    { key: 'flex', label: 'Flex', type: 'text', required: true, placeholder: 'Ej: 100' },
+    { key: 'talla_mondo', label: 'Talla Mondo', type: 'button-select', required: true, options: MONDO_SIZE_BANDS },
+    { key: 'flex', label: 'Flex', type: 'button-select', required: true, options: SKI_BOOT_FLEX_OPTIONS },
     GENERO_FIELD,
     { key: 'incluye_pines', label: '¿Incluye pines?', type: 'boolean', required: false, info: 'Conexión para fijaciones de pines de randonée.' },
-    { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: true, placeholder: 'Ej: 30.5' },
+    { key: 'boa', label: 'Sistema BOA', type: 'boolean', required: true },
+    { key: 'largo_suela_mm', label: 'Largo de suela (mm)', type: 'number', required: false, placeholder: 'Ej: 315', info: 'Largo BSL grabado en la carcasa de la bota; no es la talla del pie.' },
     { key: 'color', label: 'Color', type: 'text', required: false },
   ],
   botas_snowboard: [
-    { key: 'talla_cm', label: 'Talla en cm', type: 'text', required: true, placeholder: 'Ej: 28' },
+    { key: 'talla_mondo', label: 'Talla Mondo', type: 'button-select', required: true, options: MONDO_SIZE_BANDS },
     { key: 'tipo_conexion_fijacion', label: 'Tipo de conexión a la fijación', type: 'select', required: true, options: TIPO_CONEXION_BOTAS_SNOWBOARD },
+    { key: 'boa', label: 'Sistema BOA', type: 'boolean', required: true },
     { key: 'color', label: 'Color', type: 'text', required: false },
     GENERO_FIELD,
   ],

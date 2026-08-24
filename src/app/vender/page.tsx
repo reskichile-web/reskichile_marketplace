@@ -147,7 +147,8 @@ export default function SellPage() {
 
   // Attributes ready to persist: drop empties so the JSONB stays clean
   function cleanedAttributes(): Record<string, unknown> {
-    if (publicationMode === 'short') return {}
+    const isBootProduct = productType === 'botas_esqui' || productType === 'botas_snowboard'
+    if (publicationMode === 'short' && !isBootProduct) return {}
 
     const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(attrs)) {
@@ -253,6 +254,20 @@ export default function SellPage() {
       setStep('photos')
       scrollTop()
     } else if (step === 'photos') {
+      const requiredAttributes = (PRODUCT_ATTRIBUTES[productType] || []).filter(field => field.required)
+      const missingAttributes = requiredAttributes.filter(field => {
+        const value = attrs[field.key]
+        return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
+      })
+      const requiresDetailedAttributes =
+        publicationMode === 'detailed' || productType === 'botas_esqui' || productType === 'botas_snowboard'
+      if (missingAttributes.length > 0 && requiresDetailedAttributes) {
+        setPopup({
+          message: `Completa ${missingAttributes.map(field => field.label).join(', ')}.`,
+          type: 'warning',
+        })
+        return
+      }
       if (images.length < minImages) {
         setPopup({ message: `Debes subir al menos ${minImages} fotos`, type: 'error' })
         return
@@ -634,7 +649,13 @@ export default function SellPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => { setProductType(key); setAttrs({}); setPublicationMode('short'); setStep('details'); scrollTop() }}
+                onClick={() => {
+                  setProductType(key)
+                  setAttrs({})
+                  setPublicationMode(key === 'botas_esqui' || key === 'botas_snowboard' ? 'detailed' : 'short')
+                  setStep('details')
+                  scrollTop()
+                }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${productType === key ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-gray-300'}`}
               >
                 {(() => {
@@ -784,36 +805,38 @@ export default function SellPage() {
         <div className="space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="font-body text-xl font-bold">Detalles de tu producto</h2>
-            <div className="flex items-center gap-1.5 self-start sm:self-auto">
-              <span className="text-[11px] font-medium text-gray-500">Publicación:</span>
-              <div
-                className="inline-flex rounded-lg border border-white bg-white p-0.5 shadow-[0_3px_10px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,1)] ring-1 ring-gray-100"
-                role="group"
-                aria-label="Extensión de la publicación"
-              >
-                {([
-                  { value: 'short', label: 'Corta' },
-                  { value: 'detailed', label: 'Detallada' },
-                ] as const).map(option => {
-                  const isActive = publicationMode === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setPublicationMode(option.value)}
-                      aria-pressed={isActive}
-                      className={`rounded-md border px-2.5 py-1 text-[11px] leading-none transition-all ${
-                        isActive
-                          ? 'border-brand-600 bg-brand-500 font-bold text-white shadow-md shadow-brand-500/25'
-                          : 'border-transparent bg-transparent font-medium text-gray-400 hover:text-gray-600'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  )
-                })}
+            {productType !== 'botas_esqui' && productType !== 'botas_snowboard' && (
+              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                <span className="text-[11px] font-medium text-gray-500">Publicación:</span>
+                <div
+                  className="inline-flex rounded-lg border border-white bg-white p-0.5 shadow-[0_3px_10px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,1)] ring-1 ring-gray-100"
+                  role="group"
+                  aria-label="Extensión de la publicación"
+                >
+                  {([
+                    { value: 'short', label: 'Corta' },
+                    { value: 'detailed', label: 'Detallada' },
+                  ] as const).map(option => {
+                    const isActive = publicationMode === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setPublicationMode(option.value)}
+                        aria-pressed={isActive}
+                        className={`rounded-md border px-2.5 py-1 text-[11px] leading-none transition-all ${
+                          isActive
+                            ? 'border-brand-600 bg-brand-500 font-bold text-white shadow-md shadow-brand-500/25'
+                            : 'border-transparent bg-transparent font-medium text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Description */}
@@ -828,7 +851,7 @@ export default function SellPage() {
           </div>
 
           {/* Detailed publication attributes, integrated directly in the form. */}
-          {publicationMode === 'detailed' && (PRODUCT_ATTRIBUTES[productType] || []).length > 0 && (
+          {(publicationMode === 'detailed' || productType === 'botas_esqui' || productType === 'botas_snowboard') && (PRODUCT_ATTRIBUTES[productType] || []).length > 0 && (
             <div className="border-t border-gray-200 pt-5">
               <AttributeFieldsEditor
                 fields={PRODUCT_ATTRIBUTES[productType] || []}

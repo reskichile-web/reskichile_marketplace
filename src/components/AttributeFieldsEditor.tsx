@@ -23,11 +23,59 @@ interface Props {
   onChange: (key: string, value: unknown) => void
 }
 
+function nextGenderSelection(current: string[], value: string, selected: boolean): string[] {
+  if (selected) return current.filter(item => item !== value)
+  if (value === 'unisex') return ['unisex', ...current.filter(item => !['hombre', 'mujer'].includes(item))]
+  if (value === 'hombre' || value === 'mujer') {
+    return [...current.filter(item => item !== 'unisex'), value]
+  }
+  return [...current, value]
+}
+
+export function AttributeButtonSelect({
+  field,
+  value,
+  onChange,
+}: {
+  field: AttributeField
+  value: unknown
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="sm:col-span-2">
+      <label className="flex items-center gap-1.5 text-sm font-medium mb-2">
+        {field.label}
+        {field.info && <InfoTip text={field.info} />}
+      </label>
+      <div className={`grid gap-2 ${field.key === 'flex' ? 'grid-cols-4 sm:grid-cols-6' : 'grid-cols-3 sm:grid-cols-4'}`}>
+        {(field.options || []).map(option => {
+          const selected = value === option
+          return (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(option)}
+              className={`min-h-11 rounded-lg border-2 px-2 py-2 text-sm tabular-nums transition-colors ${
+                selected
+                  ? 'border-brand-500 bg-brand-50 font-bold text-brand-600'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-brand-300 hover:text-gray-900'
+              }`}
+            >
+              {option}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /**
  * Attribute editor used by the /vender form. Mirrors the styling of the
  * rest of the product form (labels text-sm font-medium, inputs px-3
- * py-2.5 rounded-lg, selection chips border-2 + brand-50). All fields are
- * optional here — required validation only applies in the full edit form.
+ * py-2.5 rounded-lg, selection chips border-2 + brand-50). Required fields
+ * are validated by the publication flow before the product is created.
  */
 export default function AttributeFieldsEditor({ fields, values, onChange }: Props) {
   if (fields.length === 0) return null
@@ -64,7 +112,9 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
                       onClick={() => {
                         const next = selected
                           ? current.filter(v => v !== opt.value)
-                          : [...current, opt.value]
+                          : field.key === 'genero'
+                            ? nextGenderSelection(current, opt.value, selected)
+                            : [...current, opt.value]
                         onChange(field.key, next)
                       }}
                       className={chipCls(selected)}
@@ -97,7 +147,9 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
                       field.key,
                       field.key === 'incluye_fijaciones' && v === false
                         ? false
-                        : val === v ? undefined : v,
+                        : field.key === 'boa'
+                          ? v
+                          : val === v ? undefined : v,
                     )}
                     className={chipCls(val === v)}
                   >
@@ -106,6 +158,17 @@ export default function AttributeFieldsEditor({ fields, values, onChange }: Prop
                 ))}
               </div>
             </div>
+          )
+        }
+
+        if (field.type === 'button-select') {
+          return (
+            <AttributeButtonSelect
+              key={field.key}
+              field={field}
+              value={values[field.key]}
+              onChange={value => onChange(field.key, value)}
+            />
           )
         }
 

@@ -11,6 +11,7 @@ export const TIPO_OPTIONS: { value: string; label: string }[] = [
 export const GENERO_OPTIONS: { value: string; label: string }[] = [
   { value: 'hombre', label: 'Hombre' },
   { value: 'mujer', label: 'Mujer' },
+  { value: 'unisex', label: 'Unisex' },
   { value: 'junior', label: 'Junior' },
 ]
 

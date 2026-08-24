@@ -206,16 +206,18 @@ ALTER TABLE public.product_action_tokens ENABLE ROW LEVEL SECURITY;
 --
 -- botas_esqui: {
 --   "flex": "100",
---   "talla_mondo": "26.5",
---   "talla_cm": "30.5",
+--   "talla_mondo": "26/26.5",
+--   "largo_suela_mm": "305",
 --   "incluye_pines": false,                       -- bota randonnée (pines)
---   "genero": ["hombre"],                          -- array: hombre | mujer | junior
+--   "boa": false,
+--   "genero": ["hombre"],                          -- array: hombre | mujer | unisex | junior
 --   "color": "negro/rojo"
 -- }
 --
 -- botas_snowboard: {
---   "talla_cm": "28",
+--   "talla_mondo": "28/28.5",
 --   "tipo_conexion_fijacion": "comun",            -- comun | step_on
+--   "boa": true,
 --   "color": "negro",
 --   "genero": ["hombre"]
 -- }

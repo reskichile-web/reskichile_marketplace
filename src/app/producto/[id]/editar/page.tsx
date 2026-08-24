@@ -22,7 +22,7 @@ import {
   PRODUCT_ATTRIBUTES,
   type AttributeField,
 } from '@/lib/constants'
-import { InfoTip } from '@/components/AttributeFieldsEditor'
+import { AttributeButtonSelect, InfoTip } from '@/components/AttributeFieldsEditor'
 
 const ACCEPTED_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 const ACCEPTED_LABEL = 'JPG, PNG o WebP'
@@ -233,8 +233,15 @@ export default function EditProductPage() {
     })
   }
 
-  function updateAttribute(key: string, value: string | boolean | string[]) {
-    setAttributes(prev => ({ ...prev, [key]: value }))
+  function updateAttribute(key: string, value: string | boolean | string[] | undefined) {
+    setAttributes(prev => {
+      if (value === undefined) {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      }
+      return { ...prev, [key]: value }
+    })
   }
 
   // Unified image list — respects imageOrder for mixed existing+new
@@ -590,7 +597,11 @@ export default function EditProductPage() {
                           onClick={() => {
                             const next = selected
                               ? current.filter(v => v !== opt.value)
-                              : [...current, opt.value]
+                              : attr.key === 'genero' && opt.value === 'unisex'
+                                ? ['unisex', ...current.filter(v => !['hombre', 'mujer'].includes(v))]
+                                : attr.key === 'genero' && ['hombre', 'mujer'].includes(opt.value)
+                                  ? [...current.filter(v => v !== 'unisex'), opt.value]
+                                  : [...current, opt.value]
                             updateAttribute(attr.key, next)
                           }}
                           className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
@@ -609,24 +620,41 @@ export default function EditProductPage() {
             })}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {currentAttributes.filter(a => a.type !== 'multiselect').map(attr => {
+                if (attr.type === 'button-select') {
+                  return (
+                    <AttributeButtonSelect
+                      key={attr.key}
+                      field={attr}
+                      value={attributes[attr.key]}
+                      onChange={value => updateAttribute(attr.key, value)}
+                    />
+                  )
+                }
                 if (attr.type === 'boolean') {
                   const val = attributes[attr.key]
                   return (
-                    <button
-                      key={attr.key}
-                      type="button"
-                      onClick={() => updateAttribute(attr.key, val === true ? false : true)}
-                      className="text-left group"
-                    >
-                      <span className="flex items-center gap-1 text-xs text-gray-400">
+                    <div key={attr.key} className="sm:col-span-2">
+                      <span className="flex items-center gap-1 text-xs text-gray-400 mb-2">
                         {attr.label}
                         {attr.info && <InfoTip text={attr.info} />}
-                        <svg className="w-2.5 h-2.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
                       </span>
-                      <p className="text-sm font-medium group-hover:text-brand-500 transition-colors">{val === true ? 'Sí' : val === false ? 'No' : <span className="text-gray-500">–</span>}</p>
-                    </button>
+                      <div className="flex gap-2">
+                        {[{ value: true, label: 'Sí' }, { value: false, label: 'No' }].map(option => (
+                          <button
+                            key={option.label}
+                            type="button"
+                            onClick={() => updateAttribute(attr.key, option.value)}
+                            className={`min-w-20 rounded-lg border-2 px-4 py-2 text-sm transition-colors ${
+                              val === option.value
+                                ? 'border-brand-500 bg-brand-50 font-bold text-brand-600'
+                                : 'border-gray-200 text-gray-600 hover:border-brand-300'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )
                 }
                 // Brand fields get BrandInput with suggestions

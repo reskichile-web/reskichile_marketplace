@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, ChevronDown, X, SlidersHorizontal } from 'lucide-react'
 import CatalogSidebar from './CatalogSidebar'
 import type { SkiCounts } from '@/lib/ski-filters'
+import type { BootCounts } from '@/lib/boot-filters'
 import { PRODUCT_TYPES } from '@/lib/constants'
 
 interface Props {
@@ -26,6 +27,12 @@ interface Props {
   selectedAncho: string[]
   selectedFij: string
   selectedConexion: string[]
+  isSkiBootsOnly: boolean
+  isSnowboardBootsOnly: boolean
+  bootCounts: BootCounts
+  selectedBootSize: string[]
+  selectedBootFlex: string[]
+  selectedBootBoa: string
 }
 
 export default function CatalogMobileFilterButton(props: Props) {
@@ -45,13 +52,20 @@ export default function CatalogMobileFilterButton(props: Props) {
       props.selectedAncho.length +
       props.selectedConexion.length +
       (props.selectedFij ? 1 : 0))
+  const bootActive =
+    (props.isSkiBootsOnly || props.isSnowboardBootsOnly) &&
+    (props.selectedBootSize.length +
+      props.selectedBootFlex.length +
+      props.selectedGenero.length +
+      (props.selectedBootBoa ? 1 : 0))
   const activeCount =
     props.selectedConditions.length +
     props.selectedRegions.length +
     props.selectedBrands.length +
     (selectedCategory ? 1 : 0) +
     (props.minPrice != null || props.maxPrice != null ? 1 : 0) +
-    (skiActive || 0)
+    (skiActive || 0) +
+    (bootActive || 0)
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -101,6 +115,9 @@ export default function CatalogMobileFilterButton(props: Props) {
     params.delete('ancho')
     params.delete('fij')
     params.delete('conexion')
+    params.delete('boot_size')
+    params.delete('boot_flex')
+    params.delete('boot_boa')
     params.delete('page')
 
     const query = params.toString()
@@ -222,6 +239,12 @@ export default function CatalogMobileFilterButton(props: Props) {
                 selectedAncho={props.selectedAncho}
                 selectedFij={props.selectedFij}
                 selectedConexion={props.selectedConexion}
+                isSkiBootsOnly={props.isSkiBootsOnly}
+                isSnowboardBootsOnly={props.isSnowboardBootsOnly}
+                bootCounts={props.bootCounts}
+                selectedBootSize={props.selectedBootSize}
+                selectedBootFlex={props.selectedBootFlex}
+                selectedBootBoa={props.selectedBootBoa}
               />
             </div>
           </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import { CONDITIONS, REGIONS } from '@/lib/constants'
+import BootSizeGuide from '@/components/BootSizeGuide'
 import {
   TIPO_OPTIONS,
   GENERO_OPTIONS,
@@ -12,6 +13,10 @@ import {
   CONEXION_OPTIONS,
   type SkiCounts,
 } from '@/lib/ski-filters'
+import {
+  BOOT_GENDER_OPTIONS,
+  type BootCounts,
+} from '@/lib/boot-filters'
 
 interface Props {
   selectedConditions: string[]
@@ -30,6 +35,12 @@ interface Props {
   selectedAncho: string[]
   selectedFij: string
   selectedConexion: string[]
+  isSkiBootsOnly: boolean
+  isSnowboardBootsOnly: boolean
+  bootCounts: BootCounts
+  selectedBootSize: string[]
+  selectedBootFlex: string[]
+  selectedBootBoa: string
 }
 
 type SectionKey =
@@ -43,6 +54,9 @@ type SectionKey =
   | 'ancho'
   | 'fij'
   | 'conexion'
+  | 'bootSize'
+  | 'bootFlex'
+  | 'bootBoa'
 
 export default function CatalogSidebar({
   selectedConditions,
@@ -61,6 +75,12 @@ export default function CatalogSidebar({
   selectedAncho,
   selectedFij,
   selectedConexion,
+  isSkiBootsOnly,
+  isSnowboardBootsOnly,
+  bootCounts,
+  selectedBootSize,
+  selectedBootFlex,
+  selectedBootBoa,
 }: Props) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -75,6 +95,9 @@ export default function CatalogSidebar({
     ancho: false,
     fij: false,
     conexion: false,
+    bootSize: true,
+    bootFlex: false,
+    bootBoa: false,
   })
 
   function toggleSection(key: SectionKey) {
@@ -115,6 +138,13 @@ export default function CatalogSidebar({
     })
   }
 
+  function setBinaryFilter(param: string, value: '' | 'yes' | 'no') {
+    pushParams(p => {
+      if (value) p.set(param, value)
+      else p.delete(param)
+    })
+  }
+
   function clearAll() {
     router.push('/catalogo')
   }
@@ -128,13 +158,22 @@ export default function CatalogSidebar({
       !!selectedFij ||
       selectedConexion.length > 0)
 
+  const isBootsOnly = isSkiBootsOnly || isSnowboardBootsOnly
+  const bootHasFilters =
+    isBootsOnly &&
+    (selectedBootSize.length > 0 ||
+      selectedBootFlex.length > 0 ||
+      selectedGenero.length > 0 ||
+      !!selectedBootBoa)
+
   const hasFilters =
     selectedConditions.length > 0 ||
     selectedRegions.length > 0 ||
     selectedBrands.length > 0 ||
     minPrice != null ||
     maxPrice != null ||
-    skiHasFilters
+    skiHasFilters ||
+    bootHasFilters
 
   // Sorted brand list by count desc
   const brandList = Object.entries(brandCounts)
@@ -181,16 +220,18 @@ export default function CatalogSidebar({
       </Section>
 
       {/* 3. Género (esquis) */}
-      {isEsquisOnly && (
+      {(isEsquisOnly || isBootsOnly) && (
         <Section
           label="Género"
           isOpen={open.genero}
           onToggle={() => toggleSection('genero')}
           active={selectedGenero.length > 0}
         >
-          {GENERO_OPTIONS.map(opt => {
+          {(isBootsOnly ? BOOT_GENDER_OPTIONS : GENERO_OPTIONS).map(opt => {
             const checked = selectedGenero.includes(opt.value)
-            const count = skiCounts.genero[opt.value] || 0
+            const count = isBootsOnly
+              ? bootCounts.gender[opt.value] || 0
+              : skiCounts.genero[opt.value] || 0
             if (count === 0 && !checked) return null
             return (
               <CheckRow
@@ -203,6 +244,85 @@ export default function CatalogSidebar({
             )
           })}
         </Section>
+      )}
+
+      {/* Filtros específicos de botas: simples, normalizados y sin opciones vacías. */}
+      {isBootsOnly && (
+        <>
+          <Section
+            label="Talla"
+            isOpen={open.bootSize}
+            onToggle={() => toggleSection('bootSize')}
+            active={selectedBootSize.length > 0}
+          >
+            <BootSizeGuide kind={isSkiBootsOnly ? 'ski' : 'snowboard'} />
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(bootCounts.size)
+                .filter(([, count]) => count > 0)
+                .sort(([a], [b]) => Number(a.split('/')[0]) - Number(b.split('/')[0]))
+                .map(([size, count]) => {
+                  const selected = selectedBootSize.includes(size)
+                  return (
+                    <FilterButton
+                      key={size}
+                      selected={selected}
+                      onClick={() => toggleMulti('boot_size', size)}
+                      label={`${size} (${count})`}
+                    />
+                  )
+                })}
+            </div>
+          </Section>
+
+          {isSkiBootsOnly && Object.keys(bootCounts.flex).length > 0 && (
+            <Section
+              label="Flex"
+              isOpen={open.bootFlex}
+              onToggle={() => toggleSection('bootFlex')}
+              active={selectedBootFlex.length > 0}
+            >
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(bootCounts.flex)
+                  .filter(([, count]) => count > 0)
+                  .sort(([a], [b]) => Number(a) - Number(b))
+                  .map(([flex, count]) => (
+                    <FilterButton
+                      key={flex}
+                      selected={selectedBootFlex.includes(flex)}
+                      onClick={() => toggleMulti('boot_flex', flex)}
+                      label={`${flex} (${count})`}
+                    />
+                  ))}
+              </div>
+            </Section>
+          )}
+
+          {(bootCounts.boaYes > 0 || bootCounts.boaNo > 0 || selectedBootBoa) && (
+            <Section
+              label="Sistema BOA"
+              isOpen={open.bootBoa}
+              onToggle={() => toggleSection('bootBoa')}
+              active={!!selectedBootBoa}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                {bootCounts.boaYes > 0 && (
+                  <FilterButton
+                    selected={selectedBootBoa === 'yes'}
+                    onClick={() => setBinaryFilter('boot_boa', selectedBootBoa === 'yes' ? '' : 'yes')}
+                    label={`Sí (${bootCounts.boaYes})`}
+                  />
+                )}
+                {bootCounts.boaNo > 0 && (
+                  <FilterButton
+                    selected={selectedBootBoa === 'no'}
+                    onClick={() => setBinaryFilter('boot_boa', selectedBootBoa === 'no' ? '' : 'no')}
+                    label={`No (${bootCounts.boaNo})`}
+                  />
+                )}
+              </div>
+            </Section>
+          )}
+        </>
       )}
 
       {/* 4. Atributos del producto (esquis) */}
@@ -485,6 +605,31 @@ function RadioRow({
         <span className="text-xs text-gray-400 tabular-nums">{count}</span>
       )}
     </label>
+  )
+}
+
+function FilterButton({
+  selected,
+  onClick,
+  label,
+}: {
+  selected: boolean
+  onClick: () => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={`min-h-10 rounded-md border-2 px-1.5 py-2 text-[11px] leading-tight tabular-nums transition-colors ${
+        selected
+          ? 'border-brand-500 bg-brand-50 font-bold text-brand-600'
+          : 'border-gray-300 bg-white text-gray-600 hover:border-brand-300 hover:text-gray-900'
+      }`}
+    >
+      {label}
+    </button>
   )
 }
 
