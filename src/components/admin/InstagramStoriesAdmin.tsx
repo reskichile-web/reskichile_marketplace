@@ -15,6 +15,8 @@ import {
 import { instagramStoryRuleForDate } from '@/lib/instagram/schedule-rules'
 
 const CALENDAR_DAYS = 35
+const HISTORY_PAGE_DAYS = 14
+const MAX_HISTORY_DAYS = 365
 
 async function responseError(response: Response): Promise<string> {
   const payload = await response.json().catch(() => ({})) as { error?: string }
@@ -25,6 +27,7 @@ export default function InstagramStoriesAdmin() {
   const [data, setData] = useState<InstagramAdminCalendarResponse | null>(null)
   const [view, setView] = useState<'prepare' | 'calendar'>('calendar')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const [historyDays, setHistoryDays] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -32,7 +35,10 @@ export default function InstagramStoriesAdmin() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/admin/instagram-stories', { cache: 'no-store' })
+      const response = await fetch(
+        `/api/admin/instagram-stories?historyDays=${historyDays}`,
+        { cache: 'no-store' },
+      )
       if (!response.ok) throw new Error(await responseError(response))
       setData(await response.json() as InstagramAdminCalendarResponse)
     } catch (caught) {
@@ -40,15 +46,18 @@ export default function InstagramStoriesAdmin() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [historyDays])
 
   useEffect(() => { void load() }, [load])
 
   const today = chileToday()
   const currentTime = chileCurrentTime()
   const dates = useMemo(
-    () => Array.from({ length: CALENDAR_DAYS }, (_, index) => addLocalDays(today, index)),
-    [today],
+    () => Array.from(
+      { length: CALENDAR_DAYS + historyDays },
+      (_, index) => addLocalDays(today, index - historyDays),
+    ),
+    [historyDays, today],
   )
   const products = data?.products ?? []
   const selectedProduct = selectedProductId
@@ -63,7 +72,11 @@ export default function InstagramStoriesAdmin() {
       const rule = instagramStoryRuleForDate(localDate)
       return rule.slots.flatMap((slot): InstagramSlotOption[] => {
         const key = `${localDate}|${slot.slot}`
-        if (occupied.has(key) || (localDate === today && slot.time <= currentTime)) return []
+        if (
+          occupied.has(key)
+          || localDate < today
+          || (localDate === today && slot.time <= currentTime)
+        ) return []
         return [{
           key,
           localDate,
@@ -148,12 +161,19 @@ export default function InstagramStoriesAdmin() {
         ) : (
           <InstagramStoryCalendarTable
             products={products}
+            publications={data?.publications ?? []}
             dates={dates}
             today={today}
             currentTime={currentTime}
+            historyDays={historyDays}
+            loading={loading}
             availableSlots={availableSlots}
             onOpen={setSelectedProductId}
             onChanged={load}
+            onLoadEarlier={() => setHistoryDays((days) => (
+              Math.min(MAX_HISTORY_DAYS, days + HISTORY_PAGE_DAYS)
+            ))}
+            onReturnToToday={() => setHistoryDays(0)}
           />
         )}
       </div>

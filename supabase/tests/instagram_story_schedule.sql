@@ -277,6 +277,14 @@ SELECT 1 / CASE WHEN COUNT(*) = 2 THEN 1 ELSE 0 END
 FROM public.instagram_story_publications
 WHERE product_id = '94000000-0000-4000-8000-000000000001';
 
+SELECT 1 / CASE WHEN EXISTS (
+  SELECT 1
+  FROM pg_indexes
+  WHERE schemaname = 'public'
+    AND tablename = 'instagram_story_publications'
+    AND indexname = 'instagram_story_publications_schedule_idx'
+) THEN 1 ELSE 0 END;
+
 SELECT 1 / CASE WHEN
   NOT has_table_privilege('anon', 'public.instagram_story_publications', 'SELECT')
   AND NOT has_table_privilege('authenticated', 'public.instagram_story_publications', 'SELECT')

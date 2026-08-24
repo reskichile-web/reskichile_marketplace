@@ -3,12 +3,15 @@ import { adminErrorResponse, requireAdmin } from '@/lib/admin-security'
 import type {
   InstagramAdminCalendarResponse,
   InstagramAdminCapture,
+  InstagramAdminPublication,
 } from '@/lib/instagram/admin-contracts'
 import { getInstagramPublishingConfig } from '@/lib/instagram/publishing-config'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+const MAX_HISTORY_DAYS = 365
 
 interface ProductRow {
   id: string
@@ -41,6 +44,27 @@ interface CaptureRow {
   last_error: string | null
 }
 
+interface PublicationRow {
+  id: string
+  capture_id: string
+  product_id: string
+  container_id: string
+  media_id: string | null
+  published_at: string
+  recovered: boolean
+  scheduled_local_date: string
+  scheduled_slot: number
+  scheduled_for: string
+  schedule_source: InstagramAdminPublication['scheduleSource']
+  products: {
+    brand: string
+    model: string | null
+    slug: string | null
+    product_type: string
+    product_images: { url: string; order: number }[] | null
+  }
+}
+
 function captureFromRow(row: CaptureRow): InstagramAdminCapture {
   return {
     id: row.id,
@@ -64,11 +88,53 @@ function captureFromRow(row: CaptureRow): InstagramAdminCapture {
   }
 }
 
-export async function GET() {
+function chileToday(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+function addLocalDays(localDate: string, days: number): string {
+  const date = new Date(`${localDate}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function publicationFromRow(row: PublicationRow): InstagramAdminPublication {
+  const images = [...(row.products.product_images ?? [])]
+    .sort((left, right) => left.order - right.order)
+  return {
+    id: row.id,
+    captureId: row.capture_id,
+    productId: row.product_id,
+    title: [row.products.brand, row.products.model].filter(Boolean).join(' '),
+    slug: row.products.slug || row.product_id,
+    productType: row.products.product_type,
+    imageUrl: images[0]?.url || null,
+    containerId: row.container_id,
+    mediaId: row.media_id,
+    publishedAt: row.published_at,
+    recovered: row.recovered,
+    scheduledLocalDate: row.scheduled_local_date,
+    scheduledSlot: row.scheduled_slot,
+    scheduledFor: row.scheduled_for,
+    scheduleSource: row.schedule_source,
+  }
+}
+
+export async function GET(request: Request) {
   try {
     await requireAdmin()
     const service = createServiceRoleClient()
-    const [productsResult, capturesResult] = await Promise.all([
+    const requestedHistoryDays = Number(new URL(request.url).searchParams.get('historyDays') || 0)
+    const historyDays = Number.isInteger(requestedHistoryDays)
+      ? Math.min(MAX_HISTORY_DAYS, Math.max(0, requestedHistoryDays))
+      : 0
+    const historyStart = addLocalDays(chileToday(), -historyDays)
+    const [productsResult, capturesResult, publicationsResult] = await Promise.all([
       service
         .from('products')
         .select('id, brand, model, slug, product_type, price, product_images (url, order)')
@@ -78,8 +144,15 @@ export async function GET() {
         .from('instagram_story_captures')
         .select('id, product_id, status, jpeg_public_url, approved_at, generated_at, updated_at, scheduled_local_date, scheduled_slot, scheduled_for, schedule_source, container_id, media_id, published_at, publication_count, last_published_at, attempts, last_error')
         .order('approved_at', { ascending: true }),
+      service
+        .from('instagram_story_publications')
+        .select('id, capture_id, product_id, container_id, media_id, published_at, recovered, scheduled_local_date, scheduled_slot, scheduled_for, schedule_source, products!inner(brand, model, slug, product_type, product_images(url, order))')
+        .not('scheduled_local_date', 'is', null)
+        .gte('scheduled_local_date', historyStart)
+        .order('scheduled_local_date', { ascending: false })
+        .order('scheduled_slot', { ascending: false }),
     ])
-    if (productsResult.error || capturesResult.error) {
+    if (productsResult.error || capturesResult.error || publicationsResult.error) {
       throw new Error('No pudimos leer el calendario de Instagram')
     }
 
@@ -102,6 +175,8 @@ export async function GET() {
       ok: true,
       publishingEnabled: getInstagramPublishingConfig().enabled,
       products,
+      publications: ((publicationsResult.data ?? []) as unknown as PublicationRow[])
+        .map(publicationFromRow),
     }
     return NextResponse.json(response, {
       headers: { 'Cache-Control': 'no-store, private' },

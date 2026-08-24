@@ -2,7 +2,10 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import InstagramStoryEditorModal from '@/components/admin/InstagramStoryEditorModal'
 import InstagramStoryCalendarTable from '@/components/admin/InstagramStoryCalendarTable'
-import type { InstagramAdminProduct } from '@/lib/instagram/admin-contracts'
+import type {
+  InstagramAdminProduct,
+  InstagramAdminPublication,
+} from '@/lib/instagram/admin-contracts'
 
 const baseProduct: InstagramAdminProduct = {
   id: '92000000-0000-4000-8000-000000000001',
@@ -45,6 +48,24 @@ const slots = [{
   time: '19:30',
   label: 'Lunes, 24 ago · 19:30',
 }]
+
+const publishedStory: InstagramAdminPublication = {
+  id: '94000000-0000-4000-8000-000000000001',
+  captureId: preparedProduct.capture!.id,
+  productId: preparedProduct.id,
+  title: preparedProduct.title,
+  slug: preparedProduct.slug,
+  productType: preparedProduct.productType,
+  imageUrl: preparedProduct.imageUrl,
+  containerId: 'container-1',
+  mediaId: 'media-1',
+  publishedAt: '2026-08-24T23:31:00.000Z',
+  recovered: false,
+  scheduledLocalDate: '2026-08-24',
+  scheduledSlot: 1,
+  scheduledFor: '2026-08-24T23:30:00.000Z',
+  scheduleSource: 'automatic',
+}
 
 describe('Instagram Story admin UI', () => {
   it('offers only generation before a product has a prepared Story', () => {
@@ -109,12 +130,17 @@ describe('Instagram Story admin UI', () => {
     const html = renderToStaticMarkup(
       <InstagramStoryCalendarTable
         products={[preparedProduct]}
+        publications={[]}
         dates={['2026-08-24']}
         today="2026-08-22"
         currentTime="12:00"
+        historyDays={0}
+        loading={false}
         availableSlots={slots}
         onOpen={vi.fn()}
         onChanged={vi.fn(async () => undefined)}
+        onLoadEarlier={vi.fn()}
+        onReturnToToday={vi.fn()}
       />,
     )
 
@@ -122,5 +148,30 @@ describe('Instagram Story admin UI', () => {
     expect(html).toContain('Calendario editorial')
     expect(html).toContain('bg-blue-50')
     expect(html).toContain('Lunes, 24 ago')
+    expect(html).toContain('Ver días anteriores')
+  })
+
+  it('keeps completed cron publications in their original historical slot', () => {
+    const html = renderToStaticMarkup(
+      <InstagramStoryCalendarTable
+        products={[]}
+        publications={[publishedStory]}
+        dates={['2026-08-24']}
+        today="2026-08-25"
+        currentTime="12:00"
+        historyDays={14}
+        loading={false}
+        availableSlots={[]}
+        onOpen={vi.fn()}
+        onChanged={vi.fn(async () => undefined)}
+        onLoadEarlier={vi.fn()}
+        onReturnToToday={vi.fn()}
+      />,
+    )
+
+    expect(html).toContain('Dynafit Radical')
+    expect(html).toContain('Cron automático')
+    expect(html).toContain('Publicada con éxito')
+    expect(html).toContain('Meta confirmó a las')
   })
 })

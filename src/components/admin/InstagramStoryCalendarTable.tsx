@@ -7,11 +7,16 @@ import {
   CalendarDays,
   CheckCircle2,
   ExternalLink,
+  History,
   Loader2,
   Trash2,
 } from 'lucide-react'
-import type { InstagramAdminProduct } from '@/lib/instagram/admin-contracts'
+import type {
+  InstagramAdminProduct,
+  InstagramAdminPublication,
+} from '@/lib/instagram/admin-contracts'
 import {
+  displayChileTime,
   displayLocalDate,
   storyStatus,
 } from '@/lib/instagram/admin-ui'
@@ -20,12 +25,17 @@ import type { InstagramSlotOption } from './InstagramStoryEditorModal'
 
 interface Props {
   products: InstagramAdminProduct[]
+  publications: InstagramAdminPublication[]
   dates: string[]
   today: string
   currentTime: string
+  historyDays: number
+  loading: boolean
   availableSlots: InstagramSlotOption[]
   onOpen: (productId: string) => void
   onChanged: () => Promise<void>
+  onLoadEarlier: () => void
+  onReturnToToday: () => void
 }
 
 async function responseError(response: Response): Promise<string> {
@@ -35,12 +45,17 @@ async function responseError(response: Response): Promise<string> {
 
 export default function InstagramStoryCalendarTable({
   products,
+  publications,
   dates,
   today,
   currentTime,
+  historyDays,
+  loading,
   availableSlots,
   onOpen,
   onChanged,
+  onLoadEarlier,
+  onReturnToToday,
 }: Props) {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
@@ -49,6 +64,12 @@ export default function InstagramStoryCalendarTable({
     scheduledProducts.map((product) => [
       `${product.capture!.scheduledLocalDate}|${product.capture!.scheduledSlot}`,
       product,
+    ]),
+  )
+  const published = new Map(
+    publications.map((publication) => [
+      `${publication.scheduledLocalDate}|${publication.scheduledSlot}`,
+      publication,
     ]),
   )
   const preparedUnscheduled = products.filter((product) => {
@@ -101,14 +122,35 @@ export default function InstagramStoryCalendarTable({
 
   return (
     <section className="overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-sm">
-      <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-5 py-5 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-white px-5 py-5 sm:px-6">
         <div>
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
             <CalendarDays className="h-4 w-4" /> Calendario editorial
           </div>
           <h2 className="mt-1 font-body text-2xl font-black tracking-tight text-gray-800">Programación de historias</h2>
         </div>
-        {busy && <Loader2 className="h-5 w-5 animate-spin text-gray-500" />}
+        <div className="flex items-center gap-2">
+          {historyDays > 0 && (
+            <button
+              type="button"
+              onClick={onReturnToToday}
+              disabled={loading || Boolean(busy)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-500 transition hover:border-gray-300 hover:text-gray-800 disabled:opacity-40"
+            >
+              Volver a hoy
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onLoadEarlier}
+            disabled={loading || Boolean(busy) || historyDays >= 365}
+            className="inline-flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-40"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+            {historyDays > 0 ? 'Ver 14 días más' : 'Ver días anteriores'}
+          </button>
+          {busy && <Loader2 className="h-5 w-5 animate-spin text-gray-500" />}
+        </div>
       </header>
 
       {error && (
@@ -134,9 +176,11 @@ export default function InstagramStoryCalendarTable({
               return rule.slots.map((slot, index) => {
                 const key = `${localDate}|${slot.slot}`
                 const product = occupied.get(key)
+                const publication = published.get(key)
                 const capture = product?.capture
                 const state = product ? storyStatus(product) : null
-                const slotPassed = localDate === today && slot.time <= currentTime
+                const slotPassed = localDate < today
+                  || (localDate === today && slot.time <= currentTime)
                 return (
                   <tr key={key} className={`${index === 0 ? 'border-t-2 border-t-blue-200' : ''} ${index === rule.slots.length - 1 ? 'border-b-2 border-b-blue-200' : 'border-b border-b-gray-100'} transition hover:bg-blue-50/25`}>
                     {index === 0 && (
@@ -152,7 +196,19 @@ export default function InstagramStoryCalendarTable({
                       <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Cupo {slot.slot}</p>
                     </td>
                     <td className="px-4 py-3 align-middle">
-                      {product && capture ? (
+                      {publication ? (
+                        <div className="flex max-w-md items-center gap-3">
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-emerald-100 bg-white">
+                            {publication.imageUrl && <img src={publication.imageUrl} alt="" className="h-full w-full object-contain" />}
+                          </div>
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-black text-gray-900">{publication.title}</span>
+                            <span className="mt-0.5 block text-[10px] text-gray-400">
+                              {publication.scheduleSource === 'automatic' ? 'Cron automático' : 'Cron manual'} · Publicada {displayChileTime(publication.publishedAt)}
+                            </span>
+                          </span>
+                        </div>
+                      ) : product && capture ? (
                         <button type="button" onClick={() => onOpen(product.id)} className="group flex max-w-md items-center gap-3 text-left">
                           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
                             {product.imageUrl && <img src={product.imageUrl} alt="" className="h-full w-full object-contain" />}
@@ -165,7 +221,7 @@ export default function InstagramStoryCalendarTable({
                           </span>
                         </button>
                       ) : slotPassed ? (
-                        <span className="text-xs font-bold uppercase tracking-wide text-gray-300">Cupo vencido</span>
+                        <span className="text-xs font-bold uppercase tracking-wide text-gray-300">Sin publicación registrada</span>
                       ) : (
                         <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
                           <CheckCircle2 className="h-4 w-4" /> Cupo libre
@@ -173,10 +229,23 @@ export default function InstagramStoryCalendarTable({
                       )}
                     </td>
                     <td className="px-4 py-3 align-middle">
-                      {state && <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide ${state.className}`}>{state.label}</span>}
+                      {publication ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Publicada
+                        </span>
+                      ) : state && (
+                        <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide ${state.className}`}>{state.label}</span>
+                      )}
                     </td>
                     <td className="px-5 py-3 align-middle">
-                      {product && capture ? (
+                      {publication ? (
+                        <div>
+                          <p className="text-xs font-bold text-emerald-700">Publicada con éxito</p>
+                          <p className="mt-0.5 text-[10px] text-gray-400">
+                            Meta confirmó a las {displayChileTime(publication.publishedAt)}
+                          </p>
+                        </div>
+                      ) : product && capture ? (
                         <div className="flex items-center gap-2">
                           <select
                             value=""
@@ -198,7 +267,7 @@ export default function InstagramStoryCalendarTable({
                           </button>
                         </div>
                       ) : slotPassed ? (
-                        <span className="text-xs font-semibold text-gray-300">Sin acciones</span>
+                        <span className="text-xs font-semibold text-gray-300">Sin publicación</span>
                       ) : (
                         <select
                           value=""

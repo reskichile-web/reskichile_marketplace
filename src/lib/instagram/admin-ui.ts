@@ -34,6 +34,15 @@ export function displayLocalDate(localDate: string, long = false): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+export function displayChileTime(isoDate: string): string {
+  return new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(isoDate))
+}
+
 export function formatClp(value: number): string {
   return new Intl.NumberFormat('es-CL', {
     style: 'currency',

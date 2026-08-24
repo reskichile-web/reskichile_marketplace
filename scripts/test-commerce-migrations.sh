@@ -42,7 +42,8 @@ for migration in \
   202608220003_instagram_story_regeneration.sql \
   202608220004_instagram_story_five_slots.sql \
   202608230001_instagram_story_reusable_cycles.sql \
-  202608230002_instagram_story_fill_earliest_gap.sql
+  202608230002_instagram_story_fill_earliest_gap.sql \
+  202608230003_instagram_story_publication_calendar_index.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"

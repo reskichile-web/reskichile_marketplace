@@ -31,8 +31,27 @@ export interface InstagramAdminProduct {
   capture: InstagramAdminCapture | null
 }
 
+export interface InstagramAdminPublication {
+  id: string
+  captureId: string
+  productId: string
+  title: string
+  slug: string
+  productType: string
+  imageUrl: string | null
+  containerId: string
+  mediaId: string | null
+  publishedAt: string
+  recovered: boolean
+  scheduledLocalDate: string
+  scheduledSlot: number
+  scheduledFor: string
+  scheduleSource: 'automatic' | 'manual' | null
+}
+
 export interface InstagramAdminCalendarResponse {
   ok: true
   publishingEnabled: boolean
   products: InstagramAdminProduct[]
+  publications: InstagramAdminPublication[]
 }
