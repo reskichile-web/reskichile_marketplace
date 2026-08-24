@@ -33,7 +33,13 @@ const SNOW_ROWS = [
   ['33/33.5', '15', '—', '33.0–33.9'],
 ]
 
-export default function BootSizeGuide({ kind }: { kind: 'ski' | 'snowboard' }) {
+export default function BootSizeGuide({
+  kind,
+  compact = false,
+}: {
+  kind: 'ski' | 'snowboard'
+  compact?: boolean
+}) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -55,9 +61,11 @@ export default function BootSizeGuide({ kind }: { kind: 'ski' | 'snowboard' }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-brand-500 hover:text-brand-600"
+        className={`inline-flex shrink-0 items-center font-bold text-brand-500 hover:text-brand-600 ${
+          compact ? 'gap-1 text-[11px]' : 'mb-3 gap-1.5 text-xs'
+        }`}
       >
-        <Ruler className="h-4 w-4" aria-hidden="true" />
+        <Ruler className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} aria-hidden="true" />
         Guía de tallas
       </button>
 

@@ -218,6 +218,7 @@ ALTER TABLE public.product_action_tokens ENABLE ROW LEVEL SECURITY;
 --   "talla_mondo": "28/28.5",
 --   "tipo_conexion_fijacion": "comun",            -- comun | step_on
 --   "boa": true,
+--   "largo_suela_mm": "310",
 --   "color": "negro",
 --   "genero": ["hombre"]
 -- }

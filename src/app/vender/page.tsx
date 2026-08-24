@@ -147,8 +147,7 @@ export default function SellPage() {
 
   // Attributes ready to persist: drop empties so the JSONB stays clean
   function cleanedAttributes(): Record<string, unknown> {
-    const isBootProduct = productType === 'botas_esqui' || productType === 'botas_snowboard'
-    if (publicationMode === 'short' && !isBootProduct) return {}
+    if (publicationMode === 'short') return {}
 
     const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(attrs)) {
@@ -259,8 +258,7 @@ export default function SellPage() {
         const value = attrs[field.key]
         return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
       })
-      const requiresDetailedAttributes =
-        publicationMode === 'detailed' || productType === 'botas_esqui' || productType === 'botas_snowboard'
+      const requiresDetailedAttributes = publicationMode === 'detailed'
       if (missingAttributes.length > 0 && requiresDetailedAttributes) {
         setPopup({
           message: `Completa ${missingAttributes.map(field => field.label).join(', ')}.`,
@@ -803,10 +801,9 @@ export default function SellPage() {
       {/* ─── Step 3: Photos ─── */}
       {step === 'photos' && (
         <div className="space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <h2 className="font-body text-xl font-bold">Detalles de tu producto</h2>
-            {productType !== 'botas_esqui' && productType !== 'botas_snowboard' && (
-              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+            <div className="my-5 flex w-full items-center justify-center gap-1.5 sm:my-0 sm:w-auto sm:justify-end">
                 <span className="text-[11px] font-medium text-gray-500">Publicación:</span>
                 <div
                   className="inline-flex rounded-lg border border-white bg-white p-0.5 shadow-[0_3px_10px_rgba(15,23,42,0.11),inset_0_1px_0_rgba(255,255,255,1)] ring-1 ring-gray-100"
@@ -835,8 +832,7 @@ export default function SellPage() {
                     )
                   })}
                 </div>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Description */}
@@ -851,7 +847,7 @@ export default function SellPage() {
           </div>
 
           {/* Detailed publication attributes, integrated directly in the form. */}
-          {(publicationMode === 'detailed' || productType === 'botas_esqui' || productType === 'botas_snowboard') && (PRODUCT_ATTRIBUTES[productType] || []).length > 0 && (
+          {publicationMode === 'detailed' && (PRODUCT_ATTRIBUTES[productType] || []).length > 0 && (
             <div className="border-t border-gray-200 pt-5">
               <AttributeFieldsEditor
                 fields={PRODUCT_ATTRIBUTES[productType] || []}

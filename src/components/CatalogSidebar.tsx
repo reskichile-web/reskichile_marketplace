@@ -180,6 +180,31 @@ export default function CatalogSidebar({
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([name, count]) => ({ name, count }))
 
+  const brandSection = (
+    <Section
+      label="Marca"
+      isOpen={open.brands}
+      onToggle={() => toggleSection('brands')}
+      active={selectedBrands.length > 0}
+    >
+      {brandList.length === 0 && (
+        <p className="text-xs text-gray-400">No hay marcas disponibles.</p>
+      )}
+      {brandList.map(({ name, count }) => {
+        const checked = selectedBrands.includes(name)
+        return (
+          <CheckRow
+            key={name}
+            checked={checked}
+            onChange={() => toggleMulti('brand', name)}
+            label={name}
+            count={count}
+          />
+        )
+      })}
+    </Section>
+  )
+
   return (
     <div className="text-sm lg:pr-2 lg:-mr-2">
       {/* 1. Precio */}
@@ -246,6 +271,9 @@ export default function CatalogSidebar({
         </Section>
       )}
 
+      {/* En botas, Marca antecede a Talla para ordenar la búsqueda de forma natural. */}
+      {isBootsOnly && brandSection}
+
       {/* Filtros específicos de botas: simples, normalizados y sin opciones vacías. */}
       {isBootsOnly && (
         <>
@@ -254,8 +282,8 @@ export default function CatalogSidebar({
             isOpen={open.bootSize}
             onToggle={() => toggleSection('bootSize')}
             active={selectedBootSize.length > 0}
+            headerAction={<BootSizeGuide kind={isSkiBootsOnly ? 'ski' : 'snowboard'} compact />}
           >
-            <BootSizeGuide kind={isSkiBootsOnly ? 'ski' : 'snowboard'} />
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(bootCounts.size)
                 .filter(([, count]) => count > 0)
@@ -445,29 +473,8 @@ export default function CatalogSidebar({
         </>
       )}
 
-      {/* 5. Marca (lista detectada) */}
-      <Section
-        label="Marca"
-        isOpen={open.brands}
-        onToggle={() => toggleSection('brands')}
-        active={selectedBrands.length > 0}
-      >
-        {brandList.length === 0 && (
-          <p className="text-xs text-gray-400">No hay marcas disponibles.</p>
-        )}
-        {brandList.map(({ name, count }) => {
-          const checked = selectedBrands.includes(name)
-          return (
-            <CheckRow
-              key={name}
-              checked={checked}
-              onChange={() => toggleMulti('brand', name)}
-              label={name}
-              count={count}
-            />
-          )
-        })}
-      </Section>
+      {/* 5. Marca (lista detectada). En botas ya aparece antes de Talla. */}
+      {!isBootsOnly && brandSection}
 
       {/* 6. Región */}
       <Section
@@ -510,35 +517,47 @@ function Section({
   isOpen,
   onToggle,
   active,
+  headerAction,
   children,
 }: {
   label: string
   isOpen: boolean
   onToggle: () => void
   active: boolean
+  headerAction?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <div className="border-t border-gray-200">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center justify-between py-4 text-left"
-      >
-        <span
-          className={`text-xs font-body font-bold tracking-widest uppercase ${
-            active ? 'text-black' : 'text-gray-700'
-          }`}
+      <div className="flex w-full items-center gap-2 py-4">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="min-w-0 flex-1 text-left"
         >
-          {label}
-          {active && (
-            <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-500 align-middle" />
-          )}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
-      </button>
+          <span
+            className={`text-xs font-body font-bold tracking-widest uppercase ${
+              active ? 'text-black' : 'text-gray-700'
+            }`}
+          >
+            {label}
+            {active && (
+              <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full bg-brand-500 align-middle" />
+            )}
+          </span>
+        </button>
+        {headerAction}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={`${isOpen ? 'Cerrar' : 'Abrir'} filtro ${label}`}
+          className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+      </div>
       {isOpen && <div className="pb-5 space-y-2">{children}</div>}
     </div>
   )
