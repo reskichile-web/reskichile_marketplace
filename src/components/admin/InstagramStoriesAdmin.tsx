@@ -11,12 +11,15 @@ import {
   chileCurrentTime,
   chileToday,
   displayLocalDate,
+  localDateDistance,
 } from '@/lib/instagram/admin-ui'
-import { instagramStoryRuleForDate } from '@/lib/instagram/schedule-rules'
+import {
+  INSTAGRAM_STORY_CALENDAR_START_DATE,
+  instagramStoryRuleForDate,
+} from '@/lib/instagram/schedule-rules'
 
 const CALENDAR_DAYS = 35
 const HISTORY_PAGE_DAYS = 14
-const MAX_HISTORY_DAYS = 365
 
 async function responseError(response: Response): Promise<string> {
   const payload = await response.json().catch(() => ({})) as { error?: string }
@@ -52,12 +55,14 @@ export default function InstagramStoriesAdmin() {
 
   const today = chileToday()
   const currentTime = chileCurrentTime()
+  const maxHistoryDays = localDateDistance(INSTAGRAM_STORY_CALENDAR_START_DATE, today)
+  const visibleHistoryDays = Math.min(historyDays, maxHistoryDays)
   const dates = useMemo(
     () => Array.from(
-      { length: CALENDAR_DAYS + historyDays },
-      (_, index) => addLocalDays(today, index - historyDays),
+      { length: CALENDAR_DAYS + visibleHistoryDays },
+      (_, index) => addLocalDays(today, index - visibleHistoryDays),
     ),
-    [historyDays, today],
+    [today, visibleHistoryDays],
   )
   const products = data?.products ?? []
   const selectedProduct = selectedProductId
@@ -165,13 +170,14 @@ export default function InstagramStoriesAdmin() {
             dates={dates}
             today={today}
             currentTime={currentTime}
-            historyDays={historyDays}
+            historyDays={visibleHistoryDays}
+            maxHistoryDays={maxHistoryDays}
             loading={loading}
             availableSlots={availableSlots}
             onOpen={setSelectedProductId}
             onChanged={load}
             onLoadEarlier={() => setHistoryDays((days) => (
-              Math.min(MAX_HISTORY_DAYS, days + HISTORY_PAGE_DAYS)
+              Math.min(maxHistoryDays, days + HISTORY_PAGE_DAYS)
             ))}
             onReturnToToday={() => setHistoryDays(0)}
           />

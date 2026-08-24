@@ -13,6 +13,7 @@ export interface InstagramStoryDayRule {
 
 export const INSTAGRAM_STORY_SLOTS_PER_DAY = 5
 export const INSTAGRAM_STORY_SLOT_INTERVAL_MINUTES = 15
+export const INSTAGRAM_STORY_CALENDAR_START_DATE = '2026-08-23'
 
 function slotsFrom(firstTime: string): InstagramStorySlotRule[] {
   const [hours, minutes] = firstTime.split(':').map(Number)

@@ -30,6 +30,7 @@ interface Props {
   today: string
   currentTime: string
   historyDays: number
+  maxHistoryDays: number
   loading: boolean
   availableSlots: InstagramSlotOption[]
   onOpen: (productId: string) => void
@@ -50,6 +51,7 @@ export default function InstagramStoryCalendarTable({
   today,
   currentTime,
   historyDays,
+  maxHistoryDays,
   loading,
   availableSlots,
   onOpen,
@@ -140,15 +142,17 @@ export default function InstagramStoryCalendarTable({
               Volver a hoy
             </button>
           )}
-          <button
-            type="button"
-            onClick={onLoadEarlier}
-            disabled={loading || Boolean(busy) || historyDays >= 365}
-            className="inline-flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-40"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
-            {historyDays > 0 ? 'Ver 14 días más' : 'Ver días anteriores'}
-          </button>
+          {historyDays < maxHistoryDays && (
+            <button
+              type="button"
+              onClick={onLoadEarlier}
+              disabled={loading || Boolean(busy)}
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-40"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+              Ver días anteriores
+            </button>
+          )}
           {busy && <Loader2 className="h-5 w-5 animate-spin text-gray-500" />}
         </div>
       </header>

@@ -24,6 +24,12 @@ export function addLocalDays(localDate: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
+export function localDateDistance(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T12:00:00Z`).getTime()
+  const end = new Date(`${endDate}T12:00:00Z`).getTime()
+  return Math.max(0, Math.floor((end - start) / 86_400_000))
+}
+
 export function displayLocalDate(localDate: string, long = false): string {
   const value = new Intl.DateTimeFormat('es-CL', {
     weekday: 'long',

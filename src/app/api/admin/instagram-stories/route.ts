@@ -6,12 +6,11 @@ import type {
   InstagramAdminPublication,
 } from '@/lib/instagram/admin-contracts'
 import { getInstagramPublishingConfig } from '@/lib/instagram/publishing-config'
+import { INSTAGRAM_STORY_CALENDAR_START_DATE } from '@/lib/instagram/schedule-rules'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-const MAX_HISTORY_DAYS = 365
 
 interface ProductRow {
   id: string
@@ -103,6 +102,12 @@ function addLocalDays(localDate: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
+function localDateDistance(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T12:00:00Z`).getTime()
+  const end = new Date(`${endDate}T12:00:00Z`).getTime()
+  return Math.max(0, Math.floor((end - start) / 86_400_000))
+}
+
 function publicationFromRow(row: PublicationRow): InstagramAdminPublication {
   const images = [...(row.products.product_images ?? [])]
     .sort((left, right) => left.order - right.order)
@@ -130,10 +135,12 @@ export async function GET(request: Request) {
     await requireAdmin()
     const service = createServiceRoleClient()
     const requestedHistoryDays = Number(new URL(request.url).searchParams.get('historyDays') || 0)
+    const today = chileToday()
+    const availableHistoryDays = localDateDistance(INSTAGRAM_STORY_CALENDAR_START_DATE, today)
     const historyDays = Number.isInteger(requestedHistoryDays)
-      ? Math.min(MAX_HISTORY_DAYS, Math.max(0, requestedHistoryDays))
+      ? Math.min(availableHistoryDays, Math.max(0, requestedHistoryDays))
       : 0
-    const historyStart = addLocalDays(chileToday(), -historyDays)
+    const historyStart = addLocalDays(today, -historyDays)
     const [productsResult, capturesResult, publicationsResult] = await Promise.all([
       service
         .from('products')

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  INSTAGRAM_STORY_CALENDAR_START_DATE,
   INSTAGRAM_STORY_DAY_RULES,
   INSTAGRAM_STORY_SLOTS_PER_DAY,
   isInstagramStorySlotForDate,
@@ -7,6 +8,12 @@ import {
 } from '@/lib/instagram/schedule-rules'
 
 describe('Instagram Story schedule rules', () => {
+  it('starts the editorial history on Sunday, August 23, 2026', () => {
+    expect(INSTAGRAM_STORY_CALENDAR_START_DATE).toBe('2026-08-23')
+    expect(instagramStoryRuleForDate(INSTAGRAM_STORY_CALENDAR_START_DATE).label)
+      .toBe('Domingo')
+  })
+
   it('uses five quarter-hour slots and leaves the final Hobby delay inside each window', () => {
     expect(INSTAGRAM_STORY_SLOTS_PER_DAY).toBe(5)
     expect(INSTAGRAM_STORY_DAY_RULES).toEqual([

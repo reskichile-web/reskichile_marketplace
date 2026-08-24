@@ -132,9 +132,10 @@ describe('Instagram Story admin UI', () => {
         products={[preparedProduct]}
         publications={[]}
         dates={['2026-08-24']}
-        today="2026-08-22"
+        today="2026-08-23"
         currentTime="12:00"
         historyDays={0}
+        maxHistoryDays={0}
         loading={false}
         availableSlots={slots}
         onOpen={vi.fn()}
@@ -148,7 +149,7 @@ describe('Instagram Story admin UI', () => {
     expect(html).toContain('Calendario editorial')
     expect(html).toContain('bg-blue-50')
     expect(html).toContain('Lunes, 24 ago')
-    expect(html).toContain('Ver días anteriores')
+    expect(html).not.toContain('Ver días anteriores')
   })
 
   it('keeps completed cron publications in their original historical slot', () => {
@@ -159,7 +160,8 @@ describe('Instagram Story admin UI', () => {
         dates={['2026-08-24']}
         today="2026-08-25"
         currentTime="12:00"
-        historyDays={14}
+        historyDays={2}
+        maxHistoryDays={2}
         loading={false}
         availableSlots={[]}
         onOpen={vi.fn()}
