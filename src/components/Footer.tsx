@@ -33,7 +33,7 @@ export default function Footer() {
               <h4 className="font-bold text-sm uppercase tracking-widest text-gray-400 mb-4">Reski</h4>
               <div className="space-y-2">
                 <Link href="/catalogo" className="block text-sm text-gray-300 hover:text-white transition-colors">Catálogo</Link>
-                <Link href="/vender" className="flex items-center gap-1.5 text-sm text-gray-300 hover:text-white transition-colors">
+                <Link href="/vender" className="flex items-center gap-1.5 text-sm font-bold text-gray-300 hover:text-white transition-colors">
                   <SellTagIcon className="h-3.5 w-3.5" />
                   Vender
                 </Link>

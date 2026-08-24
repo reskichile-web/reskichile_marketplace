@@ -88,7 +88,7 @@ export default function Header() {
 
           {/* Right actions — desktop */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            <Link href="/vender" className="pressable inline-flex h-9 items-center justify-center gap-1.5 bg-brand-500 px-5 text-sm text-white transition-colors hover:bg-brand-600 font-nav">
+            <Link href="/vender" className="pressable inline-flex h-9 items-center justify-center gap-1.5 bg-brand-500 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-600 font-nav">
               <SellTagIcon className="h-4 w-4" />
               Vender
             </Link>

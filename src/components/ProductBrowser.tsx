@@ -348,7 +348,7 @@ export default function ProductBrowser({ products }: Props) {
             </label>
             <Link
               href="/vender"
-              className="pressable ml-8 hidden h-9 items-center justify-center gap-1.5 bg-brand-500 px-5 text-sm text-white transition-colors hover:bg-brand-600 font-nav md:inline-flex"
+              className="pressable ml-8 hidden h-9 items-center justify-center gap-1.5 bg-brand-500 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-600 font-nav md:inline-flex"
             >
               <SellTagIcon className="h-4 w-4" />
               Vender

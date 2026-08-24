@@ -224,6 +224,9 @@ export default function EditProductPage() {
   const currentAttributes: AttributeField[] = form.product_type
     ? PRODUCT_ATTRIBUTES[form.product_type] || []
     : []
+  const visibleAttributes = currentAttributes.filter(attribute => (
+    !attribute.key.startsWith('fijaciones_') || attributes.incluye_fijaciones === true
+  ))
 
   function updateForm(field: string, value: string) {
     setForm(prev => {
@@ -370,6 +373,7 @@ export default function EditProductPage() {
 
     const attributesJson: Record<string, string | boolean | string[]> = {}
     for (const attr of currentAttributes) {
+      if (attr.key.startsWith('fijaciones_') && attributes.incluye_fijaciones !== true) continue
       const val = attributes[attr.key]
       if (val !== undefined && val !== '') attributesJson[attr.key] = val
     }
@@ -582,7 +586,7 @@ export default function EditProductPage() {
               Atributos de {PRODUCT_TYPES[form.product_type]}
             </p>
             {/* Multiselect attributes (chips) — full width above the grid */}
-            {currentAttributes.filter(a => a.type === 'multiselect').map(attr => {
+            {visibleAttributes.filter(a => a.type === 'multiselect').map(attr => {
               const current = Array.isArray(attributes[attr.key]) ? (attributes[attr.key] as string[]) : []
               return (
                 <div key={attr.key} className="mb-4">
@@ -619,7 +623,7 @@ export default function EditProductPage() {
               )
             })}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {currentAttributes.filter(a => a.type !== 'multiselect').map(attr => {
+              {visibleAttributes.filter(a => a.type !== 'multiselect').map(attr => {
                 if (attr.type === 'button-select') {
                   return (
                     <AttributeButtonSelect
