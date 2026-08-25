@@ -15,6 +15,7 @@ import { useViewer } from '@/lib/use-session-auth'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, X, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import DescriptionCard from '@/components/DescriptionCard'
+import { showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -36,7 +37,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
   // Viewer identity resolved client-side so the page can be ISR-cached. Until it
   // loads, userId is null → the public view renders; owner/admin controls appear
   // once the session resolves.
-  const { userId, isAdmin } = useViewer()
+  const { userId, isAdmin, loading } = useViewer()
   const [contacting, setContacting] = useState(false)
   const [chatOpening, setChatOpening] = useState(false)
   const [hidePhone, setHidePhone] = useState(sellerHidePhone)
@@ -54,6 +55,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
   const isOwner = userId === product.seller_id
   const canEdit = isOwner || isAdmin
   const isCommerceProduct = product.commerce_owned === true
+  const showPublicActions = showPublicProductActions({ loading, canEdit })
 
   // Keep the approved product page cacheable: once the viewer session resolves,
   // privately fetch the counter only for the owner/admin. The RPC enforces the
@@ -366,7 +368,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
 
           {/* Contact seller — WhatsApp + Chat. WhatsApp hidden if the seller
               opted out via the "ocultar mi número" toggle. */}
-          {!isCommerceProduct && !isOwner && product.seller_id && (
+          {showPublicActions && !isCommerceProduct && product.seller_id && (
             <div className="mt-6 flex gap-2 w-full">
               {isApproved && !hidePhone && (
               <button
@@ -396,7 +398,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
           )}
 
           {/* Anonymous seller fallback — only WhatsApp */}
-          {!isCommerceProduct && isApproved && !isOwner && !product.seller_id && (
+          {showPublicActions && !isCommerceProduct && isApproved && !product.seller_id && (
             <div className="mt-6 w-full">
               <button
                 onClick={handleContact}
@@ -463,7 +465,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
       </div>
 
       {/* Claim-your-listings prompt — page footer */}
-      {!isCommerceProduct && (
+      {showClaimListingsPrompt({ loading, canEdit, isCommerceProduct }) && (
         <div className="mt-10 md:mt-12 px-4 md:px-0 border-t border-gray-100 pt-6">
           <ClaimListingsPrompt isLoggedIn={!!userId} />
         </div>

@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { EASE_OUT_EXPO } from '@/lib/animations'
+import LogoutButton from '@/components/LogoutButton'
 
 interface AdminLink {
   label: string
@@ -163,11 +164,13 @@ export default function AdminNav({ userName, role, avatarUrl }: Props) {
                     <span className="block text-[10px] text-gray-400">{role}</span>
                   </span>
                 </Link>
-                <form action="/auth/logout" method="POST">
-                  <button type="submit" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Cerrar sesión">
+                <LogoutButton
+                  onStart={() => setSidebarOpen(false)}
+                  className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  ariaLabel="Cerrar sesión"
+                >
                     <LogOut className="h-5 w-5" strokeWidth={1.7} />
-                  </button>
-                </form>
+                </LogoutButton>
               </div>
             </div>
           </motion.aside>
@@ -242,16 +245,13 @@ export default function AdminNav({ userName, role, avatarUrl }: Props) {
               <UserRound className="h-4 w-4 text-gray-300 lg:hidden" strokeWidth={1.6} />
             </Link>
 
-            <form action="/auth/logout" method="POST">
-              <button
-                type="submit"
-                className="rounded-lg p-2 text-gray-300 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                title="Cerrar sesión"
-                aria-label="Cerrar sesión"
-              >
+            <LogoutButton
+              className="rounded-lg p-2 text-gray-300 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              title="Cerrar sesión"
+              ariaLabel="Cerrar sesión"
+            >
                 <LogOut className="h-5 w-5" strokeWidth={1.7} />
-              </button>
-            </form>
+            </LogoutButton>
           </div>
         </div>
       </header>
