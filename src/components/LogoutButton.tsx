@@ -27,6 +27,21 @@ export default function LogoutButton({ children, className, title, ariaLabel, on
     setPending(true)
     onStart?.()
 
+    // Permission-sensitive UI disappears synchronously, before either network
+    // operation can finish or fail.
+    window.dispatchEvent(new Event('reski:logout'))
+
+    // Clear the singleton browser client first so every mounted auth listener
+    // receives SIGNED_OUT while the local session still exists.
+    try {
+      await Promise.race([
+        createClient().auth.signOut({ scope: 'local' }),
+        new Promise((resolve) => window.setTimeout(resolve, 1500)),
+      ])
+    } catch {
+      // Server-side cookie cleanup below is the final authority.
+    }
+
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 4000)
 
@@ -42,12 +57,6 @@ export default function LogoutButton({ children, className, title, ariaLabel, on
       // The browser-side cleanup below is intentionally the final fallback.
     } finally {
       window.clearTimeout(timeout)
-    }
-
-    try {
-      await createClient().auth.signOut({ scope: 'local' })
-    } catch {
-      // A missing/expired local session already represents a logged-out state.
     }
 
     window.location.replace('/')

@@ -6,25 +6,17 @@ interface ViewerState {
   loading: boolean
 }
 
-interface QueryResult {
-  data?: { is_admin?: boolean } | null
-  error: { message: string } | null
+interface DeferredResponse {
+  promise: Promise<Response>
+  resolve: (value: Response) => void
 }
 
-interface Deferred {
-  promise: Promise<QueryResult>
-  resolve: (value: QueryResult) => void
-}
-
-type AuthCallback = (
-  event: string,
-  session: { user: { id: string } } | null,
-) => void
+type AuthCallback = (event: string, session: unknown) => void
 
 const harness = vi.hoisted(() => {
-  function deferred(): Deferred {
-    let resolve!: Deferred['resolve']
-    const promise = new Promise<QueryResult>((done) => {
+  function deferredResponse(): DeferredResponse {
+    let resolve!: DeferredResponse['resolve']
+    const promise = new Promise<Response>((done) => {
       resolve = done
     })
     return { promise, resolve }
@@ -34,9 +26,10 @@ const harness = vi.hoisted(() => {
     state: null as ViewerState | null,
     cleanup: null as (() => void) | null,
     authCallback: null as AuthCallback | null,
-    profileRequests: [] as Deferred[],
+    requests: [] as DeferredResponse[],
     unsubscribe: vi.fn(),
-    deferred,
+    listeners: new Map<string, EventListener>(),
+    deferredResponse,
   }
 })
 
@@ -67,80 +60,97 @@ vi.mock('@/lib/supabase/client', () => ({
           }
         },
       },
-      from(table: string) {
-        if (table !== 'users') throw new Error(`Unexpected table: ${table}`)
-        return {
-          select: () => ({
-            eq: () => ({
-              single: () => {
-                const request = harness.deferred()
-                harness.profileRequests.push(request)
-                return request.promise
-              },
-            }),
-          }),
-        }
-      },
     }
   },
 }))
 
 import { useViewer } from '@/lib/use-viewer'
 
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 async function flushPromises() {
-  await Promise.resolve()
-  await Promise.resolve()
+  await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 describe('useViewer', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
     harness.state = null
     harness.cleanup = null
     harness.authCallback = null
-    harness.profileRequests.length = 0
+    harness.requests.length = 0
     harness.unsubscribe.mockClear()
+    harness.listeners.clear()
+
+    vi.stubGlobal('fetch', vi.fn(() => {
+      const request = harness.deferredResponse()
+      harness.requests.push(request)
+      return request.promise
+    }))
+    vi.stubGlobal('window', {
+      addEventListener: vi.fn((type: string, listener: EventListener) => {
+        harness.listeners.set(type, listener)
+      }),
+      removeEventListener: vi.fn((type: string) => {
+        harness.listeners.delete(type)
+      }),
+    })
   })
 
   afterEach(() => {
     harness.cleanup?.()
-    vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
-  it('publishes the authenticated identity immediately', async () => {
+  it('only enables permissions returned by the server session', async () => {
     const initial = useViewer()
     expect(initial.loading).toBe(true)
 
-    harness.authCallback?.('INITIAL_SESSION', { user: { id: 'owner-1' } })
-    expect(harness.state).toEqual({ userId: 'owner-1', isAdmin: false, loading: false })
-
-    await vi.runAllTimersAsync()
-    harness.profileRequests[0].resolve({ data: { is_admin: true }, error: null })
+    harness.requests[0].resolve(jsonResponse({ userId: 'owner-1', isAdmin: true }))
     await flushPromises()
 
     expect(harness.state).toEqual({ userId: 'owner-1', isAdmin: true, loading: false })
   })
 
-  it('does not let a stale profile response restore owner permissions after logout', async () => {
+  it('settles an anonymous server session without private permissions', async () => {
     useViewer()
-    harness.authCallback?.('INITIAL_SESSION', { user: { id: 'owner-1' } })
-    await vi.runAllTimersAsync()
-
-    harness.authCallback?.('SIGNED_OUT', null)
-    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
-
-    harness.profileRequests[0].resolve({ data: { is_admin: true }, error: null })
+    harness.requests[0].resolve(jsonResponse({ userId: null, isAdmin: false }))
     await flushPromises()
 
     expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
   })
 
-  it('settles an anonymous initial session without querying a profile', async () => {
+  it('fails closed when the authoritative session request fails', async () => {
     useViewer()
-    harness.authCallback?.('INITIAL_SESSION', null)
-    await vi.runAllTimersAsync()
+    harness.requests[0].resolve(jsonResponse({ error: 'unavailable' }, 500))
+    await flushPromises()
 
     expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
-    expect(harness.profileRequests).toHaveLength(0)
+  })
+
+  it('removes permissions immediately and ignores an older response on logout', async () => {
+    useViewer()
+
+    harness.listeners.get('reski:logout')?.(new Event('reski:logout'))
+    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
+
+    harness.requests[0].resolve(jsonResponse({ userId: 'owner-1', isAdmin: true }))
+    await flushPromises()
+
+    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
+  })
+
+  it('removes permissions immediately when Supabase emits SIGNED_OUT', async () => {
+    useViewer()
+    harness.requests[0].resolve(jsonResponse({ userId: 'owner-1', isAdmin: false }))
+    await flushPromises()
+    expect(harness.state?.userId).toBe('owner-1')
+
+    harness.authCallback?.('SIGNED_OUT', null)
+    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
   })
 })

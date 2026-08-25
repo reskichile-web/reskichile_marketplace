@@ -15,12 +15,16 @@ const ANONYMOUS_VIEWER: Viewer = {
   loading: true,
 }
 
+const ANONYMOUS_RESOLVED: Viewer = {
+  userId: null,
+  isAdmin: false,
+  loading: false,
+}
+
 /**
- * Resolves the current viewer without allowing an older profile request to
- * restore permissions after SIGNED_OUT (or after switching accounts).
- *
- * Supabase publishes INITIAL_SESSION through onAuthStateChange, so using one
- * ordered event stream also avoids racing getSession() against SIGNED_OUT.
+ * Resolves permission-sensitive identity from the server cookie. The browser
+ * Supabase client can retain an in-memory user briefly after its cookie has
+ * been cleared; that stale user must never enable owner/admin controls.
  */
 export function useViewer(): Viewer {
   const [viewer, setViewer] = useState<Viewer>(ANONYMOUS_VIEWER)
@@ -28,75 +32,70 @@ export function useViewer(): Viewer {
   useEffect(() => {
     const supabase = createClient()
     let active = true
-    let currentUserId: string | null = null
     let generation = 0
-    let profileRequest: { userId: string; generation: number } | null = null
-    const deferred = new Set<ReturnType<typeof setTimeout>>()
+    let controller: AbortController | null = null
 
-    function defer(task: () => Promise<void>) {
-      const timer = setTimeout(() => {
-        deferred.delete(timer)
-        void task()
-      }, 0)
-      deferred.add(timer)
+    async function refresh() {
+      const requestGeneration = ++generation
+      controller?.abort()
+      controller = new AbortController()
+      setViewer((previous) => ({ ...previous, loading: true }))
+
+      try {
+        const response = await fetch('/api/auth/viewer', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('Viewer session unavailable')
+
+        const data = await response.json() as {
+          userId?: unknown
+          isAdmin?: unknown
+        }
+        if (!active || generation !== requestGeneration) return
+
+        setViewer({
+          userId: typeof data.userId === 'string' ? data.userId : null,
+          isAdmin: data.isAdmin === true,
+          loading: false,
+        })
+      } catch (error) {
+        if (!active || generation !== requestGeneration) return
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setViewer(ANONYMOUS_RESOLVED)
+      }
     }
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return
+    function clearViewer() {
+      generation += 1
+      controller?.abort()
+      setViewer(ANONYMOUS_RESOLVED)
+    }
 
-      const user = session?.user ?? null
-      if (!user) {
-        generation += 1
-        currentUserId = null
-        profileRequest = null
-        setViewer({ userId: null, isAdmin: false, loading: false })
+    void refresh()
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
+      if (!active) return
+      if (event === 'SIGNED_OUT') {
+        clearViewer()
         return
       }
-
-      const sameUser = currentUserId === user.id
-      if (!sameUser) {
-        generation += 1
-        currentUserId = user.id
-        profileRequest = null
-      }
-
-      setViewer((previous) => ({
-        userId: user.id,
-        isAdmin: sameUser && previous.userId === user.id ? previous.isAdmin : false,
-        loading: false,
-      }))
-
-      if (profileRequest?.userId === user.id && profileRequest.generation === generation) return
-
-      const request = { userId: user.id, generation }
-      profileRequest = request
-
-      // Supabase recommends moving database queries outside the auth callback.
-      defer(async () => {
-        try {
-          if (!active || currentUserId !== request.userId || generation !== request.generation) return
-
-          const { data } = await supabase
-            .from('users')
-            .select('is_admin')
-            .eq('id', request.userId)
-            .single()
-
-          if (!active || currentUserId !== request.userId || generation !== request.generation) return
-
-          setViewer((previous) => previous.userId === request.userId
-            ? { ...previous, isAdmin: data?.is_admin ?? false }
-            : previous)
-        } finally {
-          if (profileRequest === request) profileRequest = null
-        }
-      })
+      void refresh()
     })
+
+    const handleLogout = () => clearViewer()
+    const handlePageShow = () => { void refresh() }
+    window.addEventListener('reski:logout', handleLogout)
+    window.addEventListener('pageshow', handlePageShow)
 
     return () => {
       active = false
-      deferred.forEach((timer) => clearTimeout(timer))
-      deferred.clear()
+      generation += 1
+      controller?.abort()
+      window.removeEventListener('reski:logout', handleLogout)
+      window.removeEventListener('pageshow', handlePageShow)
       subscription.subscription.unsubscribe()
     }
   }, [])
