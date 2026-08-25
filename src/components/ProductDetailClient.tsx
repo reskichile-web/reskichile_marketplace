@@ -15,7 +15,7 @@ import { useViewer } from '@/lib/use-viewer'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, X, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import DescriptionCard from '@/components/DescriptionCard'
-import { showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
+import { isProductOwner, showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -51,7 +51,9 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
   }, [router, userId, product.id, product.seller_id])
 
   const images = (product.product_images || []).sort((a, b) => a.order - b.order)
-  const isOwner = userId === product.seller_id
+  // Legacy/Reski listings may have no seller. An anonymous viewer also has a
+  // null userId, and null === null must never grant owner controls.
+  const isOwner = isProductOwner(userId, product.seller_id)
   const canEdit = isOwner || isAdmin
   const isCommerceProduct = product.commerce_owned === true
   const showPublicActions = showPublicProductActions({ loading, canEdit })

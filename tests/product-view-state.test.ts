@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
+import { isProductOwner, showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
 
 describe('product viewer state', () => {
+  it('never treats an anonymous viewer as owner of a sellerless product', () => {
+    expect(isProductOwner(null, null)).toBe(false)
+    expect(isProductOwner(null, 'seller-1')).toBe(false)
+    expect(isProductOwner('owner-1', null)).toBe(false)
+    expect(isProductOwner('owner-1', 'owner-1')).toBe(true)
+  })
+
   it('does not flash anonymous actions while session state is loading', () => {
     expect(showPublicProductActions({ loading: true, canEdit: false })).toBe(false)
   })
