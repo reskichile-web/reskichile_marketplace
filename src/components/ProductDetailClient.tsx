@@ -11,7 +11,7 @@ import CopyLinkButton from '@/components/CopyLinkButton'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import MarkSoldButton from '@/components/MarkSoldButton'
 import { createClient } from '@/lib/supabase/client'
-import { useViewer } from '@/lib/use-session-auth'
+import { useViewer } from '@/lib/use-viewer'
 import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, X, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import DescriptionCard from '@/components/DescriptionCard'
@@ -34,9 +34,8 @@ interface Props {
 
 export default function ProductDetailClient({ product, sellerHidePhone }: Props) {
   const router = useRouter()
-  // Viewer identity resolved client-side so the page can be ISR-cached. Until it
-  // loads, userId is null → the public view renders; owner/admin controls appear
-  // once the session resolves.
+  // Viewer identity resolves client-side so the page can stay ISR-cached. No
+  // permission-dependent actions render until that session check has settled.
   const { userId, isAdmin, loading } = useViewer()
   const [contacting, setContacting] = useState(false)
   const [chatOpening, setChatOpening] = useState(false)
