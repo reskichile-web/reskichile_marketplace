@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MessageCircle } from 'lucide-react'
+import { authRouteWithRedirect, currentBrowserAuthRedirect } from '@/lib/auth-redirect'
 
 interface Props {
   productId: string
@@ -17,7 +18,7 @@ export default function ContactSellerButton({ productId, isAuthenticated, classN
 
   async function start() {
     if (!isAuthenticated) {
-      router.push(`/auth/login?redirect=/producto/${productId}`)
+      router.push(authRouteWithRedirect('/auth/login', currentBrowserAuthRedirect()))
       return
     }
     setLoading(true)

@@ -1,11 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { redirectAfterAuth } from '@/lib/auth-redirect'
+import {
+  authRecoveryUrl,
+  authRouteWithRedirect,
+  normalizeAuthRedirect,
+  redirectAfterAuth,
+} from '@/lib/auth-redirect'
 import Spinner from '@/components/Spinner'
 import OtpInput from '@/components/OtpInput'
+
+export const dynamic = 'force-dynamic'
 
 const PASSWORD_MIN = 6
 
@@ -13,6 +20,8 @@ type Step = 'sending' | 'otp' | 'password' | 'success'
 
 export default function ChangePasswordPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = normalizeAuthRedirect(searchParams.get('redirect'))
   const [step, setStep] = useState<Step>('sending')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,7 +45,7 @@ export default function ChangePasswordPage() {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        router.push('/auth/login')
+        router.push(authRouteWithRedirect('/auth/login', redirect))
         return
       }
 
@@ -47,7 +56,7 @@ export default function ChangePasswordPage() {
         .single()
 
       if (!profile?.must_change_password) {
-        await redirectAfterAuth(supabase, router)
+        await redirectAfterAuth(supabase, router, redirect)
         return
       }
 
@@ -55,7 +64,7 @@ export default function ChangePasswordPage() {
 
       // Send recovery OTP
       const { error } = await supabase.auth.resetPasswordForEmail(user.email!, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: authRecoveryUrl(window.location.origin, redirect),
       })
 
       if (error) {
@@ -68,7 +77,7 @@ export default function ChangePasswordPage() {
       setResendCooldown(60)
     }
     init()
-  }, [router])
+  }, [redirect, router])
 
   async function handleOtpComplete(code: string) {
     setOtpError(false)
@@ -119,7 +128,7 @@ export default function ChangePasswordPage() {
 
     setStep('success')
     setTimeout(() => {
-      redirectAfterAuth(supabase, router)
+      void redirectAfterAuth(supabase, router, redirect)
     }, 1500)
   }
 
@@ -129,7 +138,7 @@ export default function ChangePasswordPage() {
 
     const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: authRecoveryUrl(window.location.origin, redirect),
     })
 
     if (error) {

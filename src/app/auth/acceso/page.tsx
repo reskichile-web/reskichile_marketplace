@@ -1,15 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { redirectAfterAuth } from '@/lib/auth-redirect'
+import {
+  authRouteWithRedirect,
+  normalizeAuthRedirect,
+  redirectAfterAuth,
+} from '@/lib/auth-redirect'
+
+export const dynamic = 'force-dynamic'
 
 const PASSWORD_MIN = 6
 
 export default function AccesoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = normalizeAuthRedirect(searchParams.get('redirect'))
   const [step, setStep] = useState<'email' | 'password' | 'done'>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -40,7 +48,7 @@ export default function AccesoPage() {
       setLoading(false)
     } else {
       // User doesn't exist → redirect to register
-      router.push(`/auth/registro?email=${encodeURIComponent(trimmedEmail)}`)
+      router.push(authRouteWithRedirect('/auth/registro', redirect, { email: trimmedEmail }))
     }
   }
 
@@ -94,7 +102,7 @@ export default function AccesoPage() {
 
     // Redirect after brief delay
     setTimeout(() => {
-      redirectAfterAuth(supabase, router)
+      void redirectAfterAuth(supabase, router, redirect)
     }, 2000)
   }
 
@@ -142,7 +150,7 @@ export default function AccesoPage() {
 
               <p className="mt-5 text-sm text-center text-gray-500">
                 ¿Ya tienes contraseña?{' '}
-                <Link href="/auth/login" className="text-brand-500 hover:underline font-medium">
+                <Link href={authRouteWithRedirect('/auth/login', redirect)} className="text-brand-500 hover:underline font-medium">
                   Inicia sesión
                 </Link>
               </p>

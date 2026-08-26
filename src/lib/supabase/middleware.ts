@@ -49,7 +49,10 @@ export async function updateSession(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       const redirectUrl = new URL('/auth/login', request.url)
-      redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
+      redirectUrl.searchParams.set(
+        'redirect',
+        `${request.nextUrl.pathname}${request.nextUrl.search}`,
+      )
       return NextResponse.redirect(redirectUrl)
     }
   } else {

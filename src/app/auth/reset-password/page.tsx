@@ -1,15 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { redirectAfterAuth } from '@/lib/auth-redirect'
+import {
+  authRouteWithRedirect,
+  normalizeAuthRedirect,
+  redirectAfterAuth,
+} from '@/lib/auth-redirect'
 import Spinner from '@/components/Spinner'
+
+export const dynamic = 'force-dynamic'
 
 const PASSWORD_MIN = 6
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = normalizeAuthRedirect(searchParams.get('redirect'))
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -21,13 +29,13 @@ export default function ResetPasswordPage() {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        router.push('/auth/login?error=expired_link')
+        router.push(authRouteWithRedirect('/auth/login', redirect, { error: 'expired_link' }))
         return
       }
       setChecking(false)
     }
     check()
-  }, [router])
+  }, [redirect, router])
 
   function validate(): string | null {
     if (!password) return 'Ingresa una contraseña'
@@ -65,7 +73,7 @@ export default function ResetPasswordPage() {
         .eq('id', user.id)
     }
 
-    await redirectAfterAuth(supabase, router)
+    await redirectAfterAuth(supabase, router, redirect)
   }
 
   if (checking) return (

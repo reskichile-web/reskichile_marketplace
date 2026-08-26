@@ -18,6 +18,7 @@ import DescriptionCard from '@/components/DescriptionCard'
 import { isProductOwner, showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
 import { trackMetaContact } from '@/lib/meta-pixel'
 import { getCampaignAttribution } from '@/lib/campaign-attribution'
+import { authRouteWithRedirect, currentBrowserAuthRedirect } from '@/lib/auth-redirect'
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -164,7 +165,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
 
   async function handleContact() {
     if (!userId) {
-      router.push(`/auth/login?redirect=/producto/${product.id}`)
+      router.push(authRouteWithRedirect('/auth/login', currentBrowserAuthRedirect()))
       return
     }
     // Safari blocks window.open() that fires after an await — the user gesture
@@ -206,7 +207,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
 
   function handleChat() {
     if (!userId) {
-      router.push(`/auth/login?redirect=/producto/${product.id}`)
+      router.push(authRouteWithRedirect('/auth/login', currentBrowserAuthRedirect()))
       return
     }
     // Open the chat view immediately. The conversation is created lazily on the

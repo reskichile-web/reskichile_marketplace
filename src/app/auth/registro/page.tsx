@@ -9,6 +9,12 @@ import OtpInput from '@/components/OtpInput'
 import PopupMessage from '@/components/PopupMessage'
 import PhoneInput from '@/components/PhoneInput'
 import { track } from '@/lib/track'
+import {
+  authCallbackUrl,
+  authRouteWithRedirect,
+  normalizeAuthRedirect,
+  redirectAfterAuth,
+} from '@/lib/auth-redirect'
 
 // Reads ?redirect / invite params and is fully interactive — never prerendered.
 export const dynamic = 'force-dynamic'
@@ -26,6 +32,7 @@ type Step = 'form' | 'otp' | 'success'
 export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const redirect = normalizeAuthRedirect(searchParams.get('redirect'))
   const [step, setStep] = useState<Step>('form')
   const [name, setName] = useState('')
   const [email, setEmail] = useState(searchParams.get('email') || '')
@@ -87,7 +94,7 @@ export default function RegisterPage() {
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: authCallbackUrl(window.location.origin, redirect),
         data: { name: name.trim() },
       },
     })
@@ -147,8 +154,7 @@ export default function RegisterPage() {
     setStep('success')
 
     setTimeout(() => {
-      router.push('/')
-      router.refresh()
+      void redirectAfterAuth(supabase, router, redirect)
     }, 1500)
   }
 
@@ -321,7 +327,7 @@ export default function RegisterPage() {
 
         <p className="mt-4 text-sm text-center text-gray-600">
           ¿Ya tienes cuenta?{' '}
-          <Link href="/auth/login" className="text-brand-500 hover:underline">
+          <Link href={authRouteWithRedirect('/auth/login', redirect)} className="text-brand-500 hover:underline">
             Inicia sesión
           </Link>
         </p>

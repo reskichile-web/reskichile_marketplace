@@ -6,6 +6,12 @@ import Link from 'next/link'
 import Spinner from '@/components/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import OtpInput from '@/components/OtpInput'
+import {
+  authRecoveryUrl,
+  authRouteWithRedirect,
+  normalizeAuthRedirect,
+  redirectAfterAuth,
+} from '@/lib/auth-redirect'
 
 // Interactive reset flow that reads query params — never statically prerendered.
 export const dynamic = 'force-dynamic'
@@ -17,6 +23,7 @@ type Step = 'email' | 'otp' | 'password' | 'success'
 export default function ForgotPasswordPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const redirect = normalizeAuthRedirect(searchParams.get('redirect'))
   const prefilledEmail = searchParams.get('email') || ''
   const alreadySent = searchParams.get('sent') === '1'
   const [step, setStep] = useState<Step>(alreadySent && prefilledEmail ? 'otp' : 'email')
@@ -59,7 +66,7 @@ export default function ForgotPasswordPage() {
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: authRecoveryUrl(window.location.origin, redirect),
     })
 
     if (error) {
@@ -123,8 +130,7 @@ export default function ForgotPasswordPage() {
 
     setStep('success')
     setTimeout(() => {
-      router.push('/')
-      router.refresh()
+      void redirectAfterAuth(supabase, router, redirect)
     }, 1500)
   }
 
@@ -134,7 +140,7 @@ export default function ForgotPasswordPage() {
 
     const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: authRecoveryUrl(window.location.origin, redirect),
     })
 
     if (error) {
@@ -182,7 +188,7 @@ export default function ForgotPasswordPage() {
         </form>
 
         <p className="mt-5 text-sm text-center text-gray-500">
-          <Link href="/auth/login" className="text-brand-500 hover:underline font-medium">
+          <Link href={authRouteWithRedirect('/auth/login', redirect)} className="text-brand-500 hover:underline font-medium">
             Volver al inicio de sesión
           </Link>
         </p>

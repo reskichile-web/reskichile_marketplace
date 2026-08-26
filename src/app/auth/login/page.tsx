@@ -4,7 +4,11 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { redirectAfterAuth } from '@/lib/auth-redirect'
+import {
+  authRouteWithRedirect,
+  normalizeAuthRedirect,
+  redirectAfterAuth,
+} from '@/lib/auth-redirect'
 import { track } from '@/lib/track'
 import PopupMessage from '@/components/PopupMessage'
 
@@ -14,7 +18,7 @@ export const dynamic = 'force-dynamic'
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/'
+  const redirect = normalizeAuthRedirect(searchParams.get('redirect'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -66,7 +70,7 @@ export default function LoginPage() {
         .single()
 
       if (profile?.must_change_password) {
-        router.push('/auth/cambiar-contrasena')
+        router.push(authRouteWithRedirect('/auth/cambiar-contrasena', redirect))
         router.refresh()
         return
       }
@@ -133,7 +137,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex justify-end">
-          <Link href="/auth/olvide-contrasena" className="text-xs text-gray-400 hover:text-brand-500 transition-colors">
+          <Link href={authRouteWithRedirect('/auth/olvide-contrasena', redirect)} className="text-xs text-gray-400 hover:text-brand-500 transition-colors">
             ¿Olvidaste tu contraseña?
           </Link>
         </div>
@@ -154,11 +158,10 @@ export default function LoginPage() {
 
       <p className="mt-4 text-sm text-center text-gray-600">
         ¿No tienes cuenta?{' '}
-        <Link href="/auth/registro" className="text-brand-500 hover:underline">
+        <Link href={authRouteWithRedirect('/auth/registro', redirect)} className="text-brand-500 hover:underline">
           Regístrate
         </Link>
       </p>
     </div>
   )
 }
-

@@ -13,6 +13,7 @@ import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 import SkiRackCartLink from './SkiRackCartLink'
 import SkiRackCartDrawerHost from './SkiRackCartDrawerHost'
+import { authRouteWithRedirect, normalizeAuthRedirect } from '@/lib/auth-redirect'
 
 // Client component on purpose: it reads the auth session in the browser so the
 // surrounding pages stay ISR-cacheable (no server-side cookies()). The static
@@ -23,7 +24,14 @@ export default function Header() {
   const { userId, email, isAdmin, avatarUrl, unreadCount, loading } = useSessionAuth()
   const pathname = usePathname()
   const [showSkiRacks, setShowSkiRacks] = useState(process.env.NODE_ENV !== 'production')
+  const [authRedirect, setAuthRedirect] = useState('/')
   const showEmptySkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
+
+  useEffect(() => {
+    setAuthRedirect(normalizeAuthRedirect(
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    ))
+  }, [pathname])
 
   useEffect(() => {
     let cancelled = false
@@ -78,7 +86,7 @@ export default function Header() {
             ) : userId ? (
               <ProfileDropdown avatarUrl={avatarUrl} unreadCountFallback={unreadCount} isAdmin={isAdmin} email={email ?? undefined} />
             ) : (
-              <Link href="/auth/login" className="p-1" aria-label="Iniciar sesion">
+              <Link href={authRouteWithRedirect('/auth/login', authRedirect)} className="p-1" aria-label="Iniciar sesion">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
@@ -94,11 +102,11 @@ export default function Header() {
             </Link>
             {!loading && !userId && (
               <>
-                <Link href="/auth/login" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
+                <Link href={authRouteWithRedirect('/auth/login', authRedirect)} className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
                   Iniciar sesion
                 </Link>
                 <span className="text-gray-200">|</span>
-                <Link href="/auth/registro" className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
+                <Link href={authRouteWithRedirect('/auth/registro', authRedirect)} className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-nav">
                   Registrarse
                 </Link>
               </>
