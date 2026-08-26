@@ -46,7 +46,7 @@
 .logo {
   position: absolute;
   z-index: 8;
-  top: calc(160px + var(--ig-content-offset));
+  top: calc(144px + var(--ig-content-offset));
   left: 50%;
   width: 238px;
   height: auto;
