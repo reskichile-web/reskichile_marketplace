@@ -10,6 +10,7 @@ import {
   createMarketingConsentDecision,
   parseAccountMarketingConsent,
   parseStoredMarketingConsent,
+  resolveMarketingConsentDecision,
   serializeMarketingConsent,
   type MarketingConsentChoice,
   type MarketingConsentDecision,
@@ -19,13 +20,13 @@ import { loadMetaPixel, revokeMetaPixel, trackMetaPageView } from '@/lib/meta-pi
 
 export const OPEN_COOKIE_PREFERENCES_EVENT = 'reski:open-cookie-preferences'
 
-function saveLocalDecision(decision: MarketingConsentDecision, userId?: string | null) {
+function saveLocalDecision(decision: MarketingConsentDecision) {
   document.documentElement.dataset.reskiMarketingConsent = 'stored'
 
   try {
     window.localStorage.setItem(
       MARKETING_CONSENT_KEY,
-      serializeMarketingConsent(decision.choice, decision.decidedAt, userId),
+      serializeMarketingConsent(decision.choice, decision.decidedAt),
     )
   } catch {
     // The decision still applies for this page if storage is unavailable.
@@ -86,40 +87,28 @@ export default function MarketingConsent() {
     if (!ready || viewer.loading) return
 
     const accountDecision = parseAccountMarketingConsent(viewer.marketingConsent)
-    const localBelongsToViewer = !localDecision?.userId || localDecision.userId === viewer.userId
-    const eligibleLocalDecision = localBelongsToViewer ? localDecision : null
-    const nextDecision = viewer.userId
-      ? accountDecision ?? eligibleLocalDecision
-      : localDecision
+    const nextDecision = resolveMarketingConsentDecision(localDecision, accountDecision)
 
     setActiveDecision(nextDecision)
     setResolvedKey(resolutionKey)
 
-    if (viewer.userId && accountDecision) {
-      if (
-        localDecision?.userId !== viewer.userId ||
-        localDecision.choice !== accountDecision.choice ||
-        localDecision.version !== accountDecision.version ||
-        localDecision.decidedAt !== accountDecision.decidedAt
-      ) {
-        const ownedDecision = { ...accountDecision, userId: viewer.userId }
-        setLocalDecision(ownedDecision)
-        saveLocalDecision(accountDecision, viewer.userId)
+    // A local choice belongs to this browser, regardless of which account is
+    // currently signed in. Never replace it merely because identity changed.
+    if (localDecision) {
+      if (viewer.userId && !accountDecision) {
+        const syncKey = `${viewer.userId}:${localDecision.choice}:${localDecision.decidedAt}`
+        if (syncAttempt.current !== syncKey) {
+          syncAttempt.current = syncKey
+          void saveAccountDecision(localDecision)
+        }
       }
       return
     }
 
-    if (viewer.userId && eligibleLocalDecision) {
-      const syncKey = `${viewer.userId}:${eligibleLocalDecision.choice}:${eligibleLocalDecision.decidedAt}`
-      if (syncAttempt.current !== syncKey) {
-        syncAttempt.current = syncKey
-        if (eligibleLocalDecision.userId !== viewer.userId) {
-          const ownedDecision = { ...eligibleLocalDecision, userId: viewer.userId }
-          setLocalDecision(ownedDecision)
-          saveLocalDecision(eligibleLocalDecision, viewer.userId)
-        }
-        void saveAccountDecision(eligibleLocalDecision)
-      }
+    // On a new device, reuse the account choice once and persist it locally.
+    if (viewer.userId && accountDecision) {
+      setLocalDecision(accountDecision)
+      saveLocalDecision(accountDecision)
     }
   }, [localDecision, ready, resolutionKey, viewer.loading, viewer.marketingConsent, viewer.userId])
 
@@ -136,16 +125,13 @@ export default function MarketingConsent() {
 
   function saveChoice(nextChoice: MarketingConsentChoice) {
     const decision = createMarketingConsentDecision(nextChoice)
-    const storedDecision = viewer.userId
-      ? { ...decision, userId: viewer.userId }
-      : decision
 
     // Close optimistically. Local persistence and account sync must never keep
     // the consent card visible after the visitor has already made a choice.
     setPreferencesOpen(false)
-    setLocalDecision(storedDecision)
+    setLocalDecision(decision)
     setActiveDecision(decision)
-    saveLocalDecision(decision, viewer.userId)
+    saveLocalDecision(decision)
 
     if (viewer.userId) {
       syncAttempt.current = `${viewer.userId}:${decision.choice}:${decision.decidedAt}`

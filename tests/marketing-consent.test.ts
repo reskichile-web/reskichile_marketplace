@@ -5,6 +5,7 @@ import {
   parseAccountMarketingConsent,
   parseMarketingConsent,
   parseStoredMarketingConsent,
+  resolveMarketingConsentDecision,
   serializeMarketingConsent,
 } from '@/lib/marketing-consent'
 
@@ -42,5 +43,23 @@ describe('marketing consent persistence', () => {
       ...oldDecision,
       userId: 'user-1',
     }))).toEqual({ ...oldDecision, userId: 'user-1' })
+  })
+
+  it('keeps the device choice when the signed-in identity changes', () => {
+    const localDecision = {
+      ...createMarketingConsentDecision('granted', 100),
+      userId: 'previous-user',
+    }
+    const accountDecision = createMarketingConsentDecision('denied', 200)
+
+    expect(resolveMarketingConsentDecision(localDecision, accountDecision)).toEqual(localDecision)
+    expect(resolveMarketingConsentDecision(localDecision, null)).toEqual(localDecision)
+  })
+
+  it('uses the account only when the device has no stored choice', () => {
+    const accountDecision = createMarketingConsentDecision('granted', 100)
+
+    expect(resolveMarketingConsentDecision(null, accountDecision)).toEqual(accountDecision)
+    expect(resolveMarketingConsentDecision(null, null)).toBeNull()
   })
 })

@@ -74,6 +74,17 @@ export function parseAccountMarketingConsent(value: unknown): MarketingConsentDe
   return decision
 }
 
+/**
+ * Consent applies to the current browser first. The account copy is only a
+ * fallback for a device that has never stored a choice of its own.
+ */
+export function resolveMarketingConsentDecision(
+  localDecision: StoredMarketingConsent | null,
+  accountDecision: MarketingConsentDecision | null,
+): MarketingConsentDecision | null {
+  return localDecision ?? accountDecision
+}
+
 export function serializeMarketingConsent(
   choice: MarketingConsentChoice,
   decidedAt = Date.now(),
