@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -29,6 +29,7 @@ function request(choice: unknown, origin = 'http://localhost:4173') {
 
 describe('account marketing consent', () => {
   beforeEach(() => {
+    vi.stubEnv('APP_URL', 'http://localhost:4173')
     vi.clearAllMocks()
     mocks.getUser.mockResolvedValue({
       data: { user: { id: 'user-1' } },
@@ -36,6 +37,8 @@ describe('account marketing consent', () => {
     })
     mocks.updateUser.mockResolvedValue({ error: null })
   })
+
+  afterEach(() => vi.unstubAllEnvs())
 
   it('stores the decision only in the authenticated account metadata', async () => {
     const response = await POST(request('granted') as never)
