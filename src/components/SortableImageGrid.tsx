@@ -32,6 +32,10 @@ interface Props {
   compressing?: { current: number; total: number } | null
 }
 
+export const DEFAULT_MAX_IMAGES = 8
+
+type ResolvedProps = Omit<Props, 'maxImages'> & { maxImages: number }
+
 // ─── Desktop: drag & drop ───────────────────────────────────────────────────
 
 function SortableImage({ image, onRemove }: { image: ImageItem; onRemove: () => void }) {
@@ -79,7 +83,7 @@ function SortableImage({ image, onRemove }: { image: ImageItem; onRemove: () => 
   )
 }
 
-function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing }: Props) {
+function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing }: ResolvedProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
@@ -105,7 +109,7 @@ function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages, compressin
               </div>
             </div>
           ))}
-          <AddButton images={images} maxImages={maxImages!} onAdd={onAdd} compressing={compressing} />
+          <AddButton images={images} maxImages={maxImages} onAdd={onAdd} compressing={compressing} />
         </div>
       </SortableContext>
     </DndContext>
@@ -114,7 +118,7 @@ function DesktopGrid({ images, onReorder, onRemove, onAdd, maxImages, compressin
 
 // ─── Mobile: arrow buttons to reorder with slide animation ──────────────────
 
-function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing }: Props) {
+function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing }: ResolvedProps) {
   const [animatingId, setAnimatingId] = useState<string | null>(null)
   const [animDir, setAnimDir] = useState<-1 | 1>(1)
 
@@ -189,7 +193,7 @@ function MobileGrid({ images, onReorder, onRemove, onAdd, maxImages, compressing
           </div>
         </div>
       ))}
-      <AddButton images={images} maxImages={maxImages!} onAdd={onAdd} compressing={compressing} />
+      <AddButton images={images} maxImages={maxImages} onAdd={onAdd} compressing={compressing} />
     </div>
   )
 }
@@ -243,6 +247,8 @@ function AddButton({ images, maxImages, onAdd, compressing }: { images: ImageIte
 
 export default function SortableImageGrid(props: Props) {
   const [isMobile, setIsMobile] = useState(false)
+  const maxImages = props.maxImages ?? DEFAULT_MAX_IMAGES
+  const resolvedProps = { ...props, maxImages }
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -253,9 +259,9 @@ export default function SortableImageGrid(props: Props) {
 
   return (
     <div>
-      {isMobile ? <MobileGrid {...props} /> : <DesktopGrid {...props} />}
+      {isMobile ? <MobileGrid {...resolvedProps} /> : <DesktopGrid {...resolvedProps} />}
       <p className="text-xs text-gray-500 mt-2">
-        {props.images.length}/{props.maxImages || 8} fotos{!isMobile && ' · Arrastra para reordenar'}
+        {props.images.length}/{maxImages} fotos{!isMobile && ' · Arrastra para reordenar'}
       </p>
     </div>
   )
