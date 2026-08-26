@@ -23,5 +23,12 @@ export default async function AutomatedPostPage({ params }: { params: Promise<{ 
 
   if (!product) notFound()
 
-  return <AutomatedProductPost product={product as AutomatedPostProduct} />
+  return (
+    <>
+      {/* This route is a render surface, not a marketplace page. Global UI
+          must never become part of the exported 1080×1920 artwork. */}
+      <style>{`#marketing-consent-overlay { display: none !important; }`}</style>
+      <AutomatedProductPost product={product as AutomatedPostProduct} />
+    </>
+  )
 }

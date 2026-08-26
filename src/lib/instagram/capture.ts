@@ -118,6 +118,25 @@ export async function renderStoryJpeg(slug: string): Promise<Buffer> {
         .every((value) => value.dataset.fitted === 'true')
     ))
     await page.evaluate(async () => {
+      const poster = document.querySelector<HTMLElement>('[data-testid="ig-product-post"]')
+      if (!poster) throw new Error('No encontramos el lienzo de la Story')
+
+      // The Story route still inherits the application root layout. Remove
+      // any global chrome rendered outside the poster so cookie notices,
+      // dialogs, progress bars or future fixed widgets cannot enter the JPEG.
+      for (const element of document.body.querySelectorAll<HTMLElement>('*')) {
+        if (poster.contains(element) || element.contains(poster)) continue
+        const style = window.getComputedStyle(element)
+        if (
+          element.getAttribute('role') === 'dialog'
+          || style.position === 'fixed'
+          || style.position === 'sticky'
+        ) {
+          element.style.setProperty('display', 'none', 'important')
+          element.dataset.igCaptureSuppressed = 'true'
+        }
+      }
+
       await document.fonts.ready
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()))

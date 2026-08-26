@@ -19,7 +19,11 @@ export default function PageViewTracker() {
   const category = pathname === '/catalogo' ? searchParams.get('product_type') : null
 
   useEffect(() => {
-    if (!pathname || pathname.startsWith('/admin')) return
+    if (
+      !pathname
+      || pathname.startsWith('/admin')
+      || pathname.startsWith('/ig-post')
+    ) return
     const key = `${pathname}|${category ?? ''}`
     if (last.current === key) return
     last.current = key
