@@ -10,6 +10,7 @@ import LayoutChrome from '@/components/LayoutChrome'
 import ScrollToTop from '@/components/ScrollToTop'
 import NavigationProgress from '@/components/NavigationProgress'
 import PageViewTracker from '@/components/PageViewTracker'
+import { MetaPixelNoScript, MetaPixelScript } from '@/components/MetaPixelBase'
 import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
@@ -101,7 +102,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, outfit.variable, spaceGrotesk.variable)}>
+      <head>
+        <MetaPixelScript />
+      </head>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
+        <MetaPixelNoScript />
         <Suspense fallback={null}>
           <NavigationProgress />
         </Suspense>
