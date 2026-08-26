@@ -68,6 +68,8 @@ export default function ProductFallback({ idOrSlug }: { idOrSlug: string }) {
         productId={state.product.id}
         category={state.product.product_type}
         sellerId={state.product.seller_id}
+        name={[state.product.brand, state.product.model].filter(Boolean).join(' ')}
+        price={state.product.price}
       />
       <ProductDetailClient product={state.product} sellerHidePhone={state.hidePhone} />
     </>

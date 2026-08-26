@@ -100,6 +100,8 @@ export default async function ProductDetailPage({ params }: Props) {
         productId={product.id}
         category={product.product_type}
         sellerId={product.seller_id}
+        name={[product.brand, product.model].filter(Boolean).join(' ')}
+        price={product.price}
       />
       <ProductDetailClient
         product={product}

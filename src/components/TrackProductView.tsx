@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { track } from '@/lib/track'
+import { trackMetaViewContent } from '@/lib/meta-pixel'
 import { createClient } from '@/lib/supabase/client'
 
 /**
@@ -14,10 +15,14 @@ export default function TrackProductView({
   productId,
   category,
   sellerId,
+  name,
+  price,
 }: {
   productId: string
   category: string
   sellerId: string | null
+  name: string
+  price: number
 }) {
   const fired = useRef(false)
 
@@ -29,8 +34,14 @@ export default function TrackProductView({
       const uid = data.session?.user?.id ?? null
       if (uid && sellerId && uid === sellerId) return // owner self-view, skip
       track({ type: 'product_view', product_id: productId, category })
+      trackMetaViewContent({
+        contentId: productId,
+        contentName: name,
+        category,
+        value: price,
+      })
     })
-  }, [productId, category, sellerId])
+  }, [productId, category, sellerId, name, price])
 
   return null
 }
