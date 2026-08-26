@@ -13,7 +13,7 @@ import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 import SkiRackCartLink from './SkiRackCartLink'
 import SkiRackCartDrawerHost from './SkiRackCartDrawerHost'
-import { authRouteWithRedirect, normalizeAuthRedirect } from '@/lib/auth-redirect'
+import { authRouteWithRedirect, currentBrowserPostAuthRedirect } from '@/lib/auth-redirect'
 
 // Client component on purpose: it reads the auth session in the browser so the
 // surrounding pages stay ISR-cacheable (no server-side cookies()). The static
@@ -28,9 +28,7 @@ export default function Header() {
   const showEmptySkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
 
   useEffect(() => {
-    setAuthRedirect(normalizeAuthRedirect(
-      `${window.location.pathname}${window.location.search}${window.location.hash}`,
-    ))
+    setAuthRedirect(currentBrowserPostAuthRedirect())
   }, [pathname])
 
   useEffect(() => {

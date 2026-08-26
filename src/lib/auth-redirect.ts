@@ -61,6 +61,20 @@ export function currentBrowserAuthRedirect(): string {
 }
 
 /**
+ * Header auth links rendered inside an auth page must keep the original
+ * destination instead of nesting `/auth/login?...` as the post-auth return.
+ */
+export function currentBrowserPostAuthRedirect(): string {
+  const current = currentBrowserAuthRedirect()
+  if (typeof window === 'undefined' || !window.location.pathname.startsWith('/auth/')) {
+    return current
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  return normalizeAuthRedirect(params.get('redirect') ?? params.get('next'))
+}
+
+/**
  * Redirect a freshly-authenticated user to /admin if their profile has
  * is_admin = true, else to the given fallback. Always calls router.refresh()
  * so the global Header re-renders with the new session.

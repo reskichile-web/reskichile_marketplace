@@ -4,6 +4,7 @@ import {
   authRecoveryUrl,
   authRouteWithRedirect,
   currentBrowserAuthRedirect,
+  currentBrowserPostAuthRedirect,
   normalizeAuthRedirect,
   redirectAfterAuth,
 } from '@/lib/auth-redirect'
@@ -54,6 +55,21 @@ describe('auth redirect continuity', () => {
     })
 
     expect(currentBrowserAuthRedirect()).toBe('/producto/k2?utm_source=meta&fbclid=click-1#fotos')
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps the original destination in header links inside the auth flow', () => {
+    const login = authRouteWithRedirect('/auth/login', productReturn)
+    const loginUrl = new URL(login, 'https://www.reskichile.cl')
+    vi.stubGlobal('window', {
+      location: {
+        pathname: loginUrl.pathname,
+        search: loginUrl.search,
+        hash: '',
+      },
+    })
+
+    expect(currentBrowserPostAuthRedirect()).toBe(productReturn)
     vi.unstubAllGlobals()
   })
 
