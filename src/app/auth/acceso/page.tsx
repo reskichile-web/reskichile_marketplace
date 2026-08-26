@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +9,9 @@ import {
   normalizeAuthRedirect,
   redirectAfterAuth,
 } from '@/lib/auth-redirect'
+import PhoneInput from '@/components/PhoneInput'
+import { parseAndValidatePhone } from '@/lib/phone'
+import OtpInput from '@/components/OtpInput'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,12 +21,30 @@ export default function AccesoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = normalizeAuthRedirect(searchParams.get('redirect'))
-  const [step, setStep] = useState<'email' | 'password' | 'done'>('email')
+  const [step, setStep] = useState<'email' | 'otp' | 'password' | 'done'>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [needsPhone, setNeedsPhone] = useState(false)
+  const [fullPhone, setFullPhone] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [otpError, setOtpError] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((current) => current - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
+
+  async function sendAccessCode(trimmedEmail: string) {
+    const supabase = createClient()
+    return supabase.auth.signInWithOtp({
+      email: trimmedEmail,
+      options: { shouldCreateUser: false },
+    })
+  }
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -43,13 +64,55 @@ export default function AccesoPage() {
     const data = await res.json()
 
     if (data.exists) {
-      // User exists → show password form
-      setStep('password')
+      setNeedsPhone(data.needs_phone === true)
+      const { error: otpSendError } = await sendAccessCode(trimmedEmail)
+      if (otpSendError) {
+        setError('No pudimos enviar el código de acceso. Espera unos minutos e intenta nuevamente.')
+        setLoading(false)
+        return
+      }
+      setStep('otp')
+      setResendCooldown(60)
       setLoading(false)
     } else {
       // User doesn't exist → redirect to register
       router.push(authRouteWithRedirect('/auth/registro', redirect, { email: trimmedEmail }))
     }
+  }
+
+  async function handleOtpComplete(code: string) {
+    setOtpError(false)
+    setError('')
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: code,
+      type: 'email',
+    })
+
+    if (verifyError) {
+      setOtpError(true)
+      setLoading(false)
+      return
+    }
+
+    setStep('password')
+    setLoading(false)
+  }
+
+  async function handleResend() {
+    if (resendCooldown > 0 || loading) return
+    setError('')
+    setLoading(true)
+    const { error: resendError } = await sendAccessCode(email.trim().toLowerCase())
+    if (resendError) {
+      setError('No pudimos reenviar el código. Espera unos minutos e intenta nuevamente.')
+    } else {
+      setResendCooldown(60)
+    }
+    setLoading(false)
   }
 
   function validatePassword(): string | null {
@@ -58,6 +121,7 @@ export default function AccesoPage() {
     if (!/[A-Z]/.test(password)) return 'La contraseña debe tener al menos una mayúscula'
     if (!/[0-9]/.test(password)) return 'La contraseña debe tener al menos un número'
     if (password !== confirmPassword) return 'Las contraseñas no coinciden'
+    if (needsPhone && !parseAndValidatePhone(fullPhone)) return 'Ingresa un número de teléfono válido'
     return null
   }
 
@@ -70,29 +134,34 @@ export default function AccesoPage() {
 
     setLoading(true)
 
-    // Change password via API (uses service role)
-    const res = await fetch('/api/auth/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-    })
-    const data = await res.json()
-
-    if (!res.ok) {
-      setError(data.error || 'Error al cambiar la contraseña')
+    const supabase = createClient()
+    const { error: passwordError } = await supabase.auth.updateUser({ password })
+    if (passwordError) {
+      setError('No pudimos guardar la contraseña. Solicita un nuevo código e intenta nuevamente.')
       setLoading(false)
       return
     }
 
-    // Now sign in with the new password
-    const supabase = createClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    })
+    const normalizedPhone = needsPhone ? parseAndValidatePhone(fullPhone) : null
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError('La sesión expiró. Solicita un nuevo código e intenta nuevamente.')
+      setLoading(false)
+      return
+    }
 
-    if (signInError) {
-      setError('Contraseña actualizada pero hubo un error al iniciar sesión. Intenta desde el login.')
+    const profileValues: { must_change_password: boolean; phone?: string } = {
+      must_change_password: false,
+    }
+    if (normalizedPhone) profileValues.phone = normalizedPhone
+
+    const { error: profileError } = await supabase
+      .from('users')
+      .update(profileValues)
+      .eq('id', user.id)
+
+    if (profileError) {
+      setError('La contraseña fue guardada, pero no pudimos completar tu perfil. Intenta nuevamente.')
       setLoading(false)
       return
     }
@@ -171,6 +240,19 @@ export default function AccesoPage() {
               )}
 
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                {needsPhone && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
+                    <PhoneInput
+                      required
+                      onChange={(phone) => setFullPhone(phone)}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Completa este dato pendiente para activar tu cuenta.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium mb-1">Nueva contraseña</label>
                   <input
@@ -213,6 +295,53 @@ export default function AccesoPage() {
                   Usar otro email
                 </button>
               </p>
+            </>
+          )}
+
+          {step === 'otp' && (
+            <>
+              <div className="mb-7 text-center">
+                <h1 className="font-body text-2xl font-black text-gray-900">Verifica tu correo</h1>
+                <p className="mt-2 text-sm text-gray-500">
+                  Enviamos un código de 6 dígitos a <span className="font-medium text-gray-700">{email}</span>.
+                </p>
+              </div>
+
+              <OtpInput
+                onComplete={handleOtpComplete}
+                disabled={loading}
+                error={otpError}
+              />
+
+              {otpError && (
+                <p className="mt-4 text-center text-sm text-red-500">Código incorrecto o vencido.</p>
+              )}
+              {error && (
+                <p className="mt-4 text-center text-sm text-red-500">{error}</p>
+              )}
+
+              <div className="mt-6 text-center">
+                {resendCooldown > 0 ? (
+                  <p className="text-xs text-gray-400">Reenviar en {resendCooldown}s</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={loading}
+                    className="text-xs font-medium text-brand-500 hover:underline disabled:opacity-50"
+                  >
+                    Reenviar código
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { setStep('email'); setError(''); setOtpError(false) }}
+                className="mt-6 w-full text-center text-xs text-gray-400 hover:text-gray-600"
+              >
+                Usar otro email
+              </button>
             </>
           )}
 

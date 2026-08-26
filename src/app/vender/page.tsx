@@ -26,6 +26,7 @@ const SortableImageGrid = dynamic(() => import('@/components/SortableImageGrid')
 import { buildImagePath } from '@/lib/storage-utils'
 import { buildProductSlug } from '@/lib/slug-utils'
 import { normalizeStoredPhone } from '@/lib/phone'
+import { persistSignupProfile } from '@/lib/persist-signup-profile'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -444,12 +445,13 @@ export default function SellPage() {
     setLoading(true)
 
     const supabase = createClient()
+    const fullPhone = `${authCountryCode}${digits}`
     const { data, error } = await supabase.auth.signUp({
       email: authEmail.trim().toLowerCase(),
       password: authPassword,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: { name: authName.trim() },
+        data: { name: authName.trim(), phone: fullPhone },
       },
     })
 
@@ -568,12 +570,18 @@ export default function SellPage() {
     if (data.user) {
       const digits = authPhone.replace(/\D/g, '')
       const fullPhone = `${authCountryCode}${digits}`
-      await supabase.from('users').upsert({
+      const profileSaved = await persistSignupProfile(supabase, {
         id: data.user.id,
         email: data.user.email,
         name: authName.trim(),
         phone: fullPhone,
-      }, { onConflict: 'id' })
+      })
+
+      if (!profileSaved) {
+        setPopup({ message: 'Tu cuenta fue verificada, pero no pudimos guardar el teléfono. Complétalo desde tu perfil.', type: 'error' })
+        setLoading(false)
+        return
+      }
     }
 
     // Publish with the new user

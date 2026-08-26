@@ -350,20 +350,33 @@ CREATE POLICY "Admins can view all product images" ON public.product_images
 
 -- Auto-create user profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_phone TEXT := NULLIF(BTRIM(NEW.raw_user_meta_data->>'phone'), '');
 BEGIN
-  INSERT INTO public.users (id, email, name)
+  IF v_phone IS NOT NULL AND v_phone !~ '^\+[0-9]{8,15}$' THEN
+    v_phone := NULL;
+  END IF;
+
+  INSERT INTO public.users (id, email, name, phone)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(
       NULLIF(BTRIM(NEW.raw_user_meta_data->>'name'), ''),
       split_part(NEW.email, '@', 1)
-    )
+    ),
+    v_phone
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { normalizeStoredPhone } from '@/lib/phone'
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json()
@@ -16,12 +17,16 @@ export async function POST(req: NextRequest) {
   // Check if user exists in our users table
   const { data: user } = await supabase
     .from('users')
-    .select('id, email, must_change_password')
+    .select('id, email, phone, must_change_password')
     .eq('email', email.trim().toLowerCase())
     .single()
 
   if (user) {
-    return NextResponse.json({ exists: true, must_change_password: user.must_change_password })
+    return NextResponse.json({
+      exists: true,
+      must_change_password: user.must_change_password,
+      needs_phone: !normalizeStoredPhone(user.phone),
+    })
   }
 
   return NextResponse.json({ exists: false })

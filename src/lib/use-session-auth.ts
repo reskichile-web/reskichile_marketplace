@@ -9,6 +9,8 @@ export interface SessionAuth {
   isAdmin: boolean
   avatarUrl: string | null
   name: string | null
+  /** Undefined until the authenticated profile query settles. */
+  phone: string | null | undefined
   /** Unread message count (0 until loaded / for anonymous). */
   unreadCount: number
   /** True until the first session check resolves. */
@@ -21,6 +23,7 @@ const ANON: SessionAuth = {
   isAdmin: false,
   avatarUrl: null,
   name: null,
+  phone: undefined,
   unreadCount: 0,
   loading: true,
 }
@@ -71,7 +74,7 @@ export function useSessionAuth(): SessionAuth {
           if (!isCurrent(userId, request.generation)) return
           const { data: profile, error } = await supabase
             .from('users')
-            .select('is_admin, avatar_url, name')
+            .select('is_admin, avatar_url, name, phone')
             .eq('id', userId)
             .single()
 
@@ -83,6 +86,7 @@ export function useSessionAuth(): SessionAuth {
                 isAdmin: profile?.is_admin ?? false,
                 avatarUrl: profile?.avatar_url ?? null,
                 name: profile?.name ?? null,
+                phone: profile?.phone ?? null,
               }
             : previous)
         } finally {
@@ -159,6 +163,7 @@ export function useSessionAuth(): SessionAuth {
           isAdmin: sameUser ? previous.isAdmin : false,
           avatarUrl: sameUser ? previous.avatarUrl : null,
           name: sameUser ? previous.name : null,
+          phone: sameUser ? previous.phone : undefined,
           unreadCount: sameUser ? previous.unreadCount : 0,
           loading: false,
         }

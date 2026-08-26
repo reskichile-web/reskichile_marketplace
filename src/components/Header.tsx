@@ -13,6 +13,7 @@ import ProfileDropdown from './ProfileDropdown'
 import ChatProvider from './chat/ChatProvider'
 import SkiRackCartLink from './SkiRackCartLink'
 import SkiRackCartDrawerHost from './SkiRackCartDrawerHost'
+import CompletePhoneModal from './CompletePhoneModal'
 import { authRouteWithRedirect, currentBrowserPostAuthRedirect } from '@/lib/auth-redirect'
 
 // Client component on purpose: it reads the auth session in the browser so the
@@ -21,8 +22,9 @@ import { authRouteWithRedirect, currentBrowserPostAuthRedirect } from '@/lib/aut
 // login/avatar area hydrates once the session resolves. The eternal-login cookie
 // is untouched — middleware still refreshes it on every request.
 export default function Header() {
-  const { userId, email, isAdmin, avatarUrl, unreadCount, loading } = useSessionAuth()
+  const { userId, email, isAdmin, avatarUrl, phone, unreadCount, loading } = useSessionAuth()
   const pathname = usePathname()
+  const isAuthFlow = pathname.startsWith('/auth/') || pathname.startsWith('/i/')
   const [showSkiRacks, setShowSkiRacks] = useState(process.env.NODE_ENV !== 'production')
   const [authRedirect, setAuthRedirect] = useState('/')
   const showEmptySkiRackCart = pathname.startsWith('/ski-rack') || pathname === '/carrito'
@@ -140,6 +142,7 @@ export default function Header() {
       </div>
     </header>
     {showSkiRacks && <SkiRackCartDrawerHost />}
+    {userId && phone === null && !isAuthFlow && <CompletePhoneModal userId={userId} />}
     </>
     </ChatProvider>
   )

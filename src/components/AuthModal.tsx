@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { normalizeStoredPhone } from '@/lib/phone'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_REGEX = /^\+?[\d\s\-()]{8,15}$/
@@ -220,12 +221,13 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
   function validate(): string | null {
     const trimmedEmail = email.trim().toLowerCase()
     const trimmedPhone = phone.trim()
+    const normalizedPhone = normalizeStoredPhone(trimmedPhone)
 
     if (!name.trim()) return 'Ingresa tu nombre'
     if (!trimmedEmail) return 'Ingresa tu email'
     if (!EMAIL_REGEX.test(trimmedEmail)) return 'Ingresa un email válido'
     if (!trimmedPhone) return 'Ingresa tu número de teléfono'
-    if (!PHONE_REGEX.test(trimmedPhone)) return 'Ingresa un número de teléfono válido'
+    if (!PHONE_REGEX.test(trimmedPhone) || !normalizedPhone) return 'Ingresa un número de teléfono válido'
     if (!password) return 'Ingresa una contraseña'
     if (password.length < PASSWORD_MIN) return `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`
     if (!/[A-Z]/.test(password)) return 'La contraseña debe tener al menos una mayúscula'
@@ -244,12 +246,18 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
     setLoading(true)
 
     const supabase = createClient()
+    const normalizedPhone = normalizeStoredPhone(phone)
+    if (!normalizedPhone) {
+      setError('Ingresa un número de teléfono válido')
+      setLoading(false)
+      return
+    }
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: { name: name.trim() },
+        data: { name: name.trim(), phone: normalizedPhone },
       },
     })
 
@@ -265,14 +273,9 @@ function RegisterForm({ onSuccess, onSwitch }: { onSuccess: () => void; onSwitch
       return
     }
 
-    if (data.user) {
-      await supabase.from('users').upsert({
-        id: data.user.id,
-        email: data.user.email,
-        name: name.trim(),
-        phone: phone.trim(),
-      }, { onConflict: 'id' })
-    }
+    // The signup trigger persists the canonical phone atomically from auth
+    // metadata. There is normally no session yet here, so a client profile
+    // write would run as anon and be rejected by RLS.
 
     onSuccess()
     router.refresh()

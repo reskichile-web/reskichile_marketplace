@@ -3,13 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import PhoneInput from '@/components/PhoneInput'
+import { parseAndValidatePhone } from '@/lib/phone'
 
 const PASSWORD_MIN = 6
 
-export default function RedeemInviteForm({ slug }: { slug: string }) {
+export default function RedeemInviteForm({ slug, requiresPhone }: { slug: string; requiresPhone: boolean }) {
   const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [fullPhone, setFullPhone] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -19,6 +22,7 @@ export default function RedeemInviteForm({ slug }: { slug: string }) {
     if (!/[A-Z]/.test(password)) return 'Debe tener al menos una mayúscula'
     if (!/[0-9]/.test(password)) return 'Debe tener al menos un número'
     if (password !== confirm) return 'Las contraseñas no coinciden'
+    if (requiresPhone && !parseAndValidatePhone(fullPhone)) return 'Ingresa un número de teléfono válido'
     return null
   }
 
@@ -34,7 +38,7 @@ export default function RedeemInviteForm({ slug }: { slug: string }) {
       const res = await fetch('/api/auth/redeem-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, password }),
+        body: JSON.stringify({ slug, password, phone: requiresPhone ? fullPhone : undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'No se pudo configurar la contraseña')
@@ -59,6 +63,16 @@ export default function RedeemInviteForm({ slug }: { slug: string }) {
     <form onSubmit={onSubmit} className="space-y-4 mt-6">
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>
+      )}
+
+      {requiresPhone && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
+          <PhoneInput required onChange={(phone) => setFullPhone(phone)} />
+          <p className="text-xs text-gray-500 mt-1">
+            Completa este dato pendiente para activar tu cuenta.
+          </p>
+        </div>
       )}
 
       <div>

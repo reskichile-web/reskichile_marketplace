@@ -15,6 +15,7 @@ import {
   normalizeAuthRedirect,
   redirectAfterAuth,
 } from '@/lib/auth-redirect'
+import { persistSignupProfile } from '@/lib/persist-signup-profile'
 
 // Reads ?redirect / invite params and is fully interactive — never prerendered.
 export const dynamic = 'force-dynamic'
@@ -95,7 +96,9 @@ export default function RegisterPage() {
       password,
       options: {
         emailRedirectTo: authCallbackUrl(window.location.origin, redirect),
-        data: { name: name.trim() },
+        // The database trigger copies this canonical value atomically when it
+        // creates public.users. Do not rely solely on a pre-session RLS write.
+        data: { name: name.trim(), phone: fullPhone },
       },
     })
 
@@ -126,7 +129,7 @@ export default function RegisterPage() {
     setVerifying(true)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.verifyOtp({
+    const { error, data } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
       token: code,
       type: 'signup',
@@ -139,14 +142,22 @@ export default function RegisterPage() {
     }
 
     // Now we have a session — save the required profile name.
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = data.user
     if (user) {
-      await supabase.from('users').upsert({
+      const profileSaved = await persistSignupProfile(supabase, {
         id: user.id,
         email: user.email,
         name: name.trim(),
         phone: fullPhone,
-      }, { onConflict: 'id' })
+      })
+
+      if (!profileSaved) {
+        setPopup({ message: 'Tu cuenta fue verificada, pero no pudimos guardar el teléfono. Intenta nuevamente desde tu perfil.', type: 'error' })
+        setVerifying(false)
+        router.push('/perfil')
+        router.refresh()
+        return
+      }
     }
 
     track({ type: 'signup' })

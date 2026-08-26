@@ -6,6 +6,7 @@ interface AuthState {
   isAdmin: boolean
   avatarUrl: string | null
   name: string | null
+  phone: string | null | undefined
   unreadCount: number
   loading: boolean
 }
@@ -15,6 +16,7 @@ interface QueryResult {
     is_admin?: boolean
     avatar_url?: string | null
     name?: string | null
+    phone?: string | null
   } | null
   count?: number | null
   error: { message: string } | null
@@ -169,6 +171,7 @@ describe('useSessionAuth', () => {
       isAdmin: true,
       avatarUrl: '/avatar.jpg',
       name: 'Andes',
+      phone: null,
       unreadCount: 3,
     })
 

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import RedeemInviteForm from './RedeemInviteForm'
 import TrackInviteOpen from '@/components/TrackInviteOpen'
+import { normalizeStoredPhone } from '@/lib/phone'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,7 @@ export default async function InviteRedeemPage({ params }: Props) {
 
   const { data: profile } = await admin
     .from('users')
-    .select('email, name')
+    .select('email, name, phone')
     .eq('id', invite.user_id)
     .single()
 
@@ -76,7 +77,7 @@ export default async function InviteRedeemPage({ params }: Props) {
           </div>
         )}
 
-        <RedeemInviteForm slug={slug} />
+        <RedeemInviteForm slug={slug} requiresPhone={!normalizeStoredPhone(profile?.phone)} />
 
         <p className="mt-6 text-xs text-gray-400 text-center leading-relaxed">
           Este link es seguro y único para ti. No lo compartas con nadie.

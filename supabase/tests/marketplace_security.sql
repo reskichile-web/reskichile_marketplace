@@ -3,13 +3,17 @@
 BEGIN;
 
 INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
-  ('81000000-0000-4000-8000-000000000001', 'seller@example.com', '{"name":"Seller"}'),
+  ('81000000-0000-4000-8000-000000000001', 'seller@example.com', '{"name":"Seller","phone":"+56912345678"}'),
   ('81000000-0000-4000-8000-000000000002', 'other@example.com', '{"name":"Other"}'),
   ('81000000-0000-4000-8000-000000000003', 'admin@example.com', '{"name":"Admin"}');
 
 UPDATE public.users
 SET is_admin = TRUE
 WHERE id = '81000000-0000-4000-8000-000000000003';
+
+SELECT 1 / CASE WHEN phone = '+56912345678' THEN 1 ELSE 0 END
+FROM public.users
+WHERE id = '81000000-0000-4000-8000-000000000001';
 
 INSERT INTO public.products (
   id, seller_id, product_type, brand, condition, price, region, comuna, status
@@ -46,6 +50,18 @@ SELECT 1 / CASE WHEN COUNT(*) = 2 THEN 1 ELSE 0 END
 FROM public.product_images;
 SELECT 1 / CASE WHEN COUNT(*) = 1 THEN 1 ELSE 0 END
 FROM public.users;
+
+-- Regression: authenticated profile completion must use UPDATE, not an upsert
+-- containing `id`. The commerce grants intentionally allow the former while
+-- keeping authorization and identity columns non-writable.
+UPDATE public.users
+SET
+  name = 'Seller Updated',
+  phone = '+56987654321'
+WHERE id = '81000000-0000-4000-8000-000000000001';
+SELECT 1 / CASE WHEN name = 'Seller Updated' AND phone = '+56987654321' THEN 1 ELSE 0 END
+FROM public.users
+WHERE id = '81000000-0000-4000-8000-000000000001';
 RESET SESSION AUTHORIZATION;
 
 SELECT set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000003', FALSE);

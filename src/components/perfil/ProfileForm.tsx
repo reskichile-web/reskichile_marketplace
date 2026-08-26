@@ -113,7 +113,12 @@ export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave
     const parsed = parseStoredPhone(phone)
     const normalizedPhone = parsed.local ? toFullPhone(parsed.local, parsed.country) : ''
 
-    if (normalizedPhone && !/^\+\d{8,15}$/.test(normalizedPhone)) {
+    if (!normalizedPhone) {
+      setPopup({ message: 'El teléfono es obligatorio', type: 'error' })
+      return
+    }
+
+    if (!/^\+\d{8,15}$/.test(normalizedPhone)) {
       setPopup({ message: 'Número de teléfono inválido', type: 'error' })
       return
     }
@@ -129,7 +134,7 @@ export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave
       .from('users')
       .update({
         name: trimmedName || null,
-        phone: normalizedPhone || null,
+        phone: normalizedPhone,
         instagram: trimmedInstagram || null,
       })
       .eq('id', user.id)
@@ -159,7 +164,7 @@ export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave
     instagram.trim().replace(/^@/, '') !== initialValues.instagram
 
   const phoneError = (() => {
-    if (!phone) return null
+    if (!phone) return 'El teléfono es obligatorio'
     const { country, local } = parseStoredPhone(phone)
     return validateLocal(local, country)
   })()
@@ -282,8 +287,9 @@ export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp)</label>
+          <label className="block text-sm font-medium mb-1">Teléfono (WhatsApp) *</label>
           <PhoneInput
+            required
             defaultStored={phone}
             error={phoneError}
             onChange={(full) => setPhone(full)}
