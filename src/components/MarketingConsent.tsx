@@ -20,6 +20,8 @@ import { loadMetaPixel, revokeMetaPixel, trackMetaPageView } from '@/lib/meta-pi
 export const OPEN_COOKIE_PREFERENCES_EVENT = 'reski:open-cookie-preferences'
 
 function saveLocalDecision(decision: MarketingConsentDecision, userId?: string | null) {
+  document.documentElement.dataset.reskiMarketingConsent = 'stored'
+
   try {
     window.localStorage.setItem(
       MARKETING_CONSENT_KEY,
@@ -138,6 +140,9 @@ export default function MarketingConsent() {
       ? { ...decision, userId: viewer.userId }
       : decision
 
+    // Close optimistically. Local persistence and account sync must never keep
+    // the consent card visible after the visitor has already made a choice.
+    setPreferencesOpen(false)
     setLocalDecision(storedDecision)
     setActiveDecision(decision)
     saveLocalDecision(decision, viewer.userId)
@@ -147,61 +152,57 @@ export default function MarketingConsent() {
       void saveAccountDecision(decision)
     }
     if (nextChoice === 'denied') revokeMetaPixel()
-    setPreferencesOpen(false)
   }
 
   const resolutionPending = !ready || viewer.loading || resolvedKey !== resolutionKey
 
   if (pathname.startsWith('/admin')) return null
-  if (!resolutionPending && activeDecision !== null && !preferencesOpen) return null
+  if (activeDecision !== null && !preferencesOpen) return null
 
   return (
-    <div
+    <section
       id="marketing-consent-overlay"
       data-bootstrap-pending={resolutionPending ? 'true' : 'false'}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/60 p-3 backdrop-blur-sm sm:p-6"
+      role="dialog"
+      aria-labelledby="marketing-consent-title"
+      className="fixed bottom-3 left-3 right-3 z-[100] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.24)] sm:bottom-6 sm:left-6 sm:right-auto sm:w-full sm:max-w-md sm:p-6"
     >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-label="Preferencias de cookies"
-        className="max-h-[calc(100dvh-1.5rem)] w-full max-w-xl overflow-y-auto border border-gray-200 bg-white p-5 shadow-2xl sm:p-7"
-      >
-        <div className="flex items-center gap-3">
-          <Image src="/favicon.svg" alt="" width={36} height={36} className="h-9 w-9" />
-          <h2 className="font-body text-xl font-black text-gray-950">Política de privacidad</h2>
-        </div>
+      <div className="flex items-center gap-3">
+        <Image src="/favicon.svg" alt="" width={36} height={36} className="h-9 w-9" />
+        <h2 id="marketing-consent-title" className="font-body text-xl font-black text-gray-950">
+          Política de privacidad
+        </h2>
+      </div>
 
-        <p className="mt-5 text-[15px] leading-7 text-gray-700 sm:text-base">
-          Usamos cookies necesarias para que el marketplace funcione. Con tu permiso, Meta Pixel nos ayuda a saber qué anuncios acercan compradores reales y a mejorar nuestras campañas.
-        </p>
-        <p className="mt-3 text-sm leading-6 text-gray-600">
-          Rechazar no limita el catálogo ni el contacto por WhatsApp.
-        </p>
+      <p className="mt-4 text-sm leading-6 text-gray-700 sm:text-[15px]">
+        Usamos cookies necesarias para que el marketplace funcione. Con tu permiso, Meta Pixel nos ayuda a saber qué anuncios acercan compradores reales y a mejorar nuestras campañas.
+      </p>
+      <p className="mt-2 text-sm leading-6 text-gray-600">
+        Rechazar no limita el catálogo ni el contacto por WhatsApp.
+      </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => saveChoice('granted')}
-            className="min-h-12 bg-brand-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-          >
-            Aceptar todo
-          </button>
-          <button
-            type="button"
-            onClick={() => saveChoice('denied')}
-            className="min-h-12 border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-          >
-            Rechazar todo
-          </button>
-          <Link
-            href="/privacidad"
-            className="col-span-2 flex min-h-12 items-center justify-center border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-          >
-            Más información
-          </Link>
-        </div>
-      </section>
-    </div>
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => saveChoice('granted')}
+          className="min-h-12 rounded-lg bg-brand-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        >
+          Aceptar todo
+        </button>
+        <button
+          type="button"
+          onClick={() => saveChoice('denied')}
+          className="min-h-12 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+        >
+          Rechazar todo
+        </button>
+        <Link
+          href="/privacidad"
+          className="col-span-2 flex min-h-12 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+        >
+          Más información
+        </Link>
+      </div>
+    </section>
   )
 }
