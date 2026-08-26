@@ -365,7 +365,7 @@ export default function ProductGallery({ images, title }: Props) {
               onClick={() => goTo(i)}
               className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === current ? 'border-brand-500' : 'border-transparent hover:border-gray-300'}`}
             >
-              <Image src={img.url} alt="" fill sizes="64px" className="object-cover" />
+              <Image src={img.url} alt="" fill sizes="64px" unoptimized className="object-cover" />
             </button>
           ))}
         </div>

@@ -27,6 +27,33 @@ const CONDITION_LABEL_ICONS: Record<string, LucideIcon> = {
   [CONDITIONS.nuevo_sellado]: PackageCheck,
 }
 
+const SKI_BOOT_ATTRIBUTE_ORDER: Record<string, number> = {
+  talla_mondo: 0,
+  flex: 1,
+  boa: 2,
+  incluye_pines: 3,
+  genero: 4,
+}
+
+export function orderMainProductAttributes(
+  productType: string,
+  fields: AttributeField[],
+): AttributeField[] {
+  if (productType !== 'botas_esqui') return fields
+
+  return [...fields].sort((left, right) => {
+    const leftOrder = SKI_BOOT_ATTRIBUTE_ORDER[left.key] ?? Number.MAX_SAFE_INTEGER
+    const rightOrder = SKI_BOOT_ATTRIBUTE_ORDER[right.key] ?? Number.MAX_SAFE_INTEGER
+    return leftOrder - rightOrder
+  })
+}
+
+export function shouldDisplayMainAttribute(field: AttributeField, value: unknown): boolean {
+  if (field.key === 'boa') return value === true
+  if (value === undefined || value === '' || value === null) return false
+  return !Array.isArray(value) || value.length > 0
+}
+
 interface Props {
   product: ProductWithImages
   sellerHidePhone: boolean
@@ -242,16 +269,36 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
             // Plain booleans like incluye_pines render as normal attributes.
             const hasSubFields = (f: AttributeField) =>
               attrFields.some(s => s.key.startsWith(f.key.replace('incluye_', '') + '_'))
-            const mainAttrs = attrFields.filter(f =>
-              !(f.key.startsWith('incluye_') && hasSubFields(f)) && !f.key.startsWith('fijaciones_'))
-            const hasValues = mainAttrs.some(f => attrs[f.key] !== undefined && attrs[f.key] !== '' && attrs[f.key] !== null)
+            const mainAttrs = orderMainProductAttributes(
+              product.product_type,
+              attrFields.filter(f =>
+                !(f.key.startsWith('incluye_') && hasSubFields(f)) && !f.key.startsWith('fijaciones_')),
+            )
+            const hasValues = mainAttrs.some(f => shouldDisplayMainAttribute(f, attrs[f.key]))
             if (!hasValues) return null
             return (
               <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {mainAttrs.map(field => {
                   const val = attrs[field.key]
-                  if (val === undefined || val === '' || val === null) return null
-                  if (Array.isArray(val) && val.length === 0) return null
+                  if (field.key === 'boa') {
+                    if (val !== true) {
+                      return product.product_type === 'botas_esqui'
+                        ? <div key={field.key} aria-hidden="true" />
+                        : null
+                    }
+
+                    return (
+                      <div key={field.key} className="flex items-end">
+                        <p
+                          className="text-xs font-bold uppercase tracking-wider text-brand-500"
+                          aria-label="Sistema BOA incluido"
+                        >
+                          Sistema BOA
+                        </p>
+                      </div>
+                    )
+                  }
+                  if (!shouldDisplayMainAttribute(field, val)) return null
                   const displayVal = formatAttributeValue(field, val)
                   // "Tipo" (esquís) puede traer varios valores — ancho completo arriba
                   return (
