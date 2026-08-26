@@ -2,31 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-
-interface RecentMessage {
-  id: string
-  body: string
-  created_at: string
-  conversation_id: string
-  read_at: string | null
-  sender: { name: string | null } | null
-  conversations: {
-    id: string
-    products: { brand: string | null; model: string | null } | null
-  } | null
-}
-
-interface RecentWhatsappClick {
-  id: number
-  created_at: string
-  users: { name: string | null; email: string | null } | null
-  products: {
-    id: string
-    brand: string | null
-    model: string | null
-    slug: string | null
-  } | null
-}
+import type { AdminRecentMessage, AdminRecentWhatsappClick } from '@/lib/admin-view-data'
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -42,12 +18,22 @@ function timeAgo(iso: string): string {
  * Latest chat messages across all conversations (admin-only data).
  * Each row links into the read-only god-mode viewer at /admin/chats.
  */
-export default function RecentMessagesCard({ className }: { className?: string }) {
-  const [messages, setMessages] = useState<RecentMessage[]>([])
-  const [whatsappClicks, setWhatsappClicks] = useState<RecentWhatsappClick[]>([])
-  const [loading, setLoading] = useState(true)
+export default function RecentMessagesCard({
+  className,
+  initialMessages,
+  initialWhatsappClicks,
+}: {
+  className?: string
+  initialMessages?: AdminRecentMessage[]
+  initialWhatsappClicks?: AdminRecentWhatsappClick[]
+}) {
+  const hasInitialData = initialMessages !== undefined && initialWhatsappClicks !== undefined
+  const [messages, setMessages] = useState<AdminRecentMessage[]>(initialMessages || [])
+  const [whatsappClicks, setWhatsappClicks] = useState<AdminRecentWhatsappClick[]>(initialWhatsappClicks || [])
+  const [loading, setLoading] = useState(!hasInitialData)
 
   useEffect(() => {
+    if (hasInitialData) return
     async function load() {
       try {
         const res = await fetch('/api/admin/conversations?mode=activity')
@@ -61,7 +47,7 @@ export default function RecentMessagesCard({ className }: { className?: string }
       }
     }
     load()
-  }, [])
+  }, [hasInitialData])
 
   const activity = [
     ...messages.map(message => ({ kind: 'message' as const, createdAt: message.created_at, message })),

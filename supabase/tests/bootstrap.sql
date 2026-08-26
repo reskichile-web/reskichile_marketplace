@@ -48,6 +48,7 @@ CREATE TABLE auth.users (
   email TEXT NOT NULL,
   raw_user_meta_data JSONB NOT NULL DEFAULT '{}'::JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  email_confirmed_at TIMESTAMPTZ,
   last_sign_in_at TIMESTAMPTZ
 );
 
@@ -63,6 +64,7 @@ CREATE TABLE public.users (
   notify_reminders_email BOOLEAN NOT NULL DEFAULT TRUE,
   avatar_url TEXT,
   must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+  keep BOOLEAN DEFAULT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -88,6 +90,8 @@ CREATE TABLE public.products (
   sold_channel TEXT,
   sold_speed TEXT,
   sale_reminder_sent_at TIMESTAMPTZ,
+  slug TEXT,
+  anon_contact TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -136,6 +140,9 @@ CREATE TABLE public.events (
   path TEXT NOT NULL,
   product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
   user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  visitor_id UUID,
+  country TEXT,
+  city TEXT,
   utm_source TEXT,
   utm_medium TEXT,
   utm_campaign TEXT,

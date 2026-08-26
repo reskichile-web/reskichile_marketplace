@@ -28,6 +28,54 @@ function productImageStoragePath(url: string): string | null {
   }
 }
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    await requireAdmin()
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json(
+        { error: 'Producto inválido', code: 'INVALID_PRODUCT_ID' },
+        { status: 422, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+
+    const service = createServiceRoleClient()
+    const [productResult, viewsResult] = await Promise.all([
+      service
+        .from('products')
+        .select('id, slug, product_type, brand, model, price, sale_price, status, created_at, days_published, sale_reminder_sent_at, seller_id, condition, region, comuna, description, rejection_reason, attributes, anon_contact, users(name, email, phone, hide_phone), product_images(url, order)')
+        .eq('id', id)
+        .order('order', { referencedTable: 'product_images', ascending: true })
+        .maybeSingle(),
+      service
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_type', 'product_view')
+        .eq('product_id', id),
+    ])
+    if (productResult.error || viewsResult.error) throw new Error('admin product detail failed')
+    if (!productResult.data) {
+      return NextResponse.json(
+        { error: 'Producto no encontrado', code: 'PRODUCT_NOT_FOUND' },
+        { status: 404, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+    return NextResponse.json({
+      product: { ...productResult.data, details_loaded: true },
+      viewCount: viewsResult.count || 0,
+    }, { headers: { 'Cache-Control': 'no-store, private' } })
+  } catch (error) {
+    const known = adminErrorResponse(error)
+    return NextResponse.json(
+      { error: known.message, code: known.code },
+      { status: known.status, headers: { 'Cache-Control': 'no-store, private' } },
+    )
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },

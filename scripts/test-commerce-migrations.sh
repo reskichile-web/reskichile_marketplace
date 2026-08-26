@@ -45,12 +45,15 @@ for migration in \
   202608230002_instagram_story_fill_earliest_gap.sql \
   202608230003_instagram_story_publication_calendar_index.sql \
   202608240002_persist_signup_phone.sql \
-  202608260001_remove_sold_product_stories.sql
+  202608260001_remove_sold_product_stories.sql \
+  202608260004_admin_view_performance.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
 done
 
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/admin_view_performance.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/commerce_operations.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \

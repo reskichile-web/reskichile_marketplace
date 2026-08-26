@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Instagram, Loader2, RefreshCw } from 'lucide-react'
 import InstagramStoryCalendarTable from './InstagramStoryCalendarTable'
 import InstagramStoryEditorModal, { type InstagramSlotOption } from './InstagramStoryEditorModal'
@@ -26,24 +26,27 @@ async function responseError(response: Response): Promise<string> {
   return payload.error || 'No pudimos cargar las Stories'
 }
 
-export default function InstagramStoriesAdmin() {
-  const [data, setData] = useState<InstagramAdminCalendarResponse | null>(null)
+export default function InstagramStoriesAdmin({ initialData }: { initialData: InstagramAdminCalendarResponse }) {
+  const [data, setData] = useState<InstagramAdminCalendarResponse | null>(initialData)
   const [view, setView] = useState<'prepare' | 'calendar'>('calendar')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [historyDays, setHistoryDays] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const initialRenderRef = useRef(true)
+  const includeUncapturedRef = useRef(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (includeUncaptured = includeUncapturedRef.current) => {
     setLoading(true)
     setError('')
     try {
       const response = await fetch(
-        `/api/admin/instagram-stories?historyDays=${historyDays}`,
+        `/api/admin/instagram-stories?historyDays=${historyDays}&includeUncaptured=${includeUncaptured}`,
         { cache: 'no-store' },
       )
       if (!response.ok) throw new Error(await responseError(response))
       setData(await response.json() as InstagramAdminCalendarResponse)
+      includeUncapturedRef.current = includeUncaptured
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No pudimos cargar las Stories')
     } finally {
@@ -51,7 +54,18 @@ export default function InstagramStoriesAdmin() {
     }
   }, [historyDays])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false
+      return
+    }
+    void load()
+  }, [load])
+
+  const showPrepare = useCallback(() => {
+    setView('prepare')
+    if (!includeUncapturedRef.current) void load(true)
+  }, [load])
 
   const today = chileToday()
   const currentTime = chileCurrentTime()
@@ -122,7 +136,7 @@ export default function InstagramStoriesAdmin() {
             type="button"
             role="tab"
             aria-selected={view === 'prepare'}
-            onClick={() => setView('prepare')}
+            onClick={showPrepare}
             className={`rounded-lg px-5 py-2.5 text-sm font-bold transition sm:px-8 ${view === 'prepare' ? 'bg-white text-gray-950 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
           >
             Generar historias
@@ -175,7 +189,7 @@ export default function InstagramStoriesAdmin() {
             loading={loading}
             availableSlots={availableSlots}
             onOpen={setSelectedProductId}
-            onChanged={load}
+            onChanged={() => load()}
             onLoadEarlier={() => setHistoryDays((days) => (
               Math.min(maxHistoryDays, days + HISTORY_PAGE_DAYS)
             ))}
@@ -190,7 +204,7 @@ export default function InstagramStoriesAdmin() {
           publishingEnabled={Boolean(data?.publishingEnabled)}
           slots={availableSlots}
           onClose={() => setSelectedProductId(null)}
-          onChanged={load}
+          onChanged={() => load()}
         />
       )}
     </main>
