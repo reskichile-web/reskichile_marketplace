@@ -41,6 +41,9 @@ export function loadMetaPixel(): void {
   const fbq = ensureMetaQueue()
   if (!window.__reskiMetaPixelInitialized) {
     fbq('init', META_PIXEL_ID)
+    // Meta's automatic button classification produced false subscription
+    // events from product-gallery thumbnails. Only explicit Reski events run.
+    fbq('set', 'autoConfig', false, META_PIXEL_ID)
     window.__reskiMetaPixelInitialized = true
   }
   // This must also run after a user changes their choice from denied to granted.

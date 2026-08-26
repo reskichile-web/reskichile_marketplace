@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { parseAccountMarketingConsent } from '@/lib/marketing-consent'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store, max-age=0' }
@@ -17,7 +18,7 @@ export async function GET() {
 
     if (error || !user) {
       return NextResponse.json(
-        { userId: null, isAdmin: false },
+        { userId: null, isAdmin: false, marketingConsent: null },
         { headers: NO_STORE },
       )
     }
@@ -29,12 +30,18 @@ export async function GET() {
       .single()
 
     return NextResponse.json(
-      { userId: user.id, isAdmin: profile?.is_admin === true },
+      {
+        userId: user.id,
+        isAdmin: profile?.is_admin === true,
+        marketingConsent: parseAccountMarketingConsent(
+          user.user_metadata?.marketing_consent,
+        ),
+      },
       { headers: NO_STORE },
     )
   } catch {
     return NextResponse.json(
-      { userId: null, isAdmin: false },
+      { userId: null, isAdmin: false, marketingConsent: null },
       { headers: NO_STORE },
     )
   }

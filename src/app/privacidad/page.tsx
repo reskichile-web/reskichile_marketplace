@@ -24,7 +24,10 @@ export default function PrivacyPage() {
         <section>
           <h2 className="font-body text-lg font-black text-gray-950">Cambiar tu decisión</h2>
           <p className="mt-2">
-            Puedes aceptar o rechazar sin perder acceso al sitio. La opción “Preferencias de cookies” del pie de página permite cambiar la decisión en cualquier momento.
+            Puedes aceptar o rechazar sin perder acceso al sitio. Si tienes una cuenta, guardamos la preferencia en ella para respetarla en otros dispositivos. Si navegas sin iniciar sesión, la conservamos en este navegador durante 180 días.
+          </p>
+          <p className="mt-2">
+            La opción “Preferencias de cookies” del pie de página permite cambiar la decisión en cualquier momento.
           </p>
         </section>
         <section>

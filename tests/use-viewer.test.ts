@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 interface ViewerState {
   userId: string | null
   isAdmin: boolean
+  marketingConsent: {
+    choice: 'granted' | 'denied'
+    version: number
+    decidedAt: number
+  } | null
   loading: boolean
 }
 
@@ -110,10 +115,20 @@ describe('useViewer', () => {
     const initial = useViewer()
     expect(initial.loading).toBe(true)
 
-    harness.requests[0].resolve(jsonResponse({ userId: 'owner-1', isAdmin: true }))
+    const marketingConsent = {
+      choice: 'granted',
+      version: 1,
+      decidedAt: Date.now() - 1000,
+    }
+    harness.requests[0].resolve(jsonResponse({ userId: 'owner-1', isAdmin: true, marketingConsent }))
     await flushPromises()
 
-    expect(harness.state).toEqual({ userId: 'owner-1', isAdmin: true, loading: false })
+    expect(harness.state).toEqual({
+      userId: 'owner-1',
+      isAdmin: true,
+      marketingConsent,
+      loading: false,
+    })
   })
 
   it('settles an anonymous server session without private permissions', async () => {
@@ -121,7 +136,7 @@ describe('useViewer', () => {
     harness.requests[0].resolve(jsonResponse({ userId: null, isAdmin: false }))
     await flushPromises()
 
-    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
+    expect(harness.state).toEqual({ userId: null, isAdmin: false, marketingConsent: null, loading: false })
   })
 
   it('fails closed when the authoritative session request fails', async () => {
@@ -129,19 +144,19 @@ describe('useViewer', () => {
     harness.requests[0].resolve(jsonResponse({ error: 'unavailable' }, 500))
     await flushPromises()
 
-    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
+    expect(harness.state).toEqual({ userId: null, isAdmin: false, marketingConsent: null, loading: false })
   })
 
   it('removes permissions immediately and ignores an older response on logout', async () => {
     useViewer()
 
     harness.listeners.get('reski:logout')?.(new Event('reski:logout'))
-    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
+    expect(harness.state).toEqual({ userId: null, isAdmin: false, marketingConsent: null, loading: false })
 
     harness.requests[0].resolve(jsonResponse({ userId: 'owner-1', isAdmin: true }))
     await flushPromises()
 
-    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
+    expect(harness.state).toEqual({ userId: null, isAdmin: false, marketingConsent: null, loading: false })
   })
 
   it('removes permissions immediately when Supabase emits SIGNED_OUT', async () => {
@@ -151,6 +166,11 @@ describe('useViewer', () => {
     expect(harness.state?.userId).toBe('owner-1')
 
     harness.authCallback?.('SIGNED_OUT', null)
-    expect(harness.state).toEqual({ userId: null, isAdmin: false, loading: false })
+    expect(harness.state).toEqual({
+      userId: null,
+      isAdmin: false,
+      marketingConsent: null,
+      loading: false,
+    })
   })
 })

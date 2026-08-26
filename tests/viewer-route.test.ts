@@ -33,17 +33,38 @@ describe('GET /api/auth/viewer', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toContain('no-store')
-    await expect(response.json()).resolves.toEqual({ userId: null, isAdmin: false })
+    await expect(response.json()).resolves.toEqual({
+      userId: null,
+      isAdmin: false,
+      marketingConsent: null,
+    })
     expect(mocks.single).not.toHaveBeenCalled()
   })
 
   it('returns the server-authenticated viewer and admin flag', async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } }, error: null })
+    const marketingConsent = {
+      choice: 'denied',
+      version: 1,
+      decidedAt: Date.now() - 1000,
+    }
+    mocks.getUser.mockResolvedValue({
+      data: {
+        user: {
+          id: 'owner-1',
+          user_metadata: { marketing_consent: marketingConsent },
+        },
+      },
+      error: null,
+    })
     mocks.single.mockResolvedValue({ data: { is_admin: true }, error: null })
 
     const response = await GET()
 
-    await expect(response.json()).resolves.toEqual({ userId: 'owner-1', isAdmin: true })
+    await expect(response.json()).resolves.toEqual({
+      userId: 'owner-1',
+      isAdmin: true,
+      marketingConsent,
+    })
   })
 
   it('fails closed when session validation throws', async () => {
@@ -52,6 +73,10 @@ describe('GET /api/auth/viewer', () => {
     const response = await GET()
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({ userId: null, isAdmin: false })
+    await expect(response.json()).resolves.toEqual({
+      userId: null,
+      isAdmin: false,
+      marketingConsent: null,
+    })
   })
 })

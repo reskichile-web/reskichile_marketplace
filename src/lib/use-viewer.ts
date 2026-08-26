@@ -1,23 +1,30 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  parseAccountMarketingConsent,
+  type MarketingConsentDecision,
+} from '@/lib/marketing-consent'
 import { createClient } from '@/lib/supabase/client'
 
 export interface Viewer {
   userId: string | null
   isAdmin: boolean
+  marketingConsent: MarketingConsentDecision | null
   loading: boolean
 }
 
 const ANONYMOUS_VIEWER: Viewer = {
   userId: null,
   isAdmin: false,
+  marketingConsent: null,
   loading: true,
 }
 
 const ANONYMOUS_RESOLVED: Viewer = {
   userId: null,
   isAdmin: false,
+  marketingConsent: null,
   loading: false,
 }
 
@@ -53,12 +60,14 @@ export function useViewer(): Viewer {
         const data = await response.json() as {
           userId?: unknown
           isAdmin?: unknown
+          marketingConsent?: unknown
         }
         if (!active || generation !== requestGeneration) return
 
         setViewer({
           userId: typeof data.userId === 'string' ? data.userId : null,
           isAdmin: data.isAdmin === true,
+          marketingConsent: parseAccountMarketingConsent(data.marketingConsent),
           loading: false,
         })
       } catch (error) {
