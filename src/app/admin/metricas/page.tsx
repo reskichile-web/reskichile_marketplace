@@ -75,6 +75,10 @@ interface ClickEvent {
 interface WhatsappEvent {
   id: number
   created_at: string
+  utm_source: string | null
+  utm_medium: string | null
+  utm_campaign: string | null
+  utm_content: string | null
   users: { name: string | null; email: string | null } | null
   products: {
     id: string
@@ -182,7 +186,7 @@ export default function MetricasPage() {
         : new Date(Date.now() - period * 24 * 60 * 60 * 1000).toISOString()
       let whatsappQuery = supabase
         .from('events')
-        .select('id, created_at, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
+        .select('id, created_at, utm_source, utm_medium, utm_campaign, utm_content, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
         .eq('event_type', 'click')
         .eq('event_name', 'whatsapp_contact')
         .order('created_at', { ascending: false })
@@ -369,6 +373,8 @@ export default function MetricasPage() {
                 const href = click.products
                   ? `/producto/${click.products.slug || click.products.id}`
                   : '/admin/publicaciones'
+                const campaign = click.utm_campaign || click.utm_source
+                const source = [click.utm_source, click.utm_medium].filter(Boolean).join(' / ')
                 return (
                   <li key={click.id} className="px-5 py-2.5 bg-green-50/40 hover:bg-green-50 transition-colors">
                     <div className="flex items-center justify-between gap-3">
@@ -384,6 +390,13 @@ export default function MetricasPage() {
                           >
                             Contactó por {product}
                           </Link>
+                          {campaign && (
+                            <p className="truncate text-[10px] font-medium text-gray-500">
+                              {campaign}
+                              {click.utm_content ? ` · ${click.utm_content}` : ''}
+                              {source ? ` · ${source}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">{timeAgo(click.created_at)}</span>

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { phoneToWhatsApp } from '@/lib/phone'
+import { sanitizeCampaignAttribution } from '@/lib/campaign-attribution'
 
 // Simple in-memory rate limiting
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -29,6 +30,8 @@ export async function POST(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   const { productId } = await params
+  const body = await request.json().catch(() => null)
+  const attribution = sanitizeCampaignAttribution(body?.attribution)
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -134,6 +137,7 @@ export async function POST(
       user_agent: request.headers.get('user-agent')?.slice(0, 300) || null,
       country: request.headers.get('x-vercel-ip-country'),
       city,
+      ...(attribution ?? {}),
     })
   }
 

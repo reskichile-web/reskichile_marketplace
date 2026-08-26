@@ -627,13 +627,22 @@ CREATE TABLE public.events (
   referrer TEXT,
   user_agent TEXT,
   country TEXT,
-  city TEXT
+  city TEXT,
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  utm_content TEXT,
+  utm_term TEXT,
+  attribution_at TIMESTAMPTZ
 );
 
 CREATE INDEX events_created_at_idx ON public.events (created_at DESC);
 CREATE INDEX events_type_created_idx ON public.events (event_type, created_at DESC);
 CREATE INDEX events_product_idx ON public.events (product_id) WHERE product_id IS NOT NULL;
 CREATE INDEX events_category_idx ON public.events (category) WHERE category IS NOT NULL;
+CREATE INDEX events_utm_campaign_created_idx
+  ON public.events (utm_campaign, created_at DESC)
+  WHERE utm_campaign IS NOT NULL;
 
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 

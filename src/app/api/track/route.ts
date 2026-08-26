@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { sanitizeCampaignAttribution } from '@/lib/campaign-attribution'
 
 const VISITOR_COOKIE = 'rv_id'
 const BOT_RE = /bot|crawl|spider|preview|lighthouse|headless|monitor|scrape|curl|wget/i
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
       typeof body?.referrer === 'string' && body.referrer.length <= 500
         ? body.referrer
         : null
+    const attribution = sanitizeCampaignAttribution(body)
 
     // Anonymous visitor id (first-party cookie, 1 year)
     let visitorId = request.cookies.get(VISITOR_COOKIE)?.value ?? ''
@@ -86,6 +88,7 @@ export async function POST(request: NextRequest) {
       user_agent: ua.slice(0, 300) || null,
       country,
       city: cityRaw ? decodeURIComponent(cityRaw) : null,
+      ...(attribution ?? {}),
     })
 
     // First open of an invite link → stamp password_invites.opened_at

@@ -20,6 +20,9 @@ export default function PrivacyPage() {
           <p className="mt-2">
             Si aceptas, cargamos Meta Pixel para saber si una visita llegó desde una campaña y medir acciones como páginas vistas o interés en productos. No activamos esta medición si rechazas.
           </p>
+          <p className="mt-2">
+            Cuando una URL incluye etiquetas UTM, conservamos en este navegador el origen, la campaña y la pieza publicitaria durante 30 días para relacionar una visita con un contacto posterior. No almacenamos el identificador publicitario <code>fbclid</code> en nuestra analítica interna.
+          </p>
         </section>
         <section>
           <h2 className="font-body text-lg font-black text-gray-950">Cambiar tu decisión</h2>

@@ -17,6 +17,7 @@ import { motion } from 'framer-motion'
 import DescriptionCard from '@/components/DescriptionCard'
 import { isProductOwner, showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
 import { trackMetaContact } from '@/lib/meta-pixel'
+import { getCampaignAttribution } from '@/lib/campaign-attribution'
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -174,7 +175,11 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
     const placeholder = window.open('', '_blank')
     setContacting(true)
     try {
-      const res = await fetch(`/api/contact/${product.id}`, { method: 'POST' })
+      const res = await fetch(`/api/contact/${product.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attribution: getCampaignAttribution() }),
+      })
       const data = await res.json()
       if (data.url) {
         trackMetaContact({
