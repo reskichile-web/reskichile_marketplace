@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import SellTagIcon from './SellTagIcon'
+import CookiePreferencesButton from './CookiePreferencesButton'
 
 export default function Footer() {
   return (
@@ -53,7 +54,13 @@ export default function Footer() {
           {/* Bottom */}
           <div className="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
             <p className="text-xs text-gray-500">&copy; 2026 ReskiChile. Todos los derechos reservados.</p>
-            <p className="text-xs text-gray-600">Hecho en Chile</p>
+            <div className="flex items-center gap-3">
+              <CookiePreferencesButton />
+              <span className="text-gray-700" aria-hidden="true">·</span>
+              <Link href="/privacidad" className="text-xs text-gray-500 hover:text-gray-300 hover:underline">Privacidad</Link>
+              <span className="text-gray-700" aria-hidden="true">·</span>
+              <p className="text-xs text-gray-600">Hecho en Chile</p>
+            </div>
           </div>
         </div>
       </div>
