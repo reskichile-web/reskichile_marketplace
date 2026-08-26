@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/send'
 import { buildChatMessageEmail } from '@/lib/email/templates'
+import { sanitizeCampaignAttribution } from '@/lib/campaign-attribution'
+import { recordFirstBuyerChatContact } from '@/lib/chat-contact-analytics'
 
 const CHAT_EMAIL_COOLDOWN_MINUTES = 30
 
@@ -23,6 +25,7 @@ export async function POST(req: Request) {
   const conversationId = typeof payload.conversation_id === 'string' ? payload.conversation_id : ''
   const requestedId = typeof payload.id === 'string' ? payload.id : undefined
   const body = cleanBody(payload.body)
+  const attribution = sanitizeCampaignAttribution(payload.attribution)
 
   if (!conversationId || !body) {
     return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
@@ -45,11 +48,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: insertError?.message || 'No se pudo enviar' }, { status: 500 })
   }
 
+  const contactCreated = await recordFirstBuyerChatContact({
+    request: req,
+    conversationId,
+    senderId: user.id,
+    attribution,
+  }).catch((error) => {
+    console.error('[chat-message] contact analytics failed:', error instanceof Error ? error.message : error)
+    return false
+  })
+
   await notifyRecipient(message.id, conversationId, user.id, body).catch((e) => {
     console.error('[chat-message] notification failed:', e instanceof Error ? e.message : e)
   })
 
-  return NextResponse.json({ message })
+  return NextResponse.json({ message, contact_created: contactCreated })
 }
 
 async function notifyRecipient(

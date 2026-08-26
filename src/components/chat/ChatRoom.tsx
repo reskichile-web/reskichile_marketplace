@@ -4,17 +4,26 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createClient } from '@/lib/supabase/client'
 import type { Message } from '@/lib/chat'
+import { getCampaignAttribution } from '@/lib/campaign-attribution'
+import { trackMetaContact, type MetaViewContent } from '@/lib/meta-pixel'
 
 interface Props {
   conversationId?: string
   draftProductId?: string
   myId: string
   initialMessages: Message[]
+  contactProduct?: MetaViewContent
 }
 
 const PAGE_SIZE = 30
 
-export default function ChatRoom({ conversationId: initialConversationId, draftProductId, myId, initialMessages }: Props) {
+export default function ChatRoom({
+  conversationId: initialConversationId,
+  draftProductId,
+  myId,
+  initialMessages,
+  contactProduct,
+}: Props) {
   // createClient() returns a fresh browser client every call; memoize so the
   // realtime channel effect doesn't tear down + resubscribe on every render.
   const supabase = useMemo(() => createClient(), [])
@@ -194,6 +203,7 @@ export default function ChatRoom({ conversationId: initialConversationId, draftP
         id: tempId,
         conversation_id: convId!,
         body,
+        attribution: getCampaignAttribution(),
       }),
     })
 
@@ -202,9 +212,13 @@ export default function ChatRoom({ conversationId: initialConversationId, draftP
         prev.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m))
       )
     } else {
+      const data = await res.json().catch(() => ({}))
       setMessages((prev) =>
         prev.map((m) => (m.id === tempId ? { ...m, pending: false } : m))
       )
+      if (data.contact_created === true && contactProduct) {
+        trackMetaContact(contactProduct, 'internal_chat')
+      }
     }
     setSending(false)
   }

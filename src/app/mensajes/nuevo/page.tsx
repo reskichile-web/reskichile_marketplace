@@ -46,6 +46,7 @@ export default async function NuevoChatPage({ searchParams }: Props) {
   ])
   if (existingRes.data) redirect(`/mensajes/${existingRes.data.id}`)
   const seller = sellerRes.data
+  const productTitle = [product.brand, product.model].filter(Boolean).join(' ')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productImage = (product as any).product_images?.sort(
@@ -64,7 +65,7 @@ export default async function NuevoChatPage({ searchParams }: Props) {
             href={`/producto/${product.slug || product.id}`}
             className="text-xs text-gray-500 hover:text-gray-800 truncate block"
           >
-            {PRODUCT_TYPES[product.product_type]}: {[product.brand, product.model].filter(Boolean).join(' ')} · ${product.price?.toLocaleString('es-CL')}
+            {PRODUCT_TYPES[product.product_type]}: {productTitle} · ${product.price?.toLocaleString('es-CL')}
           </Link>
         </div>
         {productImage && (
@@ -80,6 +81,12 @@ export default async function NuevoChatPage({ searchParams }: Props) {
         draftProductId={product.id}
         myId={user.id}
         initialMessages={[]}
+        contactProduct={{
+          contentId: product.id,
+          contentName: productTitle,
+          category: product.product_type,
+          value: product.price ?? 0,
+        }}
       />
     </div>
   )

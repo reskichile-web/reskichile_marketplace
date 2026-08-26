@@ -62,6 +62,9 @@ export default async function ChatPage({ params }: Props) {
   const initialMessages = (messagesRes.data || []).slice().reverse()
   const other = otherRes.data
   const product = productRes.data
+  const productTitle = product
+    ? [product.brand, product.model].filter(Boolean).join(' ')
+    : ''
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productImage = (product as any)?.product_images?.sort(
     (a: { order: number }, b: { order: number }) => a.order - b.order
@@ -81,7 +84,7 @@ export default async function ChatPage({ params }: Props) {
               href={`/producto/${product.slug || product.id}`}
               className="text-xs text-gray-500 hover:text-gray-800 truncate block"
             >
-              {PRODUCT_TYPES[product.product_type]}: {[product.brand, product.model].filter(Boolean).join(' ')} · ${product.price?.toLocaleString('es-CL')}
+              {PRODUCT_TYPES[product.product_type]}: {productTitle} · ${product.price?.toLocaleString('es-CL')}
             </Link>
           )}
         </div>
@@ -98,6 +101,12 @@ export default async function ChatPage({ params }: Props) {
         conversationId={id}
         myId={user.id}
         initialMessages={initialMessages}
+        contactProduct={product ? {
+          contentId: product.id,
+          contentName: productTitle,
+          category: product.product_type,
+          value: product.price ?? 0,
+        } : undefined}
       />
     </div>
   )

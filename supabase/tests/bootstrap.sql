@@ -132,6 +132,7 @@ CREATE TABLE public.chat_email_notifications (
 CREATE TABLE public.events (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   event_type TEXT NOT NULL DEFAULT 'pageview',
+  event_name TEXT,
   path TEXT NOT NULL,
   product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
   user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
@@ -143,6 +144,13 @@ CREATE TABLE public.events (
   attribution_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX events_chat_contact_buyer_product_unique_idx
+  ON public.events (user_id, product_id)
+  WHERE event_type = 'click'
+    AND event_name = 'chat_contact'
+    AND user_id IS NOT NULL
+    AND product_id IS NOT NULL;
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;

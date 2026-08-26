@@ -643,6 +643,12 @@ CREATE INDEX events_category_idx ON public.events (category) WHERE category IS N
 CREATE INDEX events_utm_campaign_created_idx
   ON public.events (utm_campaign, created_at DESC)
   WHERE utm_campaign IS NOT NULL;
+CREATE UNIQUE INDEX events_chat_contact_buyer_product_unique_idx
+  ON public.events (user_id, product_id)
+  WHERE event_type = 'click'
+    AND event_name = 'chat_contact'
+    AND user_id IS NOT NULL
+    AND product_id IS NOT NULL;
 
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 

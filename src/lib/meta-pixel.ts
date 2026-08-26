@@ -9,6 +9,8 @@ export interface MetaViewContent {
   value: number
 }
 
+export type MetaContactMethod = 'whatsapp' | 'internal_chat'
+
 interface PendingViewContent extends MetaViewContent {
   path: string
 }
@@ -104,10 +106,13 @@ function sendMetaViewContent(event: PendingViewContent): void {
   })
 }
 
-export function trackMetaContact(event: MetaViewContent): void {
+export function trackMetaContact(
+  event: MetaViewContent,
+  contactMethod: MetaContactMethod = 'whatsapp',
+): void {
   if (typeof window === 'undefined' || !metaConsentGranted || !window.fbq) return
 
-  const key = `${window.location.pathname}:${event.contentId}`
+  const key = `${window.location.pathname}:${event.contentId}:${contactMethod}`
   const now = Date.now()
   if (lastContact?.key === key && now - lastContact.sentAt < VIEW_CONTENT_DEDUPLICATION_MS) {
     return
@@ -121,7 +126,7 @@ export function trackMetaContact(event: MetaViewContent): void {
     content_type: 'product',
     value: event.value,
     currency: 'CLP',
-    contact_method: 'whatsapp',
+    contact_method: contactMethod,
   })
 }
 

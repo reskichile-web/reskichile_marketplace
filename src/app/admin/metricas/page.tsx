@@ -72,8 +72,10 @@ interface ClickEvent {
   products: { brand: string | null; model: string | null } | null
 }
 
-interface WhatsappEvent {
+interface ContactEvent {
   id: number
+  event_name: 'whatsapp_contact' | 'chat_contact'
+  user_id: string | null
   created_at: string
   utm_source: string | null
   utm_medium: string | null
@@ -170,8 +172,9 @@ export default function MetricasPage() {
   const [daily, setDaily] = useState<DailyRow[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [clicks, setClicks] = useState<ClickEvent[]>([])
-  const [whatsappClicks, setWhatsappClicks] = useState<WhatsappEvent[]>([])
-  const [whatsappCount, setWhatsappCount] = useState(0)
+  const [contactEvents, setContactEvents] = useState<ContactEvent[]>([])
+  const [contactCount, setContactCount] = useState(0)
+  const [chatCount, setChatCount] = useState(0)
   const [topProducts, setTopProducts] = useState<TopProductRow[]>([])
   const [activity, setActivity] = useState<ActivityRow[]>([])
 
@@ -184,16 +187,24 @@ export default function MetricasPage() {
       const since = period === 'all'
         ? null
         : new Date(Date.now() - period * 24 * 60 * 60 * 1000).toISOString()
-      let whatsappQuery = supabase
+      let contactQuery = supabase
         .from('events')
-        .select('id, created_at, utm_source, utm_medium, utm_campaign, utm_content, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
+        .select('id, event_name, user_id, created_at, utm_source, utm_medium, utm_campaign, utm_content, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
         .eq('event_type', 'click')
-        .eq('event_name', 'whatsapp_contact')
+        .in('event_name', ['whatsapp_contact', 'chat_contact'])
         .order('created_at', { ascending: false })
         .limit(50)
-      if (since) whatsappQuery = whatsappQuery.gte('created_at', since)
+      let chatCountQuery = supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_type', 'click')
+        .eq('event_name', 'chat_contact')
+      if (since) {
+        contactQuery = contactQuery.gte('created_at', since)
+        chatCountQuery = chatCountQuery.gte('created_at', since)
+      }
 
-      const [dailyRes, catRes, clickRes, whatsappRes, topRes, actRes] = await Promise.all([
+      const [dailyRes, catRes, clickRes, contactRes, chatCountRes, topRes, actRes] = await Promise.all([
         supabase.rpc('admin_daily_visits', { p_days: rpcDays }),
         supabase.rpc('admin_category_views', { p_days: rpcDays }),
         supabase
@@ -201,9 +212,11 @@ export default function MetricasPage() {
           .select('id, event_name, category, created_at, users(name), products(brand, model)')
           .eq('event_type', 'click')
           .neq('event_name', 'whatsapp_contact')
+          .neq('event_name', 'chat_contact')
           .order('created_at', { ascending: false })
           .limit(50),
-        whatsappQuery,
+        contactQuery,
+        chatCountQuery,
         supabase.rpc('admin_top_products', { p_days: rpcDays, p_limit: 10 }),
         supabase
           .from('events')
@@ -216,8 +229,9 @@ export default function MetricasPage() {
       setDaily((dailyRes.data as DailyRow[]) || [])
       setCategories((catRes.data as CategoryRow[]) || [])
       setClicks((clickRes.data as unknown as ClickEvent[]) || [])
-      setWhatsappClicks((whatsappRes.data as unknown as WhatsappEvent[]) || [])
-      setWhatsappCount(whatsappRes.count ?? 0)
+      setContactEvents((contactRes.data as unknown as ContactEvent[]) || [])
+      setContactCount(contactRes.count ?? 0)
+      setChatCount(chatCountRes.count ?? 0)
       setTopProducts((topRes.data as TopProductRow[]) || [])
       setActivity((actRes.data as unknown as ActivityRow[]) || [])
       setLoading(false)
@@ -271,6 +285,7 @@ export default function MetricasPage() {
   const maxVisits = Math.max(...chartRows.map(d => Number(d.visits)), 1)
   const totalCatViews = categories.reduce((s, c) => s + Number(c.views), 0)
   const periodLabel = period === 'all' ? 'histórico' : `últimos ${period} días`
+  const whatsappCount = Math.max(contactCount - chatCount, 0)
 
   if (loading) return <AdminTableSkeleton />
 
@@ -279,7 +294,7 @@ export default function MetricasPage() {
     { label: 'Únicos hoy', value: Number(todayRow?.uniques ?? 0) },
     { label: period === 'all' ? 'Visitas históricas' : `Visitas ${period}d`, value: totalVisits },
     { label: period === 'all' ? 'Únicos históricos' : `Únicos ${period}d`, value: totalUniques },
-    { label: period === 'all' ? 'WhatsApp histórico' : `WhatsApp ${period}d`, value: whatsappCount, color: 'text-green-600' },
+    { label: period === 'all' ? 'Contactos históricos' : `Contactos ${period}d`, value: contactCount, color: 'text-green-600' },
   ]
 
   return (
@@ -356,37 +371,49 @@ export default function MetricasPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* WhatsApp intent — successful handoffs to a seller number */}
+        {/* Buyer intent — successful WhatsApp handoffs and first internal messages */}
         <SectionCard
-          title="Contactos por WhatsApp"
-          subtitle={`Clics efectivos · ${periodLabel}`}
-          right={<span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-black text-green-700 shrink-0">{whatsappCount} en total</span>}
+          title="Contactos de compradores"
+          subtitle={`WhatsApp y chat interno · ${periodLabel}`}
+          right={(
+            <span className="text-right text-[10px] font-bold leading-tight text-gray-500 shrink-0">
+              <span className="block text-xs font-black text-green-700">{contactCount} en total</span>
+              {whatsappCount} WhatsApp · {chatCount} chat
+            </span>
+          )}
         >
-          {whatsappClicks.length === 0 ? (
-            <p className="text-sm text-gray-400 py-10 text-center">Sin contactos por WhatsApp en este período.</p>
+          {contactEvents.length === 0 ? (
+            <p className="text-sm text-gray-400 py-10 text-center">Sin contactos en este período.</p>
           ) : (
             <ul className="divide-y divide-gray-50">
-              {whatsappClicks.map(click => {
+              {contactEvents.map(click => {
                 const product = [click.products?.brand, click.products?.model]
                   .filter(Boolean).join(' ') || 'Producto eliminado'
                 const who = click.users?.name || click.users?.email || 'Anónimo'
+                const isChat = click.event_name === 'chat_contact'
+                const channel = isChat ? 'Chat' : 'WhatsApp'
                 const href = click.products
                   ? `/producto/${click.products.slug || click.products.id}`
                   : '/admin/publicaciones'
                 const campaign = click.utm_campaign || click.utm_source
                 const source = [click.utm_source, click.utm_medium].filter(Boolean).join(' / ')
                 return (
-                  <li key={click.id} className="px-5 py-2.5 bg-green-50/40 hover:bg-green-50 transition-colors">
+                  <li key={click.id} className={`px-5 py-2.5 transition-colors ${isChat ? 'bg-sky-50/40 hover:bg-sky-50' : 'bg-green-50/40 hover:bg-green-50'}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-green-100 shrink-0" />
+                        <span className={`w-2.5 h-2.5 rounded-full ring-4 shrink-0 ${isChat ? 'bg-sky-500 ring-sky-100' : 'bg-green-500 ring-green-100'}`} />
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate">{who}</p>
+                          <p className="text-sm font-bold text-gray-900 truncate">
+                            {who}
+                            <span className={`ml-2 text-[9px] font-black uppercase tracking-wide ${isChat ? 'text-sky-600' : 'text-green-600'}`}>
+                              {channel}
+                            </span>
+                          </p>
                           <Link
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block text-[11px] font-medium text-green-700 hover:underline truncate"
+                            className={`block text-[11px] font-medium hover:underline truncate ${isChat ? 'text-sky-700' : 'text-green-700'}`}
                           >
                             Contactó por {product}
                           </Link>
