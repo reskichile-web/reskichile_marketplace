@@ -165,7 +165,7 @@ export default function MarketingConsent() {
       data-bootstrap-pending={resolutionPending ? 'true' : 'false'}
       role="dialog"
       aria-labelledby="marketing-consent-title"
-      className="fixed bottom-3 left-3 right-3 z-[100] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.24)] sm:bottom-6 sm:left-6 sm:right-auto sm:w-full sm:max-w-md sm:p-6"
+      className="fixed bottom-3 left-3 right-3 z-[100] max-h-[calc(100dvh-1.5rem)] overflow-y-auto border border-gray-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.24)] sm:bottom-6 sm:left-6 sm:right-auto sm:w-full sm:max-w-md sm:p-6"
     >
       <div className="flex items-center gap-3">
         <Image src="/favicon.svg" alt="" width={36} height={36} className="h-9 w-9" />
@@ -185,20 +185,20 @@ export default function MarketingConsent() {
         <button
           type="button"
           onClick={() => saveChoice('granted')}
-          className="min-h-12 rounded-lg bg-brand-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          className="min-h-12 bg-brand-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
         >
           Aceptar todo
         </button>
         <button
           type="button"
           onClick={() => saveChoice('denied')}
-          className="min-h-12 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+          className="min-h-12 border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
         >
           Rechazar todo
         </button>
         <Link
           href="/privacidad"
-          className="col-span-2 flex min-h-12 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+          className="col-span-2 flex min-h-12 items-center justify-center border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
         >
           Más información
         </Link>
