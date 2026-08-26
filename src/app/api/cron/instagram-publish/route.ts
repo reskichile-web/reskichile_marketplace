@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { publishEligibleInstagramStories } from '@/lib/instagram/publish-stories'
+import { cleanupQueuedProductStories } from '@/lib/instagram/story-cleanup'
 import {
   getInstagramCronSecret,
   getInstagramPublishingConfig,
@@ -27,8 +28,15 @@ export async function GET(request: Request) {
     }
 
     const config = getInstagramPublishingConfig()
+    let storyCleanup = { queued: 0, removed: 0, failed: 0 }
+    try {
+      storyCleanup = await cleanupQueuedProductStories()
+    } catch {
+      storyCleanup.failed = 1
+      console.error('[instagram-cron] Story storage cleanup deferred')
+    }
     const summary = await publishEligibleInstagramStories(config)
-    return NextResponse.json(summary, {
+    return NextResponse.json({ ...summary, storyCleanup }, {
       headers: { 'Cache-Control': 'no-store, private' },
     })
   } catch {

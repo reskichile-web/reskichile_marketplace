@@ -2,6 +2,7 @@ import 'server-only'
 
 import { randomUUID } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { cleanupQueuedProductStories } from '@/lib/instagram/story-cleanup'
 import {
   getPaymentConfigForEnvironment,
   type PaymentConfig,
@@ -196,7 +197,17 @@ async function finalize(
   })
 
   if (error || !data) throw new Error('payment finalization failed')
-  return data as unknown as FinalizedPayment
+  const finalized = data as unknown as FinalizedPayment
+  if (finalized.order_status === 'paid' || finalized.attempt_state === 'authorized') {
+    try {
+      await cleanupQueuedProductStories({ service: supabase })
+    } catch {
+      // Payment finalization is already committed. The cleanup queue remains
+      // available for the next reconciliation or Instagram cron invocation.
+      console.error('instagram_story_cleanup_deferred', { correlationId })
+    }
+  }
+  return finalized
 }
 
 async function markForReconciliation(

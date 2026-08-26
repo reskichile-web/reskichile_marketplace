@@ -43,7 +43,8 @@ for migration in \
   202608220004_instagram_story_five_slots.sql \
   202608230001_instagram_story_reusable_cycles.sql \
   202608230002_instagram_story_fill_earliest_gap.sql \
-  202608230003_instagram_story_publication_calendar_index.sql
+  202608230003_instagram_story_publication_calendar_index.sql \
+  202608260001_remove_sold_product_stories.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
@@ -63,3 +64,5 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/instagram_story_captures.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/instagram_story_schedule.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/instagram_story_sold_cleanup.sql"

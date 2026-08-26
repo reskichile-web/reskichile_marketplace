@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ publish: vi.fn() }))
+const mocks = vi.hoisted(() => ({ publish: vi.fn(), cleanup: vi.fn() }))
 
 vi.mock('@/lib/instagram/publish-stories', () => ({
   publishEligibleInstagramStories: mocks.publish,
+}))
+vi.mock('@/lib/instagram/story-cleanup', () => ({
+  cleanupQueuedProductStories: mocks.cleanup,
 }))
 
 import { GET } from '@/app/api/cron/instagram-publish/route'
@@ -24,6 +27,7 @@ describe('Instagram cron endpoint', () => {
     vi.stubEnv('META_INSTAGRAM_ACCESS_TOKEN', '')
     vi.stubEnv('META_INSTAGRAM_USER_ID', '')
     mocks.publish.mockResolvedValue({ ok: true, disabled: true })
+    mocks.cleanup.mockResolvedValue({ queued: 0, removed: 0, failed: 0 })
   })
 
   afterEach(() => vi.unstubAllEnvs())
@@ -57,6 +61,8 @@ describe('Instagram cron endpoint', () => {
 
     expect(response.status).toBe(200)
     expect(body).toMatchObject({ ok: true, disabled: true })
+    expect(body.storyCleanup).toEqual({ queued: 0, removed: 0, failed: 0 })
+    expect(mocks.cleanup).toHaveBeenCalledOnce()
     expect(mocks.publish).toHaveBeenCalledWith(expect.objectContaining({
       enabled: false,
       accessToken: null,

@@ -178,12 +178,26 @@ export default function PublicacionesPage() {
     const prevProducts = products
     setProducts(prev => prev.map(p => p.id === productId ? { ...p, status, ...extra } as AdminProduct : p))
 
-    const supabase = createClient()
-    const { error } = await supabase.from('products').update({ status, ...extra }).eq('id', productId)
-    if (error) {
+    let errorMessage: string | null = null
+    if (status === 'sold') {
+      const response = await fetch(`/api/admin/products/${productId}/sold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(extra || {}),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        errorMessage = body.error || 'No pudimos marcar el producto como vendido'
+      }
+    } else {
+      const supabase = createClient()
+      const { error } = await supabase.from('products').update({ status, ...extra }).eq('id', productId)
+      errorMessage = error?.message || null
+    }
+    if (errorMessage) {
       // Revert on failure
       setProducts(prevProducts)
-      alert('Error al cambiar estado: ' + error.message)
+      alert('Error al cambiar estado: ' + errorMessage)
     }
   }
 
@@ -230,13 +244,28 @@ export default function PublicacionesPage() {
       if (p.id !== productId) return p
       return { ...p, sale_price: newValue, ...(flipToSold ? { status: 'sold' } : {}) }
     }))
-    const supabase = createClient()
-    const patch: { sale_price: number | null; status?: string } = { sale_price: newValue }
-    if (flipToSold) patch.status = 'sold'
-    const { error } = await supabase.from('products').update(patch).eq('id', productId)
-    if (error) {
+    let errorMessage: string | null = null
+    if (flipToSold) {
+      const response = await fetch(`/api/admin/products/${productId}/sold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sale_price: newValue }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        errorMessage = body.error || 'No pudimos marcar el producto como vendido'
+      }
+    } else {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('products')
+        .update({ sale_price: newValue })
+        .eq('id', productId)
+      errorMessage = error?.message || null
+    }
+    if (errorMessage) {
       setProducts(prevProducts)
-      alert('Error al guardar precio de venta: ' + error.message)
+      alert('Error al guardar precio de venta: ' + errorMessage)
     }
   }
 

@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/email/send'
 import { buildSaleEmail, buildInternalNotice } from '@/lib/email/templates'
 import { SOLD_CHANNEL_LABELS, SOLD_SPEED_LABELS } from '@/lib/constants'
+import { cleanupQueuedProductStories } from '@/lib/instagram/story-cleanup'
 import { revalidateProduct } from '@/lib/revalidate'
 
 const SUPPORT_EMAIL = 'reskichile@gmail.com'
@@ -27,6 +28,16 @@ interface SoldResult {
   error?: string
 }
 
+async function cleanupSoldProductStory(admin: SupabaseClient, productId: string): Promise<void> {
+  try {
+    await cleanupQueuedProductStories({ service: admin, productIds: [productId] })
+  } catch {
+    // The database trigger already removed the capture and released its slot.
+    // Keep the queue row so cron can retry the physical Storage deletion.
+    console.error('[sold] Instagram Story storage cleanup deferred')
+  }
+}
+
 /**
  * Marks a product sold, records sale metadata, mints a single-use undo token,
  * and emails the seller (BCC the ReSkiChile inbox) with an undo button.
@@ -46,7 +57,10 @@ export async function markProductSold(
     .single()
 
   if (!product) return { ok: false, error: 'Producto no encontrado' }
-  if (product.status === 'sold') return { ok: true } // idempotent
+  if (product.status === 'sold') {
+    await cleanupSoldProductStory(admin, productId)
+    return { ok: true }
+  }
 
   const salePrice =
     input.salePrice != null && Number.isFinite(input.salePrice) && input.salePrice > 0
@@ -67,6 +81,8 @@ export async function markProductSold(
     .eq('id', productId)
 
   if (updErr) return { ok: false, error: updErr.message }
+
+  await cleanupSoldProductStory(admin, productId)
 
   // Sold → no longer in the public catalog; refresh its cached page + home.
   revalidateProduct({ id: product.id, slug: product.slug })
