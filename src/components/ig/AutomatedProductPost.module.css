@@ -8,6 +8,8 @@
 }
 
 .poster {
+  --ig-content-offset: 0px;
+
   position: relative;
   isolation: isolate;
   width: 1080px;
@@ -17,6 +19,10 @@
   background: #f8fbff;
   color: #10151d;
   font-family: var(--font-body), Montserrat, Arial, sans-serif;
+}
+
+.poster[data-product-layout='long'] {
+  --ig-content-offset: 52px;
 }
 
 .background,
@@ -40,7 +46,7 @@
 .logo {
   position: absolute;
   z-index: 8;
-  top: 160px;
+  top: calc(160px + var(--ig-content-offset));
   left: 50%;
   width: 238px;
   height: auto;
@@ -54,14 +60,14 @@
 }
 
 .productLong {
-  top: 480px;
+  top: calc(480px + var(--ig-content-offset));
   left: 20px;
   width: 700px;
   height: 1050px;
 }
 
 .productCompact {
-  top: 500px;
+  top: calc(500px + var(--ig-content-offset));
   left: 20px;
   width: 700px;
   height: 1000px;
@@ -97,7 +103,7 @@
 .titleBlock {
   position: absolute;
   z-index: 9;
-  top: calc(320px + var(--ig-layout-offset, 0px) + var(--ig-title-offset, 0px));
+  top: calc(320px + var(--ig-content-offset) + var(--ig-layout-offset, 0px) + var(--ig-title-offset, 0px));
   right: 70px;
   left: 95px;
   text-align: left;
@@ -106,7 +112,7 @@
 .detailsBlock {
   position: absolute;
   z-index: 9;
-  top: calc(780px + var(--ig-layout-offset, 0px));
+  top: calc(780px + var(--ig-content-offset) + var(--ig-layout-offset, 0px));
   right: auto;
   left: 690px;
   width: 340px;
@@ -144,13 +150,33 @@
 .price {
   --price-font-size: 68px;
 
-  margin: 0 0 34px;
+  margin: 0 0 12px;
   color: #2d83cc;
   font-size: var(--price-font-size);
   font-weight: 800;
   line-height: 0.92;
   letter-spacing: -0.048em;
   white-space: nowrap;
+}
+
+.negotiablePrice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 28px;
+  color: #2674bf;
+  font-size: 15px;
+  font-weight: 200;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.negotiablePriceIcon {
+  width: 19px;
+  height: 19px;
+  flex: none;
 }
 
 .facts {
@@ -199,14 +225,28 @@
   min-width: 0;
   max-width: 100%;
   line-height: 1.05;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
   white-space: normal;
+}
+
+.factWord {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.factValueEmphasized {
+  font-weight: 800;
 }
 
 .detailsSparse .price {
   --price-font-size: 88px;
 
-  margin-bottom: 48px;
+  margin-bottom: 14px;
+}
+
+.detailsSparse .negotiablePrice {
+  margin-bottom: 38px;
 }
 
 .detailsSparse {
@@ -225,12 +265,12 @@
 }
 
 .poster[data-artwork-shape='narrow'] .productLong {
-  top: 505px;
+  top: calc(505px + var(--ig-content-offset));
   left: -70px;
 }
 
 .poster[data-artwork-shape='narrow'] .detailsBlock {
-  top: 720px;
+  top: calc(720px + var(--ig-content-offset));
   right: auto;
   left: 520px;
   width: 510px;
@@ -239,7 +279,11 @@
 .poster[data-artwork-shape='narrow'] .detailsSparse .price {
   --price-font-size: 96px;
 
-  margin-bottom: 54px;
+  margin-bottom: 16px;
+}
+
+.poster[data-artwork-shape='narrow'] .detailsSparse .negotiablePrice {
+  margin-bottom: 42px;
 }
 
 .poster[data-artwork-shape='narrow'] .detailsSparse .facts {
@@ -271,6 +315,10 @@
   height: 365px;
   overflow: hidden;
   transform: translateX(-50%);
+}
+
+.poster[data-product-layout='long'] .riderSki {
+  bottom: 10px;
 }
 
 .rider {
@@ -313,7 +361,7 @@
 .sellerDisclaimer {
   position: absolute;
   z-index: 9;
-  top: 92px;
+  top: calc(92px + var(--ig-content-offset));
   right: 60px;
   left: 60px;
   display: flex;

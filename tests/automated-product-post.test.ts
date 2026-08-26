@@ -43,6 +43,52 @@ describe('automated product post facts', () => {
     }))).toEqual([])
   })
 
+  it('shows the ski binding brand and model as an emphasized fact', () => {
+    expect(productFacts(product({
+      product_type: 'esquis',
+      attributes: {
+        largo_cm: 171,
+        ancho_mm: 100,
+        incluye_fijaciones: true,
+        fijaciones_marca: 'Salomon',
+        fijaciones_modelo: 'Shift²',
+      },
+    }))).toEqual([
+      { label: 'LARGO', value: '171 CM' },
+      { label: 'ANCHO', value: '100 MM' },
+      { label: 'FIJACIONES', value: 'SALOMON SHIFT²', emphasized: true },
+    ])
+  })
+
+  it('keeps a safe fallback when included ski bindings have no name', () => {
+    expect(productFacts(product({
+      product_type: 'esquis',
+      attributes: { incluye_fijaciones: true },
+    }))).toEqual([
+      { label: 'FIJACIONES', value: 'INCLUIDAS' },
+    ])
+  })
+
+  it('shows only the interchangeable-lens answer for goggles', () => {
+    expect(productFacts(product({
+      product_type: 'antiparras',
+      attributes: {
+        talla: 'M',
+        genero: ['hombre', 'mujer'],
+        lente_intercambiable: true,
+      },
+    }))).toEqual([
+      { label: 'LENTE INTERCAMBIABLE', value: 'SÍ' },
+    ])
+
+    expect(productFacts(product({
+      product_type: 'antiparras',
+      attributes: { lente_intercambiable: false },
+    }))).toEqual([
+      { label: 'LENTE INTERCAMBIABLE', value: 'NO' },
+    ])
+  })
+
   it('keeps the long avalanche attribute as intrinsic content', () => {
     expect(productFacts(product({
       product_type: 'equipo_avalanchas',

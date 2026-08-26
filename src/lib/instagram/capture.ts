@@ -111,6 +111,12 @@ export async function renderStoryJpeg(slug: string): Promise<Buffer> {
 
     await page.waitForSelector('[data-testid="ig-product-post"] canvas[data-artwork-ready="true"]')
     await page.waitForSelector('[data-testid="ig-product-post"] canvas[data-rider-ready="true"]')
+    await page.waitForSelector('[data-ig-title-block] [data-fitted="true"]')
+    await page.waitForSelector('[data-ig-details-block] [data-ig-price][data-fitted="true"]')
+    await page.waitForFunction(() => (
+      [...document.querySelectorAll<HTMLElement>('[data-ig-fact-value]')]
+        .every((value) => value.dataset.fitted === 'true')
+    ))
     await page.evaluate(async () => {
       await document.fonts.ready
       await new Promise<void>((resolve) => {

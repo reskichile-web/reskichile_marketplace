@@ -48,7 +48,7 @@ export default function FitPrice({ children }: { children: string }) {
   }, [children])
 
   return (
-    <p ref={priceRef} className={styles.price}>
+    <p ref={priceRef} className={styles.price} data-ig-price>
       {children}
     </p>
   )

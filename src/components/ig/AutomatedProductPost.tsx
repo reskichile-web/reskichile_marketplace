@@ -1,7 +1,9 @@
 import Image from 'next/image'
+import { MessageCircle } from 'lucide-react'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import styles from './AutomatedProductPost.module.css'
 import ProductArtwork from './ProductArtwork'
+import FitFactValue from './FitFactValue'
 import FitTitle from './FitTitle'
 import FitPrice from './FitPrice'
 import RiderArtwork from './RiderArtwork'
@@ -48,10 +50,37 @@ function booleanValue(value: unknown, yes: string, no: string): string | undefin
 interface ProductFact {
   label: string
   value: string
+  emphasized?: boolean
 }
 
-function productFact(label: string, value: string | undefined): ProductFact | undefined {
-  return value ? { label, value } : undefined
+function productFact(
+  label: string,
+  value: string | undefined,
+  emphasized = false,
+): ProductFact | undefined {
+  return value ? { label, value, ...(emphasized ? { emphasized: true } : {}) } : undefined
+}
+
+function skiBindingsFact(attributes: Record<string, unknown>): ProductFact | undefined {
+  if (attributes.incluye_fijaciones === false) {
+    return productFact('FIJACIONES', 'NO INCLUIDAS')
+  }
+  if (attributes.incluye_fijaciones !== true) return undefined
+
+  const bindingName = [
+    firstValue(attributes.fijaciones_marca),
+    firstValue(attributes.fijaciones_modelo),
+  ]
+    .filter((part): part is string => Boolean(part?.trim()))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return productFact(
+    'FIJACIONES',
+    bindingName ? bindingName.toLocaleUpperCase('es-CL') : 'INCLUIDAS',
+    Boolean(bindingName),
+  )
 }
 
 export function productFacts(product: AutomatedPostProduct): ProductFact[] {
@@ -64,7 +93,7 @@ export function productFacts(product: AutomatedPostProduct): ProductFact[] {
       facts.push(
         productFact('LARGO', value('largo_cm') ? `${value('largo_cm')} CM` : undefined),
         productFact('ANCHO', value('ancho_mm') ? `${value('ancho_mm')} MM` : undefined),
-        productFact('FIJACIONES', booleanValue(attributes.incluye_fijaciones, 'INCLUIDAS', 'NO INCLUIDAS')),
+        skiBindingsFact(attributes),
       )
       break
     case 'snowboards':
@@ -124,9 +153,10 @@ export function productFacts(product: AutomatedPostProduct): ProductFact[] {
       break
     case 'antiparras':
       facts.push(
-        productFact('TALLA', value('talla')?.toUpperCase()),
-        productFact('LENTE', booleanValue(attributes.lente_intercambiable, 'INTERCAMBIABLE', 'FIJO')),
-        productFact('GÉNERO', genderFact(attributes.genero)),
+        productFact(
+          'LENTE INTERCAMBIABLE',
+          attributes.lente_intercambiable === true ? 'SÍ' : 'NO',
+        ),
       )
       break
     case 'mochilas':
@@ -175,6 +205,7 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
         className={styles.poster}
         data-testid="ig-product-post"
         data-product-slug={product.slug || product.id}
+        data-product-layout={longProduct ? 'long' : 'compact'}
         aria-label={`Publicación de ${title}`}
       >
         <div className={styles.background} aria-hidden="true">
@@ -213,12 +244,16 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
           data-ig-details-block
         >
           <FitPrice>{`$${product.price.toLocaleString('es-CL')}`}</FitPrice>
+          <p className={styles.negotiablePrice}>
+            <MessageCircle className={styles.negotiablePriceIcon} strokeWidth={1.25} aria-hidden="true" />
+            <span>Precio conversable</span>
+          </p>
           {facts.length > 0 && (
             <ul className={styles.facts} aria-label="Características destacadas">
               {facts.map((fact, index) => (
                 <li key={`${fact.label}-${fact.value}-${index}`}>
                   <span className={styles.factLabel}>{fact.label}</span>
-                  <span className={styles.factValue}>{fact.value}</span>
+                  <FitFactValue emphasized={fact.emphasized}>{fact.value}</FitFactValue>
                 </li>
               ))}
             </ul>
