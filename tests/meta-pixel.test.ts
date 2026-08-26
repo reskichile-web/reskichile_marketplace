@@ -89,4 +89,38 @@ describe('Meta Pixel product events', () => {
 
     expect(metaQueue().filter((entry) => entry[1] === 'ViewContent')).toEqual([])
   })
+
+  it('sends Contact only with consent and deduplicates the same WhatsApp handoff', async () => {
+    const { loadMetaPixel, trackMetaContact, trackMetaPageView } = await import('@/lib/meta-pixel')
+    const product = {
+      contentId: 'product-123',
+      contentName: 'K2 Reckoner 102',
+      category: 'Esquís',
+      value: 329990,
+    }
+
+    trackMetaContact(product)
+    expect(metaQueue()).toEqual([])
+
+    loadMetaPixel()
+    trackMetaPageView('/producto/producto-de-prueba')
+    trackMetaContact(product)
+    trackMetaContact(product)
+
+    expect(metaQueue().filter((entry) => entry[1] === 'Contact')).toEqual([
+      [
+        'track',
+        'Contact',
+        {
+          content_ids: ['product-123'],
+          content_name: 'K2 Reckoner 102',
+          content_category: 'Esquís',
+          content_type: 'product',
+          value: 329990,
+          currency: 'CLP',
+          contact_method: 'whatsapp',
+        },
+      ],
+    ])
+  })
 })

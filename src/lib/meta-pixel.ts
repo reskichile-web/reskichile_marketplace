@@ -16,6 +16,7 @@ interface PendingViewContent extends MetaViewContent {
 let metaConsentGranted = false
 let pendingViewContent: PendingViewContent | null = null
 let lastViewContent: { key: string; sentAt: number } | null = null
+let lastContact: { key: string; sentAt: number } | null = null
 
 type MetaPixelFunction = ((...args: unknown[]) => void) & {
   callMethod?: (...args: unknown[]) => void
@@ -100,6 +101,27 @@ function sendMetaViewContent(event: PendingViewContent): void {
     content_type: 'product',
     value: event.value,
     currency: 'CLP',
+  })
+}
+
+export function trackMetaContact(event: MetaViewContent): void {
+  if (typeof window === 'undefined' || !metaConsentGranted || !window.fbq) return
+
+  const key = `${window.location.pathname}:${event.contentId}`
+  const now = Date.now()
+  if (lastContact?.key === key && now - lastContact.sentAt < VIEW_CONTENT_DEDUPLICATION_MS) {
+    return
+  }
+
+  lastContact = { key, sentAt: now }
+  window.fbq('track', 'Contact', {
+    content_ids: [event.contentId],
+    content_name: event.contentName,
+    content_category: event.category,
+    content_type: 'product',
+    value: event.value,
+    currency: 'CLP',
+    contact_method: 'whatsapp',
   })
 }
 

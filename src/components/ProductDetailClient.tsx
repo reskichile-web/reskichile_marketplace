@@ -16,6 +16,7 @@ import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, X, type LucideIcon
 import { motion } from 'framer-motion'
 import DescriptionCard from '@/components/DescriptionCard'
 import { isProductOwner, showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
+import { trackMetaContact } from '@/lib/meta-pixel'
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -176,6 +177,12 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
       const res = await fetch(`/api/contact/${product.id}`, { method: 'POST' })
       const data = await res.json()
       if (data.url) {
+        trackMetaContact({
+          contentId: product.id,
+          contentName: title,
+          category: product.product_type,
+          value: product.price,
+        })
         if (placeholder && !placeholder.closed) {
           placeholder.location.href = data.url
         } else {
