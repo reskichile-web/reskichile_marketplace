@@ -6,6 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import {
+  loadCookieConsentMetrics,
+  type CookieConsentMetric,
+} from '@/lib/admin-consent-metrics'
+import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
   GiArmoredPants, GiLightBackpack,
@@ -177,6 +181,7 @@ export default function MetricasPage() {
   const [chatCount, setChatCount] = useState(0)
   const [topProducts, setTopProducts] = useState<TopProductRow[]>([])
   const [activity, setActivity] = useState<ActivityRow[]>([])
+  const [consentMetrics, setConsentMetrics] = useState<CookieConsentMetric[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -204,7 +209,7 @@ export default function MetricasPage() {
         chatCountQuery = chatCountQuery.gte('created_at', since)
       }
 
-      const [dailyRes, catRes, clickRes, contactRes, chatCountRes, topRes, actRes] = await Promise.all([
+      const [dailyRes, catRes, clickRes, contactRes, chatCountRes, topRes, actRes, consentRes] = await Promise.all([
         supabase.rpc('admin_daily_visits', { p_days: rpcDays }),
         supabase.rpc('admin_category_views', { p_days: rpcDays }),
         supabase
@@ -213,6 +218,7 @@ export default function MetricasPage() {
           .eq('event_type', 'click')
           .neq('event_name', 'whatsapp_contact')
           .neq('event_name', 'chat_contact')
+          .not('event_name', 'like', 'cookie_consent_%')
           .order('created_at', { ascending: false })
           .limit(50),
         contactQuery,
@@ -224,6 +230,7 @@ export default function MetricasPage() {
           .in('event_type', ['login', 'signup', 'invite_open'])
           .order('created_at', { ascending: false })
           .limit(20),
+        loadCookieConsentMetrics(supabase, since),
       ])
       if (cancelled) return
       setDaily((dailyRes.data as DailyRow[]) || [])
@@ -234,6 +241,7 @@ export default function MetricasPage() {
       setChatCount(chatCountRes.count ?? 0)
       setTopProducts((topRes.data as TopProductRow[]) || [])
       setActivity((actRes.data as unknown as ActivityRow[]) || [])
+      setConsentMetrics(consentRes)
       setLoading(false)
     }
     load()
@@ -286,6 +294,14 @@ export default function MetricasPage() {
   const totalCatViews = categories.reduce((s, c) => s + Number(c.views), 0)
   const periodLabel = period === 'all' ? 'histórico' : `últimos ${period} días`
   const whatsappCount = Math.max(contactCount - chatCount, 0)
+  const acceptedConsent = consentMetrics.find(row => row.decision === 'granted')
+  const deniedConsent = consentMetrics.find(row => row.decision === 'denied')
+  const acceptedVisitors = Number(acceptedConsent?.unique_visitors ?? 0)
+  const deniedVisitors = Number(deniedConsent?.unique_visitors ?? 0)
+  const consentVisitors = acceptedVisitors + deniedVisitors
+  const consentAcceptanceRate = consentVisitors > 0
+    ? Math.round((acceptedVisitors / consentVisitors) * 100)
+    : 0
 
   if (loading) return <AdminTableSkeleton />
 
@@ -432,6 +448,50 @@ export default function MetricasPage() {
                 )
               })}
             </ul>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Consentimiento de cookies"
+          subtitle={`Última decisión por visitante · ${periodLabel}`}
+          right={consentVisitors > 0 ? (
+            <span className="text-right text-[10px] font-bold leading-tight text-gray-500 shrink-0">
+              <span className="block text-xs font-black text-brand-600">{consentAcceptanceRate}% acepta</span>
+              {consentVisitors} visitantes
+            </span>
+          ) : undefined}
+        >
+          {consentVisitors === 0 ? (
+            <p className="text-sm text-gray-400 py-10 text-center">Sin decisiones en este período.</p>
+          ) : (
+            <div className="p-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-brand-100 bg-brand-50 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-brand-600">Aceptaron</p>
+                  <p className="mt-1 text-3xl font-black text-brand-600">{acceptedVisitors}</p>
+                  <p className="mt-1 text-[11px] text-brand-700/70">
+                    {Number(acceptedConsent?.decisions ?? 0)} decisiones
+                  </p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">No</p>
+                  <p className="mt-1 text-3xl font-black text-gray-700">{deniedVisitors}</p>
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    {Number(deniedConsent?.decisions ?? 0)} decisiones
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 h-3 overflow-hidden rounded-full bg-gray-200" aria-label={`${consentAcceptanceRate}% de aceptación`}>
+                <div
+                  className="h-full rounded-full bg-brand-500"
+                  style={{ width: `${consentAcceptanceRate}%` }}
+                />
+              </div>
+              <div className="mt-2 flex justify-between text-[11px] font-medium text-gray-500">
+                <span>{consentAcceptanceRate}% acepta</span>
+                <span>{100 - consentAcceptanceRate}% elige No</span>
+              </div>
+            </div>
           )}
         </SectionCard>
 
