@@ -150,16 +150,17 @@ export default function MarketingConsent() {
     setPreferencesOpen(false)
   }
 
-  if (
-    !ready ||
-    viewer.loading ||
-    resolvedKey !== resolutionKey ||
-    pathname.startsWith('/admin') ||
-    (activeDecision !== null && !preferencesOpen)
-  ) return null
+  const resolutionPending = !ready || viewer.loading || resolvedKey !== resolutionKey
+
+  if (pathname.startsWith('/admin')) return null
+  if (!resolutionPending && activeDecision !== null && !preferencesOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/60 p-3 backdrop-blur-sm sm:p-6">
+    <div
+      id="marketing-consent-overlay"
+      data-bootstrap-pending={resolutionPending ? 'true' : 'false'}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/60 p-3 backdrop-blur-sm sm:p-6"
+    >
       <section
         role="dialog"
         aria-modal="true"
@@ -168,7 +169,7 @@ export default function MarketingConsent() {
       >
         <div className="flex items-center gap-3">
           <Image src="/favicon.svg" alt="" width={36} height={36} className="h-9 w-9" />
-          <h2 className="font-body text-xl font-black text-gray-950">Cookies en RESKICHILE</h2>
+          <h2 className="font-body text-xl font-black text-gray-950">Política de privacidad</h2>
         </div>
 
         <p className="mt-5 text-[15px] leading-7 text-gray-700 sm:text-base">

@@ -46,11 +46,15 @@ export function parseStoredMarketingConsent(
     const value = JSON.parse(raw) as unknown
     const decision = parseDecision(value)
     if (!decision) return null
-    if (decision.decidedAt > now || now - decision.decidedAt > MARKETING_CONSENT_MAX_AGE_MS) return null
 
     const userId = typeof (value as { userId?: unknown }).userId === 'string'
       ? (value as { userId: string }).userId
       : undefined
+    if (
+      decision.decidedAt > now ||
+      (!userId && now - decision.decidedAt > MARKETING_CONSENT_MAX_AGE_MS)
+    ) return null
+
     return userId ? { ...decision, userId } : decision
   } catch {
     return null

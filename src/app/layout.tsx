@@ -11,6 +11,7 @@ import ScrollToTop from '@/components/ScrollToTop'
 import NavigationProgress from '@/components/NavigationProgress'
 import PageViewTracker from '@/components/PageViewTracker'
 import MarketingConsent from '@/components/MarketingConsent'
+import MarketingConsentBootstrap from '@/components/MarketingConsentBootstrap'
 import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
@@ -101,7 +102,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={cn(norwester.variable, kollektif.variable, montserrat.variable, outfit.variable, spaceGrotesk.variable)}>
+    <html lang="es" suppressHydrationWarning className={cn(norwester.variable, kollektif.variable, montserrat.variable, outfit.variable, spaceGrotesk.variable)}>
+      <head>
+        <MarketingConsentBootstrap />
+      </head>
       <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
         <MarketingConsent />
         <Suspense fallback={null}>

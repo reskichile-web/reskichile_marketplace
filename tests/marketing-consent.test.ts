@@ -38,5 +38,9 @@ describe('marketing consent persistence', () => {
     )
 
     expect(parseAccountMarketingConsent(oldDecision)).toEqual(oldDecision)
+    expect(parseStoredMarketingConsent(JSON.stringify({
+      ...oldDecision,
+      userId: 'user-1',
+    }))).toEqual({ ...oldDecision, userId: 'user-1' })
   })
 })
