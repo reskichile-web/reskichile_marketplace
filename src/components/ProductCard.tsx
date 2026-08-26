@@ -14,12 +14,15 @@ interface Props {
   mainImageUrl?: string
   secondImageUrl?: string
   badge?: string
+  /** Prioritize only the cards visible in the first viewport. */
+  priority?: boolean
   /** When set, clicking the card beacons a 'click' event with this name (e.g. 'product_card' on the landing) */
   trackClickAs?: string
 }
 
-export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl, badge, trackClickAs }: Props) {
+export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl, badge, priority = false, trackClickAs }: Props) {
   const [hovered, setHovered] = useState(false)
+  const [secondRequested, setSecondRequested] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
 
@@ -27,7 +30,10 @@ export default function ProductCard({ id, slug, title, productType, price, mainI
     <Link
       href={`/producto/${slug || id}`}
       className="group pressable-subtle"
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => {
+        setHovered(true)
+        setSecondRequested(true)
+      }}
       onMouseLeave={() => setHovered(false)}
       onClick={() => {
         if (trackClickAs) track({ type: 'click', name: trackClickAs, product_id: id, category: productType })
@@ -47,33 +53,33 @@ export default function ProductCard({ id, slug, title, productType, price, mainI
               src={mainImageUrl}
               alt={title}
               className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
+              fetchPriority={priority ? 'high' : 'auto'}
+              decoding="async"
               onError={() => setImgError(true)}
             />
 
-            {secondImageUrl && (
-              <>
-                {/* Preload second image */}
+            {secondImageUrl && secondRequested && (
+              <div
+                className="absolute inset-0 transition-[clip-path] duration-500 ease-out"
+                style={{
+                  clipPath: hovered && secondLoaded
+                    ? 'circle(100% at 50% 50%)'
+                    : 'circle(0% at 50% 50%)',
+                }}
+              >
+                {/* The hover image is requested only after the visitor interacts
+                    with this card, avoiding a second download for every result. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={secondImageUrl} alt="" className="hidden" onLoad={() => setSecondLoaded(true)} />
-
-                {/* Second image — on top, expands from center on hover, contracts on unhover */}
-                <div
-                  className="absolute inset-0 transition-[clip-path] duration-500 ease-out"
-                  style={{
-                    clipPath: hovered && secondLoaded
-                      ? 'circle(100% at 50% 50%)'
-                      : 'circle(0% at 50% 50%)',
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={secondImageUrl}
-                    alt={`${title} - 2`}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                </div>
-              </>
+                <img
+                  src={secondImageUrl}
+                  alt={`${title} - 2`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading="eager"
+                  decoding="async"
+                  onLoad={() => setSecondLoaded(true)}
+                />
+              </div>
             )}
           </>
         ) : (

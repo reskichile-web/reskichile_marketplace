@@ -5,12 +5,14 @@ import { createPublicServerClient } from '@/lib/supabase/server'
 import CatalogSidebar from '@/components/CatalogSidebar'
 import CatalogMobileFilterButton from '@/components/CatalogMobileFilterButton'
 import CatalogSortSelect from '@/components/CatalogSortSelect'
-import ProductCard from '@/components/ProductCard'
+import CatalogProductGrid from '@/components/CatalogProductGrid'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import EmptyState from '@/components/illustrations/EmptyState'
 import { PRODUCT_TYPES } from '@/lib/constants'
-import { computeSkiCounts, passesSkiFilters } from '@/lib/ski-filters'
-import { computeBootCounts, passesBootFilters } from '@/lib/boot-filters'
+import { computeSkiCounts } from '@/lib/ski-filters'
+import { computeBootCounts } from '@/lib/boot-filters'
+import { hasCatalogAttributeFilters, parseCatalogFilters } from '@/lib/catalog'
+import { fetchCatalogMetadata, fetchCatalogProductPage } from '@/lib/catalog-server'
 
 export const metadata: Metadata = {
   title: 'Catálogo - ReskiChile',
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
 }
 
 interface Props {
-  searchParams: Promise<{
+  searchParams: Promise<Record<string, string | string[] | undefined> & {
     product_type?: string
     condition?: string
     region?: string
@@ -44,51 +46,36 @@ export default async function CatalogPage({ searchParams }: Props) {
   // shows approved products, and login state is resolved client-side by
   // ClaimListingsPrompt. Note: this page is dynamic anyway (it reads searchParams).
   const supabase = createPublicServerClient()
+  const filters = parseCatalogFilters(queryParams)
+  const {
+    types,
+    conditions,
+    regions,
+    brands,
+    minPrice,
+    maxPrice,
+    sort,
+    tipo,
+    genero,
+    largo,
+    ancho,
+    fij,
+    conexion,
+    bootSize,
+    bootFlex,
+    bootBoa,
+  } = filters
 
-  const types = (queryParams.product_type || '').split(',').filter(Boolean)
-  const conditions = (queryParams.condition || '').split(',').filter(Boolean)
-  const regions = (queryParams.region || '').split(',').filter(Boolean)
-  const brands = (queryParams.brand || '').split(',').filter(Boolean)
-  const minPrice = queryParams.min_price ? Number(queryParams.min_price) : undefined
-  const maxPrice = queryParams.max_price ? Number(queryParams.max_price) : undefined
-  const sort = queryParams.sort || 'recent'
-
-  const tipo = (queryParams.tipo || '').split(',').filter(Boolean)
-  const genero = (queryParams.genero || '').split(',').filter(Boolean)
-  const largo = (queryParams.largo || '').split(',').filter(Boolean)
-  const ancho = (queryParams.ancho || '').split(',').filter(Boolean)
-  const fij = queryParams.fij || ''
-  const conexion = (queryParams.conexion || '').split(',').filter(Boolean)
-  const bootSize = (queryParams.boot_size || '').split(',').filter(Boolean)
-  const bootFlex = (queryParams.boot_flex || '').split(',').filter(Boolean)
-  const bootBoa = queryParams.boot_boa || ''
-
-  let query = supabase
-    .from('products')
-    .select('*, product_images(*)')
-    .eq('status', 'approved')
-
-  if (types.length) query = query.in('product_type', types)
-  if (conditions.length) query = query.in('condition', conditions)
-  if (regions.length) query = query.in('region', regions)
-  if (brands.length) query = query.in('brand', brands)
-  if (minPrice && !isNaN(minPrice)) query = query.gte('price', minPrice)
-  if (maxPrice && !isNaN(maxPrice)) query = query.lte('price', maxPrice)
-
-  if (sort === 'price_asc') query = query.order('price', { ascending: true })
-  else if (sort === 'price_desc') query = query.order('price', { ascending: false })
-  else query = query.order('created_at', { ascending: false })
-
-  const [productsResult, countsResult] = await Promise.all([
-    query,
-    supabase
-      .from('products')
-      .select('product_type, condition, region, brand, attributes')
-      .eq('status', 'approved'),
+  const metadataPromise = fetchCatalogMetadata()
+  const productPagePromise = hasCatalogAttributeFilters(filters)
+    ? metadataPromise.then(metadata => fetchCatalogProductPage(supabase, filters, 0, metadata))
+    : fetchCatalogProductPage(supabase, filters)
+  const [allProducts, productPage] = await Promise.all([
+    metadataPromise,
+    productPagePromise,
   ])
-
-  let products = productsResult.data || []
-  const allProducts = countsResult.data || []
+  const products = productPage.products
+  const totalCount = productPage.totalCount
 
   const conditionCounts: Record<string, number> = {}
   const regionCounts: Record<string, number> = {}
@@ -118,30 +105,6 @@ export default async function CatalogPage({ searchParams }: Props) {
     allProducts.filter((p) => p.product_type === types[0] && isBootsOnly)
   )
 
-  if (isEsquisOnly) {
-    products = products.filter((p) =>
-      passesSkiFilters(p.attributes as Record<string, unknown> | null, {
-        tipo,
-        genero,
-        largo,
-        ancho,
-        fij,
-        conexion,
-      })
-    )
-  }
-
-  if (isBootsOnly) {
-    products = products.filter((p) =>
-      passesBootFilters(p.attributes as Record<string, unknown> | null, {
-        size: bootSize,
-        flex: isSkiBootsOnly ? bootFlex : [],
-        gender: genero,
-        boa: bootBoa,
-      })
-    )
-  }
-
   const hasFilters =
     conditions.length > 0 ||
     regions.length > 0 ||
@@ -165,6 +128,12 @@ export default async function CatalogPage({ searchParams }: Props) {
     types.length === 1 && PRODUCT_TYPES[types[0]]
       ? PRODUCT_TYPES[types[0]]
       : 'Catálogo'
+
+  const incrementalParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (key !== 'offset' && typeof value === 'string') incrementalParams.set(key, value)
+  }
+  const incrementalQuery = incrementalParams.toString()
 
   return (
     <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-4 md:pt-6 pb-24">
@@ -238,7 +207,7 @@ export default async function CatalogPage({ searchParams }: Props) {
         <div className="min-w-0">
           <div className="hidden lg:flex items-center justify-between mb-6">
             <p className="text-sm text-gray-500">
-              {products.length} {products.length === 1 ? 'producto' : 'productos'}
+              {totalCount} {totalCount === 1 ? 'producto' : 'productos'}
             </p>
             <CatalogSortSelect value={sort} />
           </div>
@@ -255,39 +224,12 @@ export default async function CatalogPage({ searchParams }: Props) {
               actionHref={hasFilters ? '/catalogo' : '/vender'}
             />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5">
-              {products.map((product) => {
-                const sorted =
-                  product.product_images?.sort(
-                    (a: { order: number }, b: { order: number }) => a.order - b.order
-                  ) || []
-                const title = [product.brand, product.model].filter(Boolean).join(' ')
-
-                let badge: string | undefined
-                const attrs = product.attributes as Record<string, unknown> | null
-                if (attrs) {
-                  if (product.product_type === 'esquis' && attrs.ancho_mm != null) {
-                    badge = `${attrs.ancho_mm}mm`
-                  } else if (product.product_type === 'snowboards' && attrs.ancho != null) {
-                    badge = String(attrs.ancho)
-                  }
-                }
-
-                return (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug}
-                    title={title}
-                    productType={product.product_type}
-                    price={product.price}
-                    mainImageUrl={sorted[0]?.url}
-                    secondImageUrl={sorted[1]?.url}
-                    badge={badge}
-                  />
-                )
-              })}
-            </div>
+            <CatalogProductGrid
+              key={incrementalQuery || 'all-products'}
+              initialProducts={products}
+              totalCount={totalCount}
+              queryString={incrementalQuery}
+            />
           )}
         </div>
       </div>
