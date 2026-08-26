@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
@@ -11,6 +11,7 @@ import { daysUntilSaleReminder } from '@/lib/sale-reminder'
 import ApprovalStoryModal from '@/components/admin/ApprovalStoryModal'
 import { useStoryApproval } from '@/components/admin/useStoryApproval'
 import type { AdminApprovalResponse } from '@/lib/instagram/contracts'
+import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 
 interface AdminProduct {
   id: string
@@ -118,64 +119,107 @@ export default function PublicacionesPage() {
   const [products, setProducts] = useState<AdminProduct[]>([])
   const [viewCounts, setViewCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
+  const [brands, setBrands] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-
-  const loadProducts = useCallback(async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('products')
-      .select('id, slug, product_type, brand, model, price, sale_price, status, created_at, days_published, sale_reminder_sent_at, seller_id, condition, region, comuna, description, rejection_reason, attributes, anon_contact, users(name, email, phone, hide_phone), product_images(url, order)')
-      .order('created_at', { ascending: false })
-
-    const list = (data as unknown as AdminProduct[]) || []
-    setProducts(list)
-    setLoading(false)
-
-    // Private view counters — the RPC returns every row for admins,
-    // including listings without a registered owner.
-    if (list.length) {
-      const { data: counts } = await supabase.rpc('product_view_counts', {
-        p_ids: list.map(p => p.id),
-      })
-      const map: Record<string, number> = {}
-      for (const row of counts ?? []) map[row.product_id] = Number(row.views)
-      setViewCounts(map)
-    }
-  }, [])
+  const loadingRef = useRef(false)
+  const requestRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    loadProducts()
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 250)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const loadProducts = useCallback(async (offset = 0, append = false) => {
+    if (append && loadingRef.current) return
+    if (!append) requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    loadingRef.current = true
+    setLoadError('')
+    if (append) setLoadingMore(true)
+    else setLoading(true)
+    try {
+      const params = new URLSearchParams({ offset: String(offset) })
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (brandFilter) params.set('brand', brandFilter)
+      if (typeFilter) params.set('type', typeFilter)
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      const response = await fetch(`/api/admin/products?${params.toString()}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'No pudimos cargar las publicaciones')
+      const incoming = (data.products || []) as AdminProduct[]
+      setProducts(current => append
+        ? [...current, ...incoming.filter(product => !current.some(existing => existing.id === product.id))]
+        : incoming)
+      setViewCounts(current => append
+        ? { ...current, ...(data.viewCounts || {}) }
+        : (data.viewCounts || {}))
+      if (data.facets) {
+        setStatusCounts(data.facets.statusCounts || {})
+        setBrands(data.facets.brands || [])
+      }
+      setHasMore(Boolean(data.hasMore))
+      setNextOffset(Number(data.nextOffset || 0))
+      setTotalCount(Number(data.totalCount || 0))
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setLoadError(error instanceof Error ? error.message : 'No pudimos cargar las publicaciones')
+    } finally {
+      if (requestRef.current === controller) {
+        loadingRef.current = false
+        setLoading(false)
+        setLoadingMore(false)
+      }
+    }
+  }, [brandFilter, debouncedSearch, statusFilter, typeFilter])
+
+  useEffect(() => {
+    setExpandedId(null)
+    void loadProducts(0)
   }, [loadProducts])
 
-  const brands = useMemo(() => {
-    const set = new Set(products.map(p => p.brand))
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'))
-  }, [products])
+  useEffect(() => () => requestRef.current?.abort(), [])
 
-  const filtered = useMemo(() => {
-    return products.filter(p => {
-      if (statusFilter !== 'all' && p.status !== statusFilter) return false
-      if (brandFilter && p.brand !== brandFilter) return false
-      if (typeFilter && p.product_type !== typeFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        const title = [p.brand, p.model].filter(Boolean).join(' ').toLowerCase()
-        const seller = (p.users?.name || p.users?.email || '').toLowerCase()
-        if (!title.includes(q) && !seller.includes(q)) return false
-      }
-      return true
-    })
-  }, [products, statusFilter, brandFilter, typeFilter, search])
+  const loadMore = useCallback(() => {
+    void loadProducts(nextOffset, true)
+  }, [loadProducts, nextOffset])
+
+  const filtered = products
+
+  function recordStatusTransition(previousStatus: string | undefined, nextStatus: string) {
+    if (!previousStatus || previousStatus === nextStatus) return
+    setStatusCounts(current => ({
+      ...current,
+      [previousStatus]: Math.max(0, (current[previousStatus] || 0) - 1),
+      [nextStatus]: (current[nextStatus] || 0) + 1,
+    }))
+    if (statusFilter !== 'all' && statusFilter !== nextStatus) {
+      setProducts(current => current.filter(product => product.status === statusFilter))
+      setTotalCount(current => Math.max(0, current - 1))
+      setExpandedId(null)
+    }
+  }
 
   async function handleStatusChange(productId: string, status: string, extra?: Record<string, unknown>) {
     // Optimistic update — instant UI feedback
     const prevProducts = products
+    const previousStatus = prevProducts.find(product => product.id === productId)?.status
     setProducts(prev => prev.map(p => p.id === productId ? { ...p, status, ...extra } as AdminProduct : p))
 
     let errorMessage: string | null = null
@@ -198,14 +242,29 @@ export default function PublicacionesPage() {
       // Revert on failure
       setProducts(prevProducts)
       alert('Error al cambiar estado: ' + errorMessage)
+    } else {
+      recordStatusTransition(previousStatus, status)
     }
   }
 
   const handleApprovalFinished = useCallback((response: AdminApprovalResponse) => {
+    const previousStatus = products.find(product => product.id === response.product.id)?.status
     setProducts(current => current.map(product => product.id === response.product.id
       ? { ...product, status: 'approved', rejection_reason: null }
       : product))
-  }, [])
+    if (previousStatus && previousStatus !== 'approved') {
+      setStatusCounts(current => ({
+        ...current,
+        [previousStatus]: Math.max(0, (current[previousStatus] || 0) - 1),
+        approved: (current.approved || 0) + 1,
+      }))
+      if (statusFilter !== 'all' && statusFilter !== 'approved') {
+        setProducts(current => current.filter(product => product.id !== response.product.id))
+        setTotalCount(current => Math.max(0, current - 1))
+        setExpandedId(null)
+      }
+    }
+  }, [products, statusFilter])
 
   const storyApproval = useStoryApproval({ onApproved: handleApprovalFinished })
 
@@ -266,6 +325,8 @@ export default function PublicacionesPage() {
     if (errorMessage) {
       setProducts(prevProducts)
       alert('Error al guardar precio de venta: ' + errorMessage)
+    } else if (flipToSold) {
+      recordStatusTransition(current?.status, 'sold')
     }
   }
 
@@ -281,7 +342,7 @@ export default function PublicacionesPage() {
         throw new Error(body.error || 'Error al eliminar')
       }
       setExpandedId(null)
-      await loadProducts()
+      await loadProducts(0)
     } catch (error) {
       alert('Error al eliminar: ' + (error instanceof Error ? error.message : 'desconocido'))
     } finally {
@@ -300,7 +361,7 @@ export default function PublicacionesPage() {
         {/* Status tabs */}
         <div className="flex gap-1.5 overflow-x-auto">
           {(['all', 'pending', 'approved', 'missing_photos', 'rejected', 'sold', 'archived', 'draft'] as const).map(f => {
-            const count = f === 'all' ? products.length : products.filter(p => p.status === f).length
+            const count = statusCounts[f] || 0
             return (
               <button
                 key={f}
@@ -347,7 +408,13 @@ export default function PublicacionesPage() {
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-gray-500 mb-3">{filtered.length} productos</p>
+      <p className="text-sm text-gray-500 mb-3">{totalCount} productos</p>
+
+      {loadError && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </p>
+      )}
 
       {filtered.length === 0 ? (
         <p className="text-gray-500">No hay productos que coincidan</p>
@@ -390,7 +457,7 @@ export default function PublicacionesPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                           {images.length > 0 ? (
-                            <img src={images[0].url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                            <img src={images[0].url} alt="" loading="lazy" decoding="async" className="w-10 h-10 rounded object-cover shrink-0" />
                           ) : (
                             <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0">
                               <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -669,7 +736,7 @@ export default function PublicacionesPage() {
                                 </div>
                                 <div className="flex gap-2 overflow-x-auto">
                                   {images.map((img, i) => (
-                                    <img key={i} src={img.url} alt="" className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 object-cover rounded-lg" />
+                                    <img key={i} src={img.url} alt="" loading="lazy" decoding="async" className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 object-cover rounded-lg" />
                                   ))}
                                 </div>
                               </div>
@@ -714,6 +781,15 @@ export default function PublicacionesPage() {
             onRetry={storyApproval.retry}
           />
         </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <AdminInfiniteScroll
+          hasMore={hasMore}
+          loading={loadingMore}
+          error={loadError}
+          onLoadMore={loadMore}
+          label="Cargando más publicaciones"
+        />
       )}
     </div>
   )
@@ -1142,7 +1218,7 @@ function InstagramCopyButton({ product }: { product: AdminProduct }) {
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {images.map((img, i) => (
                       <div key={i} className="relative shrink-0 group">
-                        <img src={img.url} alt="" className="w-32 h-32 object-cover rounded-lg" />
+                        <img src={img.url} alt="" loading="lazy" decoding="async" className="w-32 h-32 object-cover rounded-lg" />
                         <button
                           onClick={() => downloadImage(img.url, i)}
                           disabled={downloading !== null}

@@ -4,11 +4,13 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { track } from '@/lib/track'
+import { getBrandLogoUrl } from '@/lib/brand-logos'
 
 interface Props {
   id: string
   slug?: string | null
   title: string
+  brand?: string | null
   productType: string
   price: number
   mainImageUrl?: string
@@ -20,11 +22,12 @@ interface Props {
   trackClickAs?: string
 }
 
-export default function ProductCard({ id, slug, title, productType, price, mainImageUrl, secondImageUrl, badge, priority = false, trackClickAs }: Props) {
+export default function ProductCard({ id, slug, title, brand, productType, price, mainImageUrl, secondImageUrl, badge, priority = false, trackClickAs }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondRequested, setSecondRequested] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const brandLogoUrl = getBrandLogoUrl(brand || '')
 
   return (
     <Link
@@ -91,7 +94,18 @@ export default function ProductCard({ id, slug, title, productType, price, mainI
         )}
       </div>
       <div className="mt-3">
-        <p className="text-[10px] tracking-widest uppercase text-gray-400 font-body font-bold">{PRODUCT_TYPES[productType]}</p>
+        <p className="flex items-center gap-1.5 text-[10px] font-body font-bold uppercase tracking-widest text-gray-400">
+          {brandLogoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brandLogoUrl}
+              alt=""
+              className="h-3 w-3 shrink-0 object-contain"
+              onError={event => { event.currentTarget.style.display = 'none' }}
+            />
+          )}
+          {PRODUCT_TYPES[productType]}
+        </p>
         <h3 className="font-body font-semibold text-sm truncate mt-1">{title}</h3>
         <p className="font-body text-base font-bold text-black mt-0.5">
           ${price.toLocaleString('es-CL')}

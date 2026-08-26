@@ -23,6 +23,13 @@ interface Product {
 
 type SortKey = 'recent' | 'price_asc' | 'price_desc' | 'name_asc'
 
+const SORT_LABELS: Record<SortKey, string> = {
+  recent: 'Más recientes',
+  price_asc: 'Precio: menor a mayor',
+  price_desc: 'Precio: mayor a menor',
+  name_asc: 'Marca A-Z',
+}
+
 interface Props {
   products: Product[]
 }
@@ -306,13 +313,15 @@ export default function ProductBrowser({ products }: Props) {
             )}
           </button>
 
-          <label className="inline-flex min-w-0 items-center gap-2 text-sm text-gray-600">
-            <ArrowUpDown className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+          <label className="relative inline-flex cursor-pointer items-center gap-2 text-sm text-gray-600">
+            <ArrowUpDown className="h-4 w-4 shrink-0 text-gray-400" strokeWidth={1.6} aria-hidden="true" />
+            <span className="whitespace-nowrap font-body font-medium text-gray-700">{SORT_LABELS[sort]}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" strokeWidth={1.5} aria-hidden="true" />
             <select
               aria-label="Ordenar productos"
               value={sort}
               onChange={e => setSort(e.target.value as SortKey)}
-              className="min-w-0 cursor-pointer border-0 bg-transparent font-body font-medium text-gray-700 focus:outline-none"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             >
               <option value="recent">Más recientes</option>
               <option value="price_asc">Precio: menor a mayor</option>
@@ -329,22 +338,28 @@ export default function ProductBrowser({ products }: Props) {
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
-            <span className="text-xs text-gray-400">Ordenar:</span>
-            <label className="relative block">
+            <label className="relative flex h-9 min-w-48 items-center gap-3">
+              <ArrowUpDown
+                className="h-4 w-4 shrink-0 text-gray-400"
+                strokeWidth={1.6}
+                aria-hidden="true"
+              />
               <span className="sr-only">Ordenar productos</span>
               <select
                 value={sort}
                 onChange={e => setSort(e.target.value as SortKey)}
-                className="h-9 min-w-40 appearance-none rounded-lg border border-gray-200 bg-white py-0 pl-3.5 pr-9 text-sm font-medium text-gray-700 outline-none transition-colors hover:border-gray-300 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                className="h-9 min-w-40 cursor-pointer appearance-none border-0 bg-transparent py-0 pl-0 pr-8 font-body text-base font-medium text-gray-700 outline-none focus:ring-0"
               >
                 <option value="recent">Más recientes</option>
                 <option value="price_asc">Menor precio</option>
                 <option value="price_desc">Mayor precio</option>
                 <option value="name_asc">Marca A-Z</option>
               </select>
-              <svg className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-                <path d="m6 8 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronDown
+                className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
             </label>
             <Link
               href="/vender"
@@ -422,6 +437,7 @@ export default function ProductBrowser({ products }: Props) {
                       id={product.id}
                       slug={product.slug}
                       title={title}
+                      brand={product.brand}
                       productType={product.product_type}
                       price={product.price}
                       mainImageUrl={sorted[0]?.url}

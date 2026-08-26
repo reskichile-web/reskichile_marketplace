@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import {
   Check,
   ChevronDown,
@@ -20,6 +20,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
+import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 
 interface OrderItem {
   id: string
@@ -279,31 +280,64 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [refundsEnabled, setRefundsEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
   const [expandedOrderId, setExpandedOrderId] = useState('')
   const [refundOrder, setRefundOrder] = useState<Order | null>(null)
   const [refundAmount, setRefundAmount] = useState('')
   const [refundReason, setRefundReason] = useState('')
   const [refundConfirmation, setRefundConfirmation] = useState('')
   const [refundIdempotencyKey, setRefundIdempotencyKey] = useState('')
+  const loadingRef = useRef(false)
+  const requestRef = useRef<AbortController | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (offset = 0, append = false) => {
+    if (append && loadingRef.current) return
+    if (!append) requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    loadingRef.current = true
     setError('')
+    if (append) setLoadingMore(true)
+    else setLoading(true)
     try {
-      const response = await fetch('/api/admin/orders', { cache: 'no-store' })
+      const response = await fetch(`/api/admin/orders?offset=${offset}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'No pudimos cargar los pedidos')
-      setOrders(data.orders || [])
+      const incoming = (data.orders || []) as Order[]
+      setOrders(current => append
+        ? [...current, ...incoming.filter(order => !current.some(existing => existing.public_id === order.public_id))]
+        : incoming)
       setRefundsEnabled(Boolean(data.refundsEnabled))
+      setHasMore(Boolean(data.hasMore))
+      setNextOffset(Number(data.nextOffset || 0))
+      setTotalCount(Number(data.totalCount || 0))
     } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === 'AbortError') return
       setError(loadError instanceof Error ? loadError.message : 'No pudimos cargar los pedidos')
     } finally {
-      setLoading(false)
+      if (requestRef.current === controller) {
+        setLoading(false)
+        setLoadingMore(false)
+        loadingRef.current = false
+      }
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { void load(0) }, [load])
+
+  useEffect(() => () => requestRef.current?.abort(), [])
+
+  const loadMore = useCallback(() => {
+    void load(nextOffset, true)
+  }, [load, nextOffset])
 
   async function updateFulfillment(order: Order, status: string) {
     setBusy(order.public_id)
@@ -316,7 +350,7 @@ export default function AdminOrdersPage() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'No pudimos actualizar el pedido')
-      await load()
+      await load(0)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No pudimos actualizar el pedido')
     } finally {
@@ -347,7 +381,7 @@ export default function AdminOrdersPage() {
       setRefundReason('')
       setRefundConfirmation('')
       setRefundIdempotencyKey('')
-      await load()
+      await load(0)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No pudimos procesar el reembolso')
     } finally {
@@ -360,9 +394,11 @@ export default function AdminOrdersPage() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="font-body text-2xl font-black text-gray-900">Pedidos Webpay</h1>
-          <p className="mt-1 text-sm text-gray-500">Pago, preparación, despacho y reembolsos auditados.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Pago, preparación, despacho y reembolsos auditados{totalCount > 0 ? ` · ${totalCount} pedidos` : ''}.
+          </p>
         </div>
-        <button type="button" onClick={() => void load()} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+        <button type="button" onClick={() => void load(0)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">
           Actualizar
         </button>
       </div>
@@ -594,6 +630,16 @@ export default function AdminOrdersPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {!loading && orders.length > 0 && (
+        <AdminInfiniteScroll
+          hasMore={hasMore}
+          loading={loadingMore}
+          error={error}
+          onLoadMore={loadMore}
+          label="Cargando más pedidos"
+        />
       )}
 
       {refundOrder && (

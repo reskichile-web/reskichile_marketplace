@@ -35,4 +35,18 @@ describe('product card image loading', () => {
     expect(html).toContain('loading="eager"')
     expect(html).toContain('fetchPriority="high"')
   })
+
+  it('shows a curated brand logo in the text corner when available', () => {
+    const html = renderToStaticMarkup(
+      <ProductCard
+        id="product-1"
+        title="Atomic Backland"
+        brand="Atomic"
+        productType="esquis"
+        price={500000}
+      />,
+    )
+
+    expect(html).toContain('/brand-logos/atomic.png')
+  })
 })

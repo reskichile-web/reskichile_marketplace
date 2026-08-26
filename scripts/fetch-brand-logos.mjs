@@ -15,6 +15,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createHash } from 'node:crypto'
+import sharp from 'sharp'
 
 // DuckDuckGo's ip3 endpoint returns this generic grey chevron when it has no
 // real icon for a domain (it 404s with the chevron as the body). It's a valid
@@ -39,18 +40,6 @@ function slugify(brand) {
     .replace(/^-+|-+$/g, '')
 }
 
-// PNG IHDR width is a big-endian uint32 at byte offset 16.
-function pngWidth(buf) {
-  if (buf.length < 24) return 0
-  const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47
-  if (!isPng) return 0
-  return buf.readUInt32BE(16)
-}
-
-function isPng(buf) {
-  return buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47
-}
-
 async function tryFetch(url) {
   try {
     const res = await fetch(url, {
@@ -59,20 +48,31 @@ async function tryFetch(url) {
       signal: AbortSignal.timeout(12000),
     })
     if (!res.ok && res.status !== 404) return null // DDG sometimes 404s with a real body
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (!isPng(buf)) return null // only keep PNGs so we can measure + serve uniformly
-    const w = pngWidth(buf)
+    const source = Buffer.from(await res.arrayBuffer())
+    const metadata = await sharp(source).metadata()
+    const w = metadata.width || 0
     if (w < MIN_WIDTH) return null
-    const md5 = createHash('md5').update(buf).digest('hex')
+    const md5 = createHash('md5').update(source).digest('hex')
     if (JUNK_HASHES.has(md5)) return null // generic chevron / known placeholder
+    const buf = await sharp(source).png().toBuffer()
     return { buf, width: w }
   } catch {
     return null
   }
 }
 
+const DIRECT_SOURCES = {
+  'blizzard-tecnica.com': [
+    'https://www.blizzard-tecnica.com/android-icon-192x192.png',
+  ],
+  'elansports.com': [
+    'https://elansports.com/cdn/shop/files/EL_green.jpg?crop=center&height=128&v=1770894258&width=128',
+  ],
+}
+
 function sources(domain) {
   return [
+    ...(DIRECT_SOURCES[domain] || []),
     `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
     `https://icons.duckduckgo.com/ip3/${domain}.ico`,
     `https://${domain}/apple-touch-icon.png`,
@@ -98,6 +98,7 @@ function parseDomains() {
 async function main() {
   mkdirSync(OUT_DIR, { recursive: true })
   const entries = parseDomains()
+  const requestedSlugs = new Set(process.argv.slice(2).map(slugify))
 
   // De-dupe by slug (völkl/volkl, north face/the north face share a logo).
   const bySlug = new Map()
@@ -111,6 +112,7 @@ async function main() {
   const skipped = []
 
   for (const { slug, brand, domain } of bySlug.values()) {
+    if (requestedSlugs.size > 0 && !requestedSlugs.has(slug)) continue
     const file = join(OUT_DIR, `${slug}.png`)
     if (existsSync(file)) {
       skipped.push(slug)

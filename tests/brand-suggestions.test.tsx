@@ -28,4 +28,22 @@ describe('binding brand dropdowns', () => {
     expect(html).toContain('Marca de las fijaciones')
     expect(html).toContain('src="/brand-logos/marker.png"')
   })
+
+  it.each([
+    ['Blizzard', 'blizzard'],
+    ['Stockli', 'stockli'],
+    ['Majesty', 'majesty'],
+    ['Kastle', 'kastle'],
+    ['Fritschi', 'fritschi'],
+    ['Elan', 'elan'],
+    ['PeakPerformance', 'peak-performance'],
+    ['Flylow', 'flylow'],
+  ])('resolves the curated %s logo', (brand, slug) => {
+    expect(getBrandLogoUrl(brand)).toBe(`/brand-logos/${slug}.png`)
+  })
+
+  it('suggests the newly curated product brands in their categories', () => {
+    expect(getBrandSuggestions('', 'esquis')).toContain('Majesty')
+    expect(getBrandSuggestions('', 'parkas')).toContain('Flylow')
+  })
 })

@@ -50,7 +50,7 @@ export default function RecentMessagesCard({ className }: { className?: string }
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/admin/conversations')
+        const res = await fetch('/api/admin/conversations?mode=activity')
         const data = await res.json()
         if (res.ok) {
           setMessages(data.recent_messages || [])

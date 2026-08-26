@@ -34,6 +34,7 @@ interface RecentVisit {
 
 interface Stats {
   total: number
+  pending: number
   approved: number
   sold: number
   visitsToday: number
@@ -63,7 +64,7 @@ function fmtDateTime(iso: string): string {
 const CARD = 'bg-white rounded-xl border border-gray-200'
 
 export default function AdminHomePage() {
-  const [stats, setStats] = useState<Stats>({ total: 0, approved: 0, sold: 0, visitsToday: 0, uniquesToday: 0 })
+  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0, sold: 0, visitsToday: 0, uniquesToday: 0 })
   const [pending, setPending] = useState<PendingProduct[]>([])
   const [visits, setVisits] = useState<RecentVisit[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,9 +81,12 @@ export default function AdminHomePage() {
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'sold'),
       supabase
         .from('products')
-        .select('id, product_type, brand, model, price, created_at, users(name, email), product_images(url, order)')
+        .select('id, product_type, brand, model, price, created_at, users(name, email), product_images(url, order)', { count: 'exact' })
         .eq('status', 'pending')
-        .order('created_at', { ascending: true }),
+        .order('created_at', { ascending: true })
+        .order('order', { referencedTable: 'product_images', ascending: true })
+        .limit(1, { referencedTable: 'product_images' })
+        .limit(12),
       // Wide window so we can dedupe down to the most recent UNIQUE visitors
       supabase
         .from('events')
@@ -96,6 +100,7 @@ export default function AdminHomePage() {
     const todayRow = (todayRes.data as { visits: number; uniques: number }[] | null)?.at(-1)
     setStats({
       total: totalRes.count ?? 0,
+      pending: pendingRes.count ?? 0,
       approved: approvedRes.count ?? 0,
       sold: soldRes.count ?? 0,
       visitsToday: Number(todayRow?.visits ?? 0),
@@ -124,7 +129,11 @@ export default function AdminHomePage() {
   const handleApprovalFinished = useCallback((response: AdminApprovalResponse) => {
     setPending(current => current.filter(product => product.id !== response.product.id))
     if (response.transitioned) {
-      setStats(current => ({ ...current, approved: current.approved + 1 }))
+      setStats(current => ({
+        ...current,
+        pending: Math.max(0, current.pending - 1),
+        approved: current.approved + 1,
+      }))
     }
   }, [])
 
@@ -159,6 +168,8 @@ export default function AdminHomePage() {
     if (error) {
       setPending(prev)
       alert('Error al rechazar: ' + error.message)
+    } else {
+      setStats(current => ({ ...current, pending: Math.max(0, current.pending - 1) }))
     }
   }
 
@@ -172,7 +183,11 @@ export default function AdminHomePage() {
         throw new Error(body.error || 'Error al eliminar')
       }
       setPending(p => p.filter(x => x.id !== productId))
-      setStats(s => ({ ...s, total: Math.max(0, s.total - 1) }))
+      setStats(s => ({
+        ...s,
+        total: Math.max(0, s.total - 1),
+        pending: Math.max(0, s.pending - 1),
+      }))
     } catch (error) {
       alert('Error al eliminar: ' + (error instanceof Error ? error.message : 'desconocido'))
     } finally {
@@ -191,7 +206,7 @@ export default function AdminHomePage() {
     },
     {
       label: 'Pendientes',
-      value: pending.length,
+      value: stats.pending,
       color: 'text-yellow-600',
       icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />,
     },
@@ -244,7 +259,7 @@ export default function AdminHomePage() {
                 </svg>
                 Pendientes de revisión
               </h2>
-              <p className="text-xs text-gray-500 mt-0.5">{pending.length} publicaciones esperando aprobación</p>
+              <p className="text-xs text-gray-500 mt-0.5">{stats.pending} publicaciones esperando aprobación</p>
             </div>
             <Link href="/admin/publicaciones" className="text-sm text-brand-500 hover:underline shrink-0">
               Ver todas
@@ -271,7 +286,7 @@ export default function AdminHomePage() {
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={image.url} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0" />
+                        <img src={image.url} alt="" loading="lazy" decoding="async" className="w-11 h-11 rounded-lg object-cover shrink-0" />
                       ) : (
                         <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                           <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

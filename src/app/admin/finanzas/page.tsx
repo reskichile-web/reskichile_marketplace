@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { PRODUCT_TYPES, CONDITIONS } from '@/lib/constants'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
@@ -63,32 +63,70 @@ export default function FinanzasPage() {
   const [sold, setSold] = useState<SoldProduct[]>([])
   const [all, setAll] = useState<CatalogProduct[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summary, setSummary] = useState({ totalListing: 0, totalSale: 0, soldWithPrice: 0 })
   const [typeFilter, setTypeFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const loadingRef = useRef(false)
+  const requestRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient()
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 250)
+    return () => window.clearTimeout(timer)
+  }, [search])
 
-      const [{ data: soldData }, { data: allData }] = await Promise.all([
-        supabase
-          .from('products')
-          .select('id, product_type, brand, model, condition, region, price, sale_price, created_at, updated_at, anon_contact, slug, users(name, email, phone)')
-          .eq('status', 'sold')
-          .order('updated_at', { ascending: false }),
-
-        supabase
-          .from('products')
-          .select('product_type, status, price')
-          .in('status', ['pending', 'approved', 'sold', 'archived']),
-      ])
-
-      setSold((soldData as unknown as SoldProduct[]) || [])
-      setAll(allData || [])
-      setLoading(false)
+  const load = useCallback(async (offset = 0, append = false) => {
+    if (append && loadingRef.current) return
+    if (!append) requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    loadingRef.current = true
+    setError('')
+    if (append) setLoadingMore(true)
+    else setLoading(true)
+    try {
+      const params = new URLSearchParams({ offset: String(offset) })
+      if (typeFilter) params.set('type', typeFilter)
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      const response = await fetch(`/api/admin/finance?${params.toString()}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'No pudimos cargar finanzas')
+      const incoming = (data.sold || []) as SoldProduct[]
+      setSold(current => append
+        ? [...current, ...incoming.filter(row => !current.some(existing => existing.id === row.id))]
+        : incoming)
+      if (data.metadata) setAll(data.metadata as CatalogProduct[])
+      if (data.summary) setSummary(data.summary)
+      setHasMore(Boolean(data.hasMore))
+      setNextOffset(Number(data.nextOffset || 0))
+      setTotalCount(Number(data.totalCount || 0))
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === 'AbortError') return
+      setError(loadError instanceof Error ? loadError.message : 'No pudimos cargar finanzas')
+    } finally {
+      if (requestRef.current === controller) {
+        setLoading(false)
+        setLoadingMore(false)
+        loadingRef.current = false
+      }
     }
-    load()
-  }, [])
+  }, [debouncedSearch, typeFilter])
+
+  useEffect(() => { void load(0) }, [load])
+
+  useEffect(() => () => requestRef.current?.abort(), [])
+
+  const loadMore = useCallback(() => {
+    void load(nextOffset, true)
+  }, [load, nextOffset])
 
   // ─── Chart: por categoría ───
   const byCategory = useMemo(() => {
@@ -110,26 +148,9 @@ export default function FinanzasPage() {
       .sort((a, b) => b.total - a.total)
   }, [all])
 
-  // ─── Filtered sold table ───
-  const filtered = useMemo(() => {
-    return sold.filter(r => {
-      if (typeFilter && r.product_type !== typeFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        const sellerName = r.users?.name || ''
-        const sellerEmail = r.users?.email || ''
-        const text = [r.brand, r.model, sellerName, sellerEmail, r.anon_contact].filter(Boolean).join(' ').toLowerCase()
-        if (!text.includes(q)) return false
-      }
-      return true
-    })
-  }, [sold, typeFilter, search])
+  const filtered = sold
 
   if (loading) return <AdminTableSkeleton />
-
-  const totalListing = filtered.reduce((s, r) => s + r.price, 0)
-  const soldWithPrice = filtered.filter(r => r.sale_price !== null)
-  const totalSale = soldWithPrice.reduce((s, r) => s + (r.sale_price ?? 0), 0)
 
   return (
     <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
@@ -137,11 +158,12 @@ export default function FinanzasPage() {
       <div className="mb-8">
         <h1 className="font-body text-2xl font-black text-gray-900">Finanzas</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {sold.length} vendidos · {all.filter(r => r.status === 'approved').length} activos en catálogo
+          {totalCount} vendidos · {all.filter(r => r.status === 'approved').length} activos en catálogo
         </p>
       </div>
 
       {/* ─── Category Chart ─── */}
+      {error && <p className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
         <h2 className="text-sm font-bold text-gray-900 mb-5">Proporción por categoría</h2>
         <div className="space-y-4">
@@ -289,17 +311,24 @@ export default function FinanzasPage() {
 
         {filtered.length > 0 && (
           <div className="px-4 py-3 border-t bg-gray-50/50 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-            <span>{filtered.length} ventas</span>
+            <span>{totalCount} ventas</span>
             <div className="flex gap-4">
-              <span>Total publicado: <span className="font-bold text-gray-700">{formatCLP(totalListing)}</span></span>
-              {soldWithPrice.length > 0 && (
-                <span>Total venta real: <span className="font-bold text-green-600">{formatCLP(totalSale)}</span>
-                  <span className="text-gray-400 ml-1">({soldWithPrice.length}/{filtered.length} con precio)</span>
+              <span>Total publicado: <span className="font-bold text-gray-700">{formatCLP(summary.totalListing)}</span></span>
+              {summary.soldWithPrice > 0 && (
+                <span>Total venta real: <span className="font-bold text-green-600">{formatCLP(summary.totalSale)}</span>
+                  <span className="text-gray-400 ml-1">({summary.soldWithPrice}/{totalCount} con precio)</span>
                 </span>
               )}
             </div>
           </div>
         )}
+        <AdminInfiniteScroll
+          hasMore={hasMore}
+          loading={loadingMore}
+          error={error}
+          onLoadMore={loadMore}
+          label="Cargando más ventas"
+        />
       </div>
     </div>
   )

@@ -132,7 +132,7 @@ export const TIPO_ESQUI_CHOICES: { value: string; label: string }[] = [
   { value: 'freeride', label: 'Freeride' },
   { value: 'powder', label: 'Powder' },
   { value: 'freestyle', label: 'Freestyle' },
-  { value: 'touring', label: 'Touring' },
+  { value: 'touring', label: 'Randoné' },
 ]
 
 const GENERO_FIELD: AttributeField = {

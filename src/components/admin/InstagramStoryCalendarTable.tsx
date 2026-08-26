@@ -203,7 +203,7 @@ export default function InstagramStoryCalendarTable({
                       {publication ? (
                         <div className="flex max-w-md items-center gap-3">
                           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-emerald-100 bg-white">
-                            {publication.imageUrl && <img src={publication.imageUrl} alt="" className="h-full w-full object-contain" />}
+                            {publication.imageUrl && <img src={publication.imageUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />}
                           </div>
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-black text-gray-900">{publication.title}</span>
@@ -215,7 +215,7 @@ export default function InstagramStoryCalendarTable({
                       ) : product && capture ? (
                         <button type="button" onClick={() => onOpen(product.id)} className="group flex max-w-md items-center gap-3 text-left">
                           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
-                            {product.imageUrl && <img src={product.imageUrl} alt="" className="h-full w-full object-contain" />}
+                            {product.imageUrl && <img src={product.imageUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />}
                           </div>
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-black text-gray-900 group-hover:text-brand-600">{product.title}</span>

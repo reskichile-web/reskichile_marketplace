@@ -5,7 +5,7 @@ export const TIPO_OPTIONS: { value: string; label: string }[] = [
   { value: 'freeride', label: 'Freeride' },
   { value: 'powder', label: 'Powder' },
   { value: 'freestyle', label: 'Freestyle' },
-  { value: 'touring', label: 'Touring' },
+  { value: 'touring', label: 'Randoné' },
 ]
 
 export const GENERO_OPTIONS: { value: string; label: string }[] = [

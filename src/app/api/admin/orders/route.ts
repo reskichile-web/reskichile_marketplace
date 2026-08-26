@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { adminErrorResponse, requireAdmin } from '@/lib/admin-security'
 import { getRefundConfig } from '@/lib/env/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { adminPageMeta, parseAdminPageParams } from '@/lib/admin-pagination'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,11 +20,12 @@ interface AttemptRow {
   last_error_code: string | null
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireAdmin()
     const service = createServiceRoleClient()
-    const { data, error } = await service
+    const { offset, limit } = parseAdminPageParams(new URL(request.url).searchParams)
+    const { data, count, error } = await service
       .from('orders')
       .select(`
         public_id, order_number, buyer_email, buyer_name, buyer_phone,
@@ -33,9 +35,9 @@ export async function GET() {
         order_items(id, product_name, sku, unit_price_clp, quantity, line_total_clp),
         payment_attempts(id, state, amount_clp, environment, authorized_at, last_error_code),
         refunds(id, amount_clp, state, reason, provider_type, response_code, created_at)
-      `)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
-      .limit(100)
+      .range(offset, offset + limit - 1)
     if (error) throw new Error('orders query failed')
 
     let refundsEnabled = false
@@ -66,7 +68,11 @@ export async function GET() {
     })
 
     return NextResponse.json(
-      { orders, refundsEnabled },
+      {
+        orders,
+        refundsEnabled,
+        ...adminPageMeta(count || 0, offset, orders.length),
+      },
       { headers: { 'Cache-Control': 'no-store, private' } }
     )
   } catch (error) {

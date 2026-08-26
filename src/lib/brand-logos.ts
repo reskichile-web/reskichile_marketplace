@@ -20,10 +20,13 @@ export const BRAND_DOMAINS: Record<string, string> = {
   'head': 'head.com',
   'volkl': 'volkl.com',
   'völkl': 'volkl.com',
-  'blizzard': 'blizzard-ski.com',
+  'blizzard': 'blizzard-tecnica.com',
   'nordica': 'nordica.com',
   'fischer': 'fischer-ski.com',
-  'elan': 'elanskis.com',
+  'elan': 'elansports.com',
+  'stockli': 'stoeckli.ch',
+  'majesty': 'majestyskis.com',
+  'kastle': 'us.kaestle.com',
   'k2': 'k2snow.com',
   'armada': 'armadaskis.com',
   'black crows': 'black-crows.com',
@@ -67,6 +70,7 @@ export const BRAND_DOMAINS: Record<string, string> = {
   'tyrolia': 'tyrolia.com',
   'union': 'unionbindingcompany.com',
   'flux': 'flux-bindings.com',
+  'fritschi': 'fritschi.swiss',
 
   // Helmets & Goggles
   'oakley': 'oakley.com',
@@ -96,6 +100,8 @@ export const BRAND_DOMAINS: Record<string, string> = {
   'dope snow': 'dopesnow.com',
   'dope': 'dopesnow.com',
   'lippi': 'lippioutdoor.com',
+  'peak performance': 'peakperformance.com',
+  'flylow': 'flylowgear.com',
 
   // Accessories
   'leki': 'leki.com',
@@ -118,22 +124,24 @@ export const BRAND_DOMAINS: Record<string, string> = {
 // folder — scripts/fetch-brand-logos.mjs prints this exact set after a run.
 const CURATED_LOGOS = new Set<string>([
   '4frnt', '686', 'anon', 'arbor', 'arcteryx', 'armada', 'atomic', 'bca',
-  'black-crows', 'black-diamond', 'bolle', 'burton', 'capita', 'columbia',
+  'black-crows', 'black-diamond', 'blizzard', 'bolle', 'burton', 'capita', 'columbia',
   'dakine', 'dalbello', 'dc', 'decathlon', 'deuter', 'dope', 'dope-snow', 'dps',
-  'dynafit', 'dynastar', 'faction', 'fischer', 'flux', 'full-tilt', 'giro',
-  'gnu', 'gopro', 'head', 'helly-hansen', 'jones', 'k2', 'lange', 'leki',
-  'lib-tech', 'line', 'lippi', 'look', 'mammut', 'marker', 'moment', 'montec',
+  'dynafit', 'dynastar', 'elan', 'faction', 'fischer', 'flylow', 'flux',
+  'fritschi', 'full-tilt', 'giro', 'gnu', 'gopro', 'head', 'helly-hansen',
+  'jones', 'k2', 'kastle', 'lange', 'leki', 'lib-tech', 'line', 'lippi',
+  'look', 'majesty', 'mammut', 'marker', 'moment', 'montec',
   'never-summer', 'nitro', 'nordica', 'norr-na', 'norrona', 'north-face',
-  'oakley', 'ortovox', 'osprey', 'patagonia', 'picture', 'poc', 'reusch',
+  'oakley', 'ortovox', 'osprey', 'patagonia', 'peak-performance', 'picture',
+  'poc', 'reusch',
   'ride', 'rome', 'rossignol', 'salomon', 'scarpa', 'scott', 'smith', 'spy',
-  'sweet-protection', 'tecnica', 'the-north-face', 'thirtytwo', 'tyrolia',
-  'union', 'vans', 'volcom', 'volkl', 'wedze',
+  'stockli', 'sweet-protection', 'tecnica', 'the-north-face', 'thirtytwo',
+  'tyrolia', 'union', 'vans', 'volcom', 'volkl', 'wedze',
 ])
 
 // Brand display name → filename slug. Must match the slugify() in the fetch
 // script: lowercase, strip accents, drop apostrophes, non-alphanumerics → '-'.
 export function brandSlug(brand: string): string {
-  return brand
+  const slug = brand
     .toLowerCase()
     .trim()
     .normalize('NFD')
@@ -141,6 +149,9 @@ export function brandSlug(brand: string): string {
     .replace(/['’]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+
+  // Common no-space spelling should resolve to the same curated asset.
+  return slug === 'peakperformance' ? 'peak-performance' : slug
 }
 
 export function getBrandLogoUrl(brand: string): string | null {

@@ -1,122 +1,156 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { promises as dns } from 'dns'
+import { adminErrorResponse, requireAdmin } from '@/lib/admin-security'
+import { adminPageMeta, parseAdminPageParams, sanitizeAdminSearch } from '@/lib/admin-pagination'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { getAdminUserAccessStats, getAdminUserAccessStatus } from '@/lib/admin-user-status'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-async function lookupMxDeliverable(domain: string, timeoutMs = 1500): Promise<boolean> {
-  try {
-    const lookup = dns.resolveMx(domain)
-    const timed = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), timeoutMs)
-    )
-    const records = await Promise.race([lookup, timed])
-    return Array.isArray(records) && records.length > 0
-  } catch {
-    return false
-  }
+interface ActivityRow {
+  user_id: string
+  last_activity: string
 }
 
-export async function GET() {
-  const supabase = createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+interface UserCandidate {
+  id: string
+  email: string
+  name: string | null
+  phone: string | null
+  keep: boolean | null
+  must_change_password: boolean
+  created_at: string
+}
 
-  const { data: profile } = await supabase.from('users').select('is_admin').eq('id', user.id).single()
-  if (!profile?.is_admin) return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+const PINNED_LAST = new Set(['sebastian.derpsch@gmail.com', 'reskichile@gmail.com'])
 
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+export async function GET(request: Request) {
+  try {
+    const requestUser = await requireAdmin()
+    const service = createServiceRoleClient()
+    const searchParams = new URL(request.url).searchParams
+    const { offset, limit } = parseAdminPageParams(searchParams)
+    const filter = sanitizeAdminSearch(searchParams.get('status'), 30)
+    const search = sanitizeAdminSearch(searchParams.get('search'))
 
-  const [usersRes, productsRes, activityRes] = await Promise.all([
-    admin
-      .from('users')
-      .select('id, email, name, phone, instagram, is_admin, must_change_password, keep, created_at, avatar_url')
-      .order('created_at', { ascending: false }),
-    admin.from('products').select('seller_id'),
-    admin.rpc('admin_user_last_activity'),
-  ])
-
-  // Last analytics event (login/registro/pageview/click) per user
-  const activityMap = new Map<string, string>()
-  for (const row of (activityRes.data as { user_id: string; last_activity: string }[] | null) ?? []) {
-    activityMap.set(row.user_id, row.last_activity)
-  }
-
-  // Paginate through auth.users — confirmed/unconfirmed state and last
-  // sign-in live there.
-  const confirmedMap = new Map<string, string | null>()
-  const lastSignInMap = new Map<string, string | null>()
-  let page = 1
-  const perPage = 1000
-  for (;;) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage })
-    if (error) break
-    for (const u of data.users) {
-      confirmedMap.set(u.id, u.email_confirmed_at ?? null)
-      lastSignInMap.set(u.id, u.last_sign_in_at ?? null)
+    // Like the public catalog, use one lightweight metadata set to preserve
+    // global filtering and activity ordering, then fetch full rows only for
+    // the visible page.
+    const [candidateResult, activityResult] = await Promise.all([
+      service
+        .from('users')
+        .select('id, email, name, phone, keep, must_change_password, created_at'),
+      service.rpc('admin_user_last_activity'),
+    ])
+    if (candidateResult.error || activityResult.error) {
+      throw new Error('admin users query failed')
     }
-    if (data.users.length < perPage) break
-    page += 1
-    if (page > 20) break
-  }
 
-  const productCounts: Record<string, number> = {}
-  productsRes.data?.forEach((p) => {
-    productCounts[p.seller_id] = (productCounts[p.seller_id] || 0) + 1
-  })
+    const activityMap = new Map<string, string>()
+    for (const row of (activityResult.data as ActivityRow[] | null) || []) {
+      activityMap.set(row.user_id, row.last_activity)
+    }
 
-  // Deliverability: one MX lookup per unique domain. Catches typos like
-  // gmial.com instantly without a paid service.
-  const domains = Array.from(
-    new Set(
-      (usersRes.data || [])
-        .map((u) => (u.email.split('@')[1] || '').toLowerCase())
-        .filter(Boolean)
-    )
-  )
-  const deliverabilityMap = new Map<string, boolean>()
-  await Promise.all(
-    domains.map(async (d) => {
-      deliverabilityMap.set(d, await lookupMxDeliverable(d))
+    // Auth confirmation/sign-in data is one compact GoTrue request for the
+    // common case (<1000 users). It is not expanded into the JSON response;
+    // only the visible page is returned.
+    const confirmedMap = new Map<string, string | null>()
+    const lastSignInMap = new Map<string, string | null>()
+    for (let page = 1; page <= 20; page += 1) {
+      const { data, error } = await service.auth.admin.listUsers({ page, perPage: 1000 })
+      if (error) break
+      for (const authUser of data.users) {
+        confirmedMap.set(authUser.id, authUser.email_confirmed_at ?? null)
+        lastSignInMap.set(authUser.id, authUser.last_sign_in_at ?? null)
+      }
+      if (data.users.length < 1000) break
+    }
+
+    const normalizedSearch = search.toLocaleLowerCase('es')
+    const candidates = ((candidateResult.data || []) as UserCandidate[])
+      .filter(candidate => {
+        if (filter && filter !== 'all' && getAdminUserAccessStatus(candidate) !== filter) return false
+        if (!normalizedSearch) return true
+        return [candidate.email, candidate.name, candidate.phone]
+          .filter(Boolean)
+          .join(' ')
+          .toLocaleLowerCase('es')
+          .includes(normalizedSearch)
+      })
+      .sort((left, right) => {
+        const leftPinned = PINNED_LAST.has(left.email.toLowerCase())
+        const rightPinned = PINNED_LAST.has(right.email.toLowerCase())
+        if (leftPinned !== rightPinned) return leftPinned ? 1 : -1
+        const leftActivity = activityMap.get(left.id)
+        const rightActivity = activityMap.get(right.id)
+        const leftTimestamp = Math.max(
+          leftActivity ? Date.parse(leftActivity) : 0,
+          lastSignInMap.get(left.id) ? Date.parse(lastSignInMap.get(left.id)!) : 0,
+        )
+        const rightTimestamp = Math.max(
+          rightActivity ? Date.parse(rightActivity) : 0,
+          lastSignInMap.get(right.id) ? Date.parse(lastSignInMap.get(right.id)!) : 0,
+        )
+        if (leftTimestamp !== rightTimestamp) return rightTimestamp - leftTimestamp
+        return Date.parse(right.created_at) - Date.parse(left.created_at)
+      })
+
+    const visibleIds = candidates.slice(offset, offset + limit).map(candidate => candidate.id)
+    const usersResult = visibleIds.length > 0
+      ? await service
+        .from('users')
+        .select('id, email, name, phone, instagram, is_admin, must_change_password, keep, created_at, avatar_url')
+        .in('id', visibleIds)
+      : { data: [], error: null }
+    if (usersResult.error) throw new Error('admin user page query failed')
+    const rowById = new Map((usersResult.data || []).map(row => [row.id, row]))
+    const rows = visibleIds
+      .map(id => rowById.get(id))
+      .filter((row): row is NonNullable<typeof row> => row != null)
+    const userIds = rows.map(row => row.id)
+    const productCounts: Record<string, number> = {}
+    if (userIds.length > 0) {
+      const { data: products, error } = await service
+        .from('products')
+        .select('seller_id')
+        .in('seller_id', userIds)
+      if (error) throw new Error('admin user products query failed')
+      for (const product of products || []) {
+        productCounts[product.seller_id] = (productCounts[product.seller_id] || 0) + 1
+      }
+    }
+
+    const users = rows.map(row => {
+      const eventTimestamp = activityMap.get(row.id)
+      const signInTimestamp = lastSignInMap.get(row.id)
+      const candidates = [eventTimestamp, signInTimestamp].filter(Boolean) as string[]
+      return {
+        ...row,
+        product_count: productCounts[row.id] || 0,
+        email_confirmed_at: confirmedMap.get(row.id) ?? null,
+        // DNS validation no longer blocks the initial list. Complete Auth
+        // information is still loaded when the row is expanded.
+        email_deliverable: null,
+        last_activity: candidates.length
+          ? candidates.reduce((left, right) => Date.parse(left) >= Date.parse(right) ? left : right)
+          : null,
+      }
     })
-  )
 
-  const users = (usersRes.data || []).map((u) => {
-    const domain = (u.email.split('@')[1] || '').toLowerCase()
-    // Most recent of: last analytics event vs last auth sign-in (covers
-    // logins that predate the events table)
-    const eventTs = activityMap.get(u.id)
-    const signInTs = lastSignInMap.get(u.id)
-    const candidates = [eventTs, signInTs].filter(Boolean) as string[]
-    const lastActivity = candidates.length
-      ? candidates.reduce((a, b) => (Date.parse(a) >= Date.parse(b) ? a : b))
+    const stats = offset === 0
+      ? getAdminUserAccessStats(candidateResult.data || [])
       : null
-    return {
-      ...u,
-      product_count: productCounts[u.id] || 0,
-      email_confirmed_at: confirmedMap.get(u.id) ?? null,
-      email_deliverable: deliverabilityMap.get(domain) ?? null,
-      last_activity: lastActivity,
-    }
-  })
-
-  // Sort: most recently active first. The two operator accounts don't
-  // compete in the ranking — they always sink to the bottom group.
-  const PINNED_LAST = new Set(['sebastian.derpsch@gmail.com', 'reskichile@gmail.com'])
-  users.sort((a, b) => {
-    const aPinned = PINNED_LAST.has(a.email.toLowerCase())
-    const bPinned = PINNED_LAST.has(b.email.toLowerCase())
-    if (aPinned !== bPinned) return aPinned ? 1 : -1
-    const aT = a.last_activity ? Date.parse(a.last_activity) : 0
-    const bT = b.last_activity ? Date.parse(b.last_activity) : 0
-    if (aT !== bT) return bT - aT
-    return Date.parse(b.created_at) - Date.parse(a.created_at)
-  })
-
-  return NextResponse.json({ users })
+    return NextResponse.json({
+      users,
+      stats,
+      currentUserId: requestUser.id,
+      ...adminPageMeta(candidates.length, offset, users.length),
+    }, { headers: { 'Cache-Control': 'no-store, private' } })
+  } catch (error) {
+    const known = adminErrorResponse(error)
+    return NextResponse.json(
+      { error: known.message, code: known.code },
+      { status: known.status, headers: { 'Cache-Control': 'no-store, private' } },
+    )
+  }
 }

@@ -13,6 +13,7 @@ import type { ProductWithImages } from '@/lib/types'
 interface Props {
   product: ProductWithImages
   className?: string
+  iconOnly?: boolean
 }
 
 type Toast = { kind: 'ok' | 'err'; text: string } | null
@@ -26,7 +27,7 @@ interface ShareTarget {
   run: () => Promise<Toast> | Toast
 }
 
-export default function ShareButton({ product, className }: Props) {
+export default function ShareButton({ product, className, iconOnly = false }: Props) {
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
   const [toast, setToast] = useState<Toast>(null)
@@ -186,9 +187,15 @@ export default function ShareButton({ product, className }: Props) {
           type="button"
           onClick={handlePrimaryClick}
           disabled={busy}
-          className="pressable w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-white border border-gray-300 text-gray-900 px-3 sm:px-4 py-3 hover:bg-gray-50 disabled:opacity-60 font-medium text-xs sm:text-sm whitespace-nowrap"
+          className={`pressable flex w-full items-center justify-center disabled:opacity-60 ${
+            iconOnly
+              ? 'h-full p-0 text-gray-400 transition-colors hover:text-gray-600'
+              : 'gap-1.5 whitespace-nowrap border border-gray-300 bg-white px-3 py-3 text-xs font-medium text-gray-900 hover:bg-gray-50 sm:gap-2 sm:px-4 sm:text-sm'
+          }`}
           aria-haspopup="menu"
           aria-expanded={open}
+          aria-label={iconOnly ? (busy ? 'Preparando opciones para compartir' : 'Compartir producto') : undefined}
+          title={iconOnly ? 'Compartir producto' : undefined}
         >
           <svg
             className="w-4 h-4 sm:w-5 sm:h-5 shrink-0"
@@ -202,7 +209,7 @@ export default function ShareButton({ product, className }: Props) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M16 6l-4-4-4 4" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v14" />
           </svg>
-          {busy ? 'Preparando…' : 'Compartir'}
+          <span className={iconOnly ? 'sr-only' : ''}>{busy ? 'Preparando…' : 'Compartir'}</span>
         </button>
 
         {open && (

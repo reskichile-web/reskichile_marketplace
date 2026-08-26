@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Spinner from '@/components/Spinner'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 
 interface Person {
   id: string
@@ -70,27 +71,48 @@ function ChatsContent() {
   const router = useRouter()
   const [conversations, setConversations] = useState<ConversationRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const loadingRef = useRef(false)
 
   const selectedId = searchParams.get('c')
   const [transcript, setTranscript] = useState<Transcript | null>(null)
   const [transcriptLoading, setTranscriptLoading] = useState(false)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch('/api/admin/conversations')
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Error')
-        setConversations(data.conversations || [])
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Error desconocido')
-      } finally {
-        setLoading(false)
-      }
+  const load = useCallback(async (offset = 0, append = false) => {
+    if (loadingRef.current) return
+    loadingRef.current = true
+    setError('')
+    if (append) setLoadingMore(true)
+    else setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/conversations?offset=${offset}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      const incoming = (data.conversations || []) as ConversationRow[]
+      setConversations(current => append
+        ? [...current, ...incoming.filter(row => !current.some(existing => existing.id === row.id))]
+        : incoming)
+      setHasMore(Boolean(data.hasMore))
+      setNextOffset(Number(data.nextOffset || 0))
+      setTotalCount(Number(data.totalCount || 0))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error desconocido')
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+      loadingRef.current = false
     }
-    load()
   }, [])
+
+  useEffect(() => { void load(0) }, [load])
+
+  const loadMore = useCallback(() => {
+    void load(nextOffset, true)
+  }, [load, nextOffset])
 
   useEffect(() => {
     if (!selectedId) {
@@ -132,7 +154,7 @@ function ChatsContent() {
         {/* Conversation list */}
         <div className={`lg:col-span-2 ${CARD} overflow-hidden`}>
           <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">Conversaciones ({conversations.length})</h2>
+            <h2 className="text-sm font-bold text-gray-900">Conversaciones ({totalCount})</h2>
           </div>
           {conversations.length === 0 ? (
             <p className="text-sm text-gray-400 py-10 text-center">No hay conversaciones.</p>
@@ -153,7 +175,7 @@ function ChatsContent() {
                     >
                       {img ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={img.url} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0" />
+                        <img src={img.url} alt="" loading="lazy" decoding="async" className="w-11 h-11 rounded-lg object-cover shrink-0" />
                       ) : (
                         <div className="w-11 h-11 rounded-lg bg-gray-100 shrink-0" />
                       )}
@@ -175,6 +197,15 @@ function ChatsContent() {
                   </li>
                 )
               })}
+              <li>
+                <AdminInfiniteScroll
+                  hasMore={hasMore}
+                  loading={loadingMore}
+                  error={error}
+                  onLoadMore={loadMore}
+                  label="Cargando más conversaciones"
+                />
+              </li>
             </ul>
           )}
         </div>

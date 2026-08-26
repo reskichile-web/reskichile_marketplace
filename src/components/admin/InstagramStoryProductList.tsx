@@ -70,7 +70,7 @@ export default function InstagramStoryProductList({ products, onOpen }: Props) {
                     <td className="px-5 py-2.5">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
-                          {product.imageUrl && <img src={product.imageUrl} alt="" className="h-full w-full object-contain" />}
+                          {product.imageUrl && <img src={product.imageUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />}
                         </div>
                         <div className="min-w-0">
                           <p className="max-w-md truncate font-medium text-gray-900">{product.title}</p>

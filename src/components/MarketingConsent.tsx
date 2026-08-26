@@ -185,14 +185,13 @@ export default function MarketingConsent() {
         >
           No
         </button>
+        <Link
+          href="/privacidad"
+          className="col-span-2 flex min-h-10 items-center justify-center border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+        >
+          Más información
+        </Link>
       </div>
-
-      <Link
-        href="/privacidad"
-        className="mt-2.5 inline-flex text-xs font-semibold text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-      >
-        Más información
-      </Link>
     </section>
   )
 }

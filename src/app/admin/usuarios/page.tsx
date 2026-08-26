@@ -1,12 +1,13 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import Spinner from '@/components/Spinner'
 import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { phoneToWhatsApp } from '@/lib/phone'
+import { getAdminUserAccessStatus } from '@/lib/admin-user-status'
 
 interface UserWithProducts {
   id: string
@@ -23,14 +24,6 @@ interface UserWithProducts {
   email_confirmed_at: string | null
   email_deliverable: boolean | null
   last_activity: string | null
-}
-
-// "Acceso pendiente" = imported user that hasn't redeemed an invite link yet.
-// Email confirmation status is shown as a separate icon — it must not flip this
-// badge, because legacy users predate the confirmation requirement and have
-// email_confirmed_at = null even though their account works normally.
-function isPendingAccess(u: { must_change_password: boolean }) {
-  return u.must_change_password
 }
 
 interface DetailProduct {
@@ -337,51 +330,119 @@ Equipo ReSkiChile`
 export default function UsuariosPage() {
   const [users, setUsers] = useState<UserWithProducts[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [stats, setStats] = useState({ total: 0, active: 0, pendingAccess: 0, inactive: 0 })
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'pending_access'>('all')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const loadingRef = useRef(false)
+  const requestRef = useRef<AbortController | null>(null)
+  const requestedHealthDomainsRef = useRef(new Set<string>())
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient()
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      setCurrentUserId(authUser?.id ?? null)
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 250)
+    return () => window.clearTimeout(timer)
+  }, [search])
 
-      const res = await fetch('/api/admin/users')
-      const data = await res.json()
-      setUsers(data.users || [])
-      setLoading(false)
+  const hydrateEmailHealth = useCallback(async (pageUsers: UserWithProducts[]) => {
+    const domains = [...new Set(pageUsers
+      .filter(user => !user.email_confirmed_at)
+      .map(user => (user.email.split('@')[1] || '').toLowerCase())
+      .filter(Boolean))]
+      .filter(domain => !requestedHealthDomainsRef.current.has(domain))
+    if (domains.length === 0) return
+    domains.forEach(domain => requestedHealthDomainsRef.current.add(domain))
+    try {
+      const response = await fetch(`/api/admin/email-health?domains=${encodeURIComponent(domains.join(','))}`)
+      const data = await response.json()
+      if (!response.ok || !data.domains) return
+      const health = data.domains as Record<string, boolean>
+      setUsers(current => current.map(user => {
+        if (user.email_confirmed_at) return user
+        const domain = (user.email.split('@')[1] || '').toLowerCase()
+        return domain in health ? { ...user, email_deliverable: health[domain] } : user
+      }))
+    } catch {
+      // Email health is supplemental and must never block the user list.
     }
-    load()
   }, [])
 
+  const load = useCallback(async (offset = 0, append = false) => {
+    if (append && loadingRef.current) return
+    if (!append) requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    loadingRef.current = true
+    setError('')
+    if (append) setLoadingMore(true)
+    else setLoading(true)
+    try {
+      const params = new URLSearchParams({ offset: String(offset) })
+      if (filter !== 'all') params.set('status', filter)
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      const res = await fetch(`/api/admin/users?${params.toString()}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'No pudimos cargar los usuarios')
+      const incoming = (data.users || []) as UserWithProducts[]
+      setUsers(current => append
+        ? [...current, ...incoming.filter(user => !current.some(existing => existing.id === user.id))]
+        : incoming)
+      if (data.stats) setStats(data.stats)
+      setCurrentUserId(data.currentUserId || null)
+      setHasMore(Boolean(data.hasMore))
+      setNextOffset(Number(data.nextOffset || 0))
+      setTotalCount(Number(data.totalCount || 0))
+      void hydrateEmailHealth(incoming)
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === 'AbortError') return
+      setError(loadError instanceof Error ? loadError.message : 'No pudimos cargar los usuarios')
+    } finally {
+      if (requestRef.current === controller) {
+        setLoading(false)
+        setLoadingMore(false)
+        loadingRef.current = false
+      }
+    }
+  }, [debouncedSearch, filter, hydrateEmailHealth])
+
+  useEffect(() => {
+    setExpandedId(null)
+    void load(0)
+  }, [load])
+
+  useEffect(() => () => requestRef.current?.abort(), [])
+
+  const loadMore = useCallback(() => {
+    void load(nextOffset, true)
+  }, [load, nextOffset])
+
   function handleUserDeleted(deletedId: string) {
+    const deleted = users.find(user => user.id === deletedId)
+    const deletedStatus = deleted ? getAdminUserAccessStatus(deleted) : null
     setUsers(prev => prev.filter(u => u.id !== deletedId))
     setExpandedId(prev => (prev === deletedId ? null : prev))
+    setTotalCount(current => Math.max(0, current - 1))
+    setStats(current => ({
+      ...current,
+      total: Math.max(0, current.total - 1),
+      active: deletedStatus === 'active' ? Math.max(0, current.active - 1) : current.active,
+      pendingAccess: deletedStatus === 'pending_access'
+        ? Math.max(0, current.pendingAccess - 1)
+        : current.pendingAccess,
+      inactive: deletedStatus === 'inactive' ? Math.max(0, current.inactive - 1) : current.inactive,
+    }))
   }
 
-  const filtered = useMemo(() => {
-    return users.filter(u => {
-      const pending = isPendingAccess(u)
-      if (filter === 'active' && (u.keep !== true || pending)) return false
-      if (filter === 'inactive' && u.keep !== false) return false
-      if (filter === 'pending_access' && (!pending || u.keep === false)) return false
-      if (search) {
-        const q = search.toLowerCase()
-        const match = [u.email, u.name, u.phone].filter(Boolean).join(' ').toLowerCase()
-        if (!match.includes(q)) return false
-      }
-      return true
-    })
-  }, [users, filter, search])
-
-  const stats = useMemo(() => ({
-    total: users.length,
-    active: users.filter(u => u.keep === true && !isPendingAccess(u)).length,
-    inactive: users.filter(u => u.keep === false).length,
-    pendingAccess: users.filter(u => isPendingAccess(u) && u.keep !== false).length,
-  }), [users])
+  const filtered = users
 
   if (loading) return <AdminTableSkeleton />
 
@@ -391,8 +452,12 @@ export default function UsuariosPage() {
     <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
       <div className="mb-6">
         <h1 className="font-body text-2xl font-black text-gray-900">Usuarios</h1>
-        <p className="text-sm text-gray-500 mt-1">{stats.total} usuarios registrados</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {stats.total} usuarios registrados{totalCount !== stats.total ? ` · ${totalCount} resultados` : ''}
+        </p>
       </div>
+
+      {error && <p className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       {/* Filters */}
       <div className="space-y-3 mb-6">
@@ -495,11 +560,11 @@ export default function UsuariosPage() {
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      {user.keep === false ? (
+                      {getAdminUserAccessStatus(user) === 'inactive' ? (
                         <span className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
                           Inactivo
                         </span>
-                      ) : isPendingAccess(user) ? (
+                      ) : getAdminUserAccessStatus(user) === 'pending_access' ? (
                         <span
                           className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700"
                           title="Sin contraseña definida"
@@ -539,6 +604,13 @@ export default function UsuariosPage() {
           </tbody>
         </table>
       </div>
+      <AdminInfiniteScroll
+        hasMore={hasMore}
+        loading={loadingMore}
+        error={error}
+        onLoadMore={loadMore}
+        label="Cargando más usuarios"
+      />
     </div>
   )
 }
@@ -556,6 +628,8 @@ function Avatar({ url, name, size = 36 }: { url: string | null; name: string | n
       <img
         src={url}
         alt=""
+        loading="lazy"
+        decoding="async"
         className="rounded-full object-cover shrink-0"
         style={{ width: size, height: size }}
       />
@@ -654,9 +728,9 @@ function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; 
         <DetailRow label="Rol" value={user.is_admin ? 'Admin' : 'Usuario'} />
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Estado</p>
-          {user.keep === false ? (
+          {getAdminUserAccessStatus(user) === 'inactive' ? (
             <span className="inline-block mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">Inactivo</span>
-          ) : user.must_change_password ? (
+          ) : getAdminUserAccessStatus(user) === 'pending_access' ? (
             <span className="inline-block mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700">Acceso pendiente</span>
           ) : (
             <span className="inline-block mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Activo</span>
@@ -717,7 +791,7 @@ function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; 
                     <div key={p.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5">
                       {img ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={img.url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                        <img src={img.url} alt="" loading="lazy" decoding="async" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
                           <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -775,7 +849,7 @@ function UserDetailPanel({ user, isSelf, onDeleted }: { user: UserWithProducts; 
                     <div key={c.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg p-2.5">
                       {img ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={img.url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                        <img src={img.url} alt="" loading="lazy" decoding="async" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
                           <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

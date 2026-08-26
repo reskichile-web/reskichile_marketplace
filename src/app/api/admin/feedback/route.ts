@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminErrorResponse, requireAdmin } from '@/lib/admin-security'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { adminPageMeta, parseAdminPageParams } from '@/lib/admin-pagination'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,15 +12,16 @@ interface FeedbackProfile {
   avatar_url: string | null
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireAdmin()
     const service = createServiceRoleClient()
-    const { data, error } = await service
+    const { offset, limit } = parseAdminPageParams(new URL(request.url).searchParams)
+    const { data, count, error } = await service
       .from('feedback_comments')
-      .select('id, user_id, message, rating, page_path, rated_at, created_at')
+      .select('id, user_id, message, rating, page_path, rated_at, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .limit(500)
+      .range(offset, offset + limit - 1)
 
     if (error) throw new Error('feedback query failed')
 
@@ -40,12 +42,15 @@ export async function GET() {
 
     const profileById = new Map(profiles.map(profile => [profile.id, profile]))
 
-    return NextResponse.json(
-      {
-        comments: comments.map(comment => ({
+    const enrichedComments = comments.map(comment => ({
           ...comment,
           user: comment.user_id ? profileById.get(comment.user_id) || null : null,
-        })),
+        }))
+
+    return NextResponse.json(
+      {
+        comments: enrichedComments,
+        ...adminPageMeta(count || 0, offset, enrichedComments.length),
       },
       { headers: { 'Cache-Control': 'no-store, private' } },
     )

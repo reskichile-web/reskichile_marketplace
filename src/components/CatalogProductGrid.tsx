@@ -107,6 +107,7 @@ export default function CatalogProductGrid({ initialProducts, totalCount, queryS
               id={product.id}
               slug={product.slug}
               title={title}
+              brand={product.brand}
               productType={product.product_type}
               price={product.price}
               mainImageUrl={sortedImages[0]?.url}

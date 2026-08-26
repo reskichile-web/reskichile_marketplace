@@ -1,14 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Bot,
   RefreshCw,
   Sparkles,
   Star,
   Table2,
-  UserRound,
 } from 'lucide-react'
+import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 
 interface FeedbackUser {
   id: string
@@ -30,15 +30,15 @@ interface FeedbackComment {
 
 type ViewMode = 'table' | 'free'
 
-const FREE_TONES = [
-  'border-brand-100 bg-brand-50/90',
-  'border-sky-100 bg-sky-50/90',
-  'border-gray-200 bg-white',
-  'border-cyan-100 bg-cyan-50/90',
-  'border-brand-100 bg-white',
-]
-
 const FREE_ROTATIONS = [-1.2, 0.8, -0.4, 1.1, -0.8, 0.4]
+
+const RATING_FACES: Record<number, { emoji: string; label: string }> = {
+  1: { emoji: '😠', label: 'Muy insatisfecho' },
+  2: { emoji: '🙁', label: 'Insatisfecho' },
+  3: { emoji: '😐', label: 'Neutral' },
+  4: { emoji: '🙂', label: 'Satisfecho' },
+  5: { emoji: '😍', label: 'Muy satisfecho' },
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('es-CL', {
@@ -56,17 +56,15 @@ function userName(comment: FeedbackComment) {
 
 function Avatar({ comment, size = 'md' }: { comment: FeedbackComment; size?: 'sm' | 'md' }) {
   const dimension = size === 'sm' ? 'h-8 w-8' : 'h-10 w-10'
-
-  if (comment.user?.avatar_url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={comment.user.avatar_url} alt="" className={`${dimension} shrink-0 rounded-full object-cover`} />
-  }
+  const face = comment.rating ? RATING_FACES[comment.rating] : undefined
 
   return (
-    <span className={`${dimension} flex shrink-0 items-center justify-center rounded-full ${comment.user ? 'bg-brand-100 text-brand-600' : 'bg-white text-brand-400 shadow-sm'}`}>
-      {comment.user
-        ? <UserRound className={size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'} aria-hidden="true" />
-        : <Bot className={size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'} aria-hidden="true" />}
+    <span
+      className={`${dimension} flex shrink-0 items-center justify-center rounded-full border border-gray-100 bg-gray-50 ${size === 'sm' ? 'text-lg' : 'text-2xl'}`}
+      role="img"
+      aria-label={face?.label || 'Sin calificación'}
+    >
+      {face?.emoji || '🤔'}
     </span>
   )
 }
@@ -167,7 +165,7 @@ function FreeView({ comments }: { comments: FeedbackComment[] }) {
         {comments.map((comment, index) => (
           <article
             key={comment.id}
-            className={`mb-7 inline-block w-full break-inside-avoid rounded-[26px] rounded-bl-md border p-4 shadow-[0_10px_28px_rgba(15,23,42,0.08)] ${FREE_TONES[index % FREE_TONES.length]}`}
+            className="mb-7 inline-block w-full break-inside-avoid rounded-[26px] rounded-bl-md border border-gray-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.08)]"
             style={{
               transform: `rotate(${FREE_ROTATIONS[index % FREE_ROTATIONS.length]}deg)`,
               marginTop: `${(index % 3) * 9}px`,
@@ -193,30 +191,65 @@ export default function AdminCommentsPage() {
   const [comments, setComments] = useState<FeedbackComment[]>([])
   const [view, setView] = useState<ViewMode>('free')
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const loadingRef = useRef(false)
+  const requestRef = useRef<AbortController | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (offset = 0, append = false) => {
+    if (append && loadingRef.current) return
+    if (!append) requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    loadingRef.current = true
     setError('')
+    if (append) setLoadingMore(true)
+    else setLoading(true)
     try {
-      const response = await fetch('/api/admin/feedback', { cache: 'no-store' })
+      const response = await fetch(`/api/admin/feedback?offset=${offset}`, {
+        cache: 'no-store',
+        signal: controller.signal,
+      })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'No pudimos cargar los comentarios')
-      setComments(data.comments || [])
+      const incoming = (data.comments || []) as FeedbackComment[]
+      setComments(current => append
+        ? [...current, ...incoming.filter(comment => !current.some(existing => existing.id === comment.id))]
+        : incoming)
+      setHasMore(Boolean(data.hasMore))
+      setNextOffset(Number(data.nextOffset || 0))
+      setTotalCount(Number(data.totalCount || 0))
     } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === 'AbortError') return
       setError(loadError instanceof Error ? loadError.message : 'No pudimos cargar los comentarios')
     } finally {
-      setLoading(false)
+      if (requestRef.current === controller) {
+        setLoading(false)
+        setLoadingMore(false)
+        loadingRef.current = false
+      }
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { void load(0) }, [load])
+
+  useEffect(() => () => requestRef.current?.abort(), [])
+
+  const loadMore = useCallback(() => {
+    void load(nextOffset, true)
+  }, [load, nextOffset])
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-4 md:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-body text-2xl font-black text-gray-900">Comentarios</h1>
-          <p className="mt-1 text-sm text-gray-500">Lo que nos cuentan quienes usan ReskiChile.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Lo que nos cuentan quienes usan ReskiChile{totalCount > 0 ? ` · ${totalCount} comentarios` : ''}.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm" aria-label="Vista de comentarios">
@@ -237,7 +270,7 @@ export default function AdminCommentsPage() {
           </div>
           <button
             type="button"
-            onClick={() => { setLoading(true); void load() }}
+            onClick={() => void load(0)}
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:text-brand-500"
             aria-label="Actualizar comentarios"
           >
@@ -264,6 +297,15 @@ export default function AdminCommentsPage() {
           <TableView comments={comments} />
         ) : (
           <FreeView comments={comments} />
+        )}
+        {!loading && comments.length > 0 && (
+          <AdminInfiniteScroll
+            hasMore={hasMore}
+            loading={loadingMore}
+            error={error}
+            onLoadMore={loadMore}
+            label="Cargando más comentarios"
+          />
         )}
       </div>
     </main>

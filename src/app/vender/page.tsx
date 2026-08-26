@@ -144,7 +144,7 @@ export default function SellPage() {
 
   // Preferences (saved on the users row for logged-in sellers; ignored
   // for anon publishes since there's no users record yet).
-  const [hidePhone, setHidePhone] = useState(false)
+  const [allowWhatsAppContact, setAllowWhatsAppContact] = useState(true)
 
   // Attributes ready to persist: drop empties so the JSONB stays clean
   function cleanedAttributes(): Record<string, unknown> {
@@ -350,7 +350,7 @@ export default function SellPage() {
     await supabase
       .from('users')
       .update({
-        hide_phone: hidePhone,
+        hide_phone: !allowWhatsAppContact,
         notify_chat_email: notifyChatEmail,
         notify_reminders_email: notifyRemindersEmail,
       })
@@ -907,7 +907,8 @@ export default function SellPage() {
           />
 
           {/* Final details: preferences + terms in one white card.
-              The user-level prefs (hide_phone, notify_*) only persist when
+              The user-level prefs (allowWhatsAppContact → !hide_phone,
+              notify_*) only persist when
               there's a users record — for anon publishes we skip them
               server-side. */}
           <div className="border border-gray-200 rounded-xl bg-white p-4 space-y-3">
@@ -916,12 +917,12 @@ export default function SellPage() {
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={hidePhone}
-                  onChange={e => setHidePhone(e.target.checked)}
+                  checked={allowWhatsAppContact}
+                  onChange={e => setAllowWhatsAppContact(e.target.checked)}
                   className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                 />
                 <span className="text-sm text-gray-800">
-                  Ocultar mi número de WhatsApp en mis publicaciones
+                  Permito que los interesados me contacten directamente por WhatsApp
                 </span>
               </label>
             )}

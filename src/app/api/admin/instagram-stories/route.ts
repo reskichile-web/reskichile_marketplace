@@ -146,7 +146,9 @@ export async function GET(request: Request) {
         .from('products')
         .select('id, brand, model, slug, product_type, price, product_images (url, order)')
         .eq('status', 'approved')
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .order('order', { referencedTable: 'product_images', ascending: true })
+        .limit(1, { referencedTable: 'product_images' }),
       service
         .from('instagram_story_captures')
         .select('id, product_id, status, jpeg_public_url, approved_at, generated_at, updated_at, scheduled_local_date, scheduled_slot, scheduled_for, schedule_source, container_id, media_id, published_at, publication_count, last_published_at, attempts, last_error')

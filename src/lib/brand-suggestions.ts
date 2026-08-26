@@ -6,7 +6,7 @@ export const BRAND_SUGGESTIONS: Record<string, string[]> = {
     // Top tier
     'Salomon', 'Atomic', 'Rossignol', 'Head', 'Volkl', 'Nordica', 'Fischer', 'Blizzard', 'K2',
     // Performance
-    'Dynastar', 'Elan', 'Kastle', 'Stockli', 'Augment',
+    'Dynastar', 'Elan', 'Kastle', 'Stockli', 'Majesty', 'Augment',
     // Freeride / Freestyle
     'Armada', 'Line', 'Faction', 'Black Crows', 'Moment', 'DPS', '4FRNT', 'ON3P', 'J Skis', 'Liberty',
     // Touring / Backcountry
@@ -66,7 +66,7 @@ export const BRAND_SUGGESTIONS: Record<string, string[]> = {
     // Ski specific
     'Helly Hansen', 'Spyder', 'Descente', 'Kjus', 'Bogner', 'Phenix', 'Goldbergh',
     // Street / Freestyle
-    '686', 'Volcom', 'Picture', 'Montec', 'Dope Snow', 'Quiksilver', 'Roxy', 'DC', 'Burton',
+    '686', 'Volcom', 'Picture', 'Montec', 'Dope Snow', 'Flylow', 'Quiksilver', 'Roxy', 'DC', 'Burton',
     // Budget
     'Columbia', 'Salomon', 'Wedze', 'Decathlon', 'Lippi', 'Marmot', 'Outdoor Research',
     // Other
@@ -78,7 +78,7 @@ export const BRAND_SUGGESTIONS: Record<string, string[]> = {
     // Ski specific
     'Helly Hansen', 'Spyder', 'Descente', 'Kjus', 'Phenix',
     // Street / Freestyle
-    '686', 'Volcom', 'Picture', 'Montec', 'Dope Snow', 'Quiksilver', 'Roxy', 'DC', 'Burton',
+    '686', 'Volcom', 'Picture', 'Montec', 'Dope Snow', 'Flylow', 'Quiksilver', 'Roxy', 'DC', 'Burton',
     // Budget
     'Columbia', 'Salomon', 'Wedze', 'Decathlon', 'Lippi',
   ],
