@@ -243,11 +243,11 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
           className={`${styles.detailsBlock} ${facts.length <= 2 ? styles.detailsSparse : ''}`}
           data-ig-details-block
         >
-          <FitPrice>{`$${product.price.toLocaleString('es-CL')}`}</FitPrice>
           <p className={styles.negotiablePrice}>
             <MessageCircle className={styles.negotiablePriceIcon} strokeWidth={1.25} aria-hidden="true" />
             <span>Precio conversable</span>
           </p>
+          <FitPrice>{`$${product.price.toLocaleString('es-CL')}`}</FitPrice>
           {facts.length > 0 && (
             <ul className={styles.facts} aria-label="Características destacadas">
               {facts.map((fact, index) => (

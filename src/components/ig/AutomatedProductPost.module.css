@@ -8,7 +8,7 @@
 }
 
 .poster {
-  --ig-content-offset: 0px;
+  --ig-content-offset: 34px;
 
   position: relative;
   isolation: isolate;
@@ -22,7 +22,7 @@
 }
 
 .poster[data-product-layout='long'] {
-  --ig-content-offset: 52px;
+  --ig-content-offset: 86px;
 }
 
 .background,
@@ -150,7 +150,7 @@
 .price {
   --price-font-size: 68px;
 
-  margin: 0 0 12px;
+  margin: 0 0 28px;
   color: #2d83cc;
   font-size: var(--price-font-size);
   font-weight: 800;
@@ -163,7 +163,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 28px;
+  margin: 0 0 12px;
   color: #2674bf;
   font-size: 15px;
   font-weight: 200;
@@ -242,11 +242,11 @@
 .detailsSparse .price {
   --price-font-size: 88px;
 
-  margin-bottom: 14px;
+  margin-bottom: 38px;
 }
 
 .detailsSparse .negotiablePrice {
-  margin-bottom: 38px;
+  margin-bottom: 12px;
 }
 
 .detailsSparse {
@@ -279,11 +279,11 @@
 .poster[data-artwork-shape='narrow'] .detailsSparse .price {
   --price-font-size: 96px;
 
-  margin-bottom: 16px;
+  margin-bottom: 42px;
 }
 
 .poster[data-artwork-shape='narrow'] .detailsSparse .negotiablePrice {
-  margin-bottom: 42px;
+  margin-bottom: 12px;
 }
 
 .poster[data-artwork-shape='narrow'] .detailsSparse .facts {
