@@ -110,6 +110,10 @@ export const BRAND_SUGGESTIONS: Record<string, string[]> = {
     'GoPro', 'DJI', 'Insta360', 'Sony', 'Garmin',
     'Akaso', 'Ricoh', 'Drift', 'Paralenz', 'Feiyu',
   ],
+  equipos_completos: [
+    'Rossignol', 'Salomon', 'Atomic', 'Head', 'Volkl', 'K2', 'Nordica',
+    'Fischer', 'Blizzard', 'Dynastar', 'Elan', 'Burton',
+  ],
   otros: [],
 }
 

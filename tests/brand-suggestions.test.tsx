@@ -46,4 +46,12 @@ describe('binding brand dropdowns', () => {
     expect(getBrandSuggestions('', 'esquis')).toContain('Majesty')
     expect(getBrandSuggestions('', 'parkas')).toContain('Flylow')
   })
+
+  it('uses the square Oakley avatar with its wordmark', () => {
+    expect(getBrandLogoUrl('Oakley')).toBe('/brand-logos/oakley.png')
+  })
+
+  it('resolves the Dragon logo', () => {
+    expect(getBrandLogoUrl('Dragon')).toBe('/brand-logos/dragon.png')
+  })
 })

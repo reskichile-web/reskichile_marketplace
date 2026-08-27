@@ -81,6 +81,7 @@ export const BRAND_DOMAINS: Record<string, string> = {
   'bolle': 'bolle.com',
   'bollé': 'bolle.com',
   'spy': 'spyoptic.com',
+  'dragon': 'dragonalliance.com',
   'sweet protection': 'sweetprotection.com',
 
   // Clothing
@@ -125,7 +126,7 @@ export const BRAND_DOMAINS: Record<string, string> = {
 const CURATED_LOGOS = new Set<string>([
   '4frnt', '686', 'anon', 'arbor', 'arcteryx', 'armada', 'atomic', 'bca',
   'black-crows', 'black-diamond', 'blizzard', 'bolle', 'burton', 'capita', 'columbia',
-  'dakine', 'dalbello', 'dc', 'decathlon', 'deuter', 'dope', 'dope-snow', 'dps',
+  'dakine', 'dalbello', 'dc', 'decathlon', 'deuter', 'dope', 'dope-snow', 'dps', 'dragon',
   'dynafit', 'dynastar', 'elan', 'faction', 'fischer', 'flylow', 'flux',
   'fritschi', 'full-tilt', 'giro', 'gnu', 'gopro', 'head', 'helly-hansen',
   'jones', 'k2', 'kastle', 'lange', 'leki', 'lib-tech', 'line', 'lippi',

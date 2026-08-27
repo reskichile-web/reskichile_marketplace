@@ -59,6 +59,7 @@ const TYPE_ICON_COMPONENTS: Record<string, any> = {
   bolsos: GiDuffelBag,
   equipo_avalanchas: GiRadarSweep,
   camaras_accion: GiPhotoCamera,
+  equipos_completos: GiSkis,
   otros: GiMountaintop,
 }
 
@@ -95,6 +96,7 @@ const BRAND_PLACEHOLDERS: Record<string, string> = {
   bolsos: 'Ej: Burton, Dakine',
   equipo_avalanchas: 'Ej: BCA, Ortovox',
   camaras_accion: 'Ej: GoPro, DJI',
+  equipos_completos: 'Ej: Rossignol, Salomon, Burton',
   otros: 'Ej: Marca del producto',
 }
 
@@ -114,6 +116,7 @@ const MODEL_PLACEHOLDERS: Record<string, string> = {
   bolsos: 'Ej: Gig Wheelie Bag',
   equipo_avalanchas: 'Ej: Tracker S',
   camaras_accion: 'Ej: Hero 12, Max 360',
+  equipos_completos: 'Ej: Experience 77 + Alltrack 90',
   otros: 'Ej: Modelo',
 }
 

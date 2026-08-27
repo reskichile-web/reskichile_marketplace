@@ -30,6 +30,7 @@ const TYPE_ICONS: Record<string, any> = {
   bolsos: GiDuffelBag,
   equipo_avalanchas: GiRadarSweep,
   camaras_accion: GiPhotoCamera,
+  equipos_completos: GiSkis,
   otros: GiMountaintop,
 }
 

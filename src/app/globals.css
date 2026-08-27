@@ -112,6 +112,25 @@
   60%, 100% { transform: translateX(350%) skewX(-20deg); }
 }
 
+@keyframes recent-product-sparkle {
+  0%, 12%, 100% { transform: rotate(12deg) scale(1); }
+  5% { transform: rotate(192deg) scale(1.4); }
+  10% { transform: rotate(372deg) scale(1); }
+}
+
+.recent-product-sparkle {
+  transform-origin: center;
+  animation: recent-product-sparkle 5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recent-product-sparkle {
+    animation: none;
+    transform: rotate(12deg);
+  }
+}
+
 .shine-beam {
   position: relative;
   overflow: hidden;

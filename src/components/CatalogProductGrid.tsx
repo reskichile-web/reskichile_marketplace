@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ProductCard from '@/components/ProductCard'
 import type { CatalogProduct } from '@/lib/catalog'
 
@@ -16,6 +16,7 @@ interface Props {
   initialProducts: CatalogProduct[]
   totalCount: number
   queryString: string
+  recentProductIds?: string[]
 }
 
 function productBadge(product: CatalogProduct): string | undefined {
@@ -31,7 +32,7 @@ function productBadge(product: CatalogProduct): string | undefined {
   return undefined
 }
 
-export default function CatalogProductGrid({ initialProducts, totalCount, queryString }: Props) {
+export default function CatalogProductGrid({ initialProducts, totalCount, queryString, recentProductIds = [] }: Props) {
   const [products, setProducts] = useState(initialProducts)
   const [nextOffset, setNextOffset] = useState(initialProducts.length)
   const [hasMore, setHasMore] = useState(initialProducts.length < totalCount)
@@ -40,6 +41,10 @@ export default function CatalogProductGrid({ initialProducts, totalCount, queryS
   const sentinelRef = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
   const requestRef = useRef<AbortController | null>(null)
+  const recentBadgePositions = useMemo(
+    () => new Map(recentProductIds.map((id, index) => [id, index])),
+    [recentProductIds],
+  )
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return
@@ -113,6 +118,9 @@ export default function CatalogProductGrid({ initialProducts, totalCount, queryS
               mainImageUrl={sortedImages[0]?.url}
               secondImageUrl={sortedImages[1]?.url}
               badge={productBadge(product)}
+              recentlyPublished={recentBadgePositions.has(product.id)}
+              recentBadgeIndex={recentBadgePositions.get(product.id)}
+              sealed={product.condition === 'nuevo_sellado'}
               priority={index < 4}
             />
           )

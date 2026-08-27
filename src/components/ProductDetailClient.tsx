@@ -79,7 +79,7 @@ export function orderMainProductAttributes(
 }
 
 export function shouldDisplayMainAttribute(field: AttributeField, value: unknown): boolean {
-  if (field.key === 'boa') return value === true
+  if (field.key === 'boa' || field.key === 'telescopicos') return value === true
   if (value === undefined || value === '' || value === null) return false
   return !Array.isArray(value) || value.length > 0
 }

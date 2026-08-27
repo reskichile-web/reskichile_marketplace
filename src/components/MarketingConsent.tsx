@@ -170,20 +170,20 @@ export default function MarketingConsent() {
         Usamos cookies esenciales y, con tu permiso, Meta Pixel para mejorar nuestros anuncios. Rechazar no limita tu experiencia.
       </p>
 
-      <div className="mt-4 grid grid-cols-[minmax(0,1.8fr)_minmax(72px,0.7fr)] gap-2">
-        <button
-          type="button"
-          onClick={() => saveChoice('granted')}
-          className="min-h-11 bg-brand-500 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-        >
-          Aceptar todo
-        </button>
+      <div className="mt-4 grid grid-cols-[72px_minmax(0,1fr)] gap-2 sm:grid-cols-[76px_minmax(0,1fr)]">
         <button
           type="button"
           onClick={() => saveChoice('denied')}
           className="min-h-11 border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
         >
           No
+        </button>
+        <button
+          type="button"
+          onClick={() => saveChoice('granted')}
+          className="min-h-11 w-full bg-brand-500 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        >
+          Aceptar todo
         </button>
         <Link
           href="/privacidad"

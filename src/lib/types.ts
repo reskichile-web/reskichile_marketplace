@@ -2,7 +2,8 @@ export type ProductType =
   | 'esquis' | 'snowboards' | 'botas_esqui' | 'botas_snowboard'
   | 'bastones' | 'cascos' | 'guantes' | 'fijaciones'
   | 'parkas' | 'pantalones' | 'antiparras' | 'mochilas'
-  | 'bolsos' | 'equipo_avalanchas' | 'camaras_accion' | 'otros'
+  | 'bolsos' | 'equipo_avalanchas' | 'camaras_accion'
+  | 'equipos_completos' | 'otros'
 
 export type Condition = 'nuevo_sellado' | 'nuevo' | 'usado_como_nuevo' | 'usado_buen_estado' | 'usado_aceptable'
 export type ProductStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'sold' | 'archived'
@@ -19,7 +20,7 @@ export interface User {
 
 export interface Product {
   id: string
-  seller_id: string
+  seller_id: string | null
   product_type: ProductType
   brand: string
   model: string | null

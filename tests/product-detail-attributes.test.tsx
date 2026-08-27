@@ -30,6 +30,14 @@ describe('product detail attributes', () => {
     expect(shouldDisplayMainAttribute(boa, undefined)).toBe(false)
   })
 
+  it('hides the telescopic-poles attribute when its value is false', () => {
+    const telescopic = PRODUCT_ATTRIBUTES.bastones.find(field => field.key === 'telescopicos')!
+
+    expect(shouldDisplayMainAttribute(telescopic, true)).toBe(true)
+    expect(shouldDisplayMainAttribute(telescopic, false)).toBe(false)
+    expect(shouldDisplayMainAttribute(telescopic, undefined)).toBe(false)
+  })
+
   it('renders product thumbnails without the metered Next image optimizer', () => {
     const url = 'https://storage.example/product.jpg'
     const html = renderToStaticMarkup(

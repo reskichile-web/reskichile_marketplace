@@ -124,6 +124,13 @@ export function productFacts(product: AutomatedPostProduct): ProductFact[] {
         productFact('GÉNERO', genderFact(attributes.genero)),
       )
       break
+    case 'equipos_completos':
+      facts.push(
+        productFact('DEPORTE', value('deporte')?.toUpperCase()),
+        productFact('NIVEL', value('nivel')?.toUpperCase()),
+        productFact('GÉNERO', genderFact(attributes.genero)),
+      )
+      break
     case 'cascos':
       facts.push(
         productFact('TALLA', value('talla')?.toUpperCase()),

@@ -121,12 +121,15 @@ GRANT UPDATE (
 -- ============================================
 CREATE TABLE public.products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  seller_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+  -- Anonymous listings keep this null and store their WhatsApp/email in
+  -- anon_contact. Registered sellers continue to use this foreign key.
+  seller_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
   product_type TEXT NOT NULL CHECK (product_type IN (
     'esquis', 'snowboards', 'botas_esqui', 'botas_snowboard',
     'bastones', 'cascos', 'guantes', 'fijaciones',
     'parkas', 'pantalones', 'antiparras', 'mochilas',
-    'bolsos', 'equipo_avalanchas', 'camaras_accion', 'otros'
+    'bolsos', 'equipo_avalanchas', 'camaras_accion',
+    'equipos_completos', 'otros'
   )),
   brand TEXT NOT NULL,
   model TEXT,
@@ -137,7 +140,15 @@ CREATE TABLE public.products (
   price INTEGER NOT NULL CHECK (price > 0),
   region TEXT NOT NULL,
   comuna TEXT NOT NULL,
-  attributes JSONB DEFAULT '{}',
+  attributes JSONB DEFAULT '{}'
+    CHECK (
+      product_type NOT IN ('otros', 'equipos_completos')
+      OR COALESCE(attributes, '{}'::JSONB) = '{}'::JSONB
+    )
+    CHECK (
+      product_type <> 'mochilas'
+      OR NOT (COALESCE(attributes, '{}'::JSONB) ? 'compartimiento_avalancha')
+    ),
   status TEXT DEFAULT 'draft' CHECK (status IN (
     'draft', 'pending', 'approved', 'rejected', 'sold', 'archived'
   )),

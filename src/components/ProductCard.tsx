@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { PackageCheck } from 'lucide-react'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { track } from '@/lib/track'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
@@ -16,13 +17,16 @@ interface Props {
   mainImageUrl?: string
   secondImageUrl?: string
   badge?: string
+  recentlyPublished?: boolean
+  recentBadgeIndex?: number
+  sealed?: boolean
   /** Prioritize only the cards visible in the first viewport. */
   priority?: boolean
   /** When set, clicking the card beacons a 'click' event with this name (e.g. 'product_card' on the landing) */
   trackClickAs?: string
 }
 
-export default function ProductCard({ id, slug, title, brand, productType, price, mainImageUrl, secondImageUrl, badge, priority = false, trackClickAs }: Props) {
+export default function ProductCard({ id, slug, title, brand, productType, price, mainImageUrl, secondImageUrl, badge, recentlyPublished = false, recentBadgeIndex = 0, sealed = false, priority = false, trackClickAs }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondRequested, setSecondRequested] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
@@ -43,10 +47,37 @@ export default function ProductCard({ id, slug, title, brand, productType, price
       }}
     >
       <div className="relative aspect-[4/5] bg-gray-50 overflow-hidden">
-        {badge && (
-          <span className="absolute top-3 right-3 z-10 text-[10px] tracking-widest font-body font-bold uppercase text-gray-600">
-            {badge}
+        {recentlyPublished && (
+          <span className="absolute left-2.5 top-2.5 z-10 -skew-x-12 rounded-[3px] bg-brand-400 px-2 py-1 shadow-sm md:left-3 md:top-3">
+            <span className="flex skew-x-12 items-center gap-1 whitespace-nowrap">
+              <svg
+                className="recent-product-sparkle h-3 w-3 shrink-0 text-white"
+                style={{ animationDelay: `${recentBadgeIndex}s` }}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M12 2.5 14.55 9.45 21.5 12l-6.95 2.55L12 21.5l-2.55-6.95L2.5 12l6.95-2.55Z" fill="currentColor" />
+              </svg>
+              <span className="font-body text-[7px] font-bold uppercase tracking-wider text-white md:text-[8px]">
+                Nuevo
+              </span>
+            </span>
           </span>
+        )}
+        {(sealed || badge) && (
+          <div className="absolute right-2.5 top-2.5 z-10 flex flex-col items-end gap-1.5 md:right-3 md:top-3">
+            {sealed && (
+              <span className="inline-flex items-center gap-1 rounded-[3px] border border-gray-200 bg-white px-2 py-1 font-body text-[7px] font-bold uppercase tracking-wider text-gray-900 shadow-sm md:text-[8px]">
+                <PackageCheck className="h-3 w-3 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                Sellado
+              </span>
+            )}
+            {badge && (
+              <span className="font-body text-[10px] font-bold uppercase tracking-widest text-gray-600">
+                {badge}
+              </span>
+            )}
+          </div>
         )}
         {mainImageUrl && !imgError ? (
           <>

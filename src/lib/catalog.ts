@@ -42,6 +42,7 @@ export interface CatalogProduct {
   brand: string | null
   model: string | null
   price: number
+  condition?: string
   attributes: Record<string, unknown> | null
   product_images: { url: string; order: number }[]
 }

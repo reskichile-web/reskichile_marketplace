@@ -13,6 +13,7 @@ import { computeSkiCounts } from '@/lib/ski-filters'
 import { computeBootCounts } from '@/lib/boot-filters'
 import { hasCatalogAttributeFilters, parseCatalogFilters } from '@/lib/catalog'
 import { fetchCatalogMetadata, fetchCatalogProductPage } from '@/lib/catalog-server'
+import { getRecentlyPublishedProductIds } from '@/lib/recent-products'
 
 export const metadata: Metadata = {
   title: 'Catálogo - ReskiChile',
@@ -76,6 +77,7 @@ export default async function CatalogPage({ searchParams }: Props) {
   ])
   const products = productPage.products
   const totalCount = productPage.totalCount
+  const recentProductIds = [...getRecentlyPublishedProductIds(allProducts)]
 
   const conditionCounts: Record<string, number> = {}
   const regionCounts: Record<string, number> = {}
@@ -229,6 +231,7 @@ export default async function CatalogPage({ searchParams }: Props) {
               initialProducts={products}
               totalCount={totalCount}
               queryString={incrementalQuery}
+              recentProductIds={recentProductIds}
             />
           )}
         </div>

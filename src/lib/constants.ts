@@ -14,6 +14,7 @@ export const PRODUCT_TYPES: Record<string, string> = {
   bolsos: 'Bolsos',
   equipo_avalanchas: 'Equipo de Avalanchas',
   camaras_accion: 'Cámaras de Acción',
+  equipos_completos: 'Equipos completos',
   otros: 'Otros',
 }
 
@@ -67,6 +68,7 @@ export const TIPO_CONEXION_BOTAS_ESQUI = ['Alpina (Normal)', 'Randonnée']
 export const TIPO_CONEXION_BOTAS_SNOWBOARD = ['Común', 'Step On']
 export const TIPO_EQUIPO_AVALANCHAS = ['Arva', 'Pala', 'Sonda']
 export const TIPO_GRABACION = ['360', 'Normal']
+export const DEPORTES_EQUIPO_COMPLETO = ['Esquí', 'Snowboard']
 
 // Las botas se publican y filtran por la misma banda Mondo. Muchas marcas
 // comparten carcasa entre la talla entera y la media talla, por eso el valor
@@ -133,6 +135,12 @@ export const TIPO_ESQUI_CHOICES: { value: string; label: string }[] = [
   { value: 'powder', label: 'Powder' },
   { value: 'freestyle', label: 'Freestyle' },
   { value: 'touring', label: 'Randoné' },
+]
+
+export const NIVEL_EQUIPO_CHOICES: { value: string; label: string }[] = [
+  { value: 'principiante', label: 'Principiante' },
+  { value: 'intermedio', label: 'Intermedio' },
+  { value: 'avanzado', label: 'Avanzado' },
 ]
 
 const GENERO_FIELD: AttributeField = {
@@ -231,7 +239,6 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
   mochilas: [
     GENERO_FIELD,
     { key: 'capacidad_litros', label: 'Capacidad (Litros)', type: 'text', required: true, placeholder: 'Ej: 40' },
-    { key: 'compartimiento_avalancha', label: 'Compartimiento para equipo de avalancha', type: 'boolean', required: true },
   ],
   bolsos: [
     GENERO_FIELD,
@@ -246,7 +253,10 @@ export const PRODUCT_ATTRIBUTES: Record<string, AttributeField[]> = {
     GENERO_FIELD,
     { key: 'tipo_grabacion', label: 'Tipo de grabación', type: 'select', required: true, options: TIPO_GRABACION },
   ],
-  otros: [
-    GENERO_FIELD,
-  ],
+  // Packs are described as a whole in their title and description. Their
+  // individual components vary too much for stable structured attributes.
+  equipos_completos: [],
+  // "Otros" is intentionally unstructured: its name and description carry
+  // the product information, without category-specific attributes.
+  otros: [],
 }

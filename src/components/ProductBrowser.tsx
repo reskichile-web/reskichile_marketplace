@@ -32,6 +32,7 @@ const SORT_LABELS: Record<SortKey, string> = {
 
 interface Props {
   products: Product[]
+  recentProductIds?: string[]
 }
 
 function FilterSection({
@@ -129,12 +130,16 @@ function MobileCheckItem({ label, checked, onChange }: { label: string; checked:
   )
 }
 
-export default function ProductBrowser({ products }: Props) {
+export default function ProductBrowser({ products, recentProductIds = [] }: Props) {
   const [sort, setSort] = useState<SortKey>('recent')
   const [typeFilters, setTypeFilters] = useState<Set<string>>(new Set())
   const [conditionFilters, setConditionFilters] = useState<Set<string>>(new Set())
   const [brandFilters, setBrandFilters] = useState<Set<string>>(new Set())
   const [regionFilters, setRegionFilters] = useState<Set<string>>(new Set())
+  const recentBadgePositions = useMemo(
+    () => new Map(recentProductIds.map((id, index) => [id, index])),
+    [recentProductIds],
+  )
 
   const brands = useMemo(() => {
     const set = new Set(products.map(p => p.brand))
@@ -442,6 +447,9 @@ export default function ProductBrowser({ products }: Props) {
                       price={product.price}
                       mainImageUrl={sorted[0]?.url}
                       secondImageUrl={sorted[1]?.url}
+                      recentlyPublished={recentBadgePositions.has(product.id)}
+                      recentBadgeIndex={recentBadgePositions.get(product.id)}
+                      sealed={product.condition === 'nuevo_sellado'}
                       trackClickAs="product_card"
                     />
                   </StaggerItem>
