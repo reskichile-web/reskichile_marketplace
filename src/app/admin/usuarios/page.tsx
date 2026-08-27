@@ -1,13 +1,17 @@
 import { redirect } from 'next/navigation'
 import AdminUsersClient from '@/components/admin/AdminUsersClient'
-import { getAuthUser } from '@/lib/auth'
+import { AdminRequestError } from '@/lib/admin-security'
 import { getAdminUsersPage } from '@/lib/admin-view-data'
 
 export const dynamic = 'force-dynamic'
 
 export default async function UsuariosPage() {
-  const { user, isAdmin } = await getAuthUser()
-  if (!user || !isAdmin) redirect('/')
-  const initialData = await getAdminUsersPage()
+  let initialData
+  try {
+    initialData = await getAdminUsersPage()
+  } catch (error) {
+    if (error instanceof AdminRequestError) redirect('/')
+    throw error
+  }
   return <AdminUsersClient initialData={initialData} />
 }

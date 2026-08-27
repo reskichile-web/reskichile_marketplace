@@ -7,6 +7,7 @@ import {
 import { getInstagramPublishingConfig } from '@/lib/instagram/publishing-config'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { adminPageMeta, type AdminPageMeta } from '@/lib/admin-pagination'
+import { AdminRequestError } from '@/lib/admin-security'
 
 export interface AdminDashboardPendingProduct {
   id: string
@@ -67,6 +68,13 @@ export interface AdminDashboardData {
   visits: AdminDashboardVisit[]
   recentMessages: AdminRecentMessage[]
   recentWhatsappClicks: AdminRecentWhatsappClick[]
+}
+
+export interface AdminViewerData {
+  userId: string
+  email: string
+  userName: string | null
+  avatarUrl: string | null
 }
 
 export interface AdminUserListItem {
@@ -143,11 +151,31 @@ function asRecord(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>
 }
 
+function throwAdminReadError(error: { code?: string; message?: string }, label: string): never {
+  if (
+    error.code === '42501'
+    || error.code === 'PGRST301'
+    || error.code === 'PGRST302'
+    || error.message?.toLowerCase().includes('administrator access required')
+    || error.message?.toLowerCase().includes('permission denied')
+  ) {
+    throw new AdminRequestError('No autorizado', 403, 'FORBIDDEN')
+  }
+  throw new Error(`${label} failed`)
+}
+
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const client = createServerSupabaseClient()
   const { data, error } = await client.rpc('admin_dashboard_snapshot')
-  if (error) throw new Error('admin dashboard snapshot failed')
+  if (error) throwAdminReadError(error, 'admin dashboard snapshot')
   return asRecord(data, 'admin dashboard') as unknown as AdminDashboardData
+}
+
+export async function getAdminViewer(): Promise<AdminViewerData> {
+  const client = createServerSupabaseClient()
+  const { data, error } = await client.rpc('admin_viewer')
+  if (error) throwAdminReadError(error, 'admin viewer')
+  return asRecord(data, 'admin viewer') as unknown as AdminViewerData
 }
 
 export async function getAdminUsersPage(options: {
@@ -165,7 +193,7 @@ export async function getAdminUsersPage(options: {
     p_status: options.status || 'all',
     p_search: options.search || '',
   })
-  if (error) throw new Error('admin users page failed')
+  if (error) throwAdminReadError(error, 'admin users page')
   const payload = asRecord(data, 'admin users')
   const users = (payload.users || []) as AdminUserListItem[]
   const totalCount = Number(payload.totalCount || 0)
@@ -196,7 +224,7 @@ export async function getAdminProductsPage(options: {
     p_product_type: options.productType || '',
     p_search: options.search || '',
   })
-  if (error) throw new Error('admin products page failed')
+  if (error) throwAdminReadError(error, 'admin products page')
   const payload = asRecord(data, 'admin products')
   const products = (payload.products || []) as AdminProductListItem[]
   const totalCount = Number(payload.totalCount || 0)
@@ -245,7 +273,7 @@ export async function getAdminInstagramStories(options: {
     p_history_start: historyStart,
     p_include_uncaptured: Boolean(options.includeUncaptured),
   })
-  if (error) throw new Error('admin instagram stories failed')
+  if (error) throwAdminReadError(error, 'admin instagram stories')
   const payload = asRecord(data, 'admin instagram stories')
   return {
     ok: true,

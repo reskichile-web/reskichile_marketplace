@@ -1,13 +1,17 @@
 import { redirect } from 'next/navigation'
 import AdminProductsClient from '@/components/admin/AdminProductsClient'
-import { getAuthUser } from '@/lib/auth'
+import { AdminRequestError } from '@/lib/admin-security'
 import { getAdminProductsPage } from '@/lib/admin-view-data'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PublicacionesPage() {
-  const { user, isAdmin } = await getAuthUser()
-  if (!user || !isAdmin) redirect('/')
-  const initialData = await getAdminProductsPage()
+  let initialData
+  try {
+    initialData = await getAdminProductsPage()
+  } catch (error) {
+    if (error instanceof AdminRequestError) redirect('/')
+    throw error
+  }
   return <AdminProductsClient initialData={initialData} />
 }

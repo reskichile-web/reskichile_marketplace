@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { adminErrorResponse, requireAdmin } from '@/lib/admin-security'
+import { adminErrorResponse } from '@/lib/admin-security'
 import { getAdminInstagramStories } from '@/lib/admin-view-data'
 
 export const runtime = 'nodejs'
@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin()
     const searchParams = new URL(request.url).searchParams
     const data = await getAdminInstagramStories({
       historyDays: Number(searchParams.get('historyDays') || 0),

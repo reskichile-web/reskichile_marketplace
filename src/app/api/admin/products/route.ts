@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { adminErrorResponse, requireAdmin } from '@/lib/admin-security'
+import { adminErrorResponse } from '@/lib/admin-security'
 import { getAdminProductsPage } from '@/lib/admin-view-data'
 import { parseAdminPageParams, sanitizeAdminSearch } from '@/lib/admin-pagination'
 
@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin()
     const searchParams = new URL(request.url).searchParams
     const { offset, limit } = parseAdminPageParams(searchParams)
     const data = await getAdminProductsPage({

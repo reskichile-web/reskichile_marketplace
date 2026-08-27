@@ -59,10 +59,16 @@ SET LOCAL ROLE authenticated;
 DO $$
 DECLARE
   dashboard JSONB := public.admin_dashboard_snapshot();
+  viewer JSONB := public.admin_viewer();
   users_page JSONB := public.admin_users_page(0, 1, 'all', '');
   products_page JSONB := public.admin_products_page(0, 30, 'all', '', '', '');
   instagram_page JSONB := public.admin_instagram_stories(current_date, TRUE);
 BEGIN
+  IF viewer->>'email' <> 'admin@example.com'
+    OR viewer->>'userName' <> 'Admin' THEN
+    RAISE EXCEPTION 'admin viewer returned unexpected data: %', viewer;
+  END IF;
+
   IF (dashboard #>> '{stats,total}')::INTEGER <> 2
     OR jsonb_array_length(dashboard->'pending') <> 1
     OR jsonb_array_length(dashboard->'visits') <> 1 THEN
@@ -93,6 +99,7 @@ RESET ROLE;
 DO $$
 BEGIN
   IF has_function_privilege('anon', 'public.admin_dashboard_snapshot()', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.admin_viewer()', 'EXECUTE')
     OR has_function_privilege('anon', 'public.admin_users_page(integer,integer,text,text)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.admin_products_page(integer,integer,text,text,text,text)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.admin_instagram_stories(date,boolean)', 'EXECUTE') THEN

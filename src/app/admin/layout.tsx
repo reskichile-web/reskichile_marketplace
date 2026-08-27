@@ -1,5 +1,6 @@
 import AdminNav from '@/components/AdminNav'
-import { getAuthUser } from '@/lib/auth'
+import { AdminRequestError } from '@/lib/admin-security'
+import { getAdminViewer } from '@/lib/admin-view-data'
 import { redirect } from 'next/navigation'
 
 const ROLE_BY_EMAIL: Record<string, string> = {
@@ -9,13 +10,18 @@ const ROLE_BY_EMAIL: Record<string, string> = {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, userName, avatarUrl } = await getAuthUser()
-  if (!user || !isAdmin) redirect('/')
-  const email = user?.email?.toLowerCase() ?? ''
+  let viewer
+  try {
+    viewer = await getAdminViewer()
+  } catch (error) {
+    if (error instanceof AdminRequestError) redirect('/')
+    throw error
+  }
+  const email = viewer.email.toLowerCase()
   const role = ROLE_BY_EMAIL[email] ?? 'Admin'
   return (
     <>
-      <AdminNav userName={userName ?? 'Admin'} role={role} avatarUrl={avatarUrl} />
+      <AdminNav userName={viewer.userName ?? 'Admin'} role={role} avatarUrl={viewer.avatarUrl} />
       <div className="h-16 md:h-20" />
       <div className="min-h-[calc(100vh-4rem)] md:ml-60 md:min-h-[calc(100vh-5rem)]">
         {children}
