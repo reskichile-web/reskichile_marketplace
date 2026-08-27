@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   productFacts,
+  productStoryTitle,
   type AutomatedPostProduct,
 } from '@/components/ig/AutomatedProductPost'
 
@@ -96,6 +97,23 @@ describe('automated product post facts', () => {
     }))).toEqual([
       { label: 'EQUIPO', value: 'SONDA' },
       { label: 'USO', value: 'SEGURIDAD EN MONTAÑA' },
+    ])
+  })
+
+  it('uses the manual story copy for the Rossignol pack', () => {
+    const rossignolPack = product({
+      id: 'b35e3c7d-b1c4-48d1-90cf-265767561da9',
+      product_type: 'equipos_completos',
+      model: 'Experience 77 + Alltrack 90',
+      attributes: {},
+    })
+
+    expect(productStoryTitle(rossignolPack)).toBe(
+      'Rossignol Experience 77 + Alltrack 90 + Bastones Pursuit',
+    )
+    expect(productFacts(rossignolPack)).toEqual([
+      { label: 'ESQUÍS', value: 'EXPERIENCE 77 · 160 CM' },
+      { label: 'BOTAS', value: 'ALLTRACK 90 · MONDO 26.5' },
     ])
   })
 })

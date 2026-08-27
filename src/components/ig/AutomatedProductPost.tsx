@@ -53,6 +53,26 @@ interface ProductFact {
   emphasized?: boolean
 }
 
+interface ProductStoryOverride {
+  title?: string
+  facts?: ProductFact[]
+}
+
+const PRODUCT_STORY_OVERRIDES: Record<string, ProductStoryOverride> = {
+  'b35e3c7d-b1c4-48d1-90cf-265767561da9': {
+    title: 'Rossignol Experience 77 + Alltrack 90 + Bastones Pursuit',
+    facts: [
+      { label: 'ESQUÍS', value: 'EXPERIENCE 77 · 160 CM' },
+      { label: 'BOTAS', value: 'ALLTRACK 90 · MONDO 26.5' },
+    ],
+  },
+}
+
+export function productStoryTitle(product: AutomatedPostProduct): string {
+  return PRODUCT_STORY_OVERRIDES[product.id]?.title
+    || [product.brand, product.model].filter(Boolean).join(' ')
+}
+
 function productFact(
   label: string,
   value: string | undefined,
@@ -84,6 +104,9 @@ function skiBindingsFact(attributes: Record<string, unknown>): ProductFact | und
 }
 
 export function productFacts(product: AutomatedPostProduct): ProductFact[] {
+  const overriddenFacts = PRODUCT_STORY_OVERRIDES[product.id]?.facts
+  if (overriddenFacts) return overriddenFacts.slice(0, 3)
+
   const attributes = product.attributes || {}
   const facts: Array<ProductFact | undefined> = []
   const value = (key: string) => firstValue(attributes[key])
@@ -199,7 +222,7 @@ export function productFacts(product: AutomatedPostProduct): ProductFact[] {
 }
 
 export default function AutomatedProductPost({ product }: { product: AutomatedPostProduct }) {
-  const title = [product.brand, product.model].filter(Boolean).join(' ')
+  const title = productStoryTitle(product)
   const category = PRODUCT_TYPES[product.product_type] || product.product_type
   const sortedImages = [...(product.product_images || [])].sort((a, b) => a.order - b.order)
   const productImage = sortedImages.find(image => /\.png(?:\?|$)/i.test(image.url))?.url || sortedImages[0]?.url
