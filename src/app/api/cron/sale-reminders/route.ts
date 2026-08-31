@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { sendEmail } from '@/lib/email/send'
-import { buildSaleReminderEmail } from '@/lib/email/templates'
-import { generateToken } from '@/lib/sold'
 import { saleReminderCutoff } from '@/lib/sale-reminder'
+import {
+  sendSaleReminderForProduct,
+  type SaleReminderProduct,
+} from '@/lib/sale-reminder-email'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -44,39 +45,17 @@ export async function GET(request: Request) {
   let skipped = 0
 
   for (const p of products ?? []) {
-    const sellerRaw = p.users as { name: string | null; email: string | null } | { name: string | null; email: string | null }[] | null
-    const seller = Array.isArray(sellerRaw) ? sellerRaw[0] ?? null : sellerRaw
-    const anonEmail = p.anon_contact && p.anon_contact.includes('@') ? p.anon_contact.trim() : null
-    const recipient = seller?.email || anonEmail
-    if (!recipient) { skipped++; continue }
-
-    // Mint the two one-click tokens for this reminder.
-    const confirmToken = generateToken()
-    const availableToken = generateToken()
-    await admin.from('product_action_tokens').insert([
-      { token: confirmToken, product_id: p.id, action: 'confirm_sold' },
-      { token: availableToken, product_id: p.id, action: 'still_available' },
-    ])
-
-    const images = (p.product_images as { url: string; order: number }[] | null) ?? []
-    const imageUrl = images.slice().sort((a, b) => a.order - b.order)[0]?.url ?? null
-
-    const { subject, html, text } = buildSaleReminderEmail({
-      brand: p.brand,
-      model: p.model,
-      price: p.price,
-      imageUrl,
-      // Each link carries the sibling token (?alt=) so its page can offer the
-      // opposite choice ("¿te equivocaste?") without re-minting tokens.
-      soldPath: `/p/vendi/${confirmToken}?alt=${availableToken}`,
-      availablePath: `/p/disponible/${availableToken}?alt=${confirmToken}`,
-    })
-
-    const res = await sendEmail({ to: recipient, subject, html, text })
-    if (res.ok) {
-      await admin.from('products').update({ sale_reminder_sent_at: new Date().toISOString() }).eq('id', p.id)
+    const result = await sendSaleReminderForProduct(
+      admin,
+      p as unknown as SaleReminderProduct,
+    )
+    if (result.ok) {
       sent++
     } else {
+      console.error('[sale-reminder-cron] Reminder skipped', {
+        productId: p.id,
+        code: result.code,
+      })
       skipped++
     }
   }
