@@ -885,7 +885,7 @@ Sebastián`
 
   function openEmailModal() {
     if (!seller?.email) return
-    setEmailSubject(`Estado de tu publicación: ${title}`)
+    setEmailSubject(`¿Vendiste tu ${title}?`)
     setEmailBodyDraft(defaultEmailBody)
     setSendStatus('idle')
     setErrorMsg('')
