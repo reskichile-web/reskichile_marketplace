@@ -28,7 +28,7 @@ export type SaleReminderSendResult =
     }
   | {
       ok: false
-      code: 'PRODUCT_NOT_FOUND' | 'NO_RECIPIENT' | 'TOKEN_CREATE_FAILED' | 'EMAIL_SEND_FAILED'
+      code: 'NO_RECIPIENT' | 'TOKEN_CREATE_FAILED' | 'EMAIL_SEND_FAILED'
       error: string
     }
 
@@ -107,25 +107,4 @@ export async function sendSaleReminderForProduct(
     sentAt,
     trackingUpdated: !trackingError,
   }
-}
-
-export async function sendSaleReminderForProductId(
-  admin: SupabaseClient,
-  productId: string,
-): Promise<SaleReminderSendResult> {
-  const { data, error } = await admin
-    .from('products')
-    .select('id, brand, model, price, anon_contact, product_images(url, "order"), users:seller_id(email)')
-    .eq('id', productId)
-    .maybeSingle()
-
-  if (error || !data) {
-    return {
-      ok: false,
-      code: 'PRODUCT_NOT_FOUND',
-      error: 'Producto no encontrado',
-    }
-  }
-
-  return sendSaleReminderForProduct(admin, data as unknown as SaleReminderProduct)
 }

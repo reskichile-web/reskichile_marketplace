@@ -624,14 +624,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
                             {/* Action buttons */}
                             <div className="flex items-center gap-2 flex-wrap">
                               {product.status !== 'sold' && (
-                                <ContactSellerButton
-                                  product={product}
-                                  onReminderSent={(sentAt) => {
-                                    setProducts(current => current.map(item => item.id === product.id
-                                      ? { ...item, sale_reminder_sent_at: sentAt }
-                                      : item))
-                                  }}
-                                />
+                                <ContactSellerButton product={product} />
                               )}
                               <InstagramCopyButton product={product} />
                             </div>
@@ -850,33 +843,37 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
   )
 }
 
-function ContactSellerButton({
-  product,
-  onReminderSent,
-}: {
-  product: AdminProduct
-  onReminderSent: (sentAt: string) => void
-}) {
+function ContactSellerButton({ product }: { product: AdminProduct }) {
   const [open, setOpen] = useState(false)
   const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBodyDraft, setEmailBodyDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sent' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [successPopup, setSuccessPopup] = useState(false)
 
   const seller = product.users
   const title = [product.brand, product.model].filter(Boolean).join(' ')
-  const anonEmail = product.anon_contact?.includes('@') ? product.anon_contact.trim() : null
-  const recipient = seller?.email?.trim() || anonEmail
-  const emailSubject = `¿Vendiste tu ${title}?`
-  const productImageUrl = (product.product_images || [])
-    .slice()
-    .sort((a, b) => a.order - b.order)[0]?.url
+  const sellerFirstName = seller?.name?.split(' ')[0] || ''
+  const greeting = sellerFirstName ? `Hola ${sellerFirstName},` : 'Hola,'
 
   const wsMessage = `Hola, te escribimos desde ReSkiChile.
 
 Queríamos consultarte por el estado de tu publicación de ${title} en nuestro catálogo. ¿Continúa disponible o ya la vendiste?
 
 Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
+
+  const defaultEmailBody = `${greeting}
+
+Soy Sebastián del equipo de ventas de ReSkiChile.
+
+Te escribo para saber el estado actual de tu publicación **${title}**. ¿Sigue disponible o ya la vendiste?
+
+Si ya la vendiste, agradecería mucho que me compartieras el precio final de venta para mantener nuestros registros al día.
+
+Saludos,
+Sebastián`
 
   function openWhatsApp() {
     const wa = phoneToWhatsApp(seller?.phone)
@@ -887,33 +884,46 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
   }
 
   function openEmailModal() {
-    if (!recipient) return
+    if (!seller?.email) return
+    setEmailSubject(`Estado de tu publicación: ${title}`)
+    setEmailBodyDraft(defaultEmailBody)
+    setSendStatus('idle')
     setErrorMsg('')
     setEmailModalOpen(true)
     setOpen(false)
   }
 
-  async function sendReminder() {
-    if (!recipient) return
+  async function sendEmail() {
+    if (!seller?.email) return
     setSending(true)
-    setErrorMsg('')
+    setSendStatus('idle')
     try {
-      const res = await fetch(`/api/admin/products/${product.id}/sale-reminder`, {
+      const productImageUrl = (product.product_images || [])
+        .slice()
+        .sort((a, b) => a.order - b.order)[0]?.url
+      const res = await fetch('/api/admin/contact-seller', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: seller.email,
+          subject: emailSubject,
+          body: emailBodyDraft,
+          productImageUrl,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al enviar')
-      if (data.trackingUpdated && typeof data.sentAt === 'string') onReminderSent(data.sentAt)
       setEmailModalOpen(false)
       setSuccessPopup(true)
     } catch (e) {
+      setSendStatus('error')
       setErrorMsg(e instanceof Error ? e.message : 'Error desconocido')
     } finally {
       setSending(false)
     }
   }
 
-  if (!recipient && !seller?.phone) return null
+  if (!seller?.email && !seller?.phone) return null
 
   return (
     <div className="relative">
@@ -945,7 +955,7 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
                 <span className="font-medium">WhatsApp</span>
               </button>
             )}
-            {recipient && (
+            {seller?.email && (
               <button
                 onClick={openEmailModal}
                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 text-left border-t border-gray-100"
@@ -970,7 +980,7 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
               </svg>
             </div>
             <h3 className="font-body text-lg font-black text-gray-900 mb-1">Correo enviado</h3>
-            <p className="text-sm text-gray-500 mb-5">El recordatorio automático fue enviado correctamente al vendedor.</p>
+            <p className="text-sm text-gray-500 mb-5">El mensaje fue enviado correctamente al vendedor.</p>
             <button
               onClick={() => setSuccessPopup(false)}
               className="w-full bg-brand-500 text-white font-medium text-sm py-2.5 rounded-lg hover:bg-brand-600"
@@ -982,14 +992,14 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
       )}
 
       {/* Email modal */}
-      {emailModalOpen && recipient && (
+      {emailModalOpen && seller?.email && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => !sending && setEmailModalOpen(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="font-body text-lg font-black text-gray-900">Enviar recordatorio</h3>
+                <h3 className="font-body text-lg font-black text-gray-900">Enviar correo</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Desde <span className="font-medium text-gray-700">correo automático de ReSkiChile</span> · Para <span className="font-medium text-gray-700">{recipient}</span>
+                  Desde <span className="font-medium text-gray-700">reskichile@gmail.com</span> · Para <span className="font-medium text-gray-700">{seller.email}</span>
                 </p>
               </div>
               <button onClick={() => !sending && setEmailModalOpen(false)} disabled={sending} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
@@ -999,39 +1009,32 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
               </button>
             </div>
 
-            <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
+            <div className="px-6 py-4 space-y-3 overflow-y-auto flex-1">
               <div>
                 <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-1">Asunto</label>
-                <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-800">
-                  {emailSubject}
-                </div>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  disabled={sending}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-gray-50"
+                />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block mb-1">Vista previa</label>
-                <div className="rounded-xl border border-gray-200 p-5 text-sm text-gray-700">
-                  <p className="mb-3"><strong>¡Hola!</strong></p>
-                  <p className="mb-4">
-                    Tu publicación de <strong>{title}</strong> sigue en ReSkiChile. ¿Ya la vendiste?
-                  </p>
-                  <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-3 mb-4">
-                    {productImageUrl ? (
-                      <img src={productImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
-                    ) : (
-                      <div className="h-16 w-16 rounded-lg bg-gray-100" />
-                    )}
-                    <div>
-                      <p className="font-bold text-gray-900">{title}</p>
-                      <p className="font-extrabold text-brand-500">${product.price.toLocaleString('es-CL')}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <span className="rounded bg-brand-500 px-2 py-2.5 text-center text-xs font-bold text-white">Sí, ya la vendí</span>
-                    <span className="rounded border border-gray-300 px-2 py-2.5 text-center text-xs font-bold text-gray-500">No, sigue disponible</span>
-                  </div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Mensaje</label>
+                  <span className="text-[10px] text-gray-400">Usa <code className="bg-gray-100 px-1 rounded">**palabra**</code> para negrita</span>
                 </div>
+                <textarea
+                  value={emailBodyDraft}
+                  onChange={e => setEmailBodyDraft(e.target.value)}
+                  disabled={sending}
+                  rows={14}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-light leading-relaxed focus:border-brand-500 focus:outline-none disabled:bg-gray-50 resize-none"
+                />
               </div>
 
-              {errorMsg && (
+              {sendStatus === 'error' && (
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                   {errorMsg}
                 </div>
@@ -1047,8 +1050,8 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
                 Cancelar
               </button>
               <button
-                onClick={sendReminder}
-                disabled={sending}
+                onClick={sendEmail}
+                disabled={sending || !emailSubject.trim() || !emailBodyDraft.trim()}
                 className="px-5 py-2 text-sm bg-brand-500 text-white font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 flex items-center gap-2"
               >
                 {sending ? (
@@ -1059,7 +1062,7 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
                     </svg>
                     Enviando...
                   </>
-                ) : 'Enviar recordatorio'}
+                ) : 'Enviar correo'}
               </button>
             </div>
           </div>
