@@ -444,7 +444,7 @@ export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
 
   const html = layout(`
     <p style="margin:0 0 14px 0;color:#1f2937;"><strong>¡Hola!</strong></p>
-    <p style="margin:0 0 18px 0;color:#1f2937;">Tu publicación de <strong>${escapeHtml(title)}</strong> sigue en ReSkiChile. ¿Ya la vendiste? Cuéntanos con un toque:</p>
+    <p style="margin:0 0 18px 0;color:#1f2937;">Tu publicación de <strong>${escapeHtml(title)}</strong> sigue en ReSkiChile. ¿Ya la vendiste?</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;border:1px solid #eef2f7;border-radius:12px;margin:0 0 22px;">
       <tr>
         <td valign="top" width="64" style="padding:16px 0 16px 16px;">${imgBlock}</td>

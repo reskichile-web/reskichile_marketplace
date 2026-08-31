@@ -79,6 +79,7 @@ describe('canonical sale reminder sender', () => {
       text: expect.stringContaining('/p/disponible/token-2?alt=token-1'),
     }))
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain('https://example.com/first.jpg')
+    expect(mocks.sendEmail.mock.calls[0][0].html).not.toContain('Cuéntanos con un toque')
     expect(mocks.updateProduct).toHaveBeenCalledWith({
       sale_reminder_sent_at: expect.any(String),
     })

@@ -1011,7 +1011,7 @@ Te agradecemos confirmarnos para mantener el catálogo actualizado, Saludos!`
                 <div className="rounded-xl border border-gray-200 p-5 text-sm text-gray-700">
                   <p className="mb-3"><strong>¡Hola!</strong></p>
                   <p className="mb-4">
-                    Tu publicación de <strong>{title}</strong> sigue en ReSkiChile. ¿Ya la vendiste? Cuéntanos con un toque:
+                    Tu publicación de <strong>{title}</strong> sigue en ReSkiChile. ¿Ya la vendiste?
                   </p>
                   <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-3 mb-4">
                     {productImageUrl ? (
