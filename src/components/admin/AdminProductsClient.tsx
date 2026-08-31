@@ -870,7 +870,7 @@ Soy Sebastián del equipo de ventas de ReSkiChile.
 
 Te escribo para saber el estado actual de tu publicación **${title}**. ¿Sigue disponible o ya la vendiste?
 
-Si ya la vendiste, agradecería mucho que me compartieras el precio final de venta para mantener nuestros registros al día.
+Te agradecería mucho que respondieras brevemente este correo para confirmarme si sigue disponible o si ya la vendiste.
 
 Saludos,
 Sebastián`
