@@ -2,19 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { isSkiRackStorefrontEnabled } from '@/lib/ski-rack-visibility'
 
 describe('ski rack storefront visibility', () => {
-  it('is hidden on Vercel Production', () => {
-    expect(isSkiRackStorefrontEnabled('production', 'production')).toBe(false)
+  it('is visible by default, including in production', () => {
+    expect(isSkiRackStorefrontEnabled(undefined)).toBe(true)
   })
 
-  it('remains visible on Vercel Preview for the Webpay sandbox', () => {
-    expect(isSkiRackStorefrontEnabled('preview', 'production')).toBe(true)
+  it('can be explicitly published', () => {
+    expect(isSkiRackStorefrontEnabled('true')).toBe(true)
+    expect(isSkiRackStorefrontEnabled(' TRUE ')).toBe(true)
   })
 
-  it('remains visible during local development', () => {
-    expect(isSkiRackStorefrontEnabled(undefined, 'development')).toBe(true)
+  it('can be hidden with the emergency visibility switch', () => {
+    expect(isSkiRackStorefrontEnabled('false')).toBe(false)
   })
 
-  it('fails closed in a non-Vercel production runtime', () => {
-    expect(isSkiRackStorefrontEnabled(undefined, 'production')).toBe(false)
+  it('fails closed for an invalid explicit setting', () => {
+    expect(isSkiRackStorefrontEnabled('enabled')).toBe(false)
   })
 })

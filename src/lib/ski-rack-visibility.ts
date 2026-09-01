@@ -1,7 +1,13 @@
 export function isSkiRackStorefrontEnabled(
-  vercelEnvironment = process.env.VERCEL_ENV,
-  nodeEnvironment = process.env.NODE_ENV,
+  storefrontSetting = process.env.SKI_RACK_STOREFRONT_ENABLED,
 ): boolean {
-  if (vercelEnvironment) return vercelEnvironment !== 'production'
-  return nodeEnvironment !== 'production'
+  // The storefront and payment acceptance are separate controls. Ski Rack can
+  // be public while PAYMENTS_ENABLED=false keeps checkout safely read-only.
+  // Leave this unset (or set it to true) to publish the storefront. Any other
+  // explicit value fails closed and acts as an emergency visibility switch.
+  if (storefrontSetting === undefined || storefrontSetting.trim() === '') {
+    return true
+  }
+
+  return storefrontSetting.trim().toLowerCase() === 'true'
 }
