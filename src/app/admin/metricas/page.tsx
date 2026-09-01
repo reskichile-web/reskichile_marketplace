@@ -10,6 +10,13 @@ import {
   type CookieConsentMetric,
 } from '@/lib/admin-consent-metrics'
 import {
+  formatMetricsDate,
+  METRICS_PERIODS,
+  metricsPeriodRange,
+  santiagoDay,
+  type MetricsPeriod,
+} from '@/lib/admin-metrics-period'
+import {
   GiSkis, GiSnowboard, GiSkiBoot, GiWalkingBoot,
   GiSkier, GiWinterGloves, GiMonclerJacket,
   GiArmoredPants, GiLightBackpack,
@@ -52,14 +59,7 @@ interface ChartRow {
   uniques: number
 }
 
-type MetricsPeriod = 'all' | 14 | 30
-
 const HISTORICAL_RPC_DAYS = 36_500
-const PERIODS: Array<{ value: MetricsPeriod; label: string }> = [
-  { value: 'all', label: 'Histórico' },
-  { value: 14, label: '14 días' },
-  { value: 30, label: '30 días' },
-]
 
 interface CategoryRow {
   category: string
@@ -132,11 +132,6 @@ function timeAgo(iso: string): string {
   return `hace ${days} d`
 }
 
-// YYYY-MM-DD for a date in America/Santiago (matches the RPC's day column)
-function santiagoDay(d: Date): string {
-  return d.toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
-}
-
 function activityLabel(e: ActivityRow): string {
   const who = e.users?.name || 'Anónimo'
   if (e.event_type === 'login') return `Inicio de sesión — ${who}`
@@ -172,7 +167,8 @@ function SectionCard({ title, subtitle, right, children }: {
 }
 
 export default function MetricasPage() {
-  const [period, setPeriod] = useState<MetricsPeriod>('all')
+  const [period, setPeriod] = useState<MetricsPeriod>(7)
+  const [customDate, setCustomDate] = useState(() => santiagoDay(new Date()))
   const [loading, setLoading] = useState(true)
   const [daily, setDaily] = useState<DailyRow[]>([])
   const [categories, setCategories] = useState<CategoryRow[]>([])
@@ -189,10 +185,12 @@ export default function MetricasPage() {
     async function load() {
       setLoading(true)
       const supabase = createClient()
-      const rpcDays = period === 'all' ? HISTORICAL_RPC_DAYS : period
-      const since = period === 'all'
-        ? null
-        : new Date(Date.now() - period * 24 * 60 * 60 * 1000).toISOString()
+      const range = metricsPeriodRange(period, customDate)
+      const rpcDays = period === 'all'
+        ? HISTORICAL_RPC_DAYS
+        : typeof period === 'number' ? period : 1
+      const since = range.since
+      const sinceDay = range.firstDay
       let contactQuery = supabase
         .from('events')
         .select('id, event_name, user_id, created_at, utm_source, utm_medium, utm_campaign, utm_content, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
@@ -205,36 +203,52 @@ export default function MetricasPage() {
         .select('id', { count: 'exact', head: true })
         .eq('event_type', 'click')
         .eq('event_name', 'chat_contact')
+      let clickQuery = supabase
+        .from('events')
+        .select('id, event_name, category, created_at, users(name), products(brand, model)')
+        .eq('event_type', 'click')
+        .neq('event_name', 'whatsapp_contact')
+        .neq('event_name', 'chat_contact')
+        .not('event_name', 'like', 'cookie_consent_%')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      let activityQuery = supabase
+        .from('events')
+        .select('id, event_type, event_name, path, created_at, users(name)')
+        .in('event_type', ['login', 'signup', 'invite_open'])
+        .order('created_at', { ascending: false })
+        .limit(20)
       if (since) {
         contactQuery = contactQuery.gte('created_at', since)
         chatCountQuery = chatCountQuery.gte('created_at', since)
+        clickQuery = clickQuery.gte('created_at', since)
+        activityQuery = activityQuery.gte('created_at', since)
       }
 
+      const dailyQuery = period === 'custom'
+        ? supabase.rpc('admin_daily_visits_since', { p_since: sinceDay! })
+        : supabase.rpc('admin_daily_visits', { p_days: rpcDays })
+      const categoryQuery = period === 'custom'
+        ? supabase.rpc('admin_category_views_since', { p_since: sinceDay! })
+        : supabase.rpc('admin_category_views', { p_days: rpcDays })
+      const topProductsQuery = period === 'custom'
+        ? supabase.rpc('admin_top_products_since', { p_since: sinceDay!, p_limit: 10 })
+        : supabase.rpc('admin_top_products', { p_days: rpcDays, p_limit: 10 })
+
       const [dailyRes, catRes, clickRes, contactRes, chatCountRes, topRes, actRes, consentRes] = await Promise.all([
-        supabase.rpc('admin_daily_visits', { p_days: rpcDays }),
-        supabase.rpc('admin_category_views', { p_days: rpcDays }),
-        supabase
-          .from('events')
-          .select('id, event_name, category, created_at, users(name), products(brand, model)')
-          .eq('event_type', 'click')
-          .neq('event_name', 'whatsapp_contact')
-          .neq('event_name', 'chat_contact')
-          .not('event_name', 'like', 'cookie_consent_%')
-          .order('created_at', { ascending: false })
-          .limit(50),
+        dailyQuery,
+        categoryQuery,
+        clickQuery,
         contactQuery,
         chatCountQuery,
-        supabase.rpc('admin_top_products', { p_days: rpcDays, p_limit: 10 }),
-        supabase
-          .from('events')
-          .select('id, event_type, event_name, path, created_at, users(name)')
-          .in('event_type', ['login', 'signup', 'invite_open'])
-          .order('created_at', { ascending: false })
-          .limit(20),
+        topProductsQuery,
+        activityQuery,
         loadCookieConsentMetrics(supabase, since),
       ])
       if (cancelled) return
-      setDaily((dailyRes.data as DailyRow[]) || [])
+      const dailyRows = ((dailyRes.data as DailyRow[]) || [])
+        .filter(row => !sinceDay || row.day >= sinceDay)
+      setDaily(dailyRows)
       setCategories((catRes.data as CategoryRow[]) || [])
       setClicks((clickRes.data as unknown as ClickEvent[]) || [])
       setContactEvents((contactRes.data as unknown as ContactEvent[]) || [])
@@ -247,12 +261,15 @@ export default function MetricasPage() {
     }
     load()
     return () => { cancelled = true }
-  }, [period])
+  }, [customDate, period])
 
   // A daily chart remains readable for short periods. Historical data is
   // grouped by month so it can keep growing without producing hundreds of bars.
+  const selectedRange = metricsPeriodRange(period, customDate)
+  const chartIsMonthly = period === 'all'
+    || (period === 'custom' && (selectedRange.calendarDays ?? 0) > 90)
   const chartRows = useMemo<ChartRow[]>(() => {
-    if (period === 'all') {
+    if (chartIsMonthly) {
       const byMonth = new Map<string, ChartRow>()
       for (const row of daily) {
         const key = row.day.slice(0, 7)
@@ -271,10 +288,13 @@ export default function MetricasPage() {
 
     const byDay = new Map(daily.map(row => [row.day, row]))
     const out: ChartRow[] = []
-    for (let i = period - 1; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const key = santiagoDay(date)
+    const firstDay = selectedRange.firstDay
+    const calendarDays = selectedRange.calendarDays
+    if (!firstDay || !calendarDays) return out
+    const firstDayMs = Date.parse(`${firstDay}T00:00:00Z`)
+    for (let i = 0; i < calendarDays; i++) {
+      const key = new Date(firstDayMs + i * 24 * 60 * 60 * 1000)
+        .toISOString().slice(0, 10)
       const row = byDay.get(key)
       out.push({
         key,
@@ -284,7 +304,7 @@ export default function MetricasPage() {
       })
     }
     return out
-  }, [daily, period])
+  }, [chartIsMonthly, daily, selectedRange.calendarDays, selectedRange.firstDay])
 
   const today = santiagoDay(new Date())
   const todayRow = daily.find(d => d.day === today)
@@ -293,7 +313,10 @@ export default function MetricasPage() {
   const totalUniques = daily.reduce((s, d) => s + Number(d.uniques), 0)
   const maxVisits = Math.max(...chartRows.map(d => Number(d.visits)), 1)
   const totalCatViews = categories.reduce((s, c) => s + Number(c.views), 0)
-  const periodLabel = period === 'all' ? 'histórico' : `últimos ${period} días`
+  const customDateLabel = formatMetricsDate(selectedRange.firstDay || customDate)
+  const periodLabel = period === 'all'
+    ? 'histórico'
+    : period === 'custom' ? `desde el ${customDateLabel}` : `últimos ${period} días`
   const whatsappCount = Math.max(contactCount - chatCount, 0)
   const acceptedConsent = consentMetrics.find(row => row.decision === 'granted')
   const deniedConsent = consentMetrics.find(row => row.decision === 'denied')
@@ -309,9 +332,19 @@ export default function MetricasPage() {
   const kpis = [
     { label: 'Visitas hoy', value: Number(todayRow?.visits ?? 0) },
     { label: 'Únicos hoy', value: Number(todayRow?.uniques ?? 0) },
-    { label: period === 'all' ? 'Visitas históricas' : `Visitas ${period}d`, value: totalVisits },
-    { label: period === 'all' ? 'Únicos históricos' : `Únicos ${period}d`, value: totalUniques },
-    { label: period === 'all' ? 'Contactos históricos' : `Contactos ${period}d`, value: contactCount, color: 'text-green-600' },
+    {
+      label: period === 'all' ? 'Visitas históricas' : period === 'custom' ? `Visitas desde ${customDateLabel}` : `Visitas ${period}d`,
+      value: totalVisits,
+    },
+    {
+      label: period === 'all' ? 'Únicos históricos' : period === 'custom' ? `Únicos desde ${customDateLabel}` : `Únicos ${period}d`,
+      value: totalUniques,
+    },
+    {
+      label: period === 'all' ? 'Contactos históricos' : period === 'custom' ? `Contactos desde ${customDateLabel}` : `Contactos ${period}d`,
+      value: contactCount,
+      color: 'text-green-600',
+    },
   ]
 
   return (
@@ -322,18 +355,32 @@ export default function MetricasPage() {
           <h1 className="font-body text-2xl font-black text-gray-900">Métricas</h1>
           <p className="text-sm text-gray-500 mt-1">Observabilidad del sitio — sin visitas de admins</p>
         </div>
-        <div className="flex gap-1.5">
-          {PERIODS.map(option => (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={period === option.value}
-              onClick={() => setPeriod(option.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${period === option.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {METRICS_PERIODS.map(option => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={period === option.value}
+                onClick={() => setPeriod(option.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${period === option.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {period === 'custom' && (
+            <label className="ml-1 inline-flex items-center gap-2 text-xs font-medium text-gray-600">
+              <span>Desde</span>
+              <input
+                type="date"
+                value={customDate}
+                max={today}
+                onChange={event => setCustomDate(event.target.value || today)}
+                className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:border-brand-500"
+              />
+            </label>
+          )}
         </div>
       </div>
 
@@ -351,7 +398,7 @@ export default function MetricasPage() {
       <div className={`${CARD} p-5 mb-8`}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-body text-base font-black text-gray-900 tracking-tight">
-            {period === 'all' ? 'Visitas mensuales' : 'Visitas diarias'}
+            {chartIsMonthly ? 'Visitas mensuales' : 'Visitas diarias'}
           </h2>
           <div className="flex items-center gap-3 text-[10px] text-gray-400">
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-brand-100 inline-block" /> Visitas</span>
@@ -359,14 +406,14 @@ export default function MetricasPage() {
           </div>
         </div>
         <div className="h-40 overflow-x-auto pt-8">
-          <div className={`flex h-full items-end ${period === 'all' ? 'min-w-max gap-3' : 'gap-1'}`}>
+          <div className={`flex h-full items-end ${chartIsMonthly ? 'min-w-max gap-3' : 'gap-1'}`}>
             {chartRows.map(row => {
               const visits = Number(row.visits)
               const uniques = Number(row.uniques)
               const hVisits = (visits / maxVisits) * 100
               const hUniques = (uniques / maxVisits) * 100
               return (
-                <div key={row.key} className={`${period === 'all' ? 'w-14 shrink-0' : 'flex-1'} group relative flex h-full flex-col justify-end`}>
+                <div key={row.key} className={`${chartIsMonthly ? 'w-14 shrink-0' : 'flex-1'} group relative flex h-full flex-col justify-end`}>
                   {/* Hover tooltip */}
                   <div className="hidden group-hover:flex flex-col items-center absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 pointer-events-none">
                     <div className="bg-gray-900 text-white text-[10px] leading-relaxed rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg text-center">
@@ -499,7 +546,7 @@ export default function MetricasPage() {
         {/* Category views — icon rows with catalog/product split + share */}
         <SectionCard
           title="Vistas por categoría"
-          subtitle="Catálogo y páginas de producto"
+          subtitle={`Catálogo y páginas de producto · ${periodLabel}`}
           right={totalCatViews > 0 ? <span className="text-xs text-gray-400 shrink-0">{totalCatViews} en total</span> : undefined}
         >
           {categories.length === 0 ? (
@@ -532,7 +579,7 @@ export default function MetricasPage() {
         </SectionCard>
 
         {/* Landing clicks — recent history */}
-        <SectionCard title="Clicks en la landing" subtitle="Historial de los últimos clicks">
+        <SectionCard title="Clicks en la landing" subtitle={`Últimos clicks · ${periodLabel}`}>
           {clicks.length === 0 ? (
             <p className="text-sm text-gray-400 py-10 text-center">Sin clicks registrados todavía.</p>
           ) : (
@@ -584,7 +631,7 @@ export default function MetricasPage() {
         </SectionCard>
 
         {/* Activity feed */}
-        <SectionCard title="Actividad reciente" subtitle="Logins, registros e invitaciones abiertas">
+        <SectionCard title="Actividad reciente" subtitle={`Logins, registros e invitaciones · ${periodLabel}`}>
           {activity.length === 0 ? (
             <p className="text-sm text-gray-400 py-10 text-center">Sin actividad registrada todavía.</p>
           ) : (

@@ -138,6 +138,7 @@ CREATE TABLE public.events (
   event_type TEXT NOT NULL DEFAULT 'pageview',
   event_name TEXT,
   path TEXT NOT NULL,
+  category TEXT,
   product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
   user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
   visitor_id UUID,
