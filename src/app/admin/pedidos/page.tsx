@@ -298,9 +298,9 @@ export default function AdminOrdersPage() {
   const [refundConfirmation, setRefundConfirmation] = useState('')
   const [refundIdempotencyKey, setRefundIdempotencyKey] = useState('')
   const [shippingOrder, setShippingOrder] = useState<Order | null>(null)
-  const [shippingCarrier, setShippingCarrier] = useState('Chilexpress')
+  const [shippingCarrier, setShippingCarrier] = useState('Starken')
   const [trackingNumber, setTrackingNumber] = useState('')
-  const [trackingUrl, setTrackingUrl] = useState('')
+  const [trackingUrl, setTrackingUrl] = useState('https://www.starken.cl/seguimiento')
   const loadingRef = useRef(false)
   const requestRef = useRef<AbortController | null>(null)
 
@@ -503,9 +503,9 @@ export default function AdminOrdersPage() {
                               event.stopPropagation()
                               if (action.value === 'shipped') {
                                 setShippingOrder(order)
-                                setShippingCarrier('Chilexpress')
+                                setShippingCarrier('Starken')
                                 setTrackingNumber('')
-                                setTrackingUrl('')
+                                setTrackingUrl('https://www.starken.cl/seguimiento')
                               } else {
                                 void updateFulfillment(order, action.value)
                               }

@@ -34,10 +34,10 @@ import {
   type TableShippingRateCandidate,
 } from './fulfillment-selection'
 import {
-  ChilexpressError,
-  quoteChilexpress,
-  type ChilexpressPackage,
-} from '@/lib/shipping/chilexpress'
+  quoteStarken,
+  StarkenError,
+  type StarkenPackage,
+} from '@/lib/shipping/starken'
 
 interface CommerceProduct {
   id: string
@@ -101,7 +101,7 @@ export interface CheckoutQuote {
   shippingClp: number
   shippingRateClp: number
   totalClp: number
-  shippingSource: 'sandbox_fixed' | 'table' | 'chilexpress'
+  shippingSource: 'sandbox_fixed' | 'table' | 'starken'
   shippingOrigin: ShippingOriginCode
 }
 
@@ -278,21 +278,45 @@ interface PackagedLine {
   quantity?: number
 }
 
-function combinedParcel(lines: PackagedLine[]): ChilexpressPackage | null {
+function combinedParcel(lines: PackagedLine[]): StarkenPackage | null {
   if (lines.length === 0 || lines.some(line => (
     line.packaged_length_cm == null || line.packaged_width_cm == null ||
     line.packaged_height_cm == null || line.packaged_weight_kg == null
   ))) return null
 
-  const parcel = {
-    lengthCm: Math.max(...lines.map(line => Number(line.packaged_length_cm))),
-    widthCm: Math.max(...lines.map(line => Number(line.packaged_width_cm))),
-    heightCm: Math.max(...lines.map(line => Number(line.packaged_height_cm))),
-    weightKg: lines.reduce(
-      (sum, line) => sum + Number(line.packaged_weight_kg) * Number(line.quantity || 1),
-      0,
-    ),
-  }
+  const unitCount = lines.reduce((sum, line) => sum + Number(line.quantity || 1), 0)
+  const weightKg = lines.reduce(
+    (sum, line) => sum + Number(line.packaged_weight_kg) * Number(line.quantity || 1),
+    0,
+  )
+  const volumeCm3 = lines.reduce((sum, line) => (
+    sum + Number(line.packaged_length_cm) * Number(line.packaged_width_cm) *
+      Number(line.packaged_height_cm) * Number(line.quantity || 1)
+  ), 0)
+  const dimensions = lines.flatMap(line => [
+    Number(line.packaged_length_cm),
+    Number(line.packaged_width_cm),
+    Number(line.packaged_height_cm),
+  ])
+  const parcel = unitCount === 1
+    ? {
+        lengthCm: Number(lines[0].packaged_length_cm),
+        widthCm: Number(lines[0].packaged_width_cm),
+        heightCm: Number(lines[0].packaged_height_cm),
+        weightKg,
+      }
+    : (() => {
+        // Starken's official plugin represents a multi-product cart as one
+        // volume-equivalent parcel while preserving the longest dimension.
+        const widthCm = Math.max(...dimensions)
+        const heightCm = Math.sqrt((volumeCm3 / widthCm) * (2 / 3))
+        return {
+          widthCm,
+          heightCm,
+          lengthCm: volumeCm3 / widthCm / heightCm,
+          weightKg,
+        }
+      })()
   if (Object.values(parcel).some(value => !Number.isFinite(value) || value <= 0)) {
     return null
   }
@@ -304,9 +328,8 @@ async function quoteShipping(
   input: CheckoutInput,
   origins: ShippingOriginCode[],
   parcelCount: number,
-  parcels: Map<ShippingOriginCode, ChilexpressPackage>,
-  declaredWorthClp: number,
-): Promise<{ amountClp: number; source: 'sandbox_fixed' | 'table' | 'chilexpress'; origin: ShippingOriginCode }> {
+  parcels: Map<ShippingOriginCode, StarkenPackage>,
+): Promise<{ amountClp: number; source: 'sandbox_fixed' | 'table' | 'starken'; origin: ShippingOriginCode }> {
   if (!Number.isSafeInteger(parcelCount) || parcelCount < 1 || parcelCount > 20) {
     throw new CheckoutServiceError(
       'INVALID_PACKAGE_COUNT',
@@ -344,10 +367,10 @@ async function quoteShipping(
     }
   }
 
-  if (config.shippingRateSource === 'chilexpress' && input.delivery.method === 'home') {
+  if (config.shippingRateSource === 'starken' && input.delivery.method === 'home') {
     if (
-      !config.chilexpressBaseUrl || !config.chilexpressRatingApiKey ||
-      !config.chilexpressCoverageApiKey
+      !config.starkenBaseUrl || !config.starkenApiToken ||
+      !config.starkenCurrentAccount || !config.starkenCurrentAccountDv
     ) {
       throw new CheckoutServiceError(
         'SHIPPING_NOT_READY',
@@ -367,21 +390,20 @@ async function quoteShipping(
       const code = origin.code as ShippingOriginCode
       const parcel = parcels.get(code)
       if (!parcel || !origins.includes(code)) return []
-      return [quoteChilexpress(
+      return [quoteStarken(
         {
-          baseUrl: config.chilexpressBaseUrl!,
-          ratingApiKey: config.chilexpressRatingApiKey!,
-          coverageApiKey: config.chilexpressCoverageApiKey!,
-          customerCardNumber: config.chilexpressCustomerCardNumber,
-          timeoutMs: config.chilexpressTimeoutMs || 8000,
+          baseUrl: config.starkenBaseUrl!,
+          apiToken: config.starkenApiToken!,
+          currentAccount: config.starkenCurrentAccount!,
+          currentAccountDv: config.starkenCurrentAccountDv!,
+          timeoutMs: config.starkenTimeoutMs || 8000,
         },
         { region: String(origin.region), commune: String(origin.commune) },
         { region: input.delivery.region, commune: input.delivery.commune },
         parcel,
-        declaredWorthClp,
       ).then(quote => ({ quote, origin: code })).catch(error => {
-        if (!(error instanceof ChilexpressError)) {
-          console.error('chilexpress_quote_failed', { reason: 'unexpected_error' })
+        if (!(error instanceof StarkenError)) {
+          console.error('starken_quote_failed', { reason: 'unexpected_error' })
         }
         return null
       })]
@@ -399,7 +421,7 @@ async function quoteShipping(
     }
     return {
       amountClp: selected.quote.amountClp,
-      source: 'chilexpress',
+      source: 'starken',
       origin: selected.origin,
     }
   }
@@ -621,26 +643,19 @@ export async function quoteCheckout(
   const parcelCount = input.rackItems.length > 0
     ? input.rackItems.reduce((sum, item) => sum + item.quantity, 0)
     : input.productIds.length
-  const parcels = new Map<ShippingOriginCode, ChilexpressPackage>()
+  const parcels = new Map<ShippingOriginCode, StarkenPackage>()
   for (const origin of candidateOrigins) {
     const parcel = rackCandidates.size > 0
       ? combinedParcel(rackCandidates.get(origin) || [])
       : combinedParcel(products.filter(product => product.shipping_origin_code === origin))
     if (parcel) parcels.set(origin, parcel)
   }
-  const declaredWorthClp = rackCandidates.size > 0
-    ? (rackCandidates.values().next().value || []).reduce(
-        (sum: number, variant: QuotedRackVariant) => sum + Number(variant.price_clp) * variant.quantity,
-        0,
-      )
-    : products.reduce((sum, product) => sum + product.price, 0)
   const shipping = await quoteShipping(
     config,
     input,
     candidateOrigins,
     parcelCount,
     parcels,
-    declaredWorthClp,
   )
   const rackVariants = rackCandidates.get(shipping.origin) || []
   const subtotalClp = rackVariants.length > 0

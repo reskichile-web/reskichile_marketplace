@@ -38,9 +38,9 @@ describe('email template links', () => {
     const shipment = buildShipmentEmail({
       buyerName: 'Sebastián',
       orderNumber: 'RC-123',
-      carrier: 'Chilexpress',
+      carrier: 'Starken',
       trackingNumber: 'OT-123',
-      trackingUrl: 'https://www.chilexpress.cl/seguimiento',
+      trackingUrl: 'https://www.starken.cl/seguimiento',
     })
     expect(shipment.subject).toBe('Tu pedido fue despachado · RC-123')
     expect(shipment.text).toContain('OT-123')

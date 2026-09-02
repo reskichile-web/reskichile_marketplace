@@ -28,9 +28,9 @@ async function main() {
     templates.buildShipmentEmail({
       buyerName: 'Sebastián',
       orderNumber: 'RC-EJEMPLO-001',
-      carrier: 'Chilexpress',
+      carrier: 'Starken',
       trackingNumber: 'OT-EJEMPLO-123456',
-      trackingUrl: 'https://www.chilexpress.cl/seguimiento',
+      trackingUrl: 'https://www.starken.cl/seguimiento',
     }),
     templates.buildPickupReadyEmail({
       buyerName: 'Sebastián',

@@ -1,7 +1,7 @@
 # Investigación de cálculo de despachos para ReskiChile
 
-Estado: arquitectura multi-origen preparada; faltan tarifas/credenciales reales
-Última revisión: 2026-08-17
+Estado: Starken seleccionado como courier oficial; integración de cotización preparada
+Última revisión: 2026-09-01
 
 ## 1. Decisiones de negocio recibidas
 
@@ -245,6 +245,16 @@ costo al comprador.
 5. comparar costo/plazo y persistir la opción exacta elegida;
 6. integrar emisión, etiqueta y tracking sólo después del pago autorizado;
 7. mantener tabla aprobada como fallback, sin inventar precios.
+
+Decisión del 2026-09-01: Starken será el courier predeterminado. La cotización
+oficial usa el token de Starken Pro y selecciona únicamente despacho NORMAL a
+domicilio pagado con Cuenta Corriente. Las alternativas "por pagar" no se
+ofrecen en checkout porque el comprador ya debe conocer y pagar el total.
+
+Como puente de lanzamiento puede usarse `SHIPPING_RATE_SOURCE=table`. Starken
+publica su modelo Tarifa Simple por zonas y tamaños, por lo que una tarifa fija
+sí es viable para el Ski Rack estandarizado, pero los montos deben copiarse o
+validarse contra tarifas vigentes antes de activar pagos.
 
 Blue Express se prueba después si confirma acceso API para el volumen real de
 ReskiChile. Sus plugins publicados no se pueden instalar directamente en Next.js.

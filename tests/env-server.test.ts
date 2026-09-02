@@ -213,25 +213,29 @@ describe('address validation configuration', () => {
   })
 })
 
-describe('Chilexpress production configuration', () => {
-  it('requires both official API subscriptions when selected', () => {
+describe('Starken production configuration', () => {
+  it('requires the official token and current account when selected', () => {
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('APP_URL', 'https://www.reskichile.cl')
     vi.stubEnv('PAYMENTS_ENABLED', 'false')
     vi.stubEnv('TRANSBANK_ENVIRONMENT', 'production')
     vi.stubEnv('TRANSBANK_COMMERCE_CODE', 'production-commerce-code')
     vi.stubEnv('TRANSBANK_API_KEY_SECRET', 'production-api-key')
-    vi.stubEnv('SHIPPING_RATE_SOURCE', 'chilexpress')
-    vi.stubEnv('CHILEXPRESS_RATING_API_KEY', undefined)
-    vi.stubEnv('CHILEXPRESS_COVERAGE_API_KEY', undefined)
+    vi.stubEnv('SHIPPING_RATE_SOURCE', 'starken')
+    vi.stubEnv('STARKEN_API_TOKEN', undefined)
+    vi.stubEnv('STARKEN_CURRENT_ACCOUNT', undefined)
+    vi.stubEnv('STARKEN_CURRENT_ACCOUNT_DV', undefined)
 
-    expect(() => getPaymentConfig()).toThrow('credenciales de cotización y cobertura')
+    expect(() => getPaymentConfig()).toThrow('token y la cuenta corriente de Starken')
 
-    vi.stubEnv('CHILEXPRESS_RATING_API_KEY', 'rating-key')
-    vi.stubEnv('CHILEXPRESS_COVERAGE_API_KEY', 'coverage-key')
+    vi.stubEnv('STARKEN_API_TOKEN', 'starken-token-with-enough-length')
+    vi.stubEnv('STARKEN_CURRENT_ACCOUNT', '19154')
+    vi.stubEnv('STARKEN_CURRENT_ACCOUNT_DV', 'k')
     expect(getPaymentConfig()).toMatchObject({
-      shippingRateSource: 'chilexpress',
-      chilexpressBaseUrl: 'https://services.wschilexpress.com/',
+      shippingRateSource: 'starken',
+      starkenBaseUrl: 'https://gateway.starken.cl/externo/integracion/',
+      starkenCurrentAccount: '19154',
+      starkenCurrentAccountDv: 'K',
     })
   })
 })

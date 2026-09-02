@@ -52,8 +52,8 @@ BEGIN
   END;
 
   v_result := public.commerce_admin_mark_shipped(
-    v_home_public, v_admin, 'Chilexpress', 'OT-TEST-1',
-    'https://www.chilexpress.cl/seguimiento', gen_random_uuid()
+    v_home_public, v_admin, 'Starken', 'OT-TEST-1',
+    'https://www.starken.cl/seguimiento', gen_random_uuid()
   );
   IF v_result->>'fulfillment_status' <> 'shipped' THEN
     RAISE EXCEPTION 'home order was not marked shipped';

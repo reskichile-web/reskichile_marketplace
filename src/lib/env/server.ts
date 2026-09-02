@@ -1,7 +1,7 @@
 import 'server-only'
 
 export type PaymentEnvironment = 'integration' | 'production'
-export type ShippingRateSource = 'sandbox_fixed' | 'table' | 'chilexpress'
+export type ShippingRateSource = 'sandbox_fixed' | 'table' | 'starken'
 type PaymentConfigPurpose = 'checkout' | 'callback' | 'reconciliation'
 
 export interface PaymentConfig {
@@ -13,11 +13,11 @@ export interface PaymentConfig {
   transbankTimeoutMs: number
   sandboxShippingClp: number
   shippingRateSource: ShippingRateSource
-  chilexpressBaseUrl?: string
-  chilexpressRatingApiKey?: string
-  chilexpressCoverageApiKey?: string
-  chilexpressCustomerCardNumber?: string
-  chilexpressTimeoutMs?: number
+  starkenBaseUrl?: string
+  starkenApiToken?: string
+  starkenCurrentAccount?: string
+  starkenCurrentAccountDv?: string
+  starkenTimeoutMs?: number
   allowIncompleteShippingInSandbox: boolean
   sandboxBuyerEmails: readonly string[]
   inventoryReservationMinutes: number
@@ -153,11 +153,11 @@ function buildPaymentConfig(
   let sandboxShippingClp = 0
   let sandboxBuyerEmails: readonly string[] = []
   let allowIncompleteShippingInSandbox = false
-  let chilexpressBaseUrl: string | undefined
-  let chilexpressRatingApiKey: string | undefined
-  let chilexpressCoverageApiKey: string | undefined
-  let chilexpressCustomerCardNumber: string | undefined
-  let chilexpressTimeoutMs = 8000
+  let starkenBaseUrl: string | undefined
+  let starkenApiToken: string | undefined
+  let starkenCurrentAccount: string | undefined
+  let starkenCurrentAccountDv: string | undefined
+  let starkenTimeoutMs = 8000
 
   // Shipping and sandbox access are checkout-only concerns. Never let a typo
   // in one of these gates prevent a callback or reconciliation for an already
@@ -167,7 +167,7 @@ function buildPaymentConfig(
     if (
       shippingRateSourceRaw !== 'sandbox_fixed' &&
       shippingRateSourceRaw !== 'table' &&
-      shippingRateSourceRaw !== 'chilexpress'
+      shippingRateSourceRaw !== 'starken'
     ) {
       throw new ConfigurationError('SHIPPING_RATE_SOURCE no es válido')
     }
@@ -191,22 +191,24 @@ function buildPaymentConfig(
       environment === 'integration' &&
       process.env.ALLOW_INCOMPLETE_SHIPPING_IN_SANDBOX === 'true'
 
-    if (shippingRateSource === 'chilexpress') {
-      chilexpressRatingApiKey = process.env.CHILEXPRESS_RATING_API_KEY
-      chilexpressCoverageApiKey = process.env.CHILEXPRESS_COVERAGE_API_KEY
-      chilexpressCustomerCardNumber = process.env.CHILEXPRESS_CUSTOMER_CARD_NUMBER?.trim() || undefined
-      chilexpressTimeoutMs = parseInteger(
-        'CHILEXPRESS_TIMEOUT_MS',
-        process.env.CHILEXPRESS_TIMEOUT_MS || '8000',
+    if (shippingRateSource === 'starken') {
+      starkenApiToken = process.env.STARKEN_API_TOKEN?.trim()
+      starkenCurrentAccount = process.env.STARKEN_CURRENT_ACCOUNT?.trim()
+      starkenCurrentAccountDv = process.env.STARKEN_CURRENT_ACCOUNT_DV?.trim().toUpperCase()
+      starkenTimeoutMs = parseInteger(
+        'STARKEN_TIMEOUT_MS',
+        process.env.STARKEN_TIMEOUT_MS || '8000',
         1000,
         20000,
       )
-      chilexpressBaseUrl = environment === 'production'
-        ? 'https://services.wschilexpress.com/'
-        : 'https://qaservices.wschilexpress.com/'
-      if (!chilexpressRatingApiKey || !chilexpressCoverageApiKey) {
+      starkenBaseUrl = 'https://gateway.starken.cl/externo/integracion/'
+      if (
+        !starkenApiToken || starkenApiToken.length < 16 ||
+        !starkenCurrentAccount || !/^\d{1,20}$/.test(starkenCurrentAccount) ||
+        !starkenCurrentAccountDv || !/^[0-9K]$/.test(starkenCurrentAccountDv)
+      ) {
         throw new ConfigurationError(
-          'Faltan las credenciales de cotización y cobertura de Chilexpress'
+          'Faltan el token y la cuenta corriente de Starken'
         )
       }
     }
@@ -279,10 +281,10 @@ function buildPaymentConfig(
 
     if (
       purpose === 'checkout' &&
-      !['table', 'chilexpress'].includes(shippingRateSource)
+      !['table', 'starken'].includes(shippingRateSource)
     ) {
       throw new ConfigurationError(
-        'Producción requiere tarifas aprobadas o cotización oficial de Chilexpress'
+        'Producción requiere tarifas aprobadas o cotización oficial de Starken'
       )
     }
 
@@ -315,11 +317,11 @@ function buildPaymentConfig(
     transbankTimeoutMs,
     sandboxShippingClp,
     shippingRateSource,
-    chilexpressBaseUrl,
-    chilexpressRatingApiKey,
-    chilexpressCoverageApiKey,
-    chilexpressCustomerCardNumber,
-    chilexpressTimeoutMs,
+    starkenBaseUrl,
+    starkenApiToken,
+    starkenCurrentAccount,
+    starkenCurrentAccountDv,
+    starkenTimeoutMs,
     allowIncompleteShippingInSandbox,
     sandboxBuyerEmails,
     inventoryReservationMinutes,
