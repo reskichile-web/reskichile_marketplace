@@ -14,6 +14,7 @@ const money = new Intl.NumberFormat('es-CL', {
 
 export default function SkiRackStory() {
   const { inventory, loading } = useRackInventory()
+  const catalogProducts = SKI_RACK_PRODUCTS.filter(product => product.catalogVisible !== false)
 
   return (
     <div className="mx-auto w-full max-w-[1600px] px-5 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10">
@@ -27,7 +28,7 @@ export default function SkiRackStory() {
       </header>
 
       <div className="mb-5 flex items-center justify-between border-b border-gray-100 pb-4 md:mb-6">
-        <p className="text-sm text-gray-500">2 productos</p>
+        <p className="text-sm text-gray-500">{catalogProducts.length} productos</p>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white px-2.5 py-1.5 shadow-sm md:gap-2 md:px-3 md:py-2">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center text-brand-400 md:h-6 md:w-6">
             <svg className="h-full w-full" viewBox="0 0 24 24" aria-hidden="true">
@@ -52,7 +53,7 @@ export default function SkiRackStory() {
       </div>
 
       <section className="grid max-w-[600px] grid-cols-2 gap-3 md:gap-5" aria-label="Catálogo Ski Rack">
-        {SKI_RACK_PRODUCTS.map((product, index) => {
+        {catalogProducts.map((product, index) => {
           const productInventory = inventory[product.slug]
           const priceClp = productInventory?.priceClp ?? product.priceClp
           const totalAvailable = totalRackAvailability(productInventory)

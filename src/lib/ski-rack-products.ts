@@ -12,6 +12,8 @@ export interface SkiRackProduct {
   name: string
   material: string
   priceClp: number
+  description?: string
+  catalogVisible?: boolean
   image: string
   imageAlt: string
   imageClassName: string
@@ -23,6 +25,7 @@ export const SKI_RACK_DESCRIPTION =
   'Un par de soportes murales para ordenar y exhibir tus esquís de forma segura, con un diseño minimalista que aprovecha mejor el espacio.'
 
 export function getSkiRackDescription(product: SkiRackProduct): string {
+  if (product.description) return product.description
   return `Un par de soportes murales en ${product.material.toLowerCase()} para ordenar y exhibir tus esquís de forma segura. Instalación simple y diseño minimalista para aprovechar mejor el espacio. 🎿`
 }
 
@@ -108,6 +111,32 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
       },
     },
     gallery: [MOUNTED_PURPLE_SKIS_IMAGE],
+  },
+  {
+    slug: 'prueba-webpay-50',
+    name: 'Ski Rack Prueba Webpay $50',
+    material: 'Madera natural',
+    priceClp: 50,
+    description: 'Producto técnico de prueba solicitado por Transbank para validar Webpay Plus en producción.',
+    catalogVisible: false,
+    image: '/images/reski-rack-product.png',
+    imageAlt: 'Ski Rack de madera para la prueba productiva de Webpay',
+    imageClassName: 'brightness-[1.015]',
+    sizeImages: {
+      S: {
+        url: '/images/reski-rack-product.png',
+        alt: 'Ski Rack de madera para la prueba productiva de Webpay',
+      },
+      M: {
+        url: '/images/reski-rack-product.png',
+        alt: 'Ski Rack de madera para la prueba productiva de Webpay',
+      },
+      L: {
+        url: '/images/reski-rack-product.png',
+        alt: 'Ski Rack de madera para la prueba productiva de Webpay',
+      },
+    },
+    gallery: [],
   },
 ]
 
