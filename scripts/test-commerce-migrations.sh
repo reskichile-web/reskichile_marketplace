@@ -51,7 +51,8 @@ for migration in \
   202608310001_admin_metrics_since_date.sql \
   202609010001_delivery_email_automation.sql \
   202609010002_pickup_by_coordination.sql \
-  202609010003_starken_shipping_source.sql
+  202609010003_starken_shipping_source.sql \
+  202609020001_starken_flat_rates.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
@@ -67,6 +68,8 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/delivery_email_automation.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/starken_shipping.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/starken_flat_rates.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/marketplace_security.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \

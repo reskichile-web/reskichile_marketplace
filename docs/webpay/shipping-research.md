@@ -1,7 +1,7 @@
 # Investigación de cálculo de despachos para ReskiChile
 
 Estado: Starken seleccionado como courier oficial; integración de cotización preparada
-Última revisión: 2026-09-01
+Última revisión: 2026-09-02
 
 ## 1. Decisiones de negocio recibidas
 
@@ -255,6 +255,44 @@ Como puente de lanzamiento puede usarse `SHIPPING_RATE_SOURCE=table`. Starken
 publica su modelo Tarifa Simple por zonas y tamaños, por lo que una tarifa fija
 sí es viable para el Ski Rack estandarizado, pero los montos deben copiarse o
 validarse contra tarifas vigentes antes de activar pagos.
+
+### Tabla temporal aprobada para lanzamiento
+
+Consulta oficial realizada el 2026-09-02 en Tarifa Simple, modalidad Persona,
+entrega a domicilio, tamaño XS. Starken define XS como 0 a 850 g y muestra como
+referencia un paquete de 20 × 10 × 10 cm. Esto coincide con las medidas hoy
+registradas para el Ski Rack: 20 × 10 × 10 cm y 0,500 kg por unidad embalada.
+
+| Zona Starken | Tarifa pública | Tarifa ReskiChile por caja |
+| --- | ---: | ---: |
+| Misma ciudad | $4.500 | $4.990 |
+| Extremo norte (Arica a Antofagasta) | $7.660 | $7.990 |
+| Centro/sur (Atacama a Los Lagos) | $6.490 | $6.990 |
+| Extremo austral (Aysén y Magallanes) | $9.670 | $9.990 |
+
+La tarifa de misma ciudad se aplica conservadoramente sólo cuando el destino
+es la misma comuna de la bodega: Las Condes o Los Ángeles. Las demás comunas
+usan su zona regional. Retiro coordinado en cualquiera de las dos bodegas
+permanece en $0.
+
+Los valores están redondeados al siguiente precio comercial y dejan entre
+$320 y $500 para absorber variaciones menores. No se agrega IVA por separado:
+el comprador ve un precio final. La tabla se cobra por caja, es decir, una vez
+por cada unidad del carrito.
+
+Este modelo sigue el patrón habitual de e-commerce para un catálogo pequeño y
+un paquete estandarizado: retiro gratis más tarifa plana por zona y clase de
+producto. La tarifa debe revisarse antes de activar pagos y luego al menos una
+vez al mes, o inmediatamente si Starken cambia sus precios.
+
+Fuentes:
+
+- [Tarifa Simple de Starken](https://www.starken.cl/tarifa-simple)
+- [Tarifa plana por zona y clase en WooCommerce](https://woocommerce.com/document/flat-rate-shipping/)
+
+Condición de salida obligatoria: pesar y medir una unidad realmente cerrada y
+protegida. Si supera 850 g o deja de cumplir el perfil XS, esta tabla no puede
+usarse y debe recalcularse con la categoría siguiente antes de habilitar pagos.
 
 Blue Express se prueba después si confirma acceso API para el volumen real de
 ReskiChile. Sus plugins publicados no se pueden instalar directamente en Next.js.
