@@ -5,14 +5,15 @@ Alcance: catálogo, carrito, checkout, reservas, Webpay y administración.
 
 ## Configuración acordada
 
-- paquete unitario: 10 × 10 × 20 cm;
+- paquete unitario actualizado el 2026-09-02: 15 × 10 × 3 cm;
 - embalaje: una caja terminada por cada unidad comprada;
-- peso físico provisional: 0,5 kg;
+- peso medido: talla S 115 ± 5 g; talla L 135 ± 5 g;
+- peso usado para todas las tallas: 140 g, máximo conservador de la talla L;
 - Los Ángeles: 5 unidades de cada producto y talla;
 - Las Condes: 5 unidades de cada producto y talla.
 
-El peso debe volver a medirse con producto, caja y protecciones antes de usar
-tarifas productivas. Starken y otros transportistas pueden corregir el cobro al
+El perfil debe volver a medirse si cambian el producto, la caja o sus
+protecciones. Starken y otros transportistas pueden corregir el cobro al
 verificar el paquete.
 
 ## Flujo conectado

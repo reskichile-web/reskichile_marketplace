@@ -43,6 +43,18 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'an unexpected Starken regional amount was configured';
   END IF;
+
+  IF (
+    SELECT COUNT(*)
+    FROM public.ski_rack_products
+    WHERE slug IN ('madera', 'filamento')
+      AND packaged_length_cm = 15
+      AND packaged_width_cm = 10
+      AND packaged_height_cm = 3
+      AND packaged_weight_kg = 0.140
+  ) <> 2 THEN
+    RAISE EXCEPTION 'expected the conservative 15 x 10 x 3 cm, 140 g package profile';
+  END IF;
 END;
 $$;
 

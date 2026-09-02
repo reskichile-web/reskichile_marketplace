@@ -167,11 +167,12 @@ esa ubicación y destino.
 Perfil de paquete actualmente configurado para Ski Rack:
 
 ```text
-largo embalado        10 cm
+largo embalado        15 cm
 ancho embalado        10 cm
-alto embalado         20 cm
-peso volumétrico      0,5 kg (informado)
-peso físico embalado  0,5 kg
+alto embalado          3 cm
+peso talla S          115 ± 5 g
+peso talla L          135 ± 5 g
+peso usado al cotizar 140 g (máximo conservador de talla L)
 ```
 
 ## 6. Variables server-side
@@ -311,7 +312,7 @@ que ya alcanzó a comenzar en Transbank.
 - Supabase MCP: OAuth conectado;
 - dominio canónico confirmado: `https://www.reskichile.cl`;
 - cargar stock inicial por talla en Los Ángeles y Las Condes;
-- confirmar con una medición final el peso provisional de 0,5 kg;
+- repetir la medición si cambia el producto, la caja o sus protecciones;
 - solicitar a Starken acceso/token de integración para e-commerce propio;
 - confirmar con Blue Express si habilita API para el volumen inicial;
 - cargar tarifas reales en tabla o decidir una cifra explícita sólo para sandbox;

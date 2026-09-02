@@ -71,12 +71,12 @@ Documentos asociados:
 | Orígenes de despacho | Los Ángeles y Las Condes; checkout elige entre ubicaciones con stock |
 | Cobertura | Nacional, sujeta a cobertura real del transportista |
 | Modalidades | Domicilio y sucursal/punto de retiro |
-| Dimensiones/peso | 10 × 10 × 20 cm; peso físico provisional 0,5 kg |
+| Dimensiones/peso | 15 × 10 × 3 cm; cotización conservadora con 140 g (talla L + tolerancia) |
 | Despacho | Selector server-side listo para tabla; APIs de courier pendientes |
 | Infraestructura durante preparación | Vercel Hobby y Supabase Free |
 
-Antes de cerrar las tarifas falta medir el peso físico del primer producto ya
-embalado y obtener tarifas/credenciales reales del transportista.
+Las medidas físicas ya fueron incorporadas. La tabla temporal usa tarifas
+públicas; las credenciales reales del transportista siguen pendientes.
 
 ## 3. SDK oficial versus integración “rápida y fácil”
 

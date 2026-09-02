@@ -15,8 +15,9 @@ Estado: Starken seleccionado como courier oficial; integración de cotización p
 - Cada producto sale desde Los Ángeles o Las Condes.
 - Se ofrecerá cobertura nacional.
 - Se ofrecerá entrega a domicilio y a sucursal/punto.
-- El paquete informado mide 10 × 10 × 20 cm.
-- Peso físico provisional: 0,5 kg; debe confirmarse con el paquete terminado.
+- La caja terminada mide 15 × 10 × 3 cm.
+- Peso medido: talla S 115 ± 5 g y talla L 135 ± 5 g.
+- Para cotización se usa conservadoramente el máximo de la talla L: 140 g.
 
 ## 2. Cómo calculan despacho otros e-commerce
 
@@ -260,8 +261,9 @@ validarse contra tarifas vigentes antes de activar pagos.
 
 Consulta oficial realizada el 2026-09-02 en Tarifa Simple, modalidad Persona,
 entrega a domicilio, tamaño XS. Starken define XS como 0 a 850 g y muestra como
-referencia un paquete de 20 × 10 × 10 cm. Esto coincide con las medidas hoy
-registradas para el Ski Rack: 20 × 10 × 10 cm y 0,500 kg por unidad embalada.
+referencia un paquete de 20 × 10 × 10 cm. El perfil registrado para el Ski Rack
+es menor: 15 × 10 × 3 cm y 0,140 kg por unidad embalada. Se usa el peso máximo
+de la talla L para cubrir todas las tallas con un único perfil conservador.
 
 | Zona Starken | Tarifa pública | Tarifa ReskiChile por caja |
 | --- | ---: | ---: |
@@ -290,9 +292,8 @@ Fuentes:
 - [Tarifa Simple de Starken](https://www.starken.cl/tarifa-simple)
 - [Tarifa plana por zona y clase en WooCommerce](https://woocommerce.com/document/flat-rate-shipping/)
 
-Condición de salida obligatoria: pesar y medir una unidad realmente cerrada y
-protegida. Si supera 850 g o deja de cumplir el perfil XS, esta tabla no puede
-usarse y debe recalcularse con la categoría siguiente antes de habilitar pagos.
+Si el producto, la caja o sus protecciones cambian y el paquete supera 850 g,
+esta tabla no puede usarse y debe recalcularse con la categoría siguiente.
 
 Blue Express se prueba después si confirma acceso API para el volumen real de
 ReskiChile. Sus plugins publicados no se pueden instalar directamente en Next.js.
@@ -513,7 +514,7 @@ concurrentes.
 
 Para construir la tabla inicial:
 
-1. confirmar con balanza el peso físico provisional de 0,5 kg;
+1. repetir la medición si cambia el producto, la caja o sus protecciones;
 2. dirección operativa de origen en Los Ángeles y Las Condes, compartida por un
    canal seguro solo cuando se configure el transportista;
 3. plazo comercial que se mostrará al cliente;
