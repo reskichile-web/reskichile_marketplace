@@ -190,6 +190,11 @@ export function parseCheckoutInput(raw: unknown): CheckoutInput {
     method === 'home' ? stringValue(delivery.street, 'Calle', 2, 120) : null
   const number =
     method === 'home' ? stringValue(delivery.number, 'Número', 1, 20) : null
+  if (number && !/^[0-9]{1,10}$/.test(number)) {
+    throw new CheckoutValidationError(
+      'El número de calle debe contener solo dígitos; agrega letras o indicaciones en la referencia'
+    )
+  }
   const pickupPointId =
     method === 'pickup'
       ? stringValue(delivery.pickupPointId, 'Sucursal o punto', 2, 120)

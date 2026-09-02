@@ -75,6 +75,13 @@ describe('parseCheckoutInput', () => {
     expect(() => parseCheckoutInput({ ...checkout, buyer })).toThrow(message)
   })
 
+  it('keeps the street number compatible with courier transport orders', () => {
+    expect(() => parseCheckoutInput({
+      ...checkout,
+      delivery: { ...checkout.delivery, number: '1234-A' },
+    })).toThrow('solo dígitos')
+  })
+
   it('builds the same fingerprint regardless of rack line ordering', () => {
     const first = parseCheckoutInput({
       ...checkout,

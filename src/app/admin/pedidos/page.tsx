@@ -56,6 +56,11 @@ interface Order {
   discount_clp: number
   shipping_clp: number
   total_clp: number
+  shipping_carrier: string | null
+  tracking_number: string | null
+  tracking_url: string | null
+  shipped_at: string | null
+  ready_for_pickup_at: string | null
   paid_at: string | null
   created_at: string
   order_items: OrderItem[]
@@ -292,6 +297,10 @@ export default function AdminOrdersPage() {
   const [refundReason, setRefundReason] = useState('')
   const [refundConfirmation, setRefundConfirmation] = useState('')
   const [refundIdempotencyKey, setRefundIdempotencyKey] = useState('')
+  const [shippingOrder, setShippingOrder] = useState<Order | null>(null)
+  const [shippingCarrier, setShippingCarrier] = useState('Chilexpress')
+  const [trackingNumber, setTrackingNumber] = useState('')
+  const [trackingUrl, setTrackingUrl] = useState('')
   const loadingRef = useRef(false)
   const requestRef = useRef<AbortController | null>(null)
 
@@ -339,17 +348,26 @@ export default function AdminOrdersPage() {
     void load(nextOffset, true)
   }, [load, nextOffset])
 
-  async function updateFulfillment(order: Order, status: string) {
+  async function updateFulfillment(
+    order: Order,
+    status: string,
+    tracking?: { carrier: string; trackingNumber: string; trackingUrl: string },
+  ) {
     setBusy(order.public_id)
     setError('')
     try {
       const response = await fetch(`/api/admin/orders/${order.public_id}/fulfillment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...tracking }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'No pudimos actualizar el pedido')
+      if (status === 'shipped') {
+        setShippingOrder(null)
+        setTrackingNumber('')
+        setTrackingUrl('')
+      }
       await load(0)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No pudimos actualizar el pedido')
@@ -483,7 +501,14 @@ export default function AdminOrdersPage() {
                             disabled={busy === order.public_id}
                             onClick={event => {
                               event.stopPropagation()
-                              void updateFulfillment(order, action.value)
+                              if (action.value === 'shipped') {
+                                setShippingOrder(order)
+                                setShippingCarrier('Chilexpress')
+                                setTrackingNumber('')
+                                setTrackingUrl('')
+                              } else {
+                                void updateFulfillment(order, action.value)
+                              }
                             }}
                             className={`inline-flex h-8 max-w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border bg-white px-3 text-[11px] font-bold shadow-[0_2px_5px_rgba(15,23,42,0.09)] transition-all hover:-translate-y-px hover:shadow-[0_3px_7px_rgba(15,23,42,0.11)] active:translate-y-px active:shadow-none disabled:translate-y-0 disabled:opacity-50 ${actionStyle?.className || ''}`}
                           >
@@ -582,6 +607,16 @@ export default function AdminOrdersPage() {
                                 {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{order.shipping_snapshot.pickup_point_id}</p>}
                                 {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
                                 <p className="text-gray-600">{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
+                                {order.tracking_number && (
+                                  <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-600">
+                                    <p><span className="font-bold text-gray-800">{order.shipping_carrier}</span> · {order.tracking_number}</p>
+                                    {order.tracking_url && (
+                                      <a href={order.tracking_url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-brand-600 hover:underline">
+                                        Abrir seguimiento
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </section>
 
@@ -640,6 +675,39 @@ export default function AdminOrdersPage() {
           onLoadMore={loadMore}
           label="Cargando más pedidos"
         />
+      )}
+
+      {shippingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="shipping-title">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h2 id="shipping-title" className="font-body text-xl font-black">Despachar {shippingOrder.order_number}</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-600">Al confirmar, el comprador recibirá automáticamente el transportista y su número de seguimiento.</p>
+            <label className="mt-5 block text-sm font-semibold">Transportista
+              <input required minLength={2} maxLength={80} value={shippingCarrier} onChange={event => setShippingCarrier(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </label>
+            <label className="mt-4 block text-sm font-semibold">Número de seguimiento
+              <input required minLength={2} maxLength={120} value={trackingNumber} onChange={event => setTrackingNumber(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </label>
+            <label className="mt-4 block text-sm font-semibold">Link de seguimiento <span className="font-normal text-gray-400">(opcional)</span>
+              <input type="url" maxLength={500} placeholder="https://…" value={trackingUrl} onChange={event => setTrackingUrl(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </label>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setShippingOrder(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold">Cancelar</button>
+              <button
+                type="button"
+                disabled={busy === shippingOrder.public_id || shippingCarrier.trim().length < 2 || trackingNumber.trim().length < 2}
+                onClick={() => void updateFulfillment(shippingOrder, 'shipped', {
+                  carrier: shippingCarrier.trim(),
+                  trackingNumber: trackingNumber.trim(),
+                  trackingUrl: trackingUrl.trim(),
+                })}
+                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-40"
+              >
+                {busy === shippingOrder.public_id ? 'Despachando…' : 'Confirmar despacho'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {refundOrder && (

@@ -121,6 +121,13 @@ BEGIN
     RAISE EXCEPTION 'refund did not finalize: %', v_result;
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM public.commerce_outbox
+    WHERE refund_id = v_refund_id AND kind = 'refund_confirmation'
+  ) THEN
+    RAISE EXCEPTION 'successful refund did not enqueue buyer confirmation';
+  END IF;
+
   v_result := public.commerce_request_refund(
     v_public_id, v_admin, 23980, 'Cancelación solicitada por prueba',
     '40000000-0000-4000-8000-000000000001',
@@ -146,9 +153,9 @@ BEGIN
 
   SELECT COUNT(*)::INTEGER INTO v_count
   FROM public.commerce_claim_outbox(
-    10, '70000000-0000-4000-8000-000000000001'
+    10, '70000000-0000-4000-8000-000000000001', 'integration'
   );
-  IF v_count <> 2 THEN
+  IF v_count <> 3 THEN
     RAISE EXCEPTION 'outbox claim count is invalid: %', v_count;
   END IF;
 

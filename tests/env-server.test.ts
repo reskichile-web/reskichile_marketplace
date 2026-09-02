@@ -212,3 +212,26 @@ describe('address validation configuration', () => {
     )
   })
 })
+
+describe('Chilexpress production configuration', () => {
+  it('requires both official API subscriptions when selected', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('APP_URL', 'https://www.reskichile.cl')
+    vi.stubEnv('PAYMENTS_ENABLED', 'false')
+    vi.stubEnv('TRANSBANK_ENVIRONMENT', 'production')
+    vi.stubEnv('TRANSBANK_COMMERCE_CODE', 'production-commerce-code')
+    vi.stubEnv('TRANSBANK_API_KEY_SECRET', 'production-api-key')
+    vi.stubEnv('SHIPPING_RATE_SOURCE', 'chilexpress')
+    vi.stubEnv('CHILEXPRESS_RATING_API_KEY', undefined)
+    vi.stubEnv('CHILEXPRESS_COVERAGE_API_KEY', undefined)
+
+    expect(() => getPaymentConfig()).toThrow('credenciales de cotización y cobertura')
+
+    vi.stubEnv('CHILEXPRESS_RATING_API_KEY', 'rating-key')
+    vi.stubEnv('CHILEXPRESS_COVERAGE_API_KEY', 'coverage-key')
+    expect(getPaymentConfig()).toMatchObject({
+      shippingRateSource: 'chilexpress',
+      chilexpressBaseUrl: 'https://services.wschilexpress.com/',
+    })
+  })
+})

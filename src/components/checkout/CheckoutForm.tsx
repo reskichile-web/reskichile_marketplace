@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, Fragment, useState } from 'react'
+import { FormEvent, Fragment, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -44,6 +44,15 @@ interface Quote {
   discountClp: number
   shippingClp: number
   totalClp: number
+}
+
+interface PickupPoint {
+  id: string
+  label: string
+  address: string
+  instructions: string
+  region: string
+  commune: string
 }
 
 const money = new Intl.NumberFormat('es-CL', {
@@ -117,6 +126,8 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const [number, setNumber] = useState('')
   const [extra, setExtra] = useState('')
   const [pickupPointId, setPickupPointId] = useState('')
+  const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([])
+  const [pickupPointsError, setPickupPointsError] = useState('')
   const [addressContext, setAddressContext] = useState<string | null>(null)
   const [addressValidationToken, setAddressValidationToken] = useState<string | null>(null)
   const [addressError, setAddressError] = useState('')
@@ -125,8 +136,35 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const [idempotencyKey, setIdempotencyKey] = useState('')
   const [loading, setLoading] = useState<'quote' | 'create' | null>(null)
   const [error, setError] = useState('')
+  const selectedPickupPoint = pickupPoints.find(point => point.id === pickupPointId)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetch('/api/checkout/pickup-points', {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async response => {
+        const data = await response.json().catch(() => null) as { points?: PickupPoint[]; error?: string } | null
+        if (!response.ok) throw new Error(data?.error || 'No pudimos cargar los puntos de retiro.')
+        const points = Array.isArray(data?.points) ? data.points : []
+        setPickupPoints(points)
+        setPickupPointId(current => current || points[0]?.id || '')
+      })
+      .catch(loadError => {
+        if (loadError instanceof DOMException && loadError.name === 'AbortError') return
+        setPickupPointsError(loadError instanceof Error ? loadError.message : 'No pudimos cargar los puntos de retiro.')
+      })
+    return () => controller.abort()
+  }, [])
 
   function payload(key: string): Record<string, unknown> {
+    const deliveryRegion = method === 'pickup'
+      ? selectedPickupPoint?.region || ''
+      : region
+    const deliveryCommune = method === 'pickup'
+      ? selectedPickupPoint?.commune || ''
+      : commune
     return {
       productIds: kind === 'products' ? items.map(item => item.id) : [],
       rackItems: kind === 'racks'
@@ -140,8 +178,8 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
       buyer: { name, email, phone, phoneCountry },
       delivery: {
         method,
-        region,
-        commune,
+        region: deliveryRegion,
+        commune: deliveryCommune,
         street: method === 'home' ? street : null,
         number: method === 'home' ? number : null,
         extra: extra || null,
@@ -200,6 +238,11 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
     }
 
     if (currentStep !== 2) return
+
+    if (method === 'pickup' && !selectedPickupPoint) {
+      setError('Selecciona un punto de retiro disponible.')
+      return
+    }
 
     if (method === 'home' && addressValidationEnabled && (!addressContext || !addressValidationToken)) {
       setAddressError('Busca y confirma la dirección antes de continuar.')
@@ -290,9 +333,9 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
         [commune, region].filter(Boolean).join(', '),
       ].filter(Boolean)
     : [
-        pickupPointId ? `Punto de retiro: ${pickupPointId}` : '',
+        selectedPickupPoint?.label || '',
+        selectedPickupPoint?.address || '',
         extra,
-        [commune, region].filter(Boolean).join(', '),
       ].filter(Boolean)
 
   function returnToDelivery() {
@@ -421,11 +464,50 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                       <input type="radio" name="delivery" value="pickup" checked={method === 'pickup'} onChange={() => setMethod('pickup')} className="accent-brand-500" />
                       Punto de retiro
                     </span>
-                    <span className="mt-1 block pl-5 text-xs text-gray-500">Retira donde te acomode</span>
+                    <span className="mt-1 block pl-5 text-xs text-gray-500">Gratis en nuestras bodegas</span>
                   </label>
                 </div>
                 <div className="grid gap-5 sm:grid-cols-2">
-                  {method === 'home' && addressValidationEnabled ? (
+                  {method === 'pickup' ? (
+                    <div className="space-y-3 sm:col-span-2">
+                      {pickupPointsError && (
+                        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                          {pickupPointsError}
+                        </p>
+                      )}
+                      {!pickupPointsError && pickupPoints.length === 0 && (
+                        <p className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                          Cargando puntos de retiro…
+                        </p>
+                      )}
+                      {pickupPoints.map(point => (
+                        <label
+                          key={point.id}
+                          className={`block cursor-pointer rounded-xl border p-4 transition-colors ${pickupPointId === point.id ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}
+                        >
+                          <span className="flex items-start gap-3">
+                            <input
+                              required={method === 'pickup'}
+                              type="radio"
+                              name="pickup-point"
+                              value={point.id}
+                              checked={pickupPointId === point.id}
+                              onChange={() => setPickupPointId(point.id)}
+                              className="mt-1 accent-brand-500"
+                            />
+                            <span className="min-w-0">
+                              <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-gray-900">
+                                {point.label}
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Gratis</span>
+                              </span>
+                              <span className="mt-1 block text-xs leading-5 text-gray-600">{point.address}</span>
+                              <span className="mt-1 block text-xs leading-5 text-gray-500">{point.instructions}</span>
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : addressValidationEnabled ? (
                     <AddressAutocomplete
                       disabled={!enabled || loading !== null}
                       error={addressError}
@@ -456,23 +538,14 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                         Comuna
                         <input required autoComplete="address-level2" maxLength={100} value={commune} onChange={(event) => setCommune(event.target.value)} placeholder="Tu comuna" className={fieldClass} />
                       </label>
-                      {method === 'home' ? (
-                        <>
-                          <label className="text-sm font-medium text-gray-800">
-                            Calle
-                            <input required autoComplete="address-line1" maxLength={120} value={street} onChange={(event) => setStreet(event.target.value)} placeholder="Nombre de la calle" className={fieldClass} />
-                          </label>
-                          <label className="text-sm font-medium text-gray-800">
-                            Número
-                            <input required maxLength={20} value={number} onChange={(event) => setNumber(event.target.value)} placeholder="1234" className={fieldClass} />
-                          </label>
-                        </>
-                      ) : (
-                        <label className="text-sm font-medium text-gray-800 sm:col-span-2">
-                          Sucursal o punto de retiro
-                          <input required maxLength={120} placeholder="Identificador de prueba" value={pickupPointId} onChange={(event) => setPickupPointId(event.target.value)} className={fieldClass} />
-                        </label>
-                      )}
+                      <label className="text-sm font-medium text-gray-800">
+                        Calle
+                        <input required autoComplete="address-line1" maxLength={120} value={street} onChange={(event) => setStreet(event.target.value)} placeholder="Nombre de la calle" className={fieldClass} />
+                      </label>
+                      <label className="text-sm font-medium text-gray-800">
+                        Número
+                        <input required inputMode="numeric" pattern="[0-9]{1,10}" maxLength={10} value={number} onChange={(event) => setNumber(event.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="1234" className={fieldClass} />
+                      </label>
                     </>
                   )}
                   <label className="text-sm font-medium text-gray-800 sm:col-span-2">

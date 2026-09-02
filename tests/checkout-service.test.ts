@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  deriveOrderEmailAccessToken,
   derivePaymentAccessToken,
   quoteCheckout,
+  verifyOrderEmailAccessToken,
 } from '@/lib/commerce/checkout-service'
 import type { CheckoutInput } from '@/lib/commerce/checkout-validation'
 import type { PaymentConfig } from '@/lib/env/server'
@@ -77,5 +79,19 @@ describe('sandbox checkout access', () => {
     expect(retry).toBe(first)
     expect(differentOrder).not.toBe(first)
     expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/)
+  })
+
+  it('signs an email status link for exactly one public order', () => {
+    const publicId = '4d9bd7dc-1877-4cf6-9c9e-cc8a41cad19f'
+    const token = deriveOrderEmailAccessToken(config, publicId)
+
+    expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(verifyOrderEmailAccessToken(config, publicId, token)).toBe(true)
+    expect(verifyOrderEmailAccessToken(
+      config,
+      'eac18fc7-b34c-463a-9e3b-bf42877ff8c2',
+      token,
+    )).toBe(false)
+    expect(verifyOrderEmailAccessToken(config, publicId, token.slice(1))).toBe(false)
   })
 })

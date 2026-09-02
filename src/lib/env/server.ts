@@ -1,7 +1,7 @@
 import 'server-only'
 
 export type PaymentEnvironment = 'integration' | 'production'
-export type ShippingRateSource = 'sandbox_fixed' | 'table'
+export type ShippingRateSource = 'sandbox_fixed' | 'table' | 'chilexpress'
 type PaymentConfigPurpose = 'checkout' | 'callback' | 'reconciliation'
 
 export interface PaymentConfig {
@@ -13,6 +13,11 @@ export interface PaymentConfig {
   transbankTimeoutMs: number
   sandboxShippingClp: number
   shippingRateSource: ShippingRateSource
+  chilexpressBaseUrl?: string
+  chilexpressRatingApiKey?: string
+  chilexpressCoverageApiKey?: string
+  chilexpressCustomerCardNumber?: string
+  chilexpressTimeoutMs?: number
   allowIncompleteShippingInSandbox: boolean
   sandboxBuyerEmails: readonly string[]
   inventoryReservationMinutes: number
@@ -148,6 +153,11 @@ function buildPaymentConfig(
   let sandboxShippingClp = 0
   let sandboxBuyerEmails: readonly string[] = []
   let allowIncompleteShippingInSandbox = false
+  let chilexpressBaseUrl: string | undefined
+  let chilexpressRatingApiKey: string | undefined
+  let chilexpressCoverageApiKey: string | undefined
+  let chilexpressCustomerCardNumber: string | undefined
+  let chilexpressTimeoutMs = 8000
 
   // Shipping and sandbox access are checkout-only concerns. Never let a typo
   // in one of these gates prevent a callback or reconciliation for an already
@@ -156,7 +166,8 @@ function buildPaymentConfig(
     const shippingRateSourceRaw = process.env.SHIPPING_RATE_SOURCE || 'table'
     if (
       shippingRateSourceRaw !== 'sandbox_fixed' &&
-      shippingRateSourceRaw !== 'table'
+      shippingRateSourceRaw !== 'table' &&
+      shippingRateSourceRaw !== 'chilexpress'
     ) {
       throw new ConfigurationError('SHIPPING_RATE_SOURCE no es válido')
     }
@@ -179,6 +190,26 @@ function buildPaymentConfig(
     allowIncompleteShippingInSandbox =
       environment === 'integration' &&
       process.env.ALLOW_INCOMPLETE_SHIPPING_IN_SANDBOX === 'true'
+
+    if (shippingRateSource === 'chilexpress') {
+      chilexpressRatingApiKey = process.env.CHILEXPRESS_RATING_API_KEY
+      chilexpressCoverageApiKey = process.env.CHILEXPRESS_COVERAGE_API_KEY
+      chilexpressCustomerCardNumber = process.env.CHILEXPRESS_CUSTOMER_CARD_NUMBER?.trim() || undefined
+      chilexpressTimeoutMs = parseInteger(
+        'CHILEXPRESS_TIMEOUT_MS',
+        process.env.CHILEXPRESS_TIMEOUT_MS || '8000',
+        1000,
+        20000,
+      )
+      chilexpressBaseUrl = environment === 'production'
+        ? 'https://services.wschilexpress.com/'
+        : 'https://qaservices.wschilexpress.com/'
+      if (!chilexpressRatingApiKey || !chilexpressCoverageApiKey) {
+        throw new ConfigurationError(
+          'Faltan las credenciales de cotización y cobertura de Chilexpress'
+        )
+      }
+    }
   }
 
   const rateLimitSecret = process.env.CHECKOUT_RATE_LIMIT_SECRET || ''
@@ -248,10 +279,10 @@ function buildPaymentConfig(
 
     if (
       purpose === 'checkout' &&
-      shippingRateSource !== 'table'
+      !['table', 'chilexpress'].includes(shippingRateSource)
     ) {
       throw new ConfigurationError(
-        'Producción requiere tarifas de despacho persistidas y aprobadas'
+        'Producción requiere tarifas aprobadas o cotización oficial de Chilexpress'
       )
     }
 
@@ -284,6 +315,11 @@ function buildPaymentConfig(
     transbankTimeoutMs,
     sandboxShippingClp,
     shippingRateSource,
+    chilexpressBaseUrl,
+    chilexpressRatingApiKey,
+    chilexpressCoverageApiKey,
+    chilexpressCustomerCardNumber,
+    chilexpressTimeoutMs,
     allowIncompleteShippingInSandbox,
     sandboxBuyerEmails,
     inventoryReservationMinutes,

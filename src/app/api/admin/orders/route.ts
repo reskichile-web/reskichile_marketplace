@@ -31,7 +31,8 @@ export async function GET(request: Request) {
         public_id, order_number, buyer_email, buyer_name, buyer_phone,
         delivery_method, shipping_snapshot, order_status, payment_status,
         fulfillment_status, subtotal_clp, discount_clp, shipping_clp,
-        total_clp, paid_at, created_at, updated_at,
+        total_clp, shipping_carrier, tracking_number, tracking_url,
+        shipped_at, ready_for_pickup_at, paid_at, created_at, updated_at,
         order_items(id, product_name, sku, unit_price_clp, quantity, line_total_clp),
         payment_attempts(id, state, amount_clp, environment, authorized_at, last_error_code),
         refunds(id, amount_clp, state, reason, provider_type, response_code, created_at)

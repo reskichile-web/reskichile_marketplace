@@ -1,7 +1,11 @@
 import 'server-only'
 
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { verifyPaymentAccessCookie } from './checkout-service'
+import type { PaymentConfig } from '@/lib/env/server'
+import {
+  verifyOrderEmailAccessToken,
+  verifyPaymentAccessCookie,
+} from './checkout-service'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -50,7 +54,9 @@ function snapshotString(
 
 export async function getGuestOrder(
   publicId: string,
-  accessCookie: string | undefined
+  accessCookie: string | undefined,
+  emailAccessToken?: string,
+  config?: PaymentConfig
 ): Promise<GuestOrderResult | null> {
   if (!UUID_RE.test(publicId)) return null
 
@@ -64,13 +70,19 @@ export async function getGuestOrder(
     .maybeSingle()
 
   if (error || !order) return null
-  if (
-    !verifyPaymentAccessCookie(
+  const hasCookieAccess = verifyPaymentAccessCookie(
       accessCookie,
       String(order.public_id),
       String(order.guest_access_hash)
     )
-  ) {
+  const hasEmailAccess = config
+    ? verifyOrderEmailAccessToken(
+        config,
+        String(order.public_id),
+        emailAccessToken
+      )
+    : false
+  if (!hasCookieAccess && !hasEmailAccess) {
     return null
   }
 

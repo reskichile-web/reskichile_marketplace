@@ -8,17 +8,19 @@ import CheckoutResultCard from '@/components/checkout/CheckoutResultCard'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  searchParams: Promise<{ orden?: string }>
+  searchParams: Promise<{ orden?: string; acceso?: string }>
 }
 
 export default async function CheckoutResultPage({ searchParams }: Props) {
-  const { orden: publicId = '' } = await searchParams
+  const { orden: publicId = '', acceso } = await searchParams
   // Existing buyers must be able to see a result even if checkout is disabled
   // or a shipping-only variable is temporarily invalid.
   const config = getPaymentCallbackConfig()
   const cookieStore = await cookies()
   const accessCookie = cookieStore.get(paymentAccessCookieName(config))?.value
-  const order = publicId ? await getGuestOrder(publicId, accessCookie) : null
+  const order = publicId
+    ? await getGuestOrder(publicId, accessCookie, acceso, config)
+    : null
 
   if (!order) {
     return (

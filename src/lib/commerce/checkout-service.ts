@@ -33,6 +33,11 @@ import {
   type ShippingOriginCode,
   type TableShippingRateCandidate,
 } from './fulfillment-selection'
+import {
+  ChilexpressError,
+  quoteChilexpress,
+  type ChilexpressPackage,
+} from '@/lib/shipping/chilexpress'
 
 interface CommerceProduct {
   id: string
@@ -96,7 +101,7 @@ export interface CheckoutQuote {
   shippingClp: number
   shippingRateClp: number
   totalClp: number
-  shippingSource: 'sandbox_fixed' | 'table'
+  shippingSource: 'sandbox_fixed' | 'table' | 'chilexpress'
   shippingOrigin: ShippingOriginCode
 }
 
@@ -265,12 +270,43 @@ interface ShippingRateRow {
   }>
 }
 
+interface PackagedLine {
+  packaged_length_cm: number | null
+  packaged_width_cm: number | null
+  packaged_height_cm: number | null
+  packaged_weight_kg: number | null
+  quantity?: number
+}
+
+function combinedParcel(lines: PackagedLine[]): ChilexpressPackage | null {
+  if (lines.length === 0 || lines.some(line => (
+    line.packaged_length_cm == null || line.packaged_width_cm == null ||
+    line.packaged_height_cm == null || line.packaged_weight_kg == null
+  ))) return null
+
+  const parcel = {
+    lengthCm: Math.max(...lines.map(line => Number(line.packaged_length_cm))),
+    widthCm: Math.max(...lines.map(line => Number(line.packaged_width_cm))),
+    heightCm: Math.max(...lines.map(line => Number(line.packaged_height_cm))),
+    weightKg: lines.reduce(
+      (sum, line) => sum + Number(line.packaged_weight_kg) * Number(line.quantity || 1),
+      0,
+    ),
+  }
+  if (Object.values(parcel).some(value => !Number.isFinite(value) || value <= 0)) {
+    return null
+  }
+  return parcel
+}
+
 async function quoteShipping(
   config: PaymentConfig,
   input: CheckoutInput,
   origins: ShippingOriginCode[],
   parcelCount: number,
-): Promise<{ amountClp: number; source: 'sandbox_fixed' | 'table'; origin: ShippingOriginCode }> {
+  parcels: Map<ShippingOriginCode, ChilexpressPackage>,
+  declaredWorthClp: number,
+): Promise<{ amountClp: number; source: 'sandbox_fixed' | 'table' | 'chilexpress'; origin: ShippingOriginCode }> {
   if (!Number.isSafeInteger(parcelCount) || parcelCount < 1 || parcelCount > 20) {
     throw new CheckoutServiceError(
       'INVALID_PACKAGE_COUNT',
@@ -305,6 +341,66 @@ async function quoteShipping(
       amountClp: orderAmount(config.sandboxShippingClp),
       source: 'sandbox_fixed',
       origin: origins[0],
+    }
+  }
+
+  if (config.shippingRateSource === 'chilexpress' && input.delivery.method === 'home') {
+    if (
+      !config.chilexpressBaseUrl || !config.chilexpressRatingApiKey ||
+      !config.chilexpressCoverageApiKey
+    ) {
+      throw new CheckoutServiceError(
+        'SHIPPING_NOT_READY',
+        'El despacho a domicilio todavía no está disponible.',
+        503,
+      )
+    }
+    const supabase = createServiceRoleClient()
+    const { data: originRows, error: originError } = await supabase
+      .from('shipping_origins')
+      .select('code, region, commune')
+      .in('code', origins)
+      .eq('active', true)
+    if (originError) throw databaseError(originError)
+
+    const attempts = await Promise.all((originRows || []).flatMap(origin => {
+      const code = origin.code as ShippingOriginCode
+      const parcel = parcels.get(code)
+      if (!parcel || !origins.includes(code)) return []
+      return [quoteChilexpress(
+        {
+          baseUrl: config.chilexpressBaseUrl!,
+          ratingApiKey: config.chilexpressRatingApiKey!,
+          coverageApiKey: config.chilexpressCoverageApiKey!,
+          customerCardNumber: config.chilexpressCustomerCardNumber,
+          timeoutMs: config.chilexpressTimeoutMs || 8000,
+        },
+        { region: String(origin.region), commune: String(origin.commune) },
+        { region: input.delivery.region, commune: input.delivery.commune },
+        parcel,
+        declaredWorthClp,
+      ).then(quote => ({ quote, origin: code })).catch(error => {
+        if (!(error instanceof ChilexpressError)) {
+          console.error('chilexpress_quote_failed', { reason: 'unexpected_error' })
+        }
+        return null
+      })]
+    }))
+    const available = attempts
+      .filter((value): value is NonNullable<typeof value> => value !== null)
+      .sort((a, b) => a.quote.amountClp - b.quote.amountClp)
+    const selected = available[0]
+    if (!selected) {
+      throw new CheckoutServiceError(
+        'SHIPPING_NOT_AVAILABLE',
+        'No pudimos obtener una tarifa de despacho para esta comuna.',
+        422,
+      )
+    }
+    return {
+      amountClp: selected.quote.amountClp,
+      source: 'chilexpress',
+      origin: selected.origin,
     }
   }
 
@@ -501,13 +597,51 @@ export async function quoteCheckout(
     : new Map<ShippingOriginCode, QuotedRackVariant[]>()
   const products = rackCandidates.size === 0 ? await loadProducts(config, input) : []
   const productOrigins = products.map(product => product.shipping_origin_code)
-  const candidateOrigins = rackCandidates.size > 0
+  let candidateOrigins = rackCandidates.size > 0
     ? Array.from(rackCandidates.keys())
     : productOrigins.filter((origin): origin is ShippingOriginCode => origin != null)
+  if (input.delivery.method === 'pickup') {
+    const requestedOrigin = input.delivery.pickupPointId
+    if (requestedOrigin !== 'las_condes' && requestedOrigin !== 'los_angeles') {
+      throw new CheckoutServiceError(
+        'INVALID_PICKUP_POINT',
+        'El punto de retiro seleccionado no es válido.',
+        422,
+      )
+    }
+    candidateOrigins = candidateOrigins.filter(origin => origin === requestedOrigin)
+    if (candidateOrigins.length === 0) {
+      throw new CheckoutServiceError(
+        'PICKUP_NOT_AVAILABLE',
+        'Este producto no tiene stock disponible en el punto de retiro seleccionado.',
+        422,
+      )
+    }
+  }
   const parcelCount = input.rackItems.length > 0
     ? input.rackItems.reduce((sum, item) => sum + item.quantity, 0)
     : input.productIds.length
-  const shipping = await quoteShipping(config, input, candidateOrigins, parcelCount)
+  const parcels = new Map<ShippingOriginCode, ChilexpressPackage>()
+  for (const origin of candidateOrigins) {
+    const parcel = rackCandidates.size > 0
+      ? combinedParcel(rackCandidates.get(origin) || [])
+      : combinedParcel(products.filter(product => product.shipping_origin_code === origin))
+    if (parcel) parcels.set(origin, parcel)
+  }
+  const declaredWorthClp = rackCandidates.size > 0
+    ? (rackCandidates.values().next().value || []).reduce(
+        (sum: number, variant: QuotedRackVariant) => sum + Number(variant.price_clp) * variant.quantity,
+        0,
+      )
+    : products.reduce((sum, product) => sum + product.price, 0)
+  const shipping = await quoteShipping(
+    config,
+    input,
+    candidateOrigins,
+    parcelCount,
+    parcels,
+    declaredWorthClp,
+  )
   const rackVariants = rackCandidates.get(shipping.origin) || []
   const subtotalClp = rackVariants.length > 0
     ? rackVariants.reduce((sum, variant) => sum + Number(variant.price_clp) * variant.quantity, 0)
@@ -827,6 +961,34 @@ export function derivePaymentAccessToken(
   return createHmac('sha256', config.rateLimitSecret)
     .update('reski-order-access:v1:' + idempotencyKey)
     .digest('base64url')
+}
+
+export function deriveOrderEmailAccessToken(
+  config: PaymentConfig,
+  publicId: string
+): string {
+  if (config.rateLimitSecret.length < 32) {
+    throw new Error('order email access secret is not configured')
+  }
+  return createHmac('sha256', config.rateLimitSecret)
+    .update('reski-order-email-access:v1:' + publicId)
+    .digest('base64url')
+}
+
+export function verifyOrderEmailAccessToken(
+  config: PaymentConfig,
+  publicId: string,
+  token: string | undefined
+): boolean {
+  if (
+    config.rateLimitSecret.length < 32 ||
+    !token ||
+    !/^[A-Za-z0-9_-]{43}$/.test(token)
+  ) return false
+
+  const actual = Buffer.from(token)
+  const expected = Buffer.from(deriveOrderEmailAccessToken(config, publicId))
+  return actual.length === expected.length && timingSafeEqual(actual, expected)
 }
 
 export function paymentAccessCookieName(config: PaymentConfig): string {

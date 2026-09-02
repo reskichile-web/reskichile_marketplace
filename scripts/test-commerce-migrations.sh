@@ -48,7 +48,9 @@ for migration in \
   202608260001_remove_sold_product_stories.sql \
   202608260004_admin_view_performance.sql \
   202608260005_admin_navigation_performance.sql \
-  202608310001_admin_metrics_since_date.sql
+  202608310001_admin_metrics_since_date.sql \
+  202609010001_delivery_email_automation.sql \
+  202609010002_pickup_by_coordination.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
@@ -60,6 +62,8 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/admin_metrics_since_date.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/commerce_operations.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/delivery_email_automation.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/marketplace_security.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \

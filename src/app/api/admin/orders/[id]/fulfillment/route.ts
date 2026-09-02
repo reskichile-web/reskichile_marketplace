@@ -30,15 +30,51 @@ export async function PATCH(
     }
 
     const service = createServiceRoleClient()
-    const { data, error } = await service.rpc(
-      'commerce_admin_update_fulfillment',
-      {
+    let result: { data: unknown; error: { message: string } | null }
+    if (nextStatus === 'shipped') {
+      const carrier = typeof body.carrier === 'string' ? body.carrier.trim() : ''
+      const trackingNumber = typeof body.trackingNumber === 'string'
+        ? body.trackingNumber.trim()
+        : ''
+      const trackingUrl = typeof body.trackingUrl === 'string'
+        ? body.trackingUrl.trim()
+        : ''
+      let validTrackingUrl = true
+      if (trackingUrl) {
+        try {
+          const parsed = new URL(trackingUrl)
+          validTrackingUrl = parsed.protocol === 'https:' && !parsed.username && !parsed.password
+        } catch {
+          validTrackingUrl = false
+        }
+      }
+      if (
+        carrier.length < 2 || carrier.length > 80 ||
+        trackingNumber.length < 2 || trackingNumber.length > 120 ||
+        trackingUrl.length > 500 || !validTrackingUrl
+      ) {
+        return NextResponse.json(
+          { error: 'Completa el transportista y un seguimiento válido.', code: 'INVALID_TRACKING' },
+          { status: 422, headers: { 'Cache-Control': 'no-store' } }
+        )
+      }
+      result = await service.rpc('commerce_admin_mark_shipped', {
+        p_order_public_id: id,
+        p_admin_user_id: admin.id,
+        p_carrier: carrier,
+        p_tracking_number: trackingNumber,
+        p_tracking_url: trackingUrl || null,
+        p_correlation_id: randomUUID(),
+      })
+    } else {
+      result = await service.rpc('commerce_admin_update_fulfillment', {
         p_order_public_id: id,
         p_admin_user_id: admin.id,
         p_next_status: nextStatus,
         p_correlation_id: randomUUID(),
-      }
-    )
+      })
+    }
+    const { data, error } = result
     if (error || !data) {
       const message = error?.message.includes('refunded before cancellation')
         ? 'Debes reembolsar el pago antes de cancelar la preparación.'
