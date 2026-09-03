@@ -21,6 +21,21 @@ BEGIN
     OR (SELECT COUNT(*) FROM public.shipping_rates WHERE service_code = 'pickup' AND amount_clp = 0 AND active) <> 2 THEN
     RAISE EXCEPTION 'the two free pickup points are not configured';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.shipping_origins
+    WHERE code = 'las_condes'
+      AND operational_address->>'formatted_address' = 'La Gloria 40'
+      AND pickup_hours = 'Lunes a viernes, de 9:00 a 19:00'
+      AND pickup_address = 'Sector Escuela Militar, Apoquindo'
+  ) THEN RAISE EXCEPTION 'Las Condes private pickup details are not configured'; END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.shipping_origins
+    WHERE code = 'los_angeles'
+      AND operational_address IS NULL
+      AND pickup_hours IS NULL
+  ) THEN RAISE EXCEPTION 'Los Angeles pickup details must remain pending'; END IF;
 
   INSERT INTO public.orders (
     order_number, buyer_email, buyer_name, buyer_phone, delivery_method,

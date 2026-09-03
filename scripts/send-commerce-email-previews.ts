@@ -11,19 +11,32 @@ async function main() {
     import('../src/lib/email/templates'),
   ])
   const previews = [
-    templates.buildOrderConfirmationEmail({
+    templates.buildHomeOrderConfirmationEmail({
       buyerName: 'Sebastián',
       orderNumber: 'RC-EJEMPLO-001',
       orderPublicId: '00000000-0000-4000-8000-000000000001',
       accessToken: 'a'.repeat(43),
-      deliveryMethod: 'home' as const,
-      destinationRegion: 'Metropolitana de Santiago',
-      destinationCommune: 'Las Condes',
+      deliveryAddress: 'Apoquindo 1234, Depto. 502, Las Condes, Metropolitana de Santiago',
       subtotalClp: 50000,
       discountClp: 0,
       shippingClp: 3990,
       totalClp: 53990,
       items: [{ name: 'Ski Rack Madera · Talla M', quantity: 1, lineTotalClp: 50000 }],
+    }),
+    templates.buildPickupOrderConfirmationEmail({
+      buyerName: 'Sebastián',
+      orderNumber: 'RC-EJEMPLO-002',
+      orderPublicId: '00000000-0000-4000-8000-000000000002',
+      accessToken: 'b'.repeat(43),
+      subtotalClp: 50000,
+      discountClp: 0,
+      shippingClp: 0,
+      totalClp: 50000,
+      items: [{ name: 'Ski Rack Madera · Talla M', quantity: 1, lineTotalClp: 50000 }],
+      pickupLabel: 'Retiro en Las Condes',
+      pickupAddress: 'La Gloria 40',
+      pickupHours: 'Lunes a viernes, de 9:00 a 19:00',
+      pickupInstructions: 'Si necesitas coordinar otro horario, responde este correo.',
     }),
     templates.buildShipmentEmail({
       buyerName: 'Sebastián',
@@ -36,8 +49,9 @@ async function main() {
       buyerName: 'Sebastián',
       orderNumber: 'RC-EJEMPLO-002',
       pickupLabel: 'Retiro en Las Condes',
-      pickupAddress: 'Las Condes, Región Metropolitana',
-      pickupInstructions: 'Te contactaremos para coordinar la dirección y el momento exactos del retiro.',
+      pickupAddress: 'La Gloria 40',
+      pickupHours: 'Lunes a viernes, de 9:00 a 19:00',
+      pickupInstructions: 'Si necesitas coordinar otro horario, responde este correo.',
     }),
     templates.buildRefundConfirmationEmail({
       buyerName: 'Sebastián',

@@ -484,14 +484,11 @@ export interface CommerceEmailItem {
   lineTotalClp: number
 }
 
-export interface OrderConfirmationEmail {
+interface OrderConfirmationBase {
   buyerName: string
   orderNumber: string
   orderPublicId: string
   accessToken: string
-  deliveryMethod: 'home' | 'pickup'
-  destinationRegion: string
-  destinationCommune: string
   subtotalClp: number
   discountClp: number
   shippingClp: number
@@ -499,10 +496,22 @@ export interface OrderConfirmationEmail {
   items: CommerceEmailItem[]
 }
 
-export function buildOrderConfirmationEmail(
-  order: OrderConfirmationEmail
-): BuiltEmail {
-  const resultUrl = `${SITE_URL}/checkout/resultado?orden=${encodeURIComponent(order.orderPublicId)}&acceso=${encodeURIComponent(order.accessToken)}`
+export interface HomeOrderConfirmationEmail extends OrderConfirmationBase {
+  deliveryAddress: string
+}
+
+export interface PickupOrderConfirmationEmail extends OrderConfirmationBase {
+  pickupLabel: string
+  pickupAddress: string | null
+  pickupHours: string | null
+  pickupInstructions: string
+}
+
+function orderResultUrl(order: OrderConfirmationBase): string {
+  return `${SITE_URL}/checkout/resultado?orden=${encodeURIComponent(order.orderPublicId)}&acceso=${encodeURIComponent(order.accessToken)}`
+}
+
+function orderSummaryHtml(order: OrderConfirmationBase): string {
   const itemRows = order.items.map(item => `
     <tr>
       <td style="padding:7px 0;font-size:14px;color:#374151;">${escapeHtml(item.name)} × ${item.quantity}</td>
@@ -511,29 +520,69 @@ export function buildOrderConfirmationEmail(
   const discountRow = order.discountClp > 0
     ? `<tr><td style="padding:7px 0;font-size:14px;color:#059669;">Descuento</td><td style="padding:7px 0;font-size:14px;color:#059669;text-align:right;">-${formatCLP(order.discountClp)}</td></tr>`
     : ''
-  const deliveryLabel = order.deliveryMethod === 'pickup'
-    ? 'Sucursal o punto de retiro'
-    : 'Despacho a domicilio'
-  const subject = `Compra confirmada · ${order.orderNumber}`
+
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;">
+    ${itemRows}
+    ${discountRow}
+    <tr><td style="padding:7px 0;font-size:14px;color:#6b7280;">Envío</td><td style="padding:7px 0;font-size:14px;color:#111827;text-align:right;">${formatCLP(order.shippingClp)}</td></tr>
+    <tr><td style="padding:12px 0 8px;font-size:16px;color:#111827;font-weight:800;">Total</td><td style="padding:12px 0 8px;font-size:16px;color:#111827;text-align:right;font-weight:800;">${formatCLP(order.totalClp)}</td></tr>
+  </table>`
+}
+
+function orderSummaryText(order: OrderConfirmationBase): string {
+  const items = order.items
+    .map(item => `- ${item.name} × ${item.quantity}: ${formatCLP(item.lineTotalClp)}`)
+    .join('\n')
+  const discount = order.discountClp > 0
+    ? `\nDescuento: -${formatCLP(order.discountClp)}`
+    : ''
+  return `${items}${discount}\nEnvío: ${formatCLP(order.shippingClp)}\nTotal: ${formatCLP(order.totalClp)}`
+}
+
+export function buildHomeOrderConfirmationEmail(
+  order: HomeOrderConfirmationEmail
+): BuiltEmail {
+  const resultUrl = orderResultUrl(order)
+  const subject = `Compra confirmada para despacho · ${order.orderNumber}`
   const html = layout(`
     <p style="margin:0 0 14px;color:#1f2937;">${greeting(order.buyerName)}</p>
-    <p style="margin:0 0 18px;color:#1f2937;">Recibimos tu pago. Tu orden <strong>${escapeHtml(order.orderNumber)}</strong> ya entró a preparación. Te avisaremos cuando sea despachada o esté lista para retirar.</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;">
-      ${itemRows}
-      ${discountRow}
-      <tr><td style="padding:7px 0;font-size:14px;color:#6b7280;">Despacho</td><td style="padding:7px 0;font-size:14px;color:#111827;text-align:right;">${formatCLP(order.shippingClp)}</td></tr>
-      <tr><td style="padding:12px 0 8px;font-size:16px;color:#111827;font-weight:800;">Total</td><td style="padding:12px 0 8px;font-size:16px;color:#111827;text-align:right;font-weight:800;">${formatCLP(order.totalClp)}</td></tr>
-    </table>
-    <p style="margin:18px 0 4px;color:#374151;font-weight:700;">${deliveryLabel}</p>
-    <p style="margin:0 0 20px;color:#6b7280;font-size:14px;">${escapeHtml(order.destinationCommune)}, ${escapeHtml(order.destinationRegion)}</p>
+    <p style="margin:0 0 18px;color:#1f2937;">Recibimos tu pago. Tu orden <strong>${escapeHtml(order.orderNumber)}</strong> ya está en preparación para despacho.</p>
+    ${orderSummaryHtml(order)}
+    <p style="margin:18px 0 4px;color:#374151;font-weight:700;">Dirección de entrega</p>
+    <p style="margin:0 0 14px;color:#6b7280;font-size:14px;">${escapeHtml(order.deliveryAddress)}</p>
+    <p style="margin:0 0 20px;padding:12px 14px;background:#f3f8fd;color:#374151;font-size:13px;line-height:1.55;">Cuando el pedido salga, recibirás otro correo con el transportista y el número de seguimiento.</p>
     ${ctaOutline(resultUrl, 'Ver estado de la orden')}
     <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#9ca3af;text-align:center;">ReskiChile nunca recibe ni almacena los datos de tu tarjeta.</p>
     ${contactBlock()}
   `)
-  const textItems = order.items
-    .map(item => `- ${item.name} × ${item.quantity}: ${formatCLP(item.lineTotalClp)}`)
-    .join('\n')
-  const text = `Hola ${order.buyerName},\n\nRecibimos tu pago. Tu orden ${order.orderNumber} ya entró a preparación. Te avisaremos cuando sea despachada o esté lista para retirar.\n\n${textItems}\nDespacho: ${formatCLP(order.shippingClp)}\nTotal: ${formatCLP(order.totalClp)}\n\nEntrega: ${deliveryLabel}, ${order.destinationCommune}, ${order.destinationRegion}\n\nVer estado: ${resultUrl}\n\nReSkiChile`
+  const text = `Hola ${order.buyerName},\n\nRecibimos tu pago. Tu orden ${order.orderNumber} ya está en preparación para despacho.\n\n${orderSummaryText(order)}\n\nDirección de entrega: ${order.deliveryAddress}\n\nCuando el pedido salga, recibirás otro correo con el transportista y el número de seguimiento.\n\nVer estado: ${resultUrl}\n\nReSkiChile`
+  return { subject, html, text }
+}
+
+export function buildPickupOrderConfirmationEmail(
+  order: PickupOrderConfirmationEmail
+): BuiltEmail {
+  const resultUrl = orderResultUrl(order)
+  const pickupAddress = order.pickupAddress || 'Por confirmar'
+  const pickupHours = order.pickupHours || 'Por confirmar'
+  const subject = `Compra confirmada para retiro · ${order.orderNumber}`
+  const html = layout(`
+    <p style="margin:0 0 14px;color:#1f2937;">${greeting(order.buyerName)}</p>
+    <p style="margin:0 0 18px;color:#1f2937;">Recibimos tu pago. Tu orden <strong>${escapeHtml(order.orderNumber)}</strong> ya está en preparación para retiro.</p>
+    ${orderSummaryHtml(order)}
+    <p style="margin:18px 0 10px;color:#374151;font-weight:700;">Información de retiro</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:#f8fafc;">
+      <tr><td style="padding:12px 14px 5px;color:#6b7280;font-size:13px;">Punto</td><td style="padding:12px 14px 5px;text-align:right;font-weight:700;color:#111827;font-size:13px;">${escapeHtml(order.pickupLabel)}</td></tr>
+      <tr><td style="padding:5px 14px;color:#6b7280;font-size:13px;">Ubicación</td><td style="padding:5px 14px;text-align:right;font-weight:700;color:#111827;font-size:13px;">${escapeHtml(pickupAddress)}</td></tr>
+      <tr><td style="padding:5px 14px 12px;color:#6b7280;font-size:13px;">Horario</td><td style="padding:5px 14px 12px;text-align:right;font-weight:700;color:#111827;font-size:13px;">${escapeHtml(pickupHours)}</td></tr>
+    </table>
+    <p style="margin:14px 0 6px;color:#374151;font-size:14px;">${escapeHtml(order.pickupInstructions)}</p>
+    <p style="margin:0 0 20px;color:#6b7280;font-size:13px;">Espera nuestro correo de “listo para retirar” antes de ir al punto.</p>
+    ${ctaOutline(resultUrl, 'Ver estado de la orden')}
+    <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#9ca3af;text-align:center;">ReskiChile nunca recibe ni almacena los datos de tu tarjeta.</p>
+    ${contactBlock()}
+  `)
+  const text = `Hola ${order.buyerName},\n\nRecibimos tu pago. Tu orden ${order.orderNumber} ya está en preparación para retiro.\n\n${orderSummaryText(order)}\n\nInformación de retiro\nPunto: ${order.pickupLabel}\nUbicación: ${pickupAddress}\nHorario: ${pickupHours}\n${order.pickupInstructions}\n\nEspera nuestro correo de “listo para retirar” antes de ir al punto.\n\nVer estado: ${resultUrl}\n\nReSkiChile`
   return { subject, html, text }
 }
 
@@ -572,24 +621,28 @@ export interface PickupReadyEmail {
   buyerName: string
   orderNumber: string
   pickupLabel: string
-  pickupAddress: string
+  pickupAddress: string | null
+  pickupHours: string | null
   pickupInstructions: string
 }
 
 export function buildPickupReadyEmail(pickup: PickupReadyEmail): BuiltEmail {
+  const pickupAddress = pickup.pickupAddress || 'Por confirmar'
+  const pickupHours = pickup.pickupHours || 'Por confirmar'
   const subject = `Tu pedido está listo para retirar · ${pickup.orderNumber}`
   const html = layout(`
     <p style="margin:0 0 14px;color:#1f2937;">${greeting(pickup.buyerName)}</p>
     <p style="margin:0 0 18px;color:#1f2937;">Tu orden <strong>${escapeHtml(pickup.orderNumber)}</strong> ya está lista para retirar.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;">
       <tr><td style="padding:9px 0;color:#6b7280;font-size:14px;">Punto</td><td style="padding:9px 0;text-align:right;font-weight:700;color:#111827;font-size:14px;">${escapeHtml(pickup.pickupLabel)}</td></tr>
-      <tr><td style="padding:9px 0;color:#6b7280;font-size:14px;">Ubicación</td><td style="padding:9px 0;text-align:right;font-weight:700;color:#111827;font-size:14px;">${escapeHtml(pickup.pickupAddress)}</td></tr>
+      <tr><td style="padding:9px 0;color:#6b7280;font-size:14px;">Ubicación</td><td style="padding:9px 0;text-align:right;font-weight:700;color:#111827;font-size:14px;">${escapeHtml(pickupAddress)}</td></tr>
+      <tr><td style="padding:9px 0;color:#6b7280;font-size:14px;">Horario</td><td style="padding:9px 0;text-align:right;font-weight:700;color:#111827;font-size:14px;">${escapeHtml(pickupHours)}</td></tr>
     </table>
     <p style="margin:18px 0 0;color:#374151;font-size:14px;">${escapeHtml(pickup.pickupInstructions)}</p>
     <p style="margin:12px 0 0;color:#6b7280;font-size:13px;">Lleva tu número de orden al momento de retirar.</p>
     ${contactBlock()}
   `)
-  const text = `Hola ${pickup.buyerName},\n\nTu orden ${pickup.orderNumber} ya está lista para retirar.\n\nPunto: ${pickup.pickupLabel}\nUbicación: ${pickup.pickupAddress}\n${pickup.pickupInstructions}\n\nReSkiChile`
+  const text = `Hola ${pickup.buyerName},\n\nTu orden ${pickup.orderNumber} ya está lista para retirar.\n\nPunto: ${pickup.pickupLabel}\nUbicación: ${pickupAddress}\nHorario: ${pickupHours}\n${pickup.pickupInstructions}\n\nReSkiChile`
   return { subject, html, text }
 }
 

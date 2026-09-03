@@ -103,6 +103,15 @@ const FULFILLMENT_STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelado',
 }
 
+const PICKUP_POINT_LABELS: Record<string, string> = {
+  las_condes: 'Retiro en Las Condes',
+  los_angeles: 'Retiro en Los Ángeles',
+}
+
+function pickupPointLabel(pointId: string): string {
+  return PICKUP_POINT_LABELS[pointId] || 'Punto de retiro ReSkiChile'
+}
+
 interface StatusAppearance {
   className: string
   iconClassName: string
@@ -604,7 +613,7 @@ export default function AdminOrdersPage() {
                               <div className="mt-3 text-sm leading-6">
                                 <p className="font-bold text-gray-900">{order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
                                 {order.shipping_snapshot.street && <p className="mt-1 text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
-                                {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{order.shipping_snapshot.pickup_point_id}</p>}
+                                {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{pickupPointLabel(order.shipping_snapshot.pickup_point_id)}</p>}
                                 {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
                                 <p className="text-gray-600">{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
                                 {order.tracking_number && (

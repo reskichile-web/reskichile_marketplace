@@ -6,8 +6,9 @@ import { sendEmail } from '@/lib/email/send'
 import { getPaymentCallbackConfig } from '@/lib/env/server'
 import { deriveOrderEmailAccessToken } from '@/lib/commerce/checkout-service'
 import {
+  buildHomeOrderConfirmationEmail,
   buildInternalNotice,
-  buildOrderConfirmationEmail,
+  buildPickupOrderConfirmationEmail,
   buildPickupReadyEmail,
   buildRefundConfirmationEmail,
   buildShipmentEmail,
@@ -49,8 +50,10 @@ interface DeliveryDetails {
   shippingCarrier: string | null
   trackingNumber: string | null
   trackingUrl: string | null
+  homeAddress: string | null
   pickupLabel: string | null
   pickupAddress: string | null
+  pickupHours: string | null
   pickupInstructions: string | null
 }
 
@@ -91,22 +94,31 @@ function buildOutboxEmail(
 ): { to: string; email: BuiltEmail } {
   const teamEmail = process.env.COMMERCE_ALERT_EMAIL || 'reskichile@gmail.com'
   if (row.outbox_kind === 'order_confirmation') {
+    const common = {
+      buyerName: row.buyer_name,
+      orderNumber: row.order_number,
+      orderPublicId: row.order_public_id,
+      accessToken: orderAccessToken,
+      subtotalClp: Number(row.subtotal_clp),
+      discountClp: Number(row.discount_clp),
+      shippingClp: Number(row.shipping_clp),
+      totalClp: Number(row.total_clp),
+      items: emailItems(row.items),
+    }
     return {
       to: row.buyer_email,
-      email: buildOrderConfirmationEmail({
-        buyerName: row.buyer_name,
-        orderNumber: row.order_number,
-        orderPublicId: row.order_public_id,
-        accessToken: orderAccessToken,
-        deliveryMethod: row.delivery_method,
-        destinationRegion: row.destination_region || 'Sin región',
-        destinationCommune: row.destination_commune || 'Sin comuna',
-        subtotalClp: Number(row.subtotal_clp),
-        discountClp: Number(row.discount_clp),
-        shippingClp: Number(row.shipping_clp),
-        totalClp: Number(row.total_clp),
-        items: emailItems(row.items),
-      }),
+      email: row.delivery_method === 'pickup'
+        ? buildPickupOrderConfirmationEmail({
+            ...common,
+            pickupLabel: details?.pickupLabel || 'Punto de retiro ReSkiChile',
+            pickupAddress: details?.pickupAddress || null,
+            pickupHours: details?.pickupHours || null,
+            pickupInstructions: details?.pickupInstructions || 'Te contactaremos para confirmar la ubicación y el horario.',
+          })
+        : buildHomeOrderConfirmationEmail({
+            ...common,
+            deliveryAddress: details?.homeAddress || [row.destination_commune, row.destination_region].filter(Boolean).join(', '),
+          }),
     }
   }
 
@@ -133,8 +145,9 @@ function buildOutboxEmail(
         buyerName: row.buyer_name,
         orderNumber: row.order_number,
         pickupLabel: details?.pickupLabel || 'Punto de retiro ReSkiChile',
-        pickupAddress: details?.pickupAddress || [row.destination_commune, row.destination_region].filter(Boolean).join(', '),
-        pickupInstructions: details?.pickupInstructions || 'Te contactaremos para coordinar la dirección y el momento exactos del retiro.',
+        pickupAddress: details?.pickupAddress || null,
+        pickupHours: details?.pickupHours || null,
+        pickupInstructions: details?.pickupInstructions || 'Te contactaremos para confirmar la ubicación y el horario.',
       }),
     }
   }
@@ -196,7 +209,7 @@ async function loadDeliveryDetails(
   service: ReturnType<typeof createServiceRoleClient>,
   row: OutboxRow,
 ): Promise<DeliveryDetails | null> {
-  if (!['shipment_notice', 'pickup_ready_notice'].includes(row.outbox_kind)) {
+  if (!['order_confirmation', 'shipment_notice', 'pickup_ready_notice'].includes(row.outbox_kind)) {
     return null
   }
 
@@ -214,10 +227,10 @@ async function loadDeliveryDetails(
     ? snapshot.pickup_point_id
     : ''
   let pickup: Record<string, unknown> | null = null
-  if (row.outbox_kind === 'pickup_ready_notice' && pickupPointId) {
+  if (row.delivery_method === 'pickup' && pickupPointId) {
     const { data, error: pickupError } = await service
       .from('shipping_origins')
-      .select('pickup_label, pickup_address, pickup_instructions')
+      .select('pickup_label, pickup_hours, pickup_instructions, operational_address')
       .eq('code', pickupPointId)
       .eq('pickup_enabled', true)
       .maybeSingle()
@@ -229,12 +242,32 @@ async function loadDeliveryDetails(
     const raw = source?.[key]
     return typeof raw === 'string' && raw.trim() ? raw.trim() : null
   }
+  const formattedAddress = value(snapshot, 'formatted_address')
+  const streetAddress = [value(snapshot, 'street'), value(snapshot, 'number')]
+    .filter(Boolean)
+    .join(' ')
+  const locality = [value(snapshot, 'commune'), value(snapshot, 'region')]
+    .filter(Boolean)
+    .join(', ')
+  const homeAddress = [formattedAddress || streetAddress, value(snapshot, 'extra'), formattedAddress ? null : locality]
+    .filter(Boolean)
+    .join(', ')
+  const operationalAddress = pickup?.operational_address &&
+    typeof pickup.operational_address === 'object' &&
+    !Array.isArray(pickup.operational_address)
+    ? pickup.operational_address as Record<string, unknown>
+    : null
+  const pickupStreetAddress = [value(operationalAddress, 'street'), value(operationalAddress, 'number')]
+    .filter(Boolean)
+    .join(' ')
   return {
     shippingCarrier: typeof order.shipping_carrier === 'string' ? order.shipping_carrier : null,
     trackingNumber: typeof order.tracking_number === 'string' ? order.tracking_number : null,
     trackingUrl: typeof order.tracking_url === 'string' ? order.tracking_url : null,
+    homeAddress: homeAddress || null,
     pickupLabel: value(pickup, 'pickup_label'),
-    pickupAddress: value(pickup, 'pickup_address'),
+    pickupAddress: value(operationalAddress, 'formatted_address') || pickupStreetAddress || null,
+    pickupHours: value(pickup, 'pickup_hours'),
     pickupInstructions: value(pickup, 'pickup_instructions'),
   }
 }

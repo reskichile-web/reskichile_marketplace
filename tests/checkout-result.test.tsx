@@ -7,6 +7,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }))
 
+vi.mock('@/components/checkout/ClearSkiRackCart', () => ({
+  default: () => <span data-cart-clear="authorized" />,
+}))
+
 const order: GuestOrderResult = {
   publicId: '10000000-0000-4000-8000-000000000001',
   orderNumber: 'RC-260819-91D2C397',
@@ -81,6 +85,25 @@ describe('checkout result', () => {
     expect(html).toContain('Te contactaremos por correo para coordinar el horario y el punto exacto de retiro.')
     expect(html).not.toContain('Esta referencia no corresponde a un retiro')
     expect(html).not.toContain('>las_condes<')
+  })
+
+  it('clears the rack cart only after an authorized purchase', () => {
+    const authorized = renderToStaticMarkup(
+      <CheckoutResultCard order={{ ...order, containsRackItems: true }} />
+    )
+    const rejected = renderToStaticMarkup(
+      <CheckoutResultCard order={{
+        ...order,
+        containsRackItems: true,
+        orderStatus: 'awaiting_payment',
+        paymentStatus: 'rejected',
+        fulfillmentStatus: 'unfulfilled',
+        paidAt: null,
+      }} />
+    )
+
+    expect(authorized).toContain('data-cart-clear="authorized"')
+    expect(rejected).not.toContain('data-cart-clear="authorized"')
   })
 
   it.each([
