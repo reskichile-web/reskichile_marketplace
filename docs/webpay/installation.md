@@ -259,14 +259,14 @@ Vercel Hobby solo permite cron diario; no sirve para resolver un pago incierto
 ni despachar el outbox en minutos. Se usarán dos jobs de Supabase Cron:
 
 ```text
-pg_cron ──cada minuto──> pg_net POST ──Bearer──>
+pg_cron ──cada 2 min──> pg_net POST ──Bearer──>
 https://DOMINIO/api/cron/payments/reconcile
                                     │
                                     ├─ expira reservas seguras
                                     ├─ consulta status Transbank
                                     └─ finaliza o programa reintento
 
-pg_cron ──cada minuto──> /api/cron/commerce/outbox
+pg_cron ──cada 5 min──> /api/cron/commerce/outbox
                                     ├─ confirmación al comprador
                                     ├─ aviso de preparación
                                     └─ alertas financieras

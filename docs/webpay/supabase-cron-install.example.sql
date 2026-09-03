@@ -38,7 +38,9 @@ $$;
 
 SELECT cron.schedule(
   'reski-payment-reconciliation',
-  '* * * * *',
+  -- La conciliacion ya difiere reintentos por al menos 2 minutos. Ejecutarla
+  -- cada minuto solo duplica sondeos vacios y escrituras de pg_cron/pg_net.
+  '*/2 * * * *',
   $$
     SELECT net.http_post(
       url := (
@@ -77,7 +79,9 @@ $$;
 
 SELECT cron.schedule(
   'reski-commerce-outbox',
-  '* * * * *',
+  -- La cola es durable y usa leases/idempotencia. Cinco minutos conserva la
+  -- recuperacion automatica sin sondear Supabase en cada minuto.
+  '*/5 * * * *',
   $$
     SELECT net.http_post(
       url := (
