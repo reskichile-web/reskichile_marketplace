@@ -58,6 +58,20 @@ function statusCopy(status: string): {
       tone: 'text-amber-700',
     }
   }
+  if (status === 'refunded') {
+    return {
+      title: 'Pago devuelto',
+      description: 'La devolución fue procesada. El abono puede tardar según los plazos de tu banco.',
+      tone: 'text-emerald-700',
+    }
+  }
+  if (status === 'partially_refunded') {
+    return {
+      title: 'Reembolso parcial procesado',
+      description: 'Procesamos una devolución parcial. Revisa tu correo para ver el detalle.',
+      tone: 'text-emerald-700',
+    }
+  }
   return {
     title: 'Pago en proceso',
     description: 'Todavía estamos verificando la respuesta de Webpay. No repitas el pago.',
@@ -128,8 +142,11 @@ function CompactPaymentResult({ order }: { order: GuestOrderResult }) {
     order.paymentStatus
   )
   const terminal = ['rejected', 'aborted', 'expired'].includes(order.paymentStatus)
+  const refunded = ['refunded', 'partially_refunded'].includes(order.paymentStatus)
 
-  const StatusIcon = order.paymentStatus === 'rejected'
+  const StatusIcon = refunded
+    ? Check
+    : order.paymentStatus === 'rejected'
     ? XCircle
     : order.paymentStatus === 'aborted'
       ? AlertTriangle
@@ -162,12 +179,12 @@ function CompactPaymentResult({ order }: { order: GuestOrderResult }) {
           <CopyOrderNumberButton orderNumber={order.orderNumber} />
         </div>
 
-        {terminal && (
+        {(terminal || refunded) && (
           <Link
-            href="/carrito"
+            href={refunded ? '/catalogo' : '/carrito'}
             className="mt-8 flex w-full items-center justify-center bg-gray-900 px-6 py-3 font-semibold text-white hover:bg-gray-800"
           >
-            Volver al carrito
+            {refunded ? 'Volver a la tienda' : 'Volver al carrito'}
           </Link>
         )}
       </section>

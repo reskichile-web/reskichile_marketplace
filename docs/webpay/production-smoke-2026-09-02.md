@@ -27,6 +27,10 @@ intencional de CLP 50, sin usar productos ni inventario comercial:
 - reembolso persistido en estado `succeeded` por CLP 50;
 - estado final de la orden: pago `refunded`, orden y fulfillment `cancelled`;
 - producto técnico nuevamente `archived`.
+- confirmación de orden, aviso operativo y confirmación de devolución
+  entregados por el outbox al primer intento;
+- los tres mensajes se procesaron automáticamente en menos de 30 segundos,
+  validando la ejecución efectiva de los cron productivos.
 
 No se guardaron en este documento datos de tarjeta, token Webpay, llaves ni
 datos personales del comprador.
@@ -92,12 +96,9 @@ requiere una decisión comercial y validar el embalaje conjunto.
 
 ## Pendientes que sí requieren una acción posterior
 
-1. Confirmar visualmente en Supabase que `reski-payment-reconciliation` y
-   `reski-commerce-outbox` estén activos cada minuto y revisar ejecuciones
-   recientes. Los endpoints y sus secretos ya fueron validados.
-2. Decidir si pedidos de varias unidades mantienen despacho por caja o usan un
+1. Decidir si pedidos de varias unidades mantienen despacho por caja o usan un
    paquete consolidado medido.
-3. Confirmar que la validación técnica de Transbank esté formalmente aprobada y
+2. Confirmar que la validación técnica de Transbank esté formalmente aprobada y
    archivar su evidencia.
-4. Completar la evidencia de concurrencia, callback duplicado, recuperación de
+3. Completar la evidencia de concurrencia, callback duplicado, recuperación de
    una respuesta incierta y refund en la matriz del runbook.

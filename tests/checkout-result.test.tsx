@@ -116,4 +116,22 @@ describe('checkout result', () => {
       expect(html).toContain('Volver al carrito')
     }
   })
+
+  it.each([
+    ['refunded', 'Pago devuelto'],
+    ['partially_refunded', 'Reembolso parcial procesado'],
+  ])('shows a completed refund state for %s', (paymentStatus, title) => {
+    const html = renderToStaticMarkup(
+      <CheckoutResultCard order={{
+        ...order,
+        paymentStatus,
+        fulfillmentStatus: 'cancelled',
+      }} />
+    )
+
+    expect(html).toContain(title)
+    expect(html).toContain('Volver a la tienda')
+    expect(html).not.toContain('Pago en proceso')
+    expect(html).not.toContain(order.buyer.email)
+  })
 })
