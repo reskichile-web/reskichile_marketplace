@@ -257,7 +257,7 @@ publica su modelo Tarifa Simple por zonas y tamaños, por lo que una tarifa fija
 sí es viable para el Ski Rack estandarizado, pero los montos deben copiarse o
 validarse contra tarifas vigentes antes de activar pagos.
 
-### Tabla temporal aprobada para lanzamiento
+### Tabla comercial aprobada para lanzamiento
 
 Consulta oficial realizada el 2026-09-02 en Tarifa Simple, modalidad Persona,
 entrega a domicilio, tamaño XS. Starken define XS como 0 a 850 g y muestra como
@@ -267,20 +267,21 @@ de la talla L para cubrir todas las tallas con un único perfil conservador.
 
 | Zona Starken | Tarifa pública | Tarifa ReskiChile por caja |
 | --- | ---: | ---: |
-| Misma ciudad | $4.500 | $4.990 |
-| Extremo norte (Arica a Antofagasta) | $7.660 | $7.990 |
-| Centro/sur (Atacama a Los Lagos) | $6.490 | $6.990 |
-| Extremo austral (Aysén y Magallanes) | $9.670 | $9.990 |
+| Misma ciudad | $4.500 | $1.990 |
+| Extremo norte (Arica a Antofagasta) | $7.660 | $4.490 |
+| Centro/sur (Atacama a Los Lagos) | $6.490 | $3.490 |
+| Extremo austral (Aysén y Magallanes) | $9.670 | $5.990 |
 
 La tarifa de misma ciudad se aplica conservadoramente sólo cuando el destino
 es la misma comuna de la bodega: Las Condes o Los Ángeles. Las demás comunas
 usan su zona regional. Retiro coordinado en cualquiera de las dos bodegas
 permanece en $0.
 
-Los valores están redondeados al siguiente precio comercial y dejan entre
-$320 y $500 para absorber variaciones menores. No se agrega IVA por separado:
-el comprador ve un precio final. La tabla se cobra por caja, es decir, una vez
-por cada unidad del carrito.
+ReskiChile subsidia la diferencia entre la tarifa pública y la tarifa mostrada
+al comprador. La misma tabla se aplica a los modelos Madera y Filamento. El Ski
+Rack Madera queda en $17.990 y el Ski Rack Filamento conserva su precio de
+$7.990. No se agrega IVA por separado: el comprador ve un precio final. La
+tabla se cobra por caja, es decir, una vez por cada unidad del carrito.
 
 Este modelo sigue el patrón habitual de e-commerce para un catálogo pequeño y
 un paquete estandarizado: retiro gratis más tarifa plana por zona y clase de

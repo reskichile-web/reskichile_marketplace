@@ -11,7 +11,7 @@ function rate(
     id: 'regional',
     originCode: 'las_condes',
     serviceCode: 'starken_flat_xs',
-    amountClp: 6990,
+    amountClp: 3490,
     minDeliveryDays: null,
     maxDeliveryDays: null,
     zonePriority: 50,
@@ -28,7 +28,7 @@ describe('table shipping rate selection', () => {
       rate({
         id: 'local',
         serviceCode: 'starken_flat_xs_local',
-        amountClp: 4990,
+        amountClp: 1990,
         zonePriority: 1,
         zoneCommune: 'Las Condes',
       }),
@@ -36,7 +36,7 @@ describe('table shipping rate selection', () => {
 
     expect(selected).toMatchObject({
       id: 'local',
-      amountClp: 4990,
+      amountClp: 1990,
       matchSpecificity: 2,
     })
   })
@@ -47,7 +47,7 @@ describe('table shipping rate selection', () => {
       rate({
         id: 'local',
         serviceCode: 'starken_flat_xs_local',
-        amountClp: 4990,
+        amountClp: 1990,
         zonePriority: 1,
         zoneCommune: 'Las Condes',
       }),
@@ -55,7 +55,7 @@ describe('table shipping rate selection', () => {
 
     expect(selected).toMatchObject({
       id: 'regional',
-      amountClp: 6990,
+      amountClp: 3490,
       matchSpecificity: 1,
     })
   })

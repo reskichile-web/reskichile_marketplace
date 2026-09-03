@@ -58,7 +58,7 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
     slug: 'madera',
     name: 'Ski Rack Madera',
     material: 'Madera natural',
-    priceClp: 11990,
+    priceClp: 17990,
     image: '/images/reski-rack-product.png',
     imageAlt: 'Ski Rack de madera natural',
     imageClassName: 'brightness-[1.015]',
