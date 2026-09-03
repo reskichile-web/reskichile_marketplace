@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { sanitizeCampaignAttribution } from '@/lib/campaign-attribution'
+import {
+  VISITOR_COOKIE,
+  newVisitorId,
+  readVisitorId,
+  visitorCookieOptions,
+} from '@/lib/visitor'
 
-const VISITOR_COOKIE = 'rv_id'
 const BOT_RE = /bot|crawl|spider|preview|lighthouse|headless|monitor|scrape|curl|wget/i
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 // Invite slugs: 8 chars from the unambiguous charset used by /api/admin/invite-link
@@ -42,17 +46,14 @@ export async function POST(request: NextRequest) {
         : null
     const attribution = sanitizeCampaignAttribution(body)
 
-    // Anonymous visitor id (first-party cookie, 1 year)
-    let visitorId = request.cookies.get(VISITOR_COOKIE)?.value ?? ''
-    if (!UUID_RE.test(visitorId)) {
-      visitorId = randomUUID()
-      res.cookies.set(VISITOR_COOKIE, visitorId, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 365,
-        path: '/',
-      })
+    // Anonymous visitor id. The proxy mints it on the document response, so by
+    // the time any beacon lands the cookie normally exists and every event of
+    // the visit shares one id. This stays as a fallback for the rare beacon
+    // that arrives without one (cookie blocked, response not yet applied).
+    let visitorId = readVisitorId(request)
+    if (!visitorId) {
+      visitorId = newVisitorId()
+      res.cookies.set(VISITOR_COOKIE, visitorId, visitorCookieOptions())
     }
 
     // Local cookie parse only — analytics doesn't need a verified user,

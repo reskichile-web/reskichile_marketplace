@@ -16,10 +16,19 @@ import { Recycle, CheckCircle2, Star, Sparkles, PackageCheck, ChevronDown, X, ty
 import { motion } from 'framer-motion'
 import DescriptionCard from '@/components/DescriptionCard'
 import { isProductOwner, showClaimListingsPrompt, showPublicProductActions } from '@/lib/product-view-state'
-import { trackMetaContact } from '@/lib/meta-pixel'
+import { trackMetaContact, trackMetaContactIntent, type MetaContactMethod } from '@/lib/meta-pixel'
+import { track } from '@/lib/track'
 import { getCampaignAttribution } from '@/lib/campaign-attribution'
 import { authRouteWithRedirect, currentBrowserAuthRedirect } from '@/lib/auth-redirect'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
+
+// Contact intent is recorded before the login gate. Without it an anonymous
+// click that bounces off /auth/login is indistinguishable from no click at
+// all: the stored event's user_id tells them apart (null = wasn't logged in).
+const CONTACT_INTENT_EVENT: Record<MetaContactMethod, string> = {
+  whatsapp: 'contact_intent_whatsapp',
+  internal_chat: 'contact_intent_chat',
+}
 
 // Estado de fijaciones se guarda como label de condición — mismo set de
 // iconos que usa el formulario de venta.
@@ -310,7 +319,27 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
     (product.product_type === 'esquis' || product.product_type === 'snowboards') &&
     attrs.incluye_fijaciones === false
 
+  function recordContactIntent(channel: MetaContactMethod) {
+    track({
+      type: 'click',
+      name: CONTACT_INTENT_EVENT[channel],
+      product_id: product.id,
+      category: product.product_type,
+    })
+    trackMetaContactIntent(
+      {
+        contentId: product.id,
+        contentName: title,
+        category: product.product_type,
+        value: product.price,
+      },
+      channel,
+      !userId,
+    )
+  }
+
   async function handleContact() {
+    recordContactIntent('whatsapp')
     if (!userId) {
       router.push(authRouteWithRedirect('/auth/login', currentBrowserAuthRedirect()))
       return
@@ -353,6 +382,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
   }
 
   function handleChat() {
+    recordContactIntent('internal_chat')
     if (!userId) {
       router.push(authRouteWithRedirect('/auth/login', currentBrowserAuthRedirect()))
       return

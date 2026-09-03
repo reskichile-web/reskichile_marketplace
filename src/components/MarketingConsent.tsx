@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { useViewer } from '@/lib/use-viewer'
 import {
   MARKETING_CONSENT_KEY,
@@ -60,6 +61,7 @@ export default function MarketingConsent() {
   const [resolvedKey, setResolvedKey] = useState<string | null>(null)
   const [preferencesOpen, setPreferencesOpen] = useState(false)
   const syncAttempt = useRef<string | null>(null)
+  const bannerViewTracked = useRef(false)
 
   const identity = viewer.userId ?? 'anonymous'
   const resolutionKey = useMemo(() => {
@@ -83,6 +85,51 @@ export default function MarketingConsent() {
     window.addEventListener(OPEN_COOKIE_PREFERENCES_EVENT, openPreferences)
     return () => window.removeEventListener(OPEN_COOKIE_PREFERENCES_EVENT, openPreferences)
   }, [])
+
+  const resolutionPending = !ready || viewer.loading || resolvedKey !== resolutionKey
+  // The consent dialog blocks the page: nothing behind it should scroll while
+  // the visitor still has to decide. Meta only ever sees the traffic that
+  // grants consent, so an ignorable corner card meant an unusable ad signal.
+  const dialogOpen = !pathname.startsWith('/admin') && (activeDecision === null || preferencesOpen)
+
+  useEffect(() => {
+    if (!dialogOpen) return
+    // A returning visitor keeps the dialog hidden by the bootstrap stylesheet
+    // while their stored decision resolves — never freeze the page under an
+    // overlay nobody can see. First visits have no stored state and lock now.
+    if (
+      resolutionPending
+      && document.documentElement.dataset.reskiMarketingConsent === 'stored'
+    ) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [dialogOpen, resolutionPending])
+
+  // One impression per page load, and only when the dialog is really painted.
+  // Acceptance measured over all visitors is meaningless — most never see it.
+  // This is the denominator /admin/metricas divides by.
+  useEffect(() => {
+    if (bannerViewTracked.current) return
+    if (!dialogOpen || activeDecision !== null) return
+    if (
+      resolutionPending
+      && document.documentElement.dataset.reskiMarketingConsent === 'stored'
+    ) return
+    bannerViewTracked.current = true
+    track({ type: 'click', name: 'cookie_consent_view', path: pathname })
+  }, [activeDecision, dialogOpen, pathname, resolutionPending])
+
+  // Escape only closes the dialog when it was reopened on purpose from the
+  // footer. A first, undecided visit has no dismissal path.
+  useEffect(() => {
+    if (!dialogOpen || activeDecision === null) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreferencesOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [activeDecision, dialogOpen])
 
   useEffect(() => {
     if (!ready || viewer.loading) return
@@ -146,52 +193,73 @@ export default function MarketingConsent() {
     if (nextChoice === 'denied') revokeMetaPixel()
   }
 
-  const resolutionPending = !ready || viewer.loading || resolvedKey !== resolutionKey
+  const dismissible = activeDecision !== null
 
-  if (pathname.startsWith('/admin')) return null
-  if (activeDecision !== null && !preferencesOpen) return null
+  if (!dialogOpen) return null
 
   return (
-    <section
+    <div
       id="marketing-consent-overlay"
       data-bootstrap-pending={resolutionPending ? 'true' : 'false'}
-      role="dialog"
-      aria-labelledby="marketing-consent-title"
-      className="fixed bottom-3 left-3 right-3 z-[100] max-h-[calc(100dvh-1.5rem)] overflow-y-auto border border-gray-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.24)] sm:bottom-6 sm:left-6 sm:right-auto sm:w-full sm:max-w-sm"
+      role="presentation"
+      onMouseDown={event => {
+        if (dismissible && event.target === event.currentTarget) setPreferencesOpen(false)
+      }}
+      className="animate-in fade-in fixed inset-0 z-[10050] flex items-center justify-center bg-gray-950/60 p-4 backdrop-blur-md duration-200"
     >
-      <div className="flex items-center gap-2.5">
-        <Image src="/favicon.svg" alt="" width={28} height={28} className="h-7 w-7" />
-        <h2 id="marketing-consent-title" className="font-body text-lg font-black text-gray-950">
-          Política de privacidad
-        </h2>
-      </div>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="marketing-consent-title"
+        aria-describedby="marketing-consent-description"
+        className="animate-in zoom-in-95 relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-gray-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.35)] duration-200 sm:p-7"
+      >
+        {dismissible && (
+          <button
+            type="button"
+            onClick={() => setPreferencesOpen(false)}
+            aria-label="Cerrar"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
 
-      <p className="mt-3 text-[13px] leading-5 text-gray-600">
-        Usamos cookies esenciales y, con tu permiso, Meta Pixel para mejorar nuestros anuncios. Rechazar no limita tu experiencia.
-      </p>
+        <div className="flex items-center gap-2.5">
+          <Image src="/favicon.svg" alt="" width={32} height={32} className="h-8 w-8" />
+          <h2 id="marketing-consent-title" className="font-body text-xl font-black text-gray-950">
+            Política de privacidad
+          </h2>
+        </div>
 
-      <div className="mt-4 grid grid-cols-[72px_minmax(0,1fr)] gap-2 sm:grid-cols-[76px_minmax(0,1fr)]">
-        <button
-          type="button"
-          onClick={() => saveChoice('denied')}
-          className="min-h-11 border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-        >
-          No
-        </button>
-        <button
-          type="button"
-          onClick={() => saveChoice('granted')}
-          className="min-h-11 w-full bg-brand-500 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-        >
-          Aceptar todo
-        </button>
-        <Link
-          href="/privacidad"
-          className="col-span-2 flex min-h-10 items-center justify-center border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-900 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-        >
-          Más información
-        </Link>
-      </div>
-    </section>
+        <p id="marketing-consent-description" className="mt-3 text-sm leading-6 text-gray-600">
+          Usamos cookies esenciales y, con tu permiso, Meta Pixel para mejorar nuestros anuncios. Rechazar no limita tu experiencia.
+        </p>
+
+        <div className="mt-6 flex flex-col gap-2">
+          <button
+            type="button"
+            autoFocus
+            onClick={() => saveChoice('granted')}
+            className="min-h-12 w-full bg-brand-500 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          >
+            Aceptar todo
+          </button>
+          <button
+            type="button"
+            onClick={() => saveChoice('denied')}
+            className="min-h-11 w-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+          >
+            No, gracias
+          </button>
+          <Link
+            href="/privacidad"
+            className="flex min-h-10 items-center justify-center px-3 py-2 text-xs font-bold text-gray-500 underline underline-offset-2 transition-colors hover:text-gray-900"
+          >
+            Más información
+          </Link>
+        </div>
+      </section>
+    </div>
   )
 }

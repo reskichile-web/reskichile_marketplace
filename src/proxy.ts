@@ -1,4 +1,5 @@
 import { updateSession } from '@/lib/supabase/middleware'
+import { ensureVisitorCookie } from '@/lib/visitor'
 import { getAppUrl } from '@/lib/env/server'
 import { canonicalPreviewNavigationRedirect } from '@/lib/commerce/checkout-origin'
 import { NextResponse, type NextRequest } from 'next/server'
@@ -16,10 +17,12 @@ export async function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/ski-rack-')) {
     const url = request.nextUrl.clone()
     url.pathname = '/ski-rack'
-    return NextResponse.rewrite(url)
+    return ensureVisitorCookie(request, NextResponse.rewrite(url))
   }
 
-  return updateSession(request)
+  // The analytics visitor id is minted here, on the document response, so the
+  // pageview and product_view beacons of a first load share one identity.
+  return ensureVisitorCookie(request, await updateSession(request))
 }
 
 export const config = {

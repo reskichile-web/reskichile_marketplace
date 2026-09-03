@@ -19,6 +19,7 @@ let metaConsentGranted = false
 let pendingViewContent: PendingViewContent | null = null
 let lastViewContent: { key: string; sentAt: number } | null = null
 let lastContact: { key: string; sentAt: number } | null = null
+let lastContactIntent: { key: string; sentAt: number } | null = null
 
 type MetaPixelFunction = ((...args: unknown[]) => void) & {
   callMethod?: (...args: unknown[]) => void
@@ -130,6 +131,40 @@ export function trackMetaContact(
   })
 }
 
+/**
+ * Custom `ContactIntent`: the visitor asked to contact the seller, before any
+ * login gate. Deliberately NOT reported as `Contact` — that stays reserved for
+ * a handoff that actually completed, so the optimization signal isn't diluted
+ * with clicks that went nowhere. Requires marketing consent like every other
+ * pixel event; the internal beacon is what records the intent unconditionally.
+ */
+export function trackMetaContactIntent(
+  event: MetaViewContent,
+  contactMethod: MetaContactMethod,
+  requiresAuth: boolean,
+): void {
+  if (typeof window === 'undefined' || !metaConsentGranted || !window.fbq) return
+
+  const key = `${window.location.pathname}:${event.contentId}:${contactMethod}`
+  const now = Date.now()
+  if (
+    lastContactIntent?.key === key &&
+    now - lastContactIntent.sentAt < VIEW_CONTENT_DEDUPLICATION_MS
+  ) return
+
+  lastContactIntent = { key, sentAt: now }
+  window.fbq('trackCustom', 'ContactIntent', {
+    content_ids: [event.contentId],
+    content_name: event.contentName,
+    content_category: event.category,
+    content_type: 'product',
+    value: event.value,
+    currency: 'CLP',
+    contact_method: contactMethod,
+    requires_auth: requiresAuth,
+  })
+}
+
 export function trackMetaViewContent(event: MetaViewContent): void {
   if (typeof window === 'undefined') return
 
@@ -158,6 +193,7 @@ export function revokeMetaPixel(): void {
   if (typeof window === 'undefined') return
   window.fbq?.('consent', 'revoke')
   metaConsentGranted = false
+  lastContactIntent = null
   window.__reskiMetaLastPageView = undefined
 
   for (const name of ['_fbp', '_fbc']) {

@@ -1,5 +1,6 @@
 import { sanitizeCampaignAttribution } from '@/lib/campaign-attribution'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { readVisitorId } from '@/lib/visitor'
 
 interface RecordChatContactInput {
   request: Request
@@ -71,6 +72,9 @@ export async function recordFirstBuyerChatContact({
     path: `/producto/${product.slug || product.id}`,
     category: product.product_type,
     product_id: product.id,
+    // Same anonymous id the pageview/product_view beacons carry, so the
+    // funnel joins impression → intent → contact for one visitor.
+    visitor_id: readVisitorId(request),
     user_id: senderId,
     referrer: request.headers.get('referer')?.slice(0, 500) || null,
     user_agent: request.headers.get('user-agent')?.slice(0, 300) || null,
