@@ -2,6 +2,12 @@
 
 Fecha de corte: 2026-08-18
 
+> Nota de estado al 2026-09-03: este documento conserva el corte histórico de
+> preparación. La compra y reversa productivas del comercio vigente ya fueron
+> verificadas y Transbank notificó el cierre de la entrega de Webpay Plus. El
+> estado actual se resume en
+> [transbank-delivery-closure-2026-09-03.md](./transbank-delivery-closure-2026-09-03.md).
+
 ## Resultado de la auditoría
 
 El flujo de pago ya no es un mock. La aplicación crea la orden y la reserva en

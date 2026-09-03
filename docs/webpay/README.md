@@ -1,7 +1,8 @@
 # Integración Webpay Plus — plan maestro
 
-Estado: implementación sandbox local completa; falta instalación remota
-Última revisión: 2026-08-18
+Estado: integración desplegada y compra/reversa productiva verificadas con el
+comercio vigente; entrega de Webpay Plus cerrada por Transbank
+Última revisión: 2026-09-03
 Responsables: ReskiChile (negocio y operación) + implementación técnica
 
 ## 1. Objetivo y alcance
@@ -33,18 +34,19 @@ Documentos asociados:
 - [Variables de entorno de ejemplo](./env.example)
 - [Instalación y estado de implementación](./installation.md)
 - [Smoke test productivo sin compra del 2026-09-02](./production-smoke-2026-09-02.md)
+- [Cierre de entrega de Transbank](./transbank-delivery-closure-2026-09-03.md)
 
 ## Estado de las fases
 
-| Fase | Estado al 2026-08-18 |
+| Fase | Estado al 2026-09-03 |
 |---|---|
-| Retiro del mock | Completo en el workspace; falta verificar tras despliegue |
+| Retiro del mock | Completo y desplegado |
 | Dominio SQL | Ocho migraciones aplicadas; pruebas RLS/transaccionales pasan en PostgreSQL 16 aislado |
-| SDK/rutas sandbox | Implementado; falta deploy controlado y prueba Webpay real de sandbox |
+| SDK/rutas Webpay | Implementado y desplegado con SDK oficial; compra productiva controlada verificada |
 | Checkout invitado | Implementado para carrito/tallas; despacho por tabla o prueba explícita |
-| Conciliación | Endpoint/leases implementados; falta instalar Supabase Cron |
-| Refunds/fulfillment | Backend, outbox y panel implementados; falta probarlos contra Webpay sandbox y configurar alertas/correo |
-| Validación Transbank/producción | Pendiente y deshabilitada |
+| Conciliación | Endpoint, leases y cron productivos verificados; menor frecuencia preparada para aplicar al recuperarse Supabase |
+| Refunds/fulfillment | Backend, outbox, correo y reversa productiva verificados |
+| Entrega Webpay Plus | Requerimiento cerrado por Transbank; sin reconfiguración pendiente |
 
 ## 2. Decisiones confirmadas y pendientes
 
@@ -56,11 +58,11 @@ Documentos asociados:
 | Dominio canónico | `https://www.reskichile.cl`; el apex redirige 307 hacia `www` |
 | Hosting actual | Vercel Hobby |
 | Base de datos actual | Supabase Free, con episodios de inestabilidad |
-| Código de comercio productivo | Disponible |
+| Código de comercio productivo vigente | `597053098160`, con prueba productiva completada |
 | Afiliación comercial | Aprobada |
 | Portal administrativo Transbank | Disponible |
-| API Key Secret productiva | Aún no disponible |
-| Validación técnica | Aún no realizada |
+| API Key Secret productiva vigente | Disponible en secretos; nunca en el repositorio |
+| Entrega de Webpay Plus | Cerrada por Transbank; encuesta de experiencia opcional |
 | Conciliación | A cargo del propietario de ReskiChile |
 | Reembolsos | A cargo de un administrador |
 | Carrito | Modelo para varios ítems; lanzamiento inicial con un producto |
