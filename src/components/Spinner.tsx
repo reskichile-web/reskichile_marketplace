@@ -7,7 +7,7 @@ const sizes = {
 }
 
 const colors = {
-  brand: 'border-gray-200 border-t-brand-500',
+  brand: 'border-white border-t-brand-500',
   white: 'border-white/30 border-t-white',
   gray: 'border-gray-200 border-t-gray-500',
 }
