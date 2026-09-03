@@ -101,7 +101,7 @@ export default function RootLayout({
 
   return (
     <html lang="es" suppressHydrationWarning className={cn(norwester.variable, kollektif.variable, montserrat.variable, outfit.variable, spaceGrotesk.variable)}>
-      <body className={`${montserrat.className} min-h-screen overflow-hidden antialiased text-slate-900 font-light`}>
+      <body className={`${montserrat.className} h-[100svh] overflow-hidden antialiased text-gray-900`}>
         <MaintenanceScreen />
       </body>
     </html>
