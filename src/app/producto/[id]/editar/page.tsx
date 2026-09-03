@@ -122,6 +122,7 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const [popup, setPopup] = useState<{ title: string; message: string } | null>(null)
   const [compressing, setCompressing] = useState<{ current: number; total: number } | null>(null)
@@ -168,8 +169,9 @@ export default function EditProductPage() {
       if (!product) { router.push('/catalogo'); return }
 
       const isOwner = product.seller_id === user.id
-      const isAdmin = profile?.is_admin ?? false
-      if (!isOwner && !isAdmin) { router.push(`/producto/${params.id}`); return }
+      const admin = profile?.is_admin ?? false
+      if (!isOwner && !admin) { router.push(`/producto/${params.id}`); return }
+      setIsAdmin(admin)
 
       const loadedForm = {
         product_type: product.product_type || '',
@@ -451,7 +453,7 @@ export default function EditProductPage() {
     // after the revalidate window.
     await fetch(`/api/products/${params.id}/revalidate`, { method: 'POST' }).catch(() => {})
 
-    router.push(`/producto/${params.id}`)
+    router.push(isAdmin ? '/admin' : `/producto/${params.id}`)
   }
 
   if (loading) return (

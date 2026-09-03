@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { copyToClipboard } from '@/lib/share'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import Spinner from '@/components/Spinner'
 import RecentMessagesCard from '@/components/admin/RecentMessagesCard'
@@ -62,6 +63,52 @@ function fmtDateTime(iso: string): string {
 
 // White card with the standard admin border
 const CARD = 'bg-white rounded-xl border border-gray-200'
+
+function CopyProductLinkButton({ productId }: { productId: string }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'error'>('idle')
+
+  useEffect(() => {
+    if (state === 'idle') return
+    const timer = window.setTimeout(() => setState('idle'), 2200)
+    return () => window.clearTimeout(timer)
+  }, [state])
+
+  async function handleCopy() {
+    const copied = await copyToClipboard(`${window.location.origin}/producto/${productId}`)
+    setState(copied ? 'copied' : 'error')
+  }
+
+  const label = state === 'copied'
+    ? 'Enlace copiado'
+    : state === 'error'
+      ? 'No se pudo copiar el enlace'
+      : 'Copiar enlace del producto'
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label={label}
+      title={label}
+      className="pressable flex h-7 w-8 shrink-0 items-center justify-center rounded border border-gray-300 bg-white text-brand-500 transition-colors hover:bg-gray-50"
+    >
+      {state === 'copied' ? (
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ) : state === 'error' ? (
+        <svg className="h-4 w-4 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+        </svg>
+      ) : (
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="9" y="9" width="11" height="11" rx="2" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 15V6a2 2 0 012-2h9" />
+        </svg>
+      )}
+    </button>
+  )
+}
 
 export default function AdminDashboardClient({ initialData }: { initialData: AdminDashboardData }) {
   const [stats, setStats] = useState<Stats>(initialData.stats)
@@ -266,6 +313,7 @@ export default function AdminDashboardClient({ initialData }: { initialData: Adm
                       <Link href={`/producto/${product.id}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-brand-500 text-white px-3 py-1.5 rounded hover:bg-brand-600">
                         Ver
                       </Link>
+                      <CopyProductLinkButton productId={product.id} />
                       <Link href={`/producto/${product.id}/editar`} className="text-xs border px-3 py-1.5 rounded hover:bg-gray-100">
                         Editar
                       </Link>
