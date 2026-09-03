@@ -1,17 +1,8 @@
 import type { Metadata, Viewport } from 'next'
-import { Suspense } from 'react'
 import { Montserrat, Outfit, Space_Grotesk } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
-import Header from '@/components/Header'
-import StickyHeader from '@/components/StickyHeader'
-import Footer from '@/components/Footer'
-import LayoutChrome from '@/components/LayoutChrome'
-import ScrollToTop from '@/components/ScrollToTop'
-import NavigationProgress from '@/components/NavigationProgress'
-import PageViewTracker from '@/components/PageViewTracker'
-import MarketingConsentBoundary from '@/components/MarketingConsentBoundary'
-import MarketingConsentBootstrap from '@/components/MarketingConsentBootstrap'
+import MaintenanceScreen from '@/components/MaintenanceScreen'
 import { cn } from '@/lib/utils'
 
 const montserrat = Montserrat({
@@ -85,12 +76,16 @@ function metadataBaseFromEnvironment(): URL {
 
 export const metadata: Metadata = {
   metadataBase: metadataBaseFromEnvironment(),
-  title: 'ReskiChile - Equipamiento de montaña usado',
-  description: 'Marketplace de equipamiento usado de ski, snowboard y escalada en Chile',
+  title: 'Mantención programada | ReskiChile',
+  description: 'ReskiChile se encuentra temporalmente en mantención programada.',
   icons: {
     icon: '/favicon.svg',
   },
   manifest: '/manifest.json',
+  robots: {
+    index: false,
+    follow: false,
+  },
   other: {
     'theme-color': '#2674bf',
   },
@@ -101,26 +96,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Intentionally discard every route tree while maintenance mode is active.
+  void children
+
   return (
     <html lang="es" suppressHydrationWarning className={cn(norwester.variable, kollektif.variable, montserrat.variable, outfit.variable, spaceGrotesk.variable)}>
-      <head>
-        <MarketingConsentBootstrap />
-      </head>
-      <body className={`${montserrat.className} min-h-screen flex flex-col antialiased text-slate-900 font-light`}>
-        <MarketingConsentBoundary />
-        <Suspense fallback={null}>
-          <NavigationProgress />
-        </Suspense>
-        <ScrollToTop />
-        <Suspense fallback={null}>
-          <PageViewTracker />
-        </Suspense>
-        <LayoutChrome
-          header={<StickyHeader><Header /></StickyHeader>}
-          footer={<Footer />}
-        >
-          {children}
-        </LayoutChrome>
+      <body className={`${montserrat.className} min-h-screen overflow-hidden antialiased text-slate-900 font-light`}>
+        <MaintenanceScreen />
       </body>
     </html>
   )
