@@ -32,6 +32,7 @@ Documentos asociados:
 - [Checklist de seguridad y salida](./security-checklist.md)
 - [Variables de entorno de ejemplo](./env.example)
 - [Instalación y estado de implementación](./installation.md)
+- [Smoke test productivo sin compra del 2026-09-02](./production-smoke-2026-09-02.md)
 
 ## Estado de las fases
 
