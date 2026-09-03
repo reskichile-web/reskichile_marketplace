@@ -188,7 +188,7 @@ export default function AddressAutocomplete({
         />
         {loading && (
           <span className="absolute right-4 top-1/2 -translate-y-1/2" role="status">
-            <Spinner size="sm" color="gray" />
+            <Spinner size="sm" color="brand" />
             <span className="sr-only">{loading === 'search' ? 'Buscando dirección' : 'Confirmando dirección'}</span>
           </span>
         )}
@@ -226,7 +226,7 @@ export default function AddressAutocomplete({
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">Despacho</p>
               {shippingLoading ? (
                 <span className="mt-2 flex justify-end" role="status">
-                  <Spinner size="sm" color="gray" />
+                  <Spinner size="sm" color="brand" />
                   <span className="sr-only">Calculando despacho</span>
                 </span>
               ) : shippingClp != null ? (

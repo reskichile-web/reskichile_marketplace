@@ -7,9 +7,9 @@ const sizes = {
 }
 
 const colors = {
-  brand: 'border-brand-500',
-  white: 'border-white',
-  gray: 'border-gray-400',
+  brand: 'border-gray-200 border-t-brand-500',
+  white: 'border-white/30 border-t-white',
+  gray: 'border-gray-200 border-t-gray-500',
 }
 
 interface SpinnerProps {
@@ -22,7 +22,7 @@ export default function Spinner({ size = 'md', color = 'brand', className }: Spi
   return (
     <div
       className={cn(
-        'border-2 border-t-transparent rounded-full animate-spin',
+        'animate-spin rounded-full border-2',
         sizes[size],
         colors[color],
         className,
