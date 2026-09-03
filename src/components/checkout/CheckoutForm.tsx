@@ -193,7 +193,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
         commune: deliveryCommune,
         street: method === 'home' ? validated?.address.street || street : null,
         number: method === 'home' ? validated?.address.number || number : null,
-        extra: extra || null,
+        extra: method === 'home' ? extra || null : null,
         pickupPointId: method === 'pickup' ? pickupPointId : null,
         addressContext: method === 'home' ? validated?.context || addressContext : null,
         addressValidationToken: method === 'home' ? validated?.token || addressValidationToken : null,
@@ -370,7 +370,6 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
     : [
         selectedPickupPoint?.label || '',
         selectedPickupPoint?.address || '',
-        extra,
       ].filter(Boolean)
   const displayedShippingClp = quote?.shippingClp ?? (
     method === 'home' ? shippingEstimateClp : null
@@ -600,10 +599,12 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                       </label>
                     </>
                   )}
-                  <label className="text-sm font-medium text-gray-800 sm:col-span-2">
-                    Depto., oficina o referencia <span className="font-normal text-gray-400">(opcional)</span>
-                    <input maxLength={160} value={extra} onChange={(event) => setExtra(event.target.value)} placeholder="Ej. Depto. 502, dejar en conserjería" className={fieldClass} />
-                  </label>
+                  {method === 'home' && (
+                    <label className="text-sm font-medium text-gray-800 sm:col-span-2">
+                      Depto., oficina o referencia <span className="font-normal text-gray-400">(opcional)</span>
+                      <input maxLength={160} value={extra} onChange={(event) => setExtra(event.target.value)} placeholder="Ej. Depto. 502, dejar en conserjería" className={fieldClass} />
+                    </label>
+                  )}
                 </div>
               </fieldset>
 

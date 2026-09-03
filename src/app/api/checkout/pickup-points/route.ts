@@ -3,7 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const PICKUP_DESCRIPTION = 'Te contactaremos apenas finalices la compra con el detalle de la ubicación y el horario disponible.'
+const PICKUP_DESCRIPTION = 'Te contactaremos para coordinar el retiro.'
 
 export async function GET() {
   const service = createServiceRoleClient()

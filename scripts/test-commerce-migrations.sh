@@ -54,7 +54,9 @@ for migration in \
   202609010003_starken_shipping_source.sql \
   202609020001_starken_flat_rates.sql \
   202609020002_ski_rack_package_profile.sql \
-  20260903021100_ski_rack_commercial_pricing.sql
+  20260903021000_pickup_sector_copy.sql \
+  20260903021100_ski_rack_commercial_pricing.sql \
+  20260903023500_pickup_copy_refinement.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"

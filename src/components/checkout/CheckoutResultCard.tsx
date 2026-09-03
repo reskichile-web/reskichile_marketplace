@@ -11,6 +11,13 @@ const money = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 })
 
+const orderDate = new Intl.DateTimeFormat('es-CL', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'America/Santiago',
+})
+
 function statusCopy(status: string): {
   title: string
   description: string
@@ -18,8 +25,8 @@ function statusCopy(status: string): {
 } {
   if (status === 'authorized') {
     return {
-      title: 'Pago confirmado',
-      description: 'Te informaremos por correo sobre el estado de tu pedido.',
+      title: 'Tu orden fue confirmada',
+      description: 'Te mantendremos al tanto por correo.',
       tone: 'text-brand-400',
     }
   }
@@ -64,11 +71,19 @@ function fulfillmentStep(status: string): 1 | 2 | 3 {
   return 1
 }
 
-function OrderTimeline({ currentStep }: { currentStep: 1 | 2 | 3 }) {
-  const steps = ['Orden creada', 'Despacho', 'Envío']
+function OrderTimeline({
+  currentStep,
+  pickup,
+}: {
+  currentStep: 1 | 2 | 3
+  pickup: boolean
+}) {
+  const steps = pickup
+    ? ['Confirmada', 'Preparación', 'Lista para retirar']
+    : ['Confirmada', 'Preparación', 'En camino']
 
   return (
-    <ol aria-label="Estado del pedido" className="mt-8 grid grid-cols-3">
+    <ol aria-label="Estado del pedido" className="mt-6 grid grid-cols-3">
       {steps.map((step, index) => {
         const stepNumber = (index + 1) as 1 | 2 | 3
         const completed = currentStep > stepNumber
@@ -79,25 +94,25 @@ function OrderTimeline({ currentStep }: { currentStep: 1 | 2 | 3 }) {
             {index > 0 && (
               <span
                 aria-hidden="true"
-                className={`absolute left-0 right-1/2 top-3 h-px ${currentStep >= stepNumber ? 'bg-brand-400' : 'bg-gray-200'}`}
+                className={`absolute left-0 right-1/2 top-[18px] h-0.5 ${currentStep >= stepNumber ? 'bg-brand-400' : 'bg-gray-200'}`}
               />
             )}
             {index < steps.length - 1 && (
               <span
                 aria-hidden="true"
-                className={`absolute left-1/2 right-0 top-3 h-px ${currentStep > stepNumber ? 'bg-brand-400' : 'bg-gray-200'}`}
+                className={`absolute left-1/2 right-0 top-[18px] h-0.5 ${currentStep > stepNumber ? 'bg-brand-400' : 'bg-gray-200'}`}
               />
             )}
             <span
-              className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-bold ${
+              className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-full border text-xs font-bold ${
                 active || completed
                   ? 'border-brand-400 bg-brand-400 text-white'
                   : 'border-gray-200 bg-white text-gray-400'
               }`}
             >
-              {completed ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" /> : stepNumber}
+              {completed ? <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" /> : stepNumber}
             </span>
-            <span className={`mt-2 text-[10px] font-semibold sm:text-xs ${active || completed ? 'text-gray-900' : 'text-gray-400'}`}>
+            <span className={`mt-3 text-[11px] font-semibold sm:text-sm ${active || completed ? 'text-gray-900' : 'text-gray-400'}`}>
               {step}
             </span>
           </li>
@@ -172,80 +187,129 @@ export default function CheckoutResultCard({ order }: { order: GuestOrderResult 
     .filter(Boolean)
     .join(', ')
   const deliveryAddressLines = order.delivery.method === 'pickup'
-    ? [order.delivery.pickupPointId, order.delivery.extra, destination].filter(Boolean)
+    ? [
+        order.delivery.pickupPointId === 'las_condes'
+          ? 'Retiro en Las Condes'
+          : order.delivery.pickupPointId === 'los_angeles'
+            ? 'Retiro en Los Ángeles'
+            : order.delivery.pickupPointId,
+        destination,
+      ].filter(Boolean)
     : [homeAddress, order.delivery.extra, order.delivery.formattedAddress ? '' : destination].filter(Boolean)
+  const pickup = order.delivery.method === 'pickup'
+  const confirmationMessage = pickup
+    ? 'Te contactaremos por correo para coordinar el horario y el punto exacto de retiro.'
+    : 'Te avisaremos por correo cuando preparemos tu pedido y cuando vaya en camino.'
+  const backHref = order.containsRackItems ? '/ski-rack' : '/catalogo'
 
   return (
-    <main className="mx-auto max-w-lg px-4 py-16">
-      <section className="border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <main className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
+      <section className="border border-gray-200 bg-white">
         {order.containsRackItems && (
           <ClearSkiRackCart />
         )}
-        <div className="flex flex-wrap items-center gap-x-1 text-xs font-bold uppercase tracking-[0.18em]">
-          <span className="text-gray-400">Orden</span>
-          <span className="text-gray-950">{order.orderNumber}</span>
-          <CopyOrderNumberButton orderNumber={order.orderNumber} />
-        </div>
-        <h1 className={'mt-3 font-body text-3xl font-black ' + copy.tone}>
-          {copy.title}
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-gray-600">{copy.description}</p>
-        <OrderTimeline currentStep={fulfillmentStep(order.fulfillmentStatus)} />
+        <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
+          <div className="p-6 sm:p-8 lg:p-10">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-500">
+              Pago confirmado
+            </p>
+            <h1 className={'mt-3 max-w-xl font-body text-3xl font-black sm:text-4xl ' + copy.tone}>
+              {copy.title}
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-gray-600 sm:text-base">
+              {confirmationMessage}
+            </p>
 
-        <section aria-labelledby="shipping-details-title" className="mt-8 border-t border-gray-100 pt-6">
-          <h2 id="shipping-details-title" className="font-body text-base font-black text-gray-900">
-            Datos de envío
-          </h2>
-          <dl className="mt-4 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Destinatario</dt>
-              <dd className="mt-1 font-semibold text-gray-900">{order.buyer.name}</dd>
-            </div>
-            <div>
-              <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Teléfono</dt>
-              <dd className="mt-1 text-gray-700">{order.buyer.phone}</dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Correo</dt>
-              <dd className="mt-1 break-words text-gray-700">{order.buyer.email}</dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">
-                {order.delivery.method === 'pickup' ? 'Punto de retiro' : 'Dirección de entrega'}
-              </dt>
-              <dd className="mt-1 font-semibold leading-6 text-gray-900">
-                {deliveryAddressLines.map((line, index) => <span key={`${line}-${index}`} className="block">{line}</span>)}
-              </dd>
-            </div>
-          </dl>
-        </section>
+            <section aria-labelledby="shipping-details-title" className="mt-10 border-t border-gray-100 pt-8">
+              <h2 id="shipping-details-title" className="font-body text-lg font-black text-gray-900">
+                {pickup ? 'Detalle del retiro' : 'Detalle de entrega'}
+              </h2>
+              <dl className="mt-6 grid gap-x-8 gap-y-5 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Destinatario</dt>
+                  <dd className="mt-1.5 font-semibold text-gray-900">{order.buyer.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Teléfono</dt>
+                  <dd className="mt-1.5 text-gray-700">{order.buyer.phone}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Correo</dt>
+                  <dd className="mt-1.5 break-words text-gray-700">{order.buyer.email}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">
+                    {pickup ? 'Punto de retiro' : 'Dirección de entrega'}
+                  </dt>
+                  <dd className="mt-1.5 font-semibold leading-6 text-gray-900">
+                    {deliveryAddressLines.map((line, index) => <span key={`${line}-${index}`} className="block">{line}</span>)}
+                  </dd>
+                </div>
+              </dl>
+            </section>
 
-        <div className="mt-8 space-y-3 border-t border-gray-100 pt-6 text-sm">
-          {order.items.map((item) => (
-            <div key={item.name} className="flex justify-between gap-4">
-              <span className="text-gray-700">{item.name}</span>
-              <span className="font-semibold">{money.format(item.priceClp)}</span>
-            </div>
-          ))}
-          {order.discountClp > 0 && (
-            <div className="flex justify-between text-emerald-700">
-              <span>Descuento</span>
-              <span>-{money.format(order.discountClp)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-gray-600">
-            <span>Despacho</span>
-            <span>{money.format(order.shippingClp)}</span>
+            <Link href={backHref} className="mt-10 inline-flex items-center justify-center bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-gray-800">
+              Volver a la tienda
+            </Link>
           </div>
-          <div className="flex justify-between border-t border-gray-100 pt-3 text-base font-black">
-            <span>Total</span>
-            <span>{money.format(order.totalClp)}</span>
-          </div>
-        </div>
 
-        <Link href="/catalogo" className="mt-8 flex w-full items-center justify-center bg-gray-900 px-6 py-3 font-semibold text-white hover:bg-gray-800">
-          Volver al catálogo
-        </Link>
+          <aside className="border-t border-gray-200 bg-gray-50 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
+            <h2 className="font-body text-lg font-black text-gray-900">Estado de tu pedido</h2>
+            <OrderTimeline
+              currentStep={fulfillmentStep(order.fulfillmentStatus)}
+              pickup={pickup}
+            />
+
+            <div className="relative mt-10 border border-dashed border-gray-300 bg-white px-5 py-6 font-mono text-sm shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:px-7 sm:py-8">
+              <span aria-hidden="true" className="absolute -left-2 top-8 h-4 w-4 rounded-full border-r border-gray-300 bg-gray-50" />
+              <span aria-hidden="true" className="absolute -right-2 top-8 h-4 w-4 rounded-full border-l border-gray-300 bg-gray-50" />
+              <p className="text-center text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500">
+                Comprobante de compra
+              </p>
+              <div className="mt-5 border-y border-dashed border-gray-200 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="text-xs uppercase text-gray-500">Orden</span>
+                  <span className="flex min-w-0 items-center gap-1 font-bold text-gray-950">
+                    <span className="truncate">{order.orderNumber}</span>
+                    <CopyOrderNumberButton orderNumber={order.orderNumber} />
+                  </span>
+                </div>
+                <div className="mt-2 flex justify-between gap-4">
+                  <span className="text-xs uppercase text-gray-500">Fecha</span>
+                  <span className="text-right text-gray-800">{orderDate.format(new Date(order.createdAt))}</span>
+                </div>
+                <div className="mt-2 flex justify-between gap-4">
+                  <span className="text-xs uppercase text-gray-500">Pago</span>
+                  <span className="font-bold text-emerald-700">Webpay · Confirmado</span>
+                </div>
+              </div>
+
+              <div className="space-y-3 py-5">
+                {order.items.map((item) => (
+                  <div key={item.name} className="flex justify-between gap-4">
+                    <span className="text-gray-700">{item.name}</span>
+                    <span className="whitespace-nowrap font-semibold">{money.format(item.priceClp)}</span>
+                  </div>
+                ))}
+                {order.discountClp > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Descuento</span>
+                    <span>-{money.format(order.discountClp)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-gray-600">
+                  <span>{pickup ? 'Retiro' : 'Despacho'}</span>
+                  <span>{order.shippingClp === 0 ? 'Gratis' : money.format(order.shippingClp)}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between border-t border-dashed border-gray-300 pt-5 text-base font-black">
+                <span>Total</span>
+                <span>{money.format(order.totalClp)}</span>
+              </div>
+            </div>
+          </aside>
+        </div>
       </section>
     </main>
   )

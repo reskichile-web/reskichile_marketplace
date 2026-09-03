@@ -42,19 +42,45 @@ describe('checkout result', () => {
   it('shows the confirmed order status, timeline and protected delivery details', () => {
     const html = renderToStaticMarkup(<CheckoutResultCard order={order} />)
 
-    expect(html).toContain('<span class="text-gray-950">RC-260819-91D2C397</span>')
+    expect(html).toContain('RC-260819-91D2C397')
     expect(html).toContain('aria-label="Copiar número de orden"')
-    expect(html).toContain('font-black text-brand-400">Pago confirmado')
-    expect(html).toContain('Te informaremos por correo sobre el estado de tu pedido.')
+    expect(html).toContain('Tu orden fue confirmada')
+    expect(html).toContain('Te avisaremos por correo cuando preparemos tu pedido y cuando vaya en camino.')
     expect(html).toContain('aria-label="Estado del pedido"')
-    expect(html).toContain('Orden creada')
-    expect(html).toContain('Despacho')
-    expect(html).toContain('Envío')
-    expect(html).toContain('Datos de envío')
+    expect(html).toContain('Confirmada')
+    expect(html).toContain('Preparación')
+    expect(html).toContain('En camino')
+    expect(html).toContain('Detalle de entrega')
+    expect(html).toContain('Comprobante de compra')
+    expect(html).toContain('Webpay · Confirmado')
+    expect(html).toContain('Volver a la tienda')
     expect(html).toContain('Cliente de prueba')
     expect(html).toContain('Avenida Los Leones 1234')
     expect(html).toContain('Providencia, Metropolitana de Santiago')
     expect(html).not.toContain('Ahora comenzaremos a preparar el despacho')
+  })
+
+  it('shows a friendly pickup label without carrying a home reference', () => {
+    const html = renderToStaticMarkup(
+      <CheckoutResultCard order={{
+        ...order,
+        delivery: {
+          ...order.delivery,
+          method: 'pickup',
+          street: null,
+          number: null,
+          extra: 'Esta referencia no corresponde a un retiro',
+          pickupPointId: 'las_condes',
+        },
+      }} />
+    )
+
+    expect(html).toContain('Detalle del retiro')
+    expect(html).toContain('Retiro en Las Condes')
+    expect(html).toContain('Lista para retirar')
+    expect(html).toContain('Te contactaremos por correo para coordinar el horario y el punto exacto de retiro.')
+    expect(html).not.toContain('Esta referencia no corresponde a un retiro')
+    expect(html).not.toContain('>las_condes<')
   })
 
   it.each([
@@ -75,7 +101,7 @@ describe('checkout result', () => {
 
     expect(html).toContain(title)
     expect(html).toContain(order.orderNumber)
-    expect(html).not.toContain('Datos de envío')
+    expect(html).not.toContain('Detalle de entrega')
     expect(html).not.toContain(order.buyer.name)
     expect(html).not.toContain(order.buyer.email)
     expect(html).not.toContain(order.buyer.phone)

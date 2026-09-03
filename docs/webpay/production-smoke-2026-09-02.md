@@ -4,7 +4,7 @@ Fecha: 2026-09-02
 
 Commit desplegado: `955431d`
 
-Resultado: aprobado dentro del alcance sin compra
+Resultado: aprobado; compra y reversa productivas completadas en seguimiento
 
 ## Límite de seguridad
 
@@ -13,6 +13,23 @@ transacción Webpay y no se envió al navegador de pago. Los contadores remotos 
 mantuvieron en 9 órdenes y 9 intentos antes y después de todas las pruebas.
 
 El checkout productivo permaneció habilitado por decisión del propietario.
+
+## Compra productiva controlada y reversa
+
+El seguimiento del mismo día completó la validación económica con una compra
+intencional de CLP 50, sin usar productos ni inventario comercial:
+
+- orden `RC-260903-0F2DE604`;
+- producto técnico ocultable `Prueba Webpay $50` y retiro sin costo;
+- intento en ambiente `production`, autorizado con `response_code=0`;
+- retorno correcto a ReskiChile y comprobante de pago confirmado;
+- devolución completa aceptada por Transbank como `REVERSED`;
+- reembolso persistido en estado `succeeded` por CLP 50;
+- estado final de la orden: pago `refunded`, orden y fulfillment `cancelled`;
+- producto técnico nuevamente `archived`.
+
+No se guardaron en este documento datos de tarjeta, token Webpay, llaves ni
+datos personales del comprador.
 
 ## Base de datos y despliegue
 
@@ -82,7 +99,5 @@ requiere una decisión comercial y validar el embalaje conjunto.
    paquete consolidado medido.
 3. Confirmar que la validación técnica de Transbank esté formalmente aprobada y
    archivar su evidencia.
-4. Ejecutar intencionalmente la compra productiva de $50 y su devolución. Esta
-   etapa queda fuera de un smoke test sin compra.
-5. Completar la evidencia de concurrencia, callback duplicado, recuperación de
+4. Completar la evidencia de concurrencia, callback duplicado, recuperación de
    una respuesta incierta y refund en la matriz del runbook.
