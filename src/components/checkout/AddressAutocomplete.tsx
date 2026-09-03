@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Spinner from '@/components/Spinner'
 import type {
   AddressSuggestion,
   AddressValidationSelection,
@@ -10,6 +11,8 @@ import type {
 interface Props {
   disabled?: boolean
   error?: string | null
+  shippingClp?: number | null
+  shippingLoading?: boolean
   onInvalidated: () => void
   onValidated: (
     address: ValidatedHomeAddress,
@@ -17,6 +20,12 @@ interface Props {
     addressContext: string
   ) => void
 }
+
+const money = new Intl.NumberFormat('es-CL', {
+  style: 'currency',
+  currency: 'CLP',
+  maximumFractionDigits: 0,
+})
 
 function newUuid(): string {
   if (typeof crypto === 'undefined' || typeof crypto.randomUUID !== 'function') {
@@ -51,6 +60,8 @@ async function postJson(
 export default function AddressAutocomplete({
   disabled,
   error,
+  shippingClp,
+  shippingLoading,
   onInvalidated,
   onValidated,
 }: Props) {
@@ -62,6 +73,7 @@ export default function AddressAutocomplete({
   const [loading, setLoading] = useState<'search' | 'validate' | null>(null)
   const [localError, setLocalError] = useState('')
   const requestSequence = useRef(0)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setAddressContext(newUuid())
@@ -71,6 +83,7 @@ export default function AddressAutocomplete({
   useEffect(() => {
     if (selected || query.trim().length < 3 || !sessionToken || !addressContext) {
       setSuggestions([])
+      setLoading(current => current === 'search' ? null : current)
       return
     }
     const sequence = ++requestSequence.current
@@ -101,14 +114,15 @@ export default function AddressAutocomplete({
     }
   }, [addressContext, query, selected, sessionToken])
 
-  function startOver() {
+  function beginEditing() {
+    if (!selected || disabled || loading === 'validate') return
     requestSequence.current += 1
     setSelected(null)
-    setQuery('')
     setSuggestions([])
     setLocalError('')
     setSessionToken(newUuid())
     onInvalidated()
+    window.requestAnimationFrame(() => inputRef.current?.select())
   }
 
   async function selectSuggestion(suggestion: AddressSuggestion) {
@@ -140,14 +154,15 @@ export default function AddressAutocomplete({
   return (
     <div className="sm:col-span-2">
       <label htmlFor="checkout-address-search" className="text-sm font-medium">
-        Busca tu dirección
+        {selected ? 'Dirección confirmada' : 'Busca tu dirección'}
       </label>
       <div className="relative mt-2">
         <input
+          ref={inputRef}
           id="checkout-address-search"
           required
           disabled={disabled || loading === 'validate'}
-          type="search"
+          type="text"
           role="combobox"
           aria-expanded={suggestions.length > 0}
           aria-controls="checkout-address-suggestions"
@@ -156,16 +171,27 @@ export default function AddressAutocomplete({
           autoComplete="street-address"
           maxLength={120}
           value={query}
-          readOnly={Boolean(selected)}
+          onClick={beginEditing}
           onChange={(event) => {
+            if (selected) {
+              requestSequence.current += 1
+              setSelected(null)
+              setSuggestions([])
+              setSessionToken(newUuid())
+            }
             setQuery(event.target.value)
             setLocalError('')
             onInvalidated()
           }}
           placeholder="Ej. Avenida Apoquindo 3000"
-          className={`min-h-12 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-100 ${shownError ? 'border-red-400' : 'border-gray-200'}`}
+          className={`min-h-12 w-full rounded-xl border bg-white px-4 py-3 pr-11 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-100 ${shownError ? 'border-red-400' : 'border-gray-200'}`}
         />
-        {loading === 'search' && <span className="absolute right-3 top-3 text-xs text-gray-400">Buscando…</span>}
+        {loading && (
+          <span className="absolute right-4 top-1/2 -translate-y-1/2" role="status">
+            <Spinner size="sm" color="gray" />
+            <span className="sr-only">{loading === 'search' ? 'Buscando dirección' : 'Confirmando dirección'}</span>
+          </span>
+        )}
         {suggestions.length > 0 && (
           <div id="checkout-address-suggestions" role="listbox" className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
             {suggestions.map((suggestion) => (
@@ -189,16 +215,26 @@ export default function AddressAutocomplete({
       </div>
       {shownError && <p className="mt-1 text-xs text-red-500">{shownError}</p>}
       {selected && (
-        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-semibold">Dirección confirmada</p>
-              <p className="mt-1">{selected.street} {selected.number}</p>
-              <p>{selected.commune}, {selected.region}</p>
+        <div className="mt-3 rounded-2xl border border-gray-200 bg-white px-4 py-4 text-sm shadow-[0_10px_30px_rgba(15,23,42,0.05)] sm:px-5">
+          <div className="flex items-start justify-between gap-5">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">Dirección de entrega</p>
+              <p className="mt-2 font-semibold text-gray-900">{selected.street} {selected.number}</p>
+              <p className="mt-0.5 leading-5 text-gray-500">{selected.commune}, {selected.region}</p>
             </div>
-            <button type="button" onClick={startOver} className="text-xs font-semibold underline">
-              Corregir
-            </button>
+            <div className="shrink-0 text-right">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">Despacho</p>
+              {shippingLoading ? (
+                <span className="mt-2 flex justify-end" role="status">
+                  <Spinner size="sm" color="gray" />
+                  <span className="sr-only">Calculando despacho</span>
+                </span>
+              ) : shippingClp != null ? (
+                <p className="mt-1 font-body text-base font-black text-gray-900">{money.format(shippingClp)}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">Por calcular</p>
+              )}
+            </div>
           </div>
         </div>
       )}

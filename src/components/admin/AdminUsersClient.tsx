@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Spinner from '@/components/Spinner'
-import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { phoneToWhatsApp } from '@/lib/phone'
@@ -451,8 +450,6 @@ export default function AdminUsersClient({ initialData }: { initialData: AdminUs
 
   const filtered = users
 
-  if (loading) return <AdminTableSkeleton />
-
   const showInviteCol = filter === 'pending_access' || filtered.some(u => u.keep === true && u.must_change_password)
 
   return (
@@ -493,10 +490,14 @@ export default function AdminUsersClient({ initialData }: { initialData: AdminUs
           placeholder="Buscar por email, nombre o teléfono..."
           className="w-full border rounded px-3 py-2 text-sm"
         />
+        {loading && <p className="text-xs text-brand-500" role="status">Actualizando resultados…</p>}
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div
+        aria-busy={loading}
+        className={`bg-white border border-gray-200 rounded-xl overflow-hidden transition-opacity ${loading ? 'pointer-events-none opacity-50' : ''}`}
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50/50 text-left text-gray-500">

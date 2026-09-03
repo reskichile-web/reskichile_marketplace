@@ -7,11 +7,14 @@ import {
   ArrowRight,
   ChevronLeft,
   LockKeyhole,
+  MapPin,
   ShoppingBag,
+  Store,
   Truck,
 } from 'lucide-react'
 import PhoneInput from '@/components/PhoneInput'
 import AddressAutocomplete from '@/components/checkout/AddressAutocomplete'
+import type { ValidatedHomeAddress } from '@/lib/commerce/address'
 import { CHILE_REGIONS } from '@/lib/commerce/regions'
 import {
   DEFAULT_COUNTRY,
@@ -50,7 +53,7 @@ interface PickupPoint {
   id: string
   label: string
   address: string
-  instructions: string
+  description: string
   region: string
   commune: string
 }
@@ -132,6 +135,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const [addressValidationToken, setAddressValidationToken] = useState<string | null>(null)
   const [addressError, setAddressError] = useState('')
   const [quote, setQuote] = useState<Quote | null>(null)
+  const [shippingEstimateClp, setShippingEstimateClp] = useState<number | null>(null)
   const [quotedPayload, setQuotedPayload] = useState<Record<string, unknown> | null>(null)
   const [idempotencyKey, setIdempotencyKey] = useState('')
   const [loading, setLoading] = useState<'quote' | 'create' | null>(null)
@@ -158,13 +162,20 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
     return () => controller.abort()
   }, [])
 
-  function payload(key: string): Record<string, unknown> {
+  function payload(
+    key: string,
+    validated?: {
+      address: ValidatedHomeAddress
+      token: string
+      context: string
+    }
+  ): Record<string, unknown> {
     const deliveryRegion = method === 'pickup'
       ? selectedPickupPoint?.region || ''
-      : region
+      : validated?.address.region || region
     const deliveryCommune = method === 'pickup'
       ? selectedPickupPoint?.commune || ''
-      : commune
+      : validated?.address.commune || commune
     return {
       productIds: kind === 'products' ? items.map(item => item.id) : [],
       rackItems: kind === 'racks'
@@ -180,12 +191,12 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
         method,
         region: deliveryRegion,
         commune: deliveryCommune,
-        street: method === 'home' ? street : null,
-        number: method === 'home' ? number : null,
+        street: method === 'home' ? validated?.address.street || street : null,
+        number: method === 'home' ? validated?.address.number || number : null,
         extra: extra || null,
         pickupPointId: method === 'pickup' ? pickupPointId : null,
-        addressContext: method === 'home' ? addressContext : null,
-        addressValidationToken: method === 'home' ? addressValidationToken : null,
+        addressContext: method === 'home' ? validated?.context || addressContext : null,
+        addressValidationToken: method === 'home' ? validated?.token || addressValidationToken : null,
       },
       couponCode: null,
     }
@@ -197,6 +208,46 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
       setQuotedPayload(null)
       setIdempotencyKey('')
     }
+  }
+
+  async function requestQuote(
+    key: string,
+    body: Record<string, unknown>,
+    advanceToPayment: boolean
+  ) {
+    setError('')
+    setLoading('quote')
+    try {
+      const data = await requestJson('/api/checkout/quote', body)
+      const nextQuote = {
+        subtotalClp: Number(data.subtotalClp),
+        discountClp: Number(data.discountClp),
+        shippingClp: Number(data.shippingClp),
+        totalClp: Number(data.totalClp),
+      }
+      if (!Object.values(nextQuote).every(Number.isSafeInteger)) {
+        throw new Error('El servidor devolvió un total inválido.')
+      }
+      setIdempotencyKey(key)
+      setQuotedPayload(body)
+      setQuote(nextQuote)
+      setShippingEstimateClp(nextQuote.shippingClp)
+      if (advanceToPayment) setCurrentStep(3)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No pudimos cotizar.')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  function quoteValidatedAddress(
+    address: ValidatedHomeAddress,
+    token: string,
+    context: string
+  ) {
+    const key = newIdempotencyKey()
+    const body = payload(key, { address, token, context })
+    void requestQuote(key, body, false)
   }
 
   async function requestJson(path: string, body: Record<string, unknown>) {
@@ -249,29 +300,13 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
       return
     }
     setAddressError('')
-    setLoading('quote')
-    try {
-      const key = newIdempotencyKey()
-      const body = payload(key)
-      const data = await requestJson('/api/checkout/quote', body)
-      const nextQuote = {
-        subtotalClp: Number(data.subtotalClp),
-        discountClp: Number(data.discountClp),
-        shippingClp: Number(data.shippingClp),
-        totalClp: Number(data.totalClp),
-      }
-      if (!Object.values(nextQuote).every(Number.isSafeInteger)) {
-        throw new Error('El servidor devolvió un total inválido.')
-      }
-      setIdempotencyKey(key)
-      setQuotedPayload(body)
-      setQuote(nextQuote)
+    if (quote && quotedPayload && idempotencyKey) {
       setCurrentStep(3)
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No pudimos cotizar.')
-    } finally {
-      setLoading(null)
+      return
     }
+    const key = newIdempotencyKey()
+    const body = payload(key)
+    await requestQuote(key, body, true)
   }
 
   async function handlePayment() {
@@ -327,7 +362,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const backLabel = kind === 'racks' ? 'Volver al carrito' : 'Volver al producto'
   const itemSubtotal = items.reduce((total, item) => total + item.priceClp * item.quantity, 0)
   const deliveryLines = method === 'home'
-    ? [
+      ? [
         `${street} ${number}`.trim(),
         extra,
         [commune, region].filter(Boolean).join(', '),
@@ -337,6 +372,12 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
         selectedPickupPoint?.address || '',
         extra,
       ].filter(Boolean)
+  const displayedShippingClp = quote?.shippingClp ?? (
+    method === 'home' ? shippingEstimateClp : null
+  )
+  const displayedTotalClp = quote?.totalClp ?? (
+    itemSubtotal + (displayedShippingClp ?? 0)
+  )
 
   function returnToDelivery() {
     setQuote(null)
@@ -462,9 +503,9 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                   <label className={`cursor-pointer rounded-xl border p-4 transition-colors ${method === 'pickup' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
                     <span className="flex items-center gap-2 text-sm font-semibold">
                       <input type="radio" name="delivery" value="pickup" checked={method === 'pickup'} onChange={() => setMethod('pickup')} className="accent-brand-500" />
-                      Punto de retiro
+                      Retiro en tienda
                     </span>
-                    <span className="mt-1 block pl-5 text-xs text-gray-500">Gratis en nuestras bodegas</span>
+                    <span className="mt-1 block pl-5 text-xs text-gray-500">Coordina tu retiro sin costo</span>
                   </label>
                 </div>
                 <div className="grid gap-5 sm:grid-cols-2">
@@ -483,25 +524,31 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                       {pickupPoints.map(point => (
                         <label
                           key={point.id}
-                          className={`block cursor-pointer rounded-xl border p-4 transition-colors ${pickupPointId === point.id ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}
+                          className={`block cursor-pointer rounded-2xl border bg-white p-4 transition-all ${pickupPointId === point.id ? 'border-brand-500 shadow-[0_8px_24px_rgba(15,23,42,0.06)]' : 'border-gray-200 hover:border-gray-300'}`}
                         >
-                          <span className="flex items-start gap-3">
-                            <input
-                              required={method === 'pickup'}
-                              type="radio"
-                              name="pickup-point"
-                              value={point.id}
-                              checked={pickupPointId === point.id}
-                              onChange={() => setPickupPointId(point.id)}
-                              className="mt-1 accent-brand-500"
-                            />
-                            <span className="min-w-0">
-                              <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-gray-900">
-                                {point.label}
-                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">Gratis</span>
+                          <span className="flex items-start justify-between gap-4">
+                            <span className="flex min-w-0 items-start gap-3">
+                              <input
+                                required={method === 'pickup'}
+                                type="radio"
+                                name="pickup-point"
+                                value={point.id}
+                                checked={pickupPointId === point.id}
+                                onChange={() => setPickupPointId(point.id)}
+                                className="mt-1 accent-brand-500"
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-sm font-bold text-gray-900">{point.label}</span>
+                                <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold leading-5 text-gray-700">
+                                  <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-500" strokeWidth={1.8} aria-hidden="true" />
+                                  {point.address}
+                                </span>
+                                <span className="mt-1.5 block max-w-xl text-xs leading-5 text-gray-500">{point.description}</span>
                               </span>
-                              <span className="mt-1 block text-xs leading-5 text-gray-600">{point.address}</span>
-                              <span className="mt-1 block text-xs leading-5 text-gray-500">{point.instructions}</span>
+                            </span>
+                            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold text-gray-700">
+                              <Store className="h-4 w-4 text-brand-500" strokeWidth={1.8} aria-hidden="true" />
+                              Gratis
                             </span>
                           </span>
                         </label>
@@ -511,10 +558,14 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                     <AddressAutocomplete
                       disabled={!enabled || loading !== null}
                       error={addressError}
+                      shippingClp={shippingEstimateClp}
+                      shippingLoading={loading === 'quote'}
                       onInvalidated={() => {
                         setAddressContext(null)
                         setAddressValidationToken(null)
                         setAddressError('')
+                        setShippingEstimateClp(null)
+                        invalidateQuote()
                       }}
                       onValidated={(address, token, context) => {
                         setRegion(address.region)
@@ -524,6 +575,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
                         setAddressContext(context)
                         setAddressValidationToken(token)
                         setAddressError('')
+                        quoteValidatedAddress(address, token, context)
                       }}
                     />
                   ) : (
@@ -677,17 +729,17 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
               </div>
             )}
 
-            {currentStep >= 3 && quote && (
+            {currentStep >= 2 && displayedShippingClp != null && (
               <div className="mt-4 border-t border-gray-100 pt-4 text-xs leading-5 text-gray-500">
                 <p className="font-bold uppercase tracking-[0.14em] text-gray-400">Entrega</p>
                 <div className="mt-2 flex items-start gap-3">
                   <Truck className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" strokeWidth={1.8} aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-800">{method === 'home' ? 'A domicilio' : 'Punto de retiro'}</p>
+                    <p className="font-semibold text-gray-800">{method === 'home' ? 'A domicilio' : 'Retiro en tienda'}</p>
                     {deliveryLines.map(line => <p key={line}>{line}</p>)}
                   </div>
                   <span className="shrink-0 font-body text-sm font-black text-gray-900">
-                    {money.format(quote.shippingClp)}
+                    {money.format(displayedShippingClp)}
                   </span>
                 </div>
               </div>
@@ -706,7 +758,7 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
               )}
               <div className="flex items-end justify-between gap-4 border-t border-gray-100 pt-4">
                 <span className="font-body text-base font-black">{quote ? 'Total' : 'Total parcial'}</span>
-                <span className="font-body text-2xl font-black text-brand-600">{money.format(quote?.totalClp ?? itemSubtotal)}</span>
+                <span className="font-body text-2xl font-black text-brand-600">{money.format(displayedTotalClp)}</span>
               </div>
             </div>
 

@@ -64,6 +64,7 @@ export default function FinanzasPage() {
   const [sold, setSold] = useState<SoldProduct[]>([])
   const [all, setAll] = useState<CatalogProduct[]>([])
   const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const [hasMore, setHasMore] = useState(false)
@@ -115,6 +116,7 @@ export default function FinanzasPage() {
     } finally {
       if (requestRef.current === controller) {
         setLoading(false)
+        setInitialLoading(false)
         setLoadingMore(false)
         loadingRef.current = false
       }
@@ -151,7 +153,7 @@ export default function FinanzasPage() {
 
   const filtered = sold
 
-  if (loading) return <AdminTableSkeleton />
+  if (initialLoading) return <AdminTableSkeleton />
 
   return (
     <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
@@ -236,9 +238,13 @@ export default function FinanzasPage() {
               ))}
             </select>
           </div>
+          {loading && <p className="mt-2 text-xs text-brand-500" role="status">Actualizando resultados…</p>}
         </div>
 
-        <div className="overflow-x-auto">
+        <div
+          aria-busy={loading}
+          className={`overflow-x-auto transition-opacity ${loading ? 'pointer-events-none opacity-50' : ''}`}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50/50 text-left text-gray-500">

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
-import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
 import Spinner from '@/components/Spinner'
 import { phoneToWhatsApp } from '@/lib/phone'
 import { daysUntilSaleReminder } from '@/lib/sale-reminder'
@@ -391,8 +390,6 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
   }
 
 
-  if (loading) return <AdminTableSkeleton />
-
   return (
     <div className="max-w-7xl mx-auto mt-0 px-4 md:px-8 pt-4 pb-16">
 
@@ -448,7 +445,10 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-gray-500 mb-3">{totalCount} productos</p>
+      <p className="text-sm text-gray-500 mb-3">
+        {totalCount} productos
+        {loading && <span className="ml-2 text-brand-500" role="status">Actualizando…</span>}
+      </p>
 
       {loadError && (
         <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -461,10 +461,14 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
         </p>
       )}
 
-      {filtered.length === 0 ? (
-        <p className="text-gray-500">No hay productos que coincidan</p>
-      ) : (
-        <div className="overflow-x-auto">
+      <div
+        aria-busy={loading}
+        className={`transition-opacity ${loading ? 'pointer-events-none opacity-50' : ''}`}
+      >
+        {filtered.length === 0 ? (
+          <p className="text-gray-500">No hay productos que coincidan</p>
+        ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-gray-500">
@@ -828,8 +832,9 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
             onClose={storyApproval.close}
             onRetry={storyApproval.retry}
           />
-        </div>
-      )}
+          </div>
+        )}
+      </div>
       {!loading && filtered.length > 0 && (
         <AdminInfiniteScroll
           hasMore={hasMore}

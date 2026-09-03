@@ -3,11 +3,13 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+const PICKUP_DESCRIPTION = 'Te contactaremos apenas finalices la compra con el detalle de la ubicación y el horario disponible.'
+
 export async function GET() {
   const service = createServiceRoleClient()
   const { data, error } = await service
     .from('shipping_origins')
-    .select('code, pickup_label, pickup_address, pickup_instructions, region, commune')
+    .select('code, pickup_label, pickup_address, region, commune')
     .eq('active', true)
     .eq('pickup_enabled', true)
     .order('display_name', { ascending: true })
@@ -22,14 +24,13 @@ export async function GET() {
   const points = (data || []).flatMap(point => {
     if (
       !point.code || !point.pickup_label || !point.pickup_address ||
-      !point.pickup_instructions ||
       !point.region || !point.commune
     ) return []
     return [{
       id: String(point.code),
       label: String(point.pickup_label),
       address: String(point.pickup_address),
-      instructions: String(point.pickup_instructions),
+      description: PICKUP_DESCRIPTION,
       region: String(point.region),
       commune: String(point.commune),
     }]
