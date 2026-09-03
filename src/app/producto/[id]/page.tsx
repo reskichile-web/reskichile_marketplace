@@ -7,29 +7,17 @@ import ProductDetailClient from '@/components/ProductDetailClient'
 import ProductFallback from '@/components/ProductFallback'
 import TrackProductView from '@/components/TrackProductView'
 
-// ISR: approved product pages are cached at the edge and refreshed periodically.
-// Non-approved listings take a dynamic (per-viewer) path below, so they're never
-// cached — see the fallback in the page component.
-export const revalidate = 120
+// Approved product pages are generated on demand and cached at the edge. Product
+// mutations explicitly invalidate this route, so a longer fallback window keeps
+// reads low without leaving edits stale. Do not add generateStaticParams here:
+// pre-rendering the full catalogue makes every deployment fan out into Supabase.
+export const revalidate = 900
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-// Pre-render approved product pages at build so they're served as cached ISR
-// pages. Listings approved later are generated on-demand and cached per
-// `revalidate` (dynamicParams defaults to true). Uses slug URLs when available.
-export async function generateStaticParams() {
-  const supabase = createPublicServerClient()
-  const { data } = await supabase
-    .from('products')
-    .select('id, slug')
-    .eq('status', 'approved')
-    .limit(1000)
-  return (data ?? []).map((p) => ({ id: (p.slug as string | null) || (p.id as string) }))
-}
 
 // Approved product fetch via the anonymous (no-cookie) client so the render
 // stays cacheable. Deduped per request and shared with generateMetadata.
