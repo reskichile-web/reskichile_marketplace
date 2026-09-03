@@ -1,7 +1,9 @@
 # Webpay Plus: smoke test productivo sin compra
 
-Fecha: 2026-09-02  
-Commit desplegado: `955431d`  
+Fecha: 2026-09-02
+
+Commit desplegado: `955431d`
+
 Resultado: aprobado dentro del alcance sin compra
 
 ## Límite de seguridad
@@ -84,4 +86,3 @@ requiere una decisión comercial y validar el embalaje conjunto.
    etapa queda fuera de un smoke test sin compra.
 5. Completar la evidencia de concurrencia, callback duplicado, recuperación de
    una respuesta incierta y refund en la matriz del runbook.
-
