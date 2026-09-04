@@ -10,6 +10,7 @@ export default async function ProductsSection() {
     .from('products')
     .select('id, slug, product_type, brand, model, price, previous_price, condition, region, created_at, product_images(url, order)')
     .eq('status', 'approved')
+    .order('previous_price', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
 
   if (!products || products.length === 0) return null

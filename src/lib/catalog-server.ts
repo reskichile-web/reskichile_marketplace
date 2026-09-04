@@ -65,7 +65,10 @@ async function fetchDirectCatalogPage(
   } else if (filters.sort === 'price_desc') {
     query = query.order('price', { ascending: false }).order('created_at', { ascending: false })
   } else {
-    query = query.order('created_at', { ascending: false })
+    // Put active price reductions ahead of ordinary recent listings.
+    query = query
+      .order('previous_price', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
   }
 
   const { data, count, error } = await query
