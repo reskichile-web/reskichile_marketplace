@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { CircleCheck, MapPin, MessageCircle } from 'lucide-react'
+import { CheckCircle2, MapPin, MessageCircle, PackageCheck, Recycle, Sparkles, Star, type LucideIcon } from 'lucide-react'
 import { CONDITIONS, PRODUCT_TYPES } from '@/lib/constants'
 import styles from './AutomatedProductPost.module.css'
 import ProductArtwork from './ProductArtwork'
@@ -23,6 +23,14 @@ export interface AutomatedPostProduct {
 }
 
 const LONG_PRODUCT_TYPES = new Set(['esquis', 'snowboards', 'bastones'])
+
+const CONDITION_ICONS: Record<string, LucideIcon> = {
+  nuevo_sellado: PackageCheck,
+  nuevo: Sparkles,
+  usado_como_nuevo: Star,
+  usado_buen_estado: CheckCircle2,
+  usado_aceptable: Recycle,
+}
 
 function firstValue(value: unknown): string | undefined {
   if (Array.isArray(value)) return value[0] == null ? undefined : String(value[0])
@@ -228,6 +236,8 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
   const productImage = sortedImages.find(image => /\.png(?:\?|$)/i.test(image.url))?.url || sortedImages[0]?.url
   const longProduct = LONG_PRODUCT_TYPES.has(product.product_type)
   const facts = productFacts(product)
+  const ConditionIcon = CONDITION_ICONS[product.condition] || CheckCircle2
+  const isSealed = product.condition === 'nuevo_sellado'
 
   return (
     <div className={styles.viewport}>
@@ -289,8 +299,8 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
             </ul>
           )}
           <div className={styles.productMeta} aria-label="Estado y ubicación">
-            <p>
-              <CircleCheck aria-hidden="true" />
+            <p className={isSealed ? styles.productMetaSealed : undefined}>
+              <ConditionIcon aria-hidden="true" />
               <span>{CONDITIONS[product.condition] || product.condition}</span>
             </p>
             <p>

@@ -257,6 +257,17 @@
   margin: 0;
 }
 
+.productMeta p:first-child {
+  width: fit-content;
+}
+
+.productMetaSealed {
+  padding: 7px 10px;
+  background: #2d83cc;
+  color: #ffffff;
+  border-radius: 0;
+}
+
 .productMeta svg {
   width: 18px;
   height: 18px;
