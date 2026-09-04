@@ -1,7 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export function proxy() {
-  return NextResponse.next()
+export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === '/mantenimiento') {
+    return NextResponse.next()
+  }
+
+  const maintenanceUrl = request.nextUrl.clone()
+  maintenanceUrl.pathname = '/mantenimiento'
+  maintenanceUrl.search = ''
+  const response = NextResponse.rewrite(maintenanceUrl)
+  response.headers.set('Cache-Control', 'no-store, max-age=0')
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+  return response
 }
 
 export const config = {
