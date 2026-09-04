@@ -239,6 +239,31 @@
   font-weight: 800;
 }
 
+.productMeta {
+  display: grid;
+  gap: 7px;
+  margin-top: 22px;
+  color: #2674bf;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.productMeta p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+}
+
+.productMeta svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  stroke-width: 2.4;
+}
+
 .detailsSparse .price {
   --price-font-size: 88px;
 

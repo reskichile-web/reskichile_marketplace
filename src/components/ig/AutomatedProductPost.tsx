@@ -1,6 +1,6 @@
 import Image from 'next/image'
-import { MessageCircle } from 'lucide-react'
-import { PRODUCT_TYPES } from '@/lib/constants'
+import { CircleCheck, MapPin, MessageCircle } from 'lucide-react'
+import { CONDITIONS, PRODUCT_TYPES } from '@/lib/constants'
 import styles from './AutomatedProductPost.module.css'
 import ProductArtwork from './ProductArtwork'
 import FitFactValue from './FitFactValue'
@@ -288,6 +288,16 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
               ))}
             </ul>
           )}
+          <div className={styles.productMeta} aria-label="Estado y ubicación">
+            <p>
+              <CircleCheck aria-hidden="true" />
+              <span>{CONDITIONS[product.condition] || product.condition}</span>
+            </p>
+            <p>
+              <MapPin aria-hidden="true" />
+              <span>{[product.comuna, product.region].filter(Boolean).join(', ')}</span>
+            </p>
+          </div>
         </section>
 
         <div
