@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { Clock3 } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 
 export default function MaintenanceScreen() {
   return (
@@ -29,18 +29,18 @@ export default function MaintenanceScreen() {
           />
 
           <h1 className="mt-5 text-xl font-bold text-gray-900 sm:text-2xl">
-            Mantención programada
+            Interrupción temporal del servicio
           </h1>
 
           <p className="mt-2 text-sm font-normal leading-relaxed text-gray-500">
-            Estamos realizando mejoras. El sitio estará disponible nuevamente a las 20:00 hrs.
+            Estamos experimentando una incidencia en nuestro proveedor de infraestructura, que impide cargar temporalmente el catálogo y algunas funciones del sitio.
           </p>
 
-          <div className="mt-5 flex items-center justify-center gap-3 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3">
-            <Clock3 className="size-5 shrink-0 text-brand-500" strokeWidth={1.8} aria-hidden="true" />
+          <div className="mt-5 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" strokeWidth={1.8} aria-hidden="true" />
             <div className="text-left">
-              <p className="text-[11px] font-medium text-gray-500">Volvemos hoy</p>
-              <p className="text-sm font-bold text-brand-600">20:00 hrs · Hora de Chile</p>
+              <p className="text-[11px] font-medium text-amber-800">Estamos trabajando en ello</p>
+              <p className="text-xs leading-relaxed text-amber-700">Volveremos a habilitar ReskiChile cuando los servicios estén estables.</p>
             </div>
           </div>
 
