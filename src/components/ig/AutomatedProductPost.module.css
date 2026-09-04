@@ -241,10 +241,10 @@
 
 .productMeta {
   display: grid;
-  gap: 7px;
-  margin-top: 22px;
+  gap: 10px;
+  margin-top: 28px;
   color: #2674bf;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.1;
   text-transform: uppercase;
@@ -258,8 +258,8 @@
 }
 
 .productMeta svg {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   flex: none;
   stroke-width: 2.4;
 }

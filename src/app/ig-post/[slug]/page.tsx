@@ -14,11 +14,12 @@ export const metadata: Metadata = {
 export default async function AutomatedPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = createPublicServerClient()
+  const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
   const { data: product } = await supabase
     .from('products')
     .select('id, slug, product_type, brand, model, price, condition, region, comuna, attributes, product_images(url, order)')
     .eq('status', 'approved')
-    .eq('slug', slug)
+    .eq(isId ? 'id' : 'slug', slug)
     .single()
 
   if (!product) notFound()

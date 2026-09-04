@@ -132,7 +132,7 @@ export async function POST(
       story = await generateAndStoreStoryCapture({
         captureId: claim.capture_id,
         productId: product.id,
-        slug: product.slug || '',
+        slug: product.slug || product.id,
         storagePath,
         ...(forceRegeneration ? { previousStoragePath: claim.jpeg_storage_path } : {}),
       })
