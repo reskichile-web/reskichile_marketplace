@@ -14,6 +14,7 @@ interface Props {
   brand?: string | null
   productType: string
   price: number
+  previousPrice?: number | null
   mainImageUrl?: string
   secondImageUrl?: string
   badge?: string
@@ -26,7 +27,7 @@ interface Props {
   trackClickAs?: string
 }
 
-export default function ProductCard({ id, slug, title, brand, productType, price, mainImageUrl, secondImageUrl, badge, recentlyPublished = false, recentBadgeIndex = 0, sealed = false, priority = false, trackClickAs }: Props) {
+export default function ProductCard({ id, slug, title, brand, productType, price, previousPrice, mainImageUrl, secondImageUrl, badge, recentlyPublished = false, recentBadgeIndex = 0, sealed = false, priority = false, trackClickAs }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondRequested, setSecondRequested] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
@@ -138,9 +139,15 @@ export default function ProductCard({ id, slug, title, brand, productType, price
           {PRODUCT_TYPES[productType]}
         </p>
         <h3 className="font-body font-semibold text-sm truncate mt-1">{title}</h3>
-        <p className="font-body text-base font-bold text-black mt-0.5">
-          ${price.toLocaleString('es-CL')}
-        </p>
+        {previousPrice && previousPrice > price ? (
+          <p className="mt-0.5 flex items-baseline gap-2 font-body">
+            <span className="text-xs text-gray-400 line-through">${previousPrice.toLocaleString('es-CL')}</span>
+            <span className="text-base font-bold text-red-600">${price.toLocaleString('es-CL')}</span>
+            <span className="text-[10px] font-bold text-red-600">-{Math.round((1 - price / previousPrice) * 100)}%</span>
+          </p>
+        ) : (
+          <p className="font-body text-base font-bold text-black mt-0.5">${price.toLocaleString('es-CL')}</p>
+        )}
       </div>
     </Link>
   )

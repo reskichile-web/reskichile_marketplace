@@ -13,8 +13,8 @@ import {
 } from '@/lib/catalog'
 import { createPublicServerClient } from '@/lib/supabase/server'
 
-const CATALOG_CARD_SELECT = 'id, slug, product_type, brand, model, price, condition, attributes, product_images(url, order)'
-const CATALOG_METADATA_SELECT = 'id, product_type, condition, region, brand, price, attributes, created_at'
+const CATALOG_CARD_SELECT = 'id, slug, product_type, brand, model, price, previous_price, condition, attributes, product_images(url, order)'
+const CATALOG_METADATA_SELECT = 'id, product_type, condition, region, brand, price, previous_price, attributes, created_at'
 
 export interface CatalogProductPage {
   products: CatalogProduct[]

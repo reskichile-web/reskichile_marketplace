@@ -27,6 +27,7 @@ export interface Product {
   condition: Condition
   description: string | null
   price: number
+  previous_price: number | null
   region: string
   comuna: string
   attributes: Record<string, unknown>

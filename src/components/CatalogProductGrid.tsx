@@ -115,6 +115,7 @@ export default function CatalogProductGrid({ initialProducts, totalCount, queryS
               brand={product.brand}
               productType={product.product_type}
               price={product.price}
+              previousPrice={product.previous_price}
               mainImageUrl={sortedImages[0]?.url}
               secondImageUrl={sortedImages[1]?.url}
               badge={productBadge(product)}

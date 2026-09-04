@@ -8,7 +8,7 @@ export default async function ProductsSection() {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, slug, product_type, brand, model, price, condition, region, created_at, product_images(url, order)')
+    .select('id, slug, product_type, brand, model, price, previous_price, condition, region, created_at, product_images(url, order)')
     .eq('status', 'approved')
     .order('created_at', { ascending: false })
 

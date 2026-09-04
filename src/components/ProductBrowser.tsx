@@ -16,6 +16,7 @@ interface Product {
   brand: string
   model: string | null
   price: number
+  previous_price?: number | null
   condition: string
   region: string
   product_images: { url: string; order: number }[]
@@ -445,6 +446,7 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
                       brand={product.brand}
                       productType={product.product_type}
                       price={product.price}
+                      previousPrice={product.previous_price}
                       mainImageUrl={sorted[0]?.url}
                       secondImageUrl={sorted[1]?.url}
                       recentlyPublished={recentBadgePositions.has(product.id)}

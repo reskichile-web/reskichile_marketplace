@@ -386,6 +386,11 @@ export default function EditProductPage() {
       if (genero.length > 0) attributesJson.genero = genero
     }
 
+    const oldPrice = Number(initialSnapshot?.form.price || form.price)
+    const pricePatch = price < oldPrice
+      ? { previous_price: oldPrice }
+      : price >= oldPrice ? { previous_price: null } : {}
+
     const { error: updateError } = await supabase.from('products').update({
       product_type: form.product_type,
       brand: form.brand,
@@ -393,6 +398,7 @@ export default function EditProductPage() {
       condition: form.condition,
       description: form.description || null,
       price,
+      ...pricePatch,
       region: form.region,
       comuna: form.comuna || '',
       attributes: Object.keys(attributesJson).length > 0 ? attributesJson : null,

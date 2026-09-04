@@ -31,6 +31,7 @@ export interface CatalogMetadata {
   region: string
   brand: string | null
   price: number
+  previous_price?: number | null
   attributes: Record<string, unknown> | null
   created_at: string
 }
@@ -42,6 +43,7 @@ export interface CatalogProduct {
   brand: string | null
   model: string | null
   price: number
+  previous_price?: number | null
   condition?: string
   attributes: Record<string, unknown> | null
   product_images: { url: string; order: number }[]

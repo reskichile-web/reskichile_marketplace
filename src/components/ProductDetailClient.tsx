@@ -440,7 +440,15 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
             )}
             <h1 className="min-w-0 font-body text-2xl font-black md:text-3xl">{title}</h1>
           </div>
-          <p className="font-body text-2xl md:text-3xl font-semibold text-brand-500 mt-1">${product.price.toLocaleString('es-CL')}</p>
+          {product.previous_price && product.previous_price > product.price ? (
+            <p className="mt-1 flex items-baseline gap-2 font-body">
+              <span className="text-sm text-gray-400 line-through">${product.previous_price.toLocaleString('es-CL')}</span>
+              <span className="text-2xl font-semibold text-red-600 md:text-3xl">${product.price.toLocaleString('es-CL')}</span>
+              <span className="text-xs font-bold text-red-600">-{Math.round((1 - product.price / product.previous_price) * 100)}%</span>
+            </p>
+          ) : (
+            <p className="font-body text-2xl md:text-3xl font-semibold text-brand-500 mt-1">${product.price.toLocaleString('es-CL')}</p>
+          )}
 
           {/* Location */}
           <div className="mt-4 flex items-center gap-1.5 text-sm text-gray-500">

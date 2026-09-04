@@ -259,7 +259,11 @@ export default function SellPage() {
     } else if (step === 'photos') {
       const requiredAttributes = (PRODUCT_ATTRIBUTES[productType] || []).filter(field => field.required)
       const missingAttributes = requiredAttributes.filter(field => {
-        const value = attrs[field.key]
+        // The bindings question defaults to “No”; treat an older/partially
+        // initialized form the same way as the explicit default in state.
+        const value = field.key === 'incluye_fijaciones' && attrs[field.key] === undefined
+          ? false
+          : attrs[field.key]
         return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
       })
       const requiresDetailedAttributes = publicationMode === 'detailed'
@@ -660,7 +664,14 @@ export default function SellPage() {
                 type="button"
                 onClick={() => {
                   setProductType(key)
-                  setAttrs({})
+                  // “Incluye fijaciones” is a required question for snowboards
+                  // and optional for skis, but the safe/default answer is No.
+                  // Keep it in form state (rather than only rendering No when
+                  // the value is undefined) so the required-field validation
+                  // does not force sellers to click the chip manually.
+                  const hasBindingsQuestion = (PRODUCT_ATTRIBUTES[key] || [])
+                    .some(field => field.key === 'incluye_fijaciones')
+                  setAttrs(hasBindingsQuestion ? { incluye_fijaciones: false } : {})
                   setPublicationMode(key === 'botas_esqui' || key === 'botas_snowboard' ? 'detailed' : 'short')
                   setStep('details')
                   scrollTop()
