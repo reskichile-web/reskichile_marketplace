@@ -58,6 +58,8 @@ Hay múltiples ventanas de publicación de Stories configuradas durante el día.
 
 La auditoría estática encontró varios `select('*')` en mensajes, perfil y detalle de producto. No necesariamente son el origen del incidente, pero aumentan payload y trabajo de serialización. Deben reemplazarse por listas explícitas en las rutas de mayor tráfico.
 
+Primera corrección aplicada: conversación y carga de mensajes ahora solicitan únicamente las columnas utilizadas por la interfaz (`974783b`).
+
 El panel de métricas lanza varias consultas en paralelo y, para el período histórico, puede consultar rangos muy grandes de `events`. Ese panel debe usar agregados diarios y límites estrictos para no competir con el tráfico público.
 
 El chat usa Realtime solo dentro de `/mensajes`, lo que es correcto; aun así, cada mensaje entrante puede generar actualizaciones de entrega/lectura y debe medirse bajo carga.
