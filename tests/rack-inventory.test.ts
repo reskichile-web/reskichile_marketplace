@@ -11,7 +11,7 @@ const product: RackInventoryProduct = {
   slug: 'madera',
   name: 'Ski Rack Madera',
   material: 'Madera natural',
-  priceClp: 17990,
+  priceClp: 15990,
   active: true,
   variants: [
     ['las-condes-s', 'S', 'las_condes'],

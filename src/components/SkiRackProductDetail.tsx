@@ -71,9 +71,23 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
             <h1 className="mt-1 font-body text-2xl font-black md:text-3xl">
               {product.name}
             </h1>
-            <p className="mt-1 font-body text-2xl font-semibold text-brand-500 md:text-3xl">
-              {money.format(priceClp)}
-            </p>
+            {product.previousPriceClp && product.previousPriceClp > priceClp ? (
+              <p className="mt-1 flex items-baseline gap-2 font-body">
+                <span className="text-sm text-gray-400 line-through">
+                  {money.format(product.previousPriceClp)}
+                </span>
+                <span className="text-2xl font-semibold text-red-600 md:text-3xl">
+                  {money.format(priceClp)}
+                </span>
+                <span className="text-xs font-bold text-red-600">
+                  -{Math.round((1 - priceClp / product.previousPriceClp) * 100)}%
+                </span>
+              </p>
+            ) : (
+              <p className="mt-1 font-body text-2xl font-semibold text-brand-500 md:text-3xl">
+                {money.format(priceClp)}
+              </p>
+            )}
 
             {soldOut && (
               <div className="mt-4 inline-flex rounded-full bg-gray-900 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white">

@@ -57,7 +57,8 @@ for migration in \
   20260903021000_pickup_sector_copy.sql \
   20260903021100_ski_rack_commercial_pricing.sql \
   20260903023500_pickup_copy_refinement.sql \
-  20260903025000_pickup_email_details.sql
+  20260903025000_pickup_email_details.sql \
+  202609070001_ski_rack_wood_discount.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"

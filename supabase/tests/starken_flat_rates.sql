@@ -60,9 +60,9 @@ BEGIN
     SELECT 1
     FROM public.ski_rack_products
     WHERE slug = 'madera'
-      AND price_clp = 17990
+      AND price_clp = 15990
   ) THEN
-    RAISE EXCEPTION 'expected Ski Rack Madera price to be 17990';
+    RAISE EXCEPTION 'expected Ski Rack Madera price to be 15990';
   END IF;
 
   IF NOT EXISTS (

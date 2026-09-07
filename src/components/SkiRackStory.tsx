@@ -96,9 +96,23 @@ export default function SkiRackStory() {
                   {product.name}
                 </Link>
               </h2>
-              <p className="mt-0.5 font-body text-sm font-bold text-black md:text-base">
-                {money.format(priceClp)}
-              </p>
+              {product.previousPriceClp && product.previousPriceClp > priceClp ? (
+                <p className="mt-0.5 flex items-baseline gap-1.5 font-body md:gap-2">
+                  <span className="text-[11px] text-gray-400 line-through md:text-xs">
+                    {money.format(product.previousPriceClp)}
+                  </span>
+                  <span className="text-sm font-bold text-red-600 md:text-base">
+                    {money.format(priceClp)}
+                  </span>
+                  <span className="text-[9px] font-bold text-red-600 md:text-[10px]">
+                    -{Math.round((1 - priceClp / product.previousPriceClp) * 100)}%
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-0.5 font-body text-sm font-bold text-black md:text-base">
+                  {money.format(priceClp)}
+                </p>
+              )}
               {!loading && soldOut && (
                 <p className="mt-1 text-[10px] font-medium text-gray-400">
                   Todas las tallas agotadas

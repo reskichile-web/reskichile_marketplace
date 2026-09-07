@@ -64,9 +64,23 @@ export default function SkiRackRelatedProducts({ currentProduct }: { currentProd
                 <h3 className="mt-1 font-body text-sm font-semibold text-gray-950 transition-colors group-hover:text-brand-500">
                   {product.name}
                 </h3>
-                <p className="mt-0.5 font-body text-sm font-bold text-gray-950">
-                  {money.format(priceClp)}
-                </p>
+                {product.previousPriceClp && product.previousPriceClp > priceClp ? (
+                  <p className="mt-0.5 flex items-baseline gap-2 font-body">
+                    <span className="text-xs text-gray-400 line-through">
+                      {money.format(product.previousPriceClp)}
+                    </span>
+                    <span className="text-sm font-bold text-red-600">
+                      {money.format(priceClp)}
+                    </span>
+                    <span className="text-[10px] font-bold text-red-600">
+                      -{Math.round((1 - priceClp / product.previousPriceClp) * 100)}%
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-0.5 font-body text-sm font-bold text-gray-950">
+                    {money.format(priceClp)}
+                  </p>
+                )}
               </Link>
             </article>
           )
