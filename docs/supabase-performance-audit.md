@@ -1,6 +1,6 @@
 # Auditoría de rendimiento de Supabase
 
-Última actualización: 2026-09-06 (America/Santiago)
+Última actualización: 2026-09-07 (America/Santiago)
 
 ## Objetivo
 
@@ -16,6 +16,16 @@ Identificar qué está agotando Disk IO y provocando `CONNECT_TIMEOUT`/consultas
 - Almacenamiento usado: aproximadamente **69.1 MB de base de datos**, **80 MB WAL** y **169.6 MB sistema** sobre un disco de 8 GB. El espacio no es el problema.
 - No hay read replicas; agregarlas no resolvería la saturación de escrituras ni el tracking.
 - La cola de Stories tenía productos publicados aún programados; ya fue limpiada y compactada.
+
+### Medición directa (2026-09-07)
+
+- `events`: **22.314 filas** (`pageview` 12.593, `product_view` 6.632, `click` 3.011, resto 78).
+- `products`: **195**; `product_images`: **786**.
+- `instagram_story_captures`: **82**; `payment_events`: **55**; `messages`: **20**; `conversations`: **9**.
+- `events` cubre desde el **10-jun-2026** al **07-sep-2026**.
+- Storage tiene 164 entradas de primer nivel. Hay 13 rutas antiguas UUID aún referenciadas por `product_images`; no se borraron porque siguen siendo referencias válidas.
+
+La cantidad de datos no justifica por sí sola un disco lleno. El riesgo actual es **IO/CPU por consultas y concurrencia**, no falta de espacio.
 
 ## Hallazgos confirmados
 
@@ -62,6 +72,12 @@ Primera corrección aplicada: conversación y carga de mensajes ahora solicitan 
 
 El panel de métricas lanza varias consultas en paralelo y, para el período histórico, puede consultar rangos muy grandes de `events`. Ese panel debe usar agregados diarios y límites estrictos para no competir con el tráfico público.
 
+### 6. Período “Todo” sin límite
+
+En `/admin/metricas`, `HISTORICAL_RPC_DAYS` está configurado en **36.500 días**. Al elegir “Todo” se lanzan en paralelo varios RPC sobre `events`, además de consultas paginadas de consentimiento. Hoy son 22 mil filas, pero el costo crecerá indefinidamente. Es el riesgo de escalabilidad más claro encontrado.
+
+Mitigación propuesta: conservar eventos crudos, pero acotar “Todo” (por ejemplo a 365 días) mientras se implementan agregados diarios. No se borrarán datos ni se cambiará la ventana histórica sin confirmar el comportamiento esperado.
+
 El chat usa Realtime solo dentro de `/mensajes`, lo que es correcto; aun así, cada mensaje entrante puede generar actualizaciones de entrega/lectura y debe medirse bajo carga.
 
 ## Hipótesis por prioridad
@@ -87,10 +103,13 @@ El cambio de Compute size es una operación de lifecycle y puede reiniciar el pr
 - [x] Eliminar lecturas Auth innecesarias del tracking.
 - [x] Aplicar el índice de eventos cuando Supabase vuelva a aceptar conexiones (migración `202609060002` aplicada el 2026-09-06).
 - [ ] Confirmar que las consultas de 7/30/90 días terminan sin timeout.
+- [x] Medir volumen y rango temporal de `events`, productos, imágenes y capturas.
+- [ ] Acotar “Todo” en métricas o migrarlo a agregados diarios antes de que `events` crezca.
 
 ### Paso 2 — Perfilado de consultas
 
 - Revisar `pg_stat_statements` y logs de consultas lentas.
+- Medir específicamente la carga de `/admin/metricas` con “Todo”; no repetirla durante incidentes.
 - Medir latencia y filas leídas por endpoint público.
 - Identificar scans completos y consultas con `count` costoso.
 - Revisar conexiones activas, esperas por IO y pool.
