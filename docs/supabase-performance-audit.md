@@ -12,6 +12,9 @@ Identificar qué está agotando Disk IO y provocando `CONNECT_TIMEOUT`/consultas
 - La consulta de métricas de visitantes únicos (`COUNT(DISTINCT visitor_id)`) llegó a expirar por `statement timeout`.
 - Se midieron aproximadamente **6.840 pageviews en 7 días** desde `public.events`.
 - No se pudo obtener el total de visitantes únicos por la saturación de la base.
+- Panel Infrastructure (2026-09-07): CPU **100%**, memoria **88%**, Disk IO **100%**.
+- Almacenamiento usado: aproximadamente **69.1 MB de base de datos**, **80 MB WAL** y **169.6 MB sistema** sobre un disco de 8 GB. El espacio no es el problema.
+- No hay read replicas; agregarlas no resolvería la saturación de escrituras ni el tracking.
 - La cola de Stories tenía productos publicados aún programados; ya fue limpiada y compactada.
 
 ## Hallazgos confirmados
@@ -58,6 +61,12 @@ Hay múltiples ventanas de publicación de Stories configuradas durante el día.
 3. Consultas del catálogo/filtros sobre conjuntos completos.
 4. Reintentos o tareas cron sobre capturas ya publicadas.
 5. Saturación general de conexiones o Disk IO del proyecto.
+
+## Lectura de Infrastructure
+
+El panel confirma saturación de recursos de ejecución. La opción **Micro** aparece al mismo precio horario que **Nano** y ofrece 1 GB de memoria y CPU de 2 núcleos; es la primera medida de capacidad a evaluar si Supabase permite el cambio sin costo adicional. No conviene aumentar disco, IOPS ni throughput todavía: hay espacio de sobra y esas opciones pueden aumentar el cobro. Una read replica tampoco ataca el problema principal mientras el tracking y las consultas pesadas sigan golpeando al primario.
+
+El cambio de Compute size es una operación de lifecycle y puede reiniciar el proyecto. Debe hacerse solo cuando el incidente de Supabase sobre operaciones de lifecycle esté resuelto y exista una ventana de baja actividad.
 
 ## Plan paso a paso
 
