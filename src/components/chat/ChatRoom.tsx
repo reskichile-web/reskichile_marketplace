@@ -131,7 +131,7 @@ export default function ChatRoom({
     const prevScrollHeight = el?.scrollHeight || 0
     const { data } = await supabase
       .from('messages')
-      .select('*')
+      .select('id, conversation_id, sender_id, body, delivered_at, read_at, created_at')
       .eq('conversation_id', conversationId)
       .lt('created_at', oldest.created_at)
       .order('created_at', { ascending: false })

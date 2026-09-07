@@ -21,7 +21,7 @@ export default async function ChatPage({ params }: Props) {
 
   const { data: conv } = await supabase
     .from('conversations')
-    .select('*')
+    .select('id, buyer_id, seller_id, product_id')
     .eq('id', id)
     .single()
   if (!conv) notFound()
@@ -45,7 +45,7 @@ export default async function ChatPage({ params }: Props) {
     // at the bottom showing the latest conversation state.
     supabase
       .from('messages')
-      .select('*')
+      .select('id, conversation_id, sender_id, body, delivered_at, read_at, created_at')
       .eq('conversation_id', id)
       .order('created_at', { ascending: false })
       .limit(100),
