@@ -66,7 +66,7 @@ Hay múltiples ventanas de publicación de Stories configuradas durante el día.
 - [x] Registrar el síntoma y el error exacto.
 - [x] Medir pageviews recientes sin modificar datos.
 - [x] Eliminar lecturas Auth innecesarias del tracking.
-- [ ] Aplicar el índice de eventos cuando Supabase vuelva a aceptar conexiones.
+- [x] Aplicar el índice de eventos cuando Supabase vuelva a aceptar conexiones (migración `202609060002` aplicada el 2026-09-06).
 - [ ] Confirmar que las consultas de 7/30/90 días terminan sin timeout.
 
 ### Paso 2 — Perfilado de consultas
