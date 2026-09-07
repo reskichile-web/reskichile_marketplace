@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { sanitizeCampaignAttribution } from '@/lib/campaign-attribution'
 import {
   VISITOR_COOKIE,
@@ -56,23 +56,7 @@ export async function POST(request: NextRequest) {
       res.cookies.set(VISITOR_COOKIE, visitorId, visitorCookieOptions())
     }
 
-    // Local cookie parse only — analytics doesn't need a verified user,
-    // and getUser() would add a network round trip per event.
-    const supabase = createServerSupabaseClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    const userId = session?.user?.id ?? null
-
     const service = createServiceRoleClient()
-
-    // Admin sessions don't count anywhere — not in visits, clicks or counters.
-    if (userId) {
-      const { data: profile } = await service
-        .from('users')
-        .select('is_admin')
-        .eq('id', userId)
-        .single()
-      if (profile?.is_admin) return res
-    }
 
     const country = request.headers.get('x-vercel-ip-country')
     const cityRaw = request.headers.get('x-vercel-ip-city')
@@ -84,7 +68,10 @@ export async function POST(request: NextRequest) {
       category,
       product_id: productId,
       visitor_id: visitorId,
-      user_id: userId,
+      // Public tracking intentionally avoids auth/session lookups. Admin and
+      // API paths are rejected above, so a pageview beacon must stay one cheap
+      // insert instead of adding two database reads per event.
+      user_id: null,
       referrer,
       user_agent: ua.slice(0, 300) || null,
       country,
