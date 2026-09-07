@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
@@ -132,8 +132,6 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
-  const [sortBy, setSortBy] = useState<'time' | 'price' | 'seller'>('time')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -210,50 +208,10 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
     void loadProducts(nextOffset, true)
   }, [loadProducts, nextOffset])
 
-  const filtered = useMemo(() => {
-    const direction = sortDirection === 'asc' ? 1 : -1
-    return [...products].sort((a, b) => {
-      let comparison = 0
-      if (sortBy === 'price') {
-        comparison = a.price - b.price
-      } else if (sortBy === 'seller') {
-        const sellerA = a.users?.name || a.users?.email || 'Sin Usuario Creado'
-        const sellerB = b.users?.name || b.users?.email || 'Sin Usuario Creado'
-        comparison = sellerA.localeCompare(sellerB, 'es', { sensitivity: 'base' })
-      } else {
-        comparison = a.days_published - b.days_published
-      }
-      return comparison !== 0
-        ? comparison * direction
-        : new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
-  }, [products, sortBy, sortDirection])
-
-  function toggleSort(field: 'time' | 'price' | 'seller') {
-    if (sortBy === field) {
-      setSortDirection(direction => direction === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortBy(field)
-      setSortDirection(field === 'seller' ? 'asc' : 'desc')
-    }
-  }
-
-  function SortHeader({ field, children, className = '' }: { field: 'time' | 'price' | 'seller'; children: React.ReactNode; className?: string }) {
-    const active = sortBy === field
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(field)}
-        className={`inline-flex items-center gap-1 font-medium hover:text-gray-900 ${className}`}
-        aria-label={`Ordenar por ${children}`}
-      >
-        {children}
-        <span className={`text-[10px] ${active ? 'text-brand-600' : 'text-gray-300'}`} aria-hidden="true">
-          {active ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}
-        </span>
-      </button>
-    )
-  }
+  // The API/RPC returns products by created_at DESC, so preserve that order
+  // across pages and infinite-scroll appends. Client-side sorting would only
+  // sort the currently loaded slice and make the result misleading.
+  const filtered = products
 
   async function toggleExpanded(product: AdminProduct) {
     if (expandedId === product.id) {
@@ -518,9 +476,9 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
             <thead>
               <tr className="border-b text-left text-gray-500">
                 <th className="pb-2 pr-4 font-medium">Producto</th>
-                <th className="pb-2 pr-4 hidden sm:table-cell"><SortHeader field="price">Precio</SortHeader></th>
-                <th className="pb-2 pr-4 hidden md:table-cell"><SortHeader field="seller">Vendedor</SortHeader></th>
-                <th className="pb-2 pr-4 hidden md:table-cell"><SortHeader field="time">Tiempo</SortHeader></th>
+                <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Precio</th>
+                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Vendedor</th>
+                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Tiempo</th>
                 <th className="pb-2 pr-4 font-medium">Estado</th>
                 <th className="pb-2 font-medium">Acciones</th>
               </tr>
