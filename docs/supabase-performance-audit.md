@@ -54,6 +54,14 @@ El catálogo carga metadata completa de productos aprobados para filtros y adem�
 
 Hay múltiples ventanas de publicación de Stories configuradas durante el día. No son el principal sospechoso por volumen, pero deben auditarse para confirmar que no consultan o reintentan filas ya publicadas.
 
+### 5. Consultas amplias que requieren revisión
+
+La auditoría estática encontró varios `select('*')` en mensajes, perfil y detalle de producto. No necesariamente son el origen del incidente, pero aumentan payload y trabajo de serialización. Deben reemplazarse por listas explícitas en las rutas de mayor tráfico.
+
+El panel de métricas lanza varias consultas en paralelo y, para el período histórico, puede consultar rangos muy grandes de `events`. Ese panel debe usar agregados diarios y límites estrictos para no competir con el tráfico público.
+
+El chat usa Realtime solo dentro de `/mensajes`, lo que es correcto; aun así, cada mensaje entrante puede generar actualizaciones de entrega/lectura y debe medirse bajo carga.
+
 ## Hipótesis por prioridad
 
 1. Consultas de métricas históricas escaneando muchos eventos.
@@ -126,3 +134,25 @@ supabase db push
 ```
 
 Luego medir nuevamente las consultas de métricas y registrar tiempos antes de tocar el catálogo o los crons.
+
+## Backlog técnico priorizado
+
+### P0 — estabilidad
+
+- Confirmar que Nano → Micro queda aplicado y registrar CPU/memoria/IO a 15, 60 y 240 minutos.
+- Verificar que no hay capturas publicadas todavía programadas.
+- Añadir timeout/circuit breaker a lecturas públicas críticas.
+
+### P1 — reducir IO
+
+- Reemplazar `select('*')` en rutas públicas y de chat.
+- Cambiar métricas históricas a agregados diarios.
+- Revisar consultas con `count: 'exact'` en cada carga.
+- Auditar eventos duplicados por navegación o reintentos de beacon.
+
+### P2 — escalar
+
+- Paginar todas las listas Admin y de mensajes.
+- Medir y optimizar consultas del catálogo con `EXPLAIN (ANALYZE, BUFFERS)`.
+- Separar trabajos cron y limitar concurrencia.
+- Incorporar pruebas de carga en staging.
