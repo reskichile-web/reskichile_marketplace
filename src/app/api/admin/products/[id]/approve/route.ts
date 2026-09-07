@@ -163,7 +163,9 @@ export async function POST(
         generateAndStoreStoryCapture({
           captureId: claim.capture_id,
           productId: product.id,
-          slug: product.slug || '',
+          // Products created manually may not have a slug yet. The render
+          // surface accepts the product UUID and resolves it deterministically.
+          slug: product.slug || product.id,
           storagePath: claim.jpeg_storage_path,
         }),
       ])
