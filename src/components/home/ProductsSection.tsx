@@ -32,10 +32,9 @@ async function loadProducts(
 ) {
   const { data, error } = await supabase
     .from('products')
-    .select('id, slug, product_type, brand, model, price, previous_price, condition, region, created_at, product_images(url, order)')
+    .select('id, slug, product_type, brand, model, price, previous_price, condition, region, created_at, catalog_bumped_at, product_images(url, order)')
     .eq('status', 'approved')
-    .order('previous_price', { ascending: false, nullsFirst: false })
-    .order('created_at', { ascending: false })
+    .order('catalog_bumped_at', { ascending: false })
     .abortSignal(signal)
 
   if (error) throw error

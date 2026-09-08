@@ -14,7 +14,7 @@ import {
 import { createPublicServerClient } from '@/lib/supabase/server'
 
 const CATALOG_CARD_SELECT = 'id, slug, product_type, brand, model, price, previous_price, condition, attributes, product_images(url, order)'
-const CATALOG_METADATA_SELECT = 'id, product_type, condition, region, brand, price, previous_price, attributes, created_at'
+const CATALOG_METADATA_SELECT = 'id, product_type, condition, region, brand, price, previous_price, attributes, created_at, catalog_bumped_at'
 
 export interface CatalogProductPage {
   products: CatalogProduct[]
@@ -61,14 +61,13 @@ async function fetchDirectCatalogPage(
   if (filters.maxPrice != null) query = query.lte('price', filters.maxPrice)
 
   if (filters.sort === 'price_asc') {
-    query = query.order('price', { ascending: true }).order('created_at', { ascending: false })
+    query = query.order('price', { ascending: true }).order('catalog_bumped_at', { ascending: false })
   } else if (filters.sort === 'price_desc') {
-    query = query.order('price', { ascending: false }).order('created_at', { ascending: false })
+    query = query.order('price', { ascending: false }).order('catalog_bumped_at', { ascending: false })
   } else {
-    // Put active price reductions ahead of ordinary recent listings.
-    query = query
-      .order('previous_price', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
+    // A publication or price reduction moves the product to the head of the
+    // same chronological queue. Later activity can always displace it.
+    query = query.order('catalog_bumped_at', { ascending: false })
   }
 
   const { data, count, error } = await query

@@ -34,6 +34,7 @@ export interface CatalogMetadata {
   previous_price?: number | null
   attributes: Record<string, unknown> | null
   created_at: string
+  catalog_bumped_at: string
 }
 
 export interface CatalogProduct {
@@ -168,7 +169,7 @@ export function filterCatalogMetadata(
 }
 
 function compareRecent(a: CatalogMetadata, b: CatalogMetadata): number {
-  return b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id)
+  return b.catalog_bumped_at.localeCompare(a.catalog_bumped_at) || a.id.localeCompare(b.id)
 }
 
 export function sortCatalogMetadata(

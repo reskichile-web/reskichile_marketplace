@@ -17,6 +17,7 @@ const products: CatalogMetadata[] = [
     price: 500000,
     attributes: { tipo: ['touring'], genero: ['unisex'], ancho_mm: 95 },
     created_at: '2026-08-26T12:00:00.000Z',
+    catalog_bumped_at: '2026-08-26T12:00:00.000Z',
   },
   {
     id: 'ski-old',
@@ -27,6 +28,7 @@ const products: CatalogMetadata[] = [
     price: 300000,
     attributes: { tipo: ['pista'], genero: ['hombre'], ancho_mm: 80 },
     created_at: '2026-08-20T12:00:00.000Z',
+    catalog_bumped_at: '2026-08-27T12:00:00.000Z',
   },
   {
     id: 'board',
@@ -37,6 +39,7 @@ const products: CatalogMetadata[] = [
     price: 400000,
     attributes: {},
     created_at: '2026-08-25T12:00:00.000Z',
+    catalog_bumped_at: '2026-08-25T12:00:00.000Z',
   },
 ]
 
@@ -64,6 +67,16 @@ describe('catalog incremental pagination', () => {
     const filters = parseCatalogFilters(new URLSearchParams('sort=price_asc'))
 
     expect(pageCatalogMetadata(products, filters, 1, 1).map(product => product.id)).toEqual([
+      'board',
+    ])
+  })
+
+  it('uses one chronological queue for publications and price reductions', () => {
+    const filters = parseCatalogFilters(new URLSearchParams('sort=recent'))
+
+    expect(pageCatalogMetadata(products, filters, 0).map(product => product.id)).toEqual([
+      'ski-old',
+      'ski-new',
       'board',
     ])
   })

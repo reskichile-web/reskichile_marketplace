@@ -58,7 +58,9 @@ for migration in \
   20260903021100_ski_rack_commercial_pricing.sql \
   20260903023500_pickup_copy_refinement.sql \
   20260903025000_pickup_email_details.sql \
-  202609070001_ski_rack_wood_discount.sql
+  202609040001_product_price_discounts.sql \
+  202609070001_ski_rack_wood_discount.sql \
+  202609070002_catalog_bump_order.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
@@ -76,6 +78,8 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/starken_shipping.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/starken_flat_rates.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/catalog_bump_order.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/marketplace_security.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
