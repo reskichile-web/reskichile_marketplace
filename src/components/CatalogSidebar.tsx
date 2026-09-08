@@ -93,7 +93,7 @@ export default function CatalogSidebar({
     brands: false,
     tipo: false,
     genero: false,
-    largo: isEsquisOnly,
+    largo: false,
     ancho: false,
     fij: false,
     conexion: false,
@@ -846,7 +846,7 @@ function SkiLengthRange({
         >
           {/* Vista superior twin-tip: ambos extremos y ambos lados son simétricos. */}
           <path
-            d="M8 16c0-5 11-8 25-6 28 3 49 3 76 3h42c27 0 48 0 76-3 14-2 25 1 25 6s-11 8-25 6c-28-3-49-3-76-3h-42c-27 0-48 0-76 3-14 2-25-1-25-6Z"
+            d="M8 16c0-5 11-8 25-6 28 2 49 2 76 2h42c27 0 48 0 76-2 14-2 25 1 25 6s-11 8-25 6c-28-2-49-2-76-2h-42c-27 0-48 0-76 2-14 2-25-1-25-6Z"
             fill="rgb(241 245 249)"
             stroke="rgb(148 163 184)"
             strokeWidth="1"
@@ -898,9 +898,6 @@ function SkiLengthRange({
           </div>
         </label>
       </div>
-      <p className="text-center text-[10px] font-normal text-gray-400">
-        Desliza los controles para elegir el largo
-      </p>
     </div>
   )
 }
