@@ -23,7 +23,8 @@ interface Props {
   skiCounts: SkiCounts
   selectedTipo: string[]
   selectedGenero: string[]
-  selectedLargo: string[]
+  minLength?: number
+  maxLength?: number
   selectedAncho: string[]
   selectedFij: string
   selectedConexion: string[]
@@ -48,7 +49,7 @@ export default function CatalogMobileFilterButton(props: Props) {
     props.isEsquisOnly &&
     (props.selectedTipo.length +
       props.selectedGenero.length +
-      props.selectedLargo.length +
+      (props.minLength != null || props.maxLength != null ? 1 : 0) +
       props.selectedAncho.length +
       props.selectedConexion.length +
       (props.selectedFij ? 1 : 0))
@@ -112,6 +113,8 @@ export default function CatalogMobileFilterButton(props: Props) {
     params.delete('tipo')
     params.delete('genero')
     params.delete('largo')
+    params.delete('min_length')
+    params.delete('max_length')
     params.delete('ancho')
     params.delete('fij')
     params.delete('conexion')
@@ -235,7 +238,8 @@ export default function CatalogMobileFilterButton(props: Props) {
                 skiCounts={props.skiCounts}
                 selectedTipo={props.selectedTipo}
                 selectedGenero={props.selectedGenero}
-                selectedLargo={props.selectedLargo}
+                minLength={props.minLength}
+                maxLength={props.maxLength}
                 selectedAncho={props.selectedAncho}
                 selectedFij={props.selectedFij}
                 selectedConexion={props.selectedConexion}

@@ -490,10 +490,10 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
                 <button
                   onClick={handleContact}
                   disabled={contacting}
-                  className="pressable flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap bg-green-600 px-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
+                  className="pressable flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap bg-brand-400 px-2 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
                 >
                   <WhatsAppIcon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                  {contacting ? 'Conectando…' : 'WhatsApp'}
+                  {contacting ? 'Conectando…' : 'Contactar WhatsApp'}
                 </button>
                 )}
 
@@ -520,10 +520,10 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
                 <button
                   onClick={handleContact}
                   disabled={contacting}
-                  className="pressable flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap bg-green-600 px-3 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
+                  className="pressable flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap bg-brand-400 px-3 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
                 >
                   <WhatsAppIcon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                  {contacting ? 'Conectando…' : 'WhatsApp'}
+                  {contacting ? 'Conectando…' : 'Contactar WhatsApp'}
                 </button>
                 {showShareTools && <CompactShareActions product={product} />}
               </div>

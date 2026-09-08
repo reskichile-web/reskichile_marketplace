@@ -17,22 +17,25 @@ interface Props {
   totalCount: number
   queryString: string
   recentProductIds?: string[]
+  showSkiDimensions?: boolean
 }
 
 function productBadge(product: CatalogProduct): string | undefined {
   const attributes = product.attributes
   if (!attributes) return undefined
 
-  if (product.product_type === 'esquis' && attributes.ancho_mm != null) {
-    return `${attributes.ancho_mm}mm`
-  }
   if (product.product_type === 'snowboards' && attributes.ancho != null) {
     return String(attributes.ancho)
   }
   return undefined
 }
 
-export default function CatalogProductGrid({ initialProducts, totalCount, queryString, recentProductIds = [] }: Props) {
+function positiveNumber(value: unknown): number | undefined {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+}
+
+export default function CatalogProductGrid({ initialProducts, totalCount, queryString, recentProductIds = [], showSkiDimensions = false }: Props) {
   const [products, setProducts] = useState(initialProducts)
   const [nextOffset, setNextOffset] = useState(initialProducts.length)
   const [hasMore, setHasMore] = useState(initialProducts.length < totalCount)
@@ -105,6 +108,7 @@ export default function CatalogProductGrid({ initialProducts, totalCount, queryS
           const sortedImages = [...(product.product_images || [])]
             .sort((a, b) => a.order - b.order)
           const title = [product.brand, product.model].filter(Boolean).join(' ')
+          const showMeasurements = showSkiDimensions && product.product_type === 'esquis'
 
           return (
             <ProductCard
@@ -119,6 +123,8 @@ export default function CatalogProductGrid({ initialProducts, totalCount, queryS
               mainImageUrl={sortedImages[0]?.url}
               secondImageUrl={sortedImages[1]?.url}
               badge={productBadge(product)}
+              skiLengthCm={showMeasurements ? positiveNumber(product.attributes?.largo_cm) : undefined}
+              skiWidthMm={showMeasurements ? positiveNumber(product.attributes?.ancho_mm) : undefined}
               recentlyPublished={recentBadgePositions.has(product.id)}
               recentBadgeIndex={recentBadgePositions.get(product.id)}
               sealed={product.condition === 'nuevo_sellado'}

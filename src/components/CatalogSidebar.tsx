@@ -8,7 +8,6 @@ import BootSizeGuide from '@/components/BootSizeGuide'
 import {
   TIPO_OPTIONS,
   GENERO_OPTIONS,
-  LARGO_BUCKETS,
   ANCHO_BUCKETS,
   CONEXION_OPTIONS,
   type SkiCounts,
@@ -17,6 +16,7 @@ import {
   BOOT_GENDER_OPTIONS,
   type BootCounts,
 } from '@/lib/boot-filters'
+import styles from './SkiLengthRange.module.css'
 
 interface Props {
   selectedConditions: string[]
@@ -31,7 +31,8 @@ interface Props {
   skiCounts: SkiCounts
   selectedTipo: string[]
   selectedGenero: string[]
-  selectedLargo: string[]
+  minLength?: number
+  maxLength?: number
   selectedAncho: string[]
   selectedFij: string
   selectedConexion: string[]
@@ -71,7 +72,8 @@ export default function CatalogSidebar({
   skiCounts,
   selectedTipo,
   selectedGenero,
-  selectedLargo,
+  minLength,
+  maxLength,
   selectedAncho,
   selectedFij,
   selectedConexion,
@@ -91,7 +93,7 @@ export default function CatalogSidebar({
     brands: false,
     tipo: false,
     genero: false,
-    largo: false,
+    largo: isEsquisOnly,
     ancho: false,
     fij: false,
     conexion: false,
@@ -130,6 +132,17 @@ export default function CatalogSidebar({
     })
   }
 
+  function setLength(min: number | undefined, max: number | undefined) {
+    pushParams(p => {
+      if (min != null && !isNaN(min)) p.set('min_length', String(min))
+      else p.delete('min_length')
+      if (max != null && !isNaN(max)) p.set('max_length', String(max))
+      else p.delete('max_length')
+      // Remove the former bucket filter from old shared URLs.
+      p.delete('largo')
+    })
+  }
+
   function setFij(value: '' | 'yes' | 'no') {
     pushParams(p => {
       if (value) p.set('fij', value)
@@ -153,7 +166,8 @@ export default function CatalogSidebar({
     isEsquisOnly &&
     (selectedTipo.length > 0 ||
       selectedGenero.length > 0 ||
-      selectedLargo.length > 0 ||
+      minLength != null ||
+      maxLength != null ||
       selectedAncho.length > 0 ||
       !!selectedFij ||
       selectedConexion.length > 0)
@@ -379,25 +393,18 @@ export default function CatalogSidebar({
           </Section>
 
           <Section
-            label="Largo"
+            label="Largo (cm)"
             isOpen={open.largo}
             onToggle={() => toggleSection('largo')}
-            active={selectedLargo.length > 0}
+            active={minLength != null || maxLength != null}
           >
-            {LARGO_BUCKETS.map(b => {
-              const checked = selectedLargo.includes(b.key)
-              const count = skiCounts.largo[b.key] || 0
-              if (count === 0 && !checked) return null
-              return (
-                <CheckRow
-                  key={b.key}
-                  checked={checked}
-                  onChange={() => toggleMulti('largo', b.key)}
-                  label={b.label}
-                  count={count}
-                />
-              )
-            })}
+            <SkiLengthRange
+              minLength={minLength}
+              maxLength={maxLength}
+              availableMin={skiCounts.lengthMin}
+              availableMax={skiCounts.lengthMax}
+              onSubmit={setLength}
+            />
           </Section>
 
           <Section
@@ -702,6 +709,190 @@ function PriceRange({
         />
       </div>
       <p className="text-[10px] text-gray-400 uppercase tracking-wider">CLP</p>
+    </div>
+  )
+}
+
+function SkiLengthRange({
+  minLength,
+  maxLength,
+  availableMin,
+  availableMax,
+  onSubmit,
+}: {
+  minLength?: number
+  maxLength?: number
+  availableMin?: number
+  availableMax?: number
+  onSubmit: (min: number | undefined, max: number | undefined) => void
+}) {
+  const rawLowerBound = Math.min(
+    availableMin ?? 120,
+    minLength ?? Number.POSITIVE_INFINITY,
+    maxLength ?? Number.POSITIVE_INFINITY,
+  )
+  const rawUpperBound = Math.max(
+    availableMax ?? 210,
+    minLength ?? Number.NEGATIVE_INFINITY,
+    maxLength ?? Number.NEGATIVE_INFINITY,
+  )
+  const lowerBound = Math.floor((Number.isFinite(rawLowerBound) ? rawLowerBound : 120) / 5) * 5
+  const calculatedUpperBound = Math.ceil((Number.isFinite(rawUpperBound) ? rawUpperBound : 210) / 5) * 5
+  const upperBound = Math.max(calculatedUpperBound, lowerBound + 10)
+
+  const [min, setMin] = useState(minLength ?? lowerBound)
+  const [max, setMax] = useState(maxLength ?? upperBound)
+  const [minEnabled, setMinEnabled] = useState(minLength != null)
+  const [maxEnabled, setMaxEnabled] = useState(maxLength != null)
+
+  useEffect(() => {
+    setMin(minLength ?? lowerBound)
+    setMax(maxLength ?? upperBound)
+    setMinEnabled(minLength != null)
+    setMaxEnabled(maxLength != null)
+  }, [lowerBound, maxLength, minLength, upperBound])
+
+  const minPercent = ((min - lowerBound) / (upperBound - lowerBound)) * 100
+  const maxPercent = ((max - lowerBound) / (upperBound - lowerBound)) * 100
+
+  function apply(
+    nextMin = min,
+    nextMax = max,
+    nextMinEnabled = minEnabled,
+    nextMaxEnabled = maxEnabled,
+  ) {
+    onSubmit(
+      nextMinEnabled ? nextMin : undefined,
+      nextMaxEnabled ? nextMax : undefined,
+    )
+  }
+
+  function changeMin(value: number) {
+    const next = Math.min(value, max)
+    setMin(next)
+    setMinEnabled(true)
+  }
+
+  function changeMax(value: number) {
+    const next = Math.max(value, min)
+    setMax(next)
+    setMaxEnabled(true)
+  }
+
+  function changeMinInput(value: string) {
+    if (value === '') {
+      setMin(lowerBound)
+      setMinEnabled(false)
+      return
+    }
+    const next = Math.max(lowerBound, Math.min(Number(value), max))
+    setMin(next)
+    setMinEnabled(true)
+  }
+
+  function changeMaxInput(value: string) {
+    if (value === '') {
+      setMax(upperBound)
+      setMaxEnabled(false)
+      return
+    }
+    const next = Math.min(upperBound, Math.max(Number(value), min))
+    setMax(next)
+    setMaxEnabled(true)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="relative h-14" data-testid="ski-length-slider">
+        <svg
+          viewBox="0 0 260 42"
+          className="pointer-events-none absolute inset-x-2 top-1/2 h-9 w-[calc(100%-1rem)] -translate-y-1/2 text-slate-200"
+          aria-hidden="true"
+        >
+          <path
+            d="M7 29c4-1 7-4 9-9l2-5c1-4 5-6 9-6h207c9 0 15 5 18 12l1 3c1 4-2 7-6 7H18c-5 0-9-1-11-2Z"
+            fill="currentColor"
+          />
+          <path d="M118 10h24v20h-24z" fill="rgb(203 213 225)" />
+          <path d="M123 13h14M123 27h14" stroke="rgb(148 163 184)" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+
+        <div className="absolute inset-x-0 top-1/2 z-10 h-1 -translate-y-1/2 rounded-full bg-slate-300" aria-hidden="true">
+          <span
+            className="absolute h-full rounded-full bg-brand-400"
+            style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          min={lowerBound}
+          max={upperBound}
+          step="1"
+          value={min}
+          onChange={event => changeMin(Number(event.target.value))}
+          onPointerUp={() => apply()}
+          onKeyUp={() => apply()}
+          aria-label="Largo mínimo del esquí"
+          className={styles.rangeInput}
+          style={{ zIndex: min >= upperBound - 2 ? 30 : 20 }}
+        />
+        <input
+          type="range"
+          min={lowerBound}
+          max={upperBound}
+          step="1"
+          value={max}
+          onChange={event => changeMax(Number(event.target.value))}
+          onPointerUp={() => apply()}
+          onKeyUp={() => apply()}
+          aria-label="Largo máximo del esquí"
+          className={styles.rangeInput}
+          style={{ zIndex: 20 }}
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label className="min-w-0 flex-1">
+          <span className="sr-only">Largo mínimo en centímetros</span>
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={lowerBound}
+              max={max}
+              value={minEnabled ? min : ''}
+              onChange={event => changeMinInput(event.target.value)}
+              onBlur={() => apply()}
+              onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur() }}
+              placeholder="Mín"
+              className="w-full rounded border border-gray-300 py-1.5 pl-2 pr-7 text-sm tabular-nums focus:border-brand-400 focus:outline-none"
+            />
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">cm</span>
+          </div>
+        </label>
+        <span className="text-sm text-gray-400">–</span>
+        <label className="min-w-0 flex-1">
+          <span className="sr-only">Largo máximo en centímetros</span>
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={min}
+              max={upperBound}
+              value={maxEnabled ? max : ''}
+              onChange={event => changeMaxInput(event.target.value)}
+              onBlur={() => apply()}
+              onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur() }}
+              placeholder="Máx"
+              className="w-full rounded border border-gray-300 py-1.5 pl-2 pr-7 text-sm tabular-nums focus:border-brand-400 focus:outline-none"
+            />
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">cm</span>
+          </div>
+        </label>
+      </div>
+      <p className="text-center text-[10px] font-normal text-gray-400">
+        Desliza los controles sobre el esquí
+      </p>
     </div>
   )
 }

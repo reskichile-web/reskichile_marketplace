@@ -1,0 +1,65 @@
+.rangeInput {
+  appearance: none;
+  background: transparent;
+  height: 3.5rem;
+  inset: 0;
+  margin: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+}
+
+.rangeInput::-webkit-slider-runnable-track {
+  background: transparent;
+  border: 0;
+  height: 0.25rem;
+}
+
+.rangeInput::-webkit-slider-thumb {
+  appearance: none;
+  background: white;
+  border: 2px solid #4a93d3;
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 25%);
+  cursor: grab;
+  height: 1.125rem;
+  margin-top: -0.4375rem;
+  pointer-events: auto;
+  width: 1.125rem;
+}
+
+.rangeInput::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.08);
+}
+
+.rangeInput::-moz-range-track {
+  background: transparent;
+  border: 0;
+  height: 0.25rem;
+}
+
+.rangeInput::-moz-range-thumb {
+  background: white;
+  border: 2px solid #4a93d3;
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 25%);
+  cursor: grab;
+  height: 0.875rem;
+  pointer-events: auto;
+  width: 0.875rem;
+}
+
+.rangeInput:focus {
+  outline: none;
+}
+
+.rangeInput:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid rgb(74 147 211 / 25%);
+  outline-offset: 2px;
+}
+
+.rangeInput:focus-visible::-moz-range-thumb {
+  outline: 3px solid rgb(74 147 211 / 25%);
+  outline-offset: 2px;
+}

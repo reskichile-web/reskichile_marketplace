@@ -22,13 +22,6 @@ export interface Bucket {
   max: number
 }
 
-export const LARGO_BUCKETS: Bucket[] = [
-  { key: 'lt150', label: 'Menos de 150 cm', min: 0, max: 149.999 },
-  { key: '150-170', label: '150 – 170 cm', min: 150, max: 169.999 },
-  { key: '170-185', label: '170 – 185 cm', min: 170, max: 184.999 },
-  { key: 'gt185', label: '185 cm o más', min: 185, max: 9999 },
-]
-
 export const ANCHO_BUCKETS: Bucket[] = [
   { key: 'lt85', label: 'Angosto (< 85 mm)', min: 0, max: 84.999 },
   { key: '85-100', label: 'Medio (85 – 100 mm)', min: 85, max: 99.999 },
@@ -42,12 +35,6 @@ export const CONEXION_OPTIONS: { value: string; label: string }[] = [
   { value: 'Híbrida', label: 'Híbrida' },
 ]
 
-export function bucketLargoKey(v: number): string | null {
-  if (isNaN(v)) return null
-  for (const b of LARGO_BUCKETS) if (v >= b.min && v <= b.max) return b.key
-  return null
-}
-
 export function bucketAnchoKey(v: number): string | null {
   if (isNaN(v)) return null
   for (const b of ANCHO_BUCKETS) if (v >= b.min && v <= b.max) return b.key
@@ -57,7 +44,8 @@ export function bucketAnchoKey(v: number): string | null {
 export interface SkiCounts {
   tipo: Record<string, number>
   genero: Record<string, number>
-  largo: Record<string, number>
+  lengthMin?: number
+  lengthMax?: number
   ancho: Record<string, number>
   fijYes: number
   fijNo: number
@@ -73,7 +61,8 @@ export function computeSkiCounts(esquisAll: ProductLike[]): SkiCounts {
   const out: SkiCounts = {
     tipo: {},
     genero: {},
-    largo: {},
+    lengthMin: undefined,
+    lengthMax: undefined,
     ancho: {},
     fijYes: 0,
     fijNo: 0,
@@ -92,8 +81,10 @@ export function computeSkiCounts(esquisAll: ProductLike[]): SkiCounts {
       }
     }
     const l = Number(a.largo_cm)
-    const lk = bucketLargoKey(l)
-    if (lk) out.largo[lk] = (out.largo[lk] || 0) + 1
+    if (Number.isFinite(l) && l > 0) {
+      out.lengthMin = out.lengthMin == null ? l : Math.min(out.lengthMin, l)
+      out.lengthMax = out.lengthMax == null ? l : Math.max(out.lengthMax, l)
+    }
     const w = Number(a.ancho_mm)
     const wk = bucketAnchoKey(w)
     if (wk) out.ancho[wk] = (out.ancho[wk] || 0) + 1
@@ -110,7 +101,8 @@ export function passesSkiFilters(
   filters: {
     tipo: string[]
     genero: string[]
-    largo: string[]
+    minLength?: number
+    maxLength?: number
     ancho: string[]
     fij: string // '' | 'yes' | 'no'
     conexion: string[]
@@ -127,10 +119,11 @@ export function passesSkiFilters(
     if (!Array.isArray(g)) return false
     if (!filters.genero.some(v => (g as unknown[]).includes(v))) return false
   }
-  if (filters.largo.length > 0) {
+  if (filters.minLength != null || filters.maxLength != null) {
     const v = Number(a.largo_cm)
-    const k = bucketLargoKey(v)
-    if (!k || !filters.largo.includes(k)) return false
+    if (!Number.isFinite(v) || v <= 0) return false
+    if (filters.minLength != null && v < filters.minLength) return false
+    if (filters.maxLength != null && v > filters.maxLength) return false
   }
   if (filters.ancho.length > 0) {
     const v = Number(a.ancho_mm)

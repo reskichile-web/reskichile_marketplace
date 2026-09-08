@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { PackageCheck } from 'lucide-react'
+import { MoveHorizontal, PackageCheck, Ruler } from 'lucide-react'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { track } from '@/lib/track'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
@@ -18,6 +18,8 @@ interface Props {
   mainImageUrl?: string
   secondImageUrl?: string
   badge?: string
+  skiLengthCm?: number
+  skiWidthMm?: number
   recentlyPublished?: boolean
   recentBadgeIndex?: number
   sealed?: boolean
@@ -27,7 +29,7 @@ interface Props {
   trackClickAs?: string
 }
 
-export default function ProductCard({ id, slug, title, brand, productType, price, previousPrice, mainImageUrl, secondImageUrl, badge, recentlyPublished = false, recentBadgeIndex = 0, sealed = false, priority = false, trackClickAs }: Props) {
+export default function ProductCard({ id, slug, title, brand, productType, price, previousPrice, mainImageUrl, secondImageUrl, badge, skiLengthCm, skiWidthMm, recentlyPublished = false, recentBadgeIndex = 0, sealed = false, priority = false, trackClickAs }: Props) {
   const [hovered, setHovered] = useState(false)
   const [secondRequested, setSecondRequested] = useState(false)
   const [secondLoaded, setSecondLoaded] = useState(false)
@@ -139,6 +141,22 @@ export default function ProductCard({ id, slug, title, brand, productType, price
           {PRODUCT_TYPES[productType]}
         </p>
         <h3 className="font-body font-semibold text-sm truncate mt-1">{title}</h3>
+        {(skiLengthCm != null || skiWidthMm != null) && (
+          <div className="mt-1 space-y-0.5 font-body text-[10px] font-normal leading-tight text-gray-400 md:text-[11px]">
+            {skiLengthCm != null && (
+              <span className="flex items-center gap-1" aria-label={`Largo: ${skiLengthCm} centímetros`}>
+                <Ruler className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                {skiLengthCm} cm
+              </span>
+            )}
+            {skiWidthMm != null && (
+              <span className="flex items-center gap-1" aria-label={`Ancho: ${skiWidthMm} milímetros`}>
+                <MoveHorizontal className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                {skiWidthMm} mm
+              </span>
+            )}
+          </div>
+        )}
         {previousPrice && previousPrice > price ? (
           <p className="mt-0.5 flex items-baseline gap-2 font-body">
             <span className="text-xs text-gray-400 line-through">${previousPrice.toLocaleString('es-CL')}</span>

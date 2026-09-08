@@ -31,7 +31,8 @@ interface Props {
     sort?: string
     tipo?: string
     genero?: string
-    largo?: string
+    min_length?: string
+    max_length?: string
     ancho?: string
     fij?: string
     conexion?: string
@@ -58,7 +59,8 @@ export default async function CatalogPage({ searchParams }: Props) {
     sort,
     tipo,
     genero,
-    largo,
+    minLength,
+    maxLength,
     ancho,
     fij,
     conexion,
@@ -116,7 +118,8 @@ export default async function CatalogPage({ searchParams }: Props) {
     (isEsquisOnly &&
       (tipo.length > 0 ||
         genero.length > 0 ||
-        largo.length > 0 ||
+        minLength != null ||
+        maxLength != null ||
         ancho.length > 0 ||
         !!fij ||
         conexion.length > 0)) ||
@@ -162,7 +165,8 @@ export default async function CatalogPage({ searchParams }: Props) {
           skiCounts={skiCounts}
           selectedTipo={tipo}
           selectedGenero={genero}
-          selectedLargo={largo}
+          minLength={minLength}
+          maxLength={maxLength}
           selectedAncho={ancho}
           selectedFij={fij}
           selectedConexion={conexion}
@@ -192,7 +196,8 @@ export default async function CatalogPage({ searchParams }: Props) {
               skiCounts={skiCounts}
               selectedTipo={tipo}
               selectedGenero={genero}
-              selectedLargo={largo}
+              minLength={minLength}
+              maxLength={maxLength}
               selectedAncho={ancho}
               selectedFij={fij}
               selectedConexion={conexion}
@@ -232,6 +237,7 @@ export default async function CatalogPage({ searchParams }: Props) {
               totalCount={totalCount}
               queryString={incrementalQuery}
               recentProductIds={recentProductIds}
+              showSkiDimensions={isEsquisOnly}
             />
           )}
         </div>

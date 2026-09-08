@@ -15,7 +15,7 @@ const products: CatalogMetadata[] = [
     region: 'Metropolitana',
     brand: 'Atomic',
     price: 500000,
-    attributes: { tipo: ['touring'], genero: ['unisex'], ancho_mm: 95 },
+    attributes: { tipo: ['touring'], genero: ['unisex'], largo_cm: 158, ancho_mm: 95 },
     created_at: '2026-08-26T12:00:00.000Z',
     catalog_bumped_at: '2026-08-26T12:00:00.000Z',
   },
@@ -26,7 +26,7 @@ const products: CatalogMetadata[] = [
     region: 'Biobío',
     brand: 'Rossignol',
     price: 300000,
-    attributes: { tipo: ['pista'], genero: ['hombre'], ancho_mm: 80 },
+    attributes: { tipo: ['pista'], genero: ['hombre'], largo_cm: 192, ancho_mm: 80 },
     created_at: '2026-08-20T12:00:00.000Z',
     catalog_bumped_at: '2026-08-27T12:00:00.000Z',
   },
@@ -63,6 +63,29 @@ describe('catalog incremental pagination', () => {
     expect(pageCatalogMetadata(products, filters, 0)).toEqual([products[0]])
   })
 
+  it('filters ski length with a custom inclusive range', () => {
+    const filters = parseCatalogFilters(new URLSearchParams(
+      'product_type=esquis&min_length=160&max_length=195',
+    ))
+
+    expect(hasCatalogAttributeFilters(filters)).toBe(true)
+    expect(filterCatalogMetadata(products, filters).map(product => product.id)).toEqual([
+      'ski-old',
+    ])
+  })
+
+  it('normalizes a reversed ski length range', () => {
+    const filters = parseCatalogFilters(new URLSearchParams(
+      'product_type=esquis&min_length=195&max_length=160',
+    ))
+
+    expect(filters.minLength).toBe(160)
+    expect(filters.maxLength).toBe(195)
+    expect(filterCatalogMetadata(products, filters).map(product => product.id)).toEqual([
+      'ski-old',
+    ])
+  })
+
   it('sorts first, then returns the requested incremental slice', () => {
     const filters = parseCatalogFilters(new URLSearchParams('sort=price_asc'))
 
@@ -81,13 +104,29 @@ describe('catalog incremental pagination', () => {
     ])
   })
 
+  it('falls back to publication date for historical products without a queue date', () => {
+    const filters = parseCatalogFilters(new URLSearchParams('sort=recent'))
+    const historicalProduct = {
+      ...products[2],
+      id: 'historical-product',
+      created_at: '2026-08-28T12:00:00.000Z',
+      catalog_bumped_at: null,
+    }
+
+    expect(pageCatalogMetadata([...products, historicalProduct], filters, 0)[0].id).toBe(
+      'historical-product',
+    )
+  })
+
   it('normalizes invalid prices, sorts and oversized filter lists', () => {
     const filters = parseCatalogFilters(new URLSearchParams(
-      `min_price=-1&max_price=nope&sort=name&brand=${Array.from({ length: 25 }, (_, index) => `b${index}`).join(',')}`,
+      `min_price=-1&max_price=nope&min_length=-20&max_length=none&sort=name&brand=${Array.from({ length: 25 }, (_, index) => `b${index}`).join(',')}`,
     ))
 
     expect(filters.minPrice).toBeUndefined()
     expect(filters.maxPrice).toBeUndefined()
+    expect(filters.minLength).toBeUndefined()
+    expect(filters.maxLength).toBeUndefined()
     expect(filters.sort).toBe('recent')
     expect(filters.brands).toHaveLength(20)
   })

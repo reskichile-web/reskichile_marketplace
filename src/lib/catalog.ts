@@ -15,7 +15,8 @@ export interface CatalogFilters {
   sort: CatalogSort
   tipo: string[]
   genero: string[]
-  largo: string[]
+  minLength?: number
+  maxLength?: number
   ancho: string[]
   fij: string
   conexion: string[]
@@ -34,7 +35,7 @@ export interface CatalogMetadata {
   previous_price?: number | null
   attributes: Record<string, unknown> | null
   created_at: string
-  catalog_bumped_at: string
+  catalog_bumped_at?: string | null
 }
 
 export interface CatalogProduct {
@@ -81,6 +82,11 @@ function readPrice(source: CatalogParamSource, key: string): number | undefined 
   return Number.isFinite(value) && value >= 0 ? value : undefined
 }
 
+function readLength(source: CatalogParamSource, key: string): number | undefined {
+  const value = readPrice(source, key)
+  return value != null && value > 0 && value <= 400 ? value : undefined
+}
+
 export function parseCatalogFilters(source: CatalogParamSource): CatalogFilters {
   const requestedSort = readParam(source, 'sort')
   const sort: CatalogSort = requestedSort === 'price_asc' || requestedSort === 'price_desc'
@@ -88,6 +94,14 @@ export function parseCatalogFilters(source: CatalogParamSource): CatalogFilters 
     : 'recent'
   const fij = readParam(source, 'fij')
   const bootBoa = readParam(source, 'boot_boa')
+  const requestedMinLength = readLength(source, 'min_length')
+  const requestedMaxLength = readLength(source, 'max_length')
+  const minLength = requestedMinLength != null && requestedMaxLength != null
+    ? Math.min(requestedMinLength, requestedMaxLength)
+    : requestedMinLength
+  const maxLength = requestedMinLength != null && requestedMaxLength != null
+    ? Math.max(requestedMinLength, requestedMaxLength)
+    : requestedMaxLength
 
   return {
     types: readList(source, 'product_type'),
@@ -99,7 +113,8 @@ export function parseCatalogFilters(source: CatalogParamSource): CatalogFilters 
     sort,
     tipo: readList(source, 'tipo'),
     genero: readList(source, 'genero'),
-    largo: readList(source, 'largo'),
+    minLength,
+    maxLength,
     ancho: readList(source, 'ancho'),
     fij: fij === 'yes' || fij === 'no' ? fij : '',
     conexion: readList(source, 'conexion'),
@@ -118,7 +133,8 @@ export function hasCatalogAttributeFilters(filters: CatalogFilters): boolean {
     (isEsquisOnly && (
       filters.tipo.length > 0 ||
       filters.genero.length > 0 ||
-      filters.largo.length > 0 ||
+      filters.minLength != null ||
+      filters.maxLength != null ||
       filters.ancho.length > 0 ||
       filters.fij !== '' ||
       filters.conexion.length > 0
@@ -151,7 +167,8 @@ export function filterCatalogMetadata(
     if (isEsquisOnly && !passesSkiFilters(product.attributes, {
       tipo: filters.tipo,
       genero: filters.genero,
-      largo: filters.largo,
+      minLength: filters.minLength,
+      maxLength: filters.maxLength,
       ancho: filters.ancho,
       fij: filters.fij,
       conexion: filters.conexion,
@@ -169,7 +186,9 @@ export function filterCatalogMetadata(
 }
 
 function compareRecent(a: CatalogMetadata, b: CatalogMetadata): number {
-  return b.catalog_bumped_at.localeCompare(a.catalog_bumped_at) || a.id.localeCompare(b.id)
+  const aCatalogDate = a.catalog_bumped_at || a.created_at || ''
+  const bCatalogDate = b.catalog_bumped_at || b.created_at || ''
+  return bCatalogDate.localeCompare(aCatalogDate) || a.id.localeCompare(b.id)
 }
 
 export function sortCatalogMetadata(
