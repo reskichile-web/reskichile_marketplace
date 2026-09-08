@@ -295,7 +295,7 @@ export default function ProfileForm({ hideHeaderImage = false, redirectAfterSave
             onChange={(full) => setPhone(full)}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Este número se usa para que los compradores te contacten por WhatsApp.
+            Este número permite que los compradores, incluso sin cuenta, te contacten por WhatsApp.
           </p>
         </div>
 

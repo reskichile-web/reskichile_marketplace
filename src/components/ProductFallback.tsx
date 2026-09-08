@@ -7,6 +7,7 @@ import type { ProductWithImages } from '@/lib/types'
 import ProductDetailClient from '@/components/ProductDetailClient'
 import TrackProductView from '@/components/TrackProductView'
 import Spinner from '@/components/Spinner'
+import { PRODUCT_WITH_IMAGES_SELECT } from '@/lib/product-select'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -28,7 +29,7 @@ export default function ProductFallback({ idOrSlug }: { idOrSlug: string }) {
     let active = true
 
     ;(async () => {
-      const query = supabase.from('products').select('*, product_images(*)')
+      const query = supabase.from('products').select(PRODUCT_WITH_IMAGES_SELECT)
       const { data } = UUID_RE.test(idOrSlug)
         ? await query.eq('id', idOrSlug).maybeSingle()
         : await query.eq('slug', idOrSlug).maybeSingle()

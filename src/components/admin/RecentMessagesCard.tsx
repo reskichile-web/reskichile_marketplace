@@ -84,7 +84,7 @@ export default function RecentMessagesCard({
               const { click } = item
               const product = [click.products?.brand, click.products?.model]
                 .filter(Boolean).join(' ') || 'Producto eliminado'
-              const who = click.users?.name || click.users?.email || 'Anónimo'
+              const who = click.users?.name || click.users?.email || 'Visitante sin cuenta'
               const href = click.products
                 ? `/producto/${click.products.slug || click.products.id}`
                 : '/admin/publicaciones'
@@ -110,7 +110,7 @@ export default function RecentMessagesCard({
                       <span className="text-xs font-medium text-green-700 shrink-0">{timeAgo(click.created_at)}</span>
                     </div>
                     <p className="text-xs text-green-800 mt-1 truncate">
-                      Hizo clic para contactar por <span className="font-bold">{product}</span>
+                      Continuó a WhatsApp por <span className="font-bold">{product}</span>
                     </p>
                   </Link>
                 </li>

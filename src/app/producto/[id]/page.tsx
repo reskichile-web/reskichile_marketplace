@@ -6,6 +6,7 @@ import type { ProductWithImages } from '@/lib/types'
 import ProductDetailClient from '@/components/ProductDetailClient'
 import ProductFallback from '@/components/ProductFallback'
 import TrackProductView from '@/components/TrackProductView'
+import { PRODUCT_WITH_IMAGES_SELECT } from '@/lib/product-select'
 
 // Approved product pages are generated on demand and cached at the edge. Product
 // mutations explicitly invalidate this route, so a longer fallback window keeps
@@ -23,7 +24,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // stays cacheable. Deduped per request and shared with generateMetadata.
 const getApprovedProduct = cache(async (idOrSlug: string) => {
   const supabase = createPublicServerClient()
-  const query = supabase.from('products').select('*, product_images(*)').eq('status', 'approved')
+  const query = supabase
+    .from('products')
+    .select(PRODUCT_WITH_IMAGES_SELECT)
+    .eq('status', 'approved')
   const { data } = UUID_RE.test(idOrSlug)
     ? await query.eq('id', idOrSlug).maybeSingle()
     : await query.eq('slug', idOrSlug).maybeSingle()

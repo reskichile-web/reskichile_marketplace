@@ -41,6 +41,17 @@ SELECT 1 / CASE WHEN COUNT(*) = 1 THEN 1 ELSE 0 END
 FROM public.product_images;
 RESET SESSION AUTHORIZATION;
 
+-- Row visibility is not enough for seller privacy: browser roles must not
+-- retain either table-level or column-level access to anon_contact.
+SELECT 1 / CASE WHEN
+  has_column_privilege('anon', 'public.products', 'id', 'SELECT')
+  AND has_column_privilege('authenticated', 'public.products', 'id', 'SELECT')
+  AND has_column_privilege('anon', 'public.products', 'catalog_bumped_at', 'SELECT')
+  AND has_column_privilege('authenticated', 'public.products', 'catalog_bumped_at', 'SELECT')
+  AND NOT has_column_privilege('anon', 'public.products', 'anon_contact', 'SELECT')
+  AND NOT has_column_privilege('authenticated', 'public.products', 'anon_contact', 'SELECT')
+THEN 1 ELSE 0 END;
+
 SELECT set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000001', FALSE);
 SELECT set_config('request.jwt.claim.role', 'authenticated', FALSE);
 SET SESSION AUTHORIZATION authenticated;

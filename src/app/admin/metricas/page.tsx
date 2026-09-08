@@ -213,7 +213,7 @@ function FunnelStats({ views, intents, anonymous, contacts }: {
       <span><b className={contacts > 0 ? 'text-green-600' : 'text-gray-400'}>{contacts}</b> contactos</span>
       <span className="text-gray-400">({pct(contacts, intents)})</span>
       {anonymous > 0 && (
-        <span className="text-amber-700">· {anonymous} sin sesión</span>
+        <span className="text-amber-700">· {anonymous} sin sesión verificada</span>
       )}
     </div>
   )
@@ -251,6 +251,7 @@ export default function MetricasPage() {
   const [contactEvents, setContactEvents] = useState<ContactEvent[]>([])
   const [contactCount, setContactCount] = useState(0)
   const [chatCount, setChatCount] = useState(0)
+  const [guestWhatsappCount, setGuestWhatsappCount] = useState(0)
   const [intentEvents, setIntentEvents] = useState<IntentEvent[]>([])
   const [intentCount, setIntentCount] = useState(0)
   const [campaignFunnel, setCampaignFunnel] = useState<CampaignFunnelRow[]>([])
@@ -284,6 +285,12 @@ export default function MetricasPage() {
         .select('id', { count: 'exact', head: true })
         .eq('event_type', 'click')
         .eq('event_name', 'chat_contact')
+      let guestWhatsappCountQuery = supabase
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_type', 'click')
+        .eq('event_name', 'whatsapp_contact')
+        .is('user_id', null)
       let intentQuery = supabase
         .from('events')
         .select('id, event_name, user_id, created_at, utm_campaign, utm_content, utm_source, utm_medium, users(name, email), products(id, brand, model, slug)', { count: 'exact' })
@@ -311,6 +318,7 @@ export default function MetricasPage() {
         contactQuery = contactQuery.gte('created_at', since)
         intentQuery = intentQuery.gte('created_at', since)
         chatCountQuery = chatCountQuery.gte('created_at', since)
+        guestWhatsappCountQuery = guestWhatsappCountQuery.gte('created_at', since)
         clickQuery = clickQuery.gte('created_at', since)
         activityQuery = activityQuery.gte('created_at', since)
       }
@@ -326,7 +334,7 @@ export default function MetricasPage() {
         : supabase.rpc('admin_top_products', { p_days: rpcDays, p_limit: 10 })
 
       const [
-        dailyRes, catRes, clickRes, contactRes, chatCountRes, topRes, actRes,
+        dailyRes, catRes, clickRes, contactRes, chatCountRes, guestWhatsappCountRes, topRes, actRes,
         consentRes, intentRes, campaignFunnelRes, productFunnelRes,
       ] = await Promise.all([
         dailyQuery,
@@ -334,6 +342,7 @@ export default function MetricasPage() {
         clickQuery,
         contactQuery,
         chatCountQuery,
+        guestWhatsappCountQuery,
         topProductsQuery,
         activityQuery,
         loadCookieConsentSummary(supabase, since),
@@ -350,6 +359,7 @@ export default function MetricasPage() {
       setContactEvents((contactRes.data as unknown as ContactEvent[]) || [])
       setContactCount(contactRes.count ?? 0)
       setChatCount(chatCountRes.count ?? 0)
+      setGuestWhatsappCount(guestWhatsappCountRes.count ?? 0)
       setTopProducts((topRes.data as TopProductRow[]) || [])
       setActivity((actRes.data as unknown as ActivityRow[]) || [])
       setConsent(consentRes)
@@ -418,7 +428,7 @@ export default function MetricasPage() {
     ? 'histórico'
     : period === 'custom' ? `desde el ${customDateLabel}` : `últimos ${period} días`
   const whatsappCount = Math.max(contactCount - chatCount, 0)
-  const anonymousIntents = campaignFunnel.reduce((sum, row) => sum + Number(row.anonymous_intents), 0)
+  const intentsWithoutSession = campaignFunnel.reduce((sum, row) => sum + Number(row.anonymous_intents), 0)
   const acceptedConsent = consent.metrics.find(row => row.decision === 'granted')
   const deniedConsent = consent.metrics.find(row => row.decision === 'denied')
   const acceptedVisitors = Number(acceptedConsent?.unique_visitors ?? 0)
@@ -547,14 +557,14 @@ export default function MetricasPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Buyer intent — successful WhatsApp handoffs and first internal messages */}
+        {/* Buyer contact — authorized WhatsApp handoffs and first internal messages */}
         <SectionCard
-          title="Contactos de compradores"
-          subtitle={`WhatsApp y chat interno · ${periodLabel}`}
+          title="Contactos validados"
+          subtitle={`Derivación a WhatsApp y primer mensaje de chat · ${periodLabel}`}
           right={(
             <span className="text-right text-[10px] font-bold leading-tight text-gray-500 shrink-0">
               <span className="block text-xs font-black text-green-700">{contactCount} en total</span>
-              {whatsappCount} WhatsApp · {chatCount} chat
+              {whatsappCount} WhatsApp ({guestWhatsappCount} sin cuenta) · {chatCount} chat
             </span>
           )}
         >
@@ -565,7 +575,7 @@ export default function MetricasPage() {
               {contactEvents.map(click => {
                 const product = [click.products?.brand, click.products?.model]
                   .filter(Boolean).join(' ') || 'Producto eliminado'
-                const who = click.users?.name || click.users?.email || 'Anónimo'
+                const who = click.users?.name || click.users?.email || 'Visitante sin cuenta'
                 const isChat = click.event_name === 'chat_contact'
                 const channel = isChat ? 'Chat' : 'WhatsApp'
                 const href = click.products
@@ -591,7 +601,7 @@ export default function MetricasPage() {
                             rel="noopener noreferrer"
                             className={`block text-[11px] font-medium hover:underline truncate ${isChat ? 'text-sky-700' : 'text-green-700'}`}
                           >
-                            Contactó por {product}
+                            {isChat ? 'Envió el primer mensaje por' : 'Continuó a WhatsApp por'} {product}
                           </Link>
                           {campaign && (
                             <p className="truncate text-[10px] font-medium text-gray-500">
@@ -611,14 +621,14 @@ export default function MetricasPage() {
           )}
         </SectionCard>
 
-        {/* Contact intent — the click, recorded before the login gate */}
+        {/* Contact intent — the initial CTA click, before channel resolution */}
         <SectionCard
           title="Intentos de contacto"
-          subtitle={`Clic en WhatsApp o chat, antes del login · ${periodLabel}`}
+          subtitle={`Clic inicial en WhatsApp o chat · ${periodLabel}`}
           right={(
             <span className="text-right text-[10px] font-bold leading-tight text-gray-500 shrink-0">
               <span className="block text-xs font-black text-amber-600">{intentCount} intentos</span>
-              {anonymousIntents} sin sesión
+              {intentsWithoutSession} sin sesión verificada
             </span>
           )}
         >
@@ -631,7 +641,7 @@ export default function MetricasPage() {
                   .filter(Boolean).join(' ') || 'Producto eliminado'
                 const isChat = intent.event_name === 'contact_intent_chat'
                 const anonymous = intent.user_id === null
-                const who = intent.users?.name || intent.users?.email || 'Anónimo'
+                const who = intent.users?.name || intent.users?.email || 'Visitante sin cuenta'
                 const href = intent.products
                   ? `/producto/${intent.products.slug || intent.products.id}`
                   : '/admin/publicaciones'
@@ -650,7 +660,7 @@ export default function MetricasPage() {
                             </span>
                             {anonymous && (
                               <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700">
-                                Sin sesión
+                                Sin sesión verificada
                               </span>
                             )}
                           </p>

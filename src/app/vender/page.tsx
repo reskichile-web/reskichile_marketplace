@@ -379,7 +379,7 @@ export default function SellPage() {
         status: 'pending',
         terms_accepted: true,
       })
-      .select()
+      .select('id')
       .single()
 
     if (productError || !product) {
@@ -936,7 +936,7 @@ export default function SellPage() {
                   className="mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                 />
                 <span className="text-sm text-gray-800">
-                  Permito que los interesados me contacten directamente por WhatsApp
+                  Permito que cualquier interesado, incluso sin cuenta, me contacte directamente por WhatsApp
                 </span>
               </label>
             )}
@@ -1029,7 +1029,9 @@ export default function SellPage() {
                     selectClassName="py-2.5"
                   />
                   {!fieldErrors.anonContact && (
-                    <p className="text-xs text-gray-500 mt-1">Los compradores te contactarán a este número.</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Al publicar autorizas que ReskiChile entregue este número a interesados que soliciten contacto, aunque no tengan cuenta.
+                    </p>
                   )}
                 </div>
 

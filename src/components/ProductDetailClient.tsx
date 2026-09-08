@@ -22,9 +22,9 @@ import { getCampaignAttribution } from '@/lib/campaign-attribution'
 import { authRouteWithRedirect, currentBrowserAuthRedirect } from '@/lib/auth-redirect'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
 
-// Contact intent is recorded before the login gate. Without it an anonymous
-// click that bounces off /auth/login is indistinguishable from no click at
-// all: the stored event's user_id tells them apart (null = wasn't logged in).
+// Contact intent is recorded before resolving the channel. WhatsApp is open to
+// guests; internal chat still redirects guests to login. A later handoff or
+// first-message event tells us whether the initial intent progressed.
 const CONTACT_INTENT_EVENT: Record<MetaContactMethod, string> = {
   whatsapp: 'contact_intent_whatsapp',
   internal_chat: 'contact_intent_chat',
@@ -340,10 +340,6 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
 
   async function handleContact() {
     recordContactIntent('whatsapp')
-    if (!userId) {
-      router.push(authRouteWithRedirect('/auth/login', currentBrowserAuthRedirect()))
-      return
-    }
     // Safari blocks window.open() that fires after an await — the user gesture
     // is consumed by the time fetch() resolves. Open a placeholder window
     // synchronously while we still have the gesture, then redirect it once
@@ -651,7 +647,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
                 disabled={hidePhoneSaving}
                 className="h-3 w-3 cursor-pointer accent-gray-200 disabled:opacity-50"
               />
-              <span>Mostrar mi número de WhatsApp</span>
+              <span>Permitir contacto por WhatsApp, incluso sin cuenta</span>
             </label>
           )}
 

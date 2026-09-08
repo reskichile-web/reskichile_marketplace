@@ -87,24 +87,9 @@ export default function MarketingConsent() {
   }, [])
 
   const resolutionPending = !ready || viewer.loading || resolvedKey !== resolutionKey
-  // The consent dialog blocks the page: nothing behind it should scroll while
-  // the visitor still has to decide. Meta only ever sees the traffic that
-  // grants consent, so an ignorable corner card meant an unusable ad signal.
+  // Non-blocking notice: bottom sheet on mobile, wider corner card on desktop.
+  // Meta still stays disabled until the visitor explicitly accepts.
   const dialogOpen = !pathname.startsWith('/admin') && (activeDecision === null || preferencesOpen)
-
-  useEffect(() => {
-    if (!dialogOpen) return
-    // A returning visitor keeps the dialog hidden by the bootstrap stylesheet
-    // while their stored decision resolves — never freeze the page under an
-    // overlay nobody can see. First visits have no stored state and lock now.
-    if (
-      resolutionPending
-      && document.documentElement.dataset.reskiMarketingConsent === 'stored'
-    ) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previousOverflow }
-  }, [dialogOpen, resolutionPending])
 
   // One impression per page load, and only when the dialog is really painted.
   // Acceptance measured over all visitors is meaningless — most never see it.
@@ -121,7 +106,7 @@ export default function MarketingConsent() {
   }, [activeDecision, dialogOpen, pathname, resolutionPending])
 
   // Escape only closes the dialog when it was reopened on purpose from the
-  // footer. A first, undecided visit has no dismissal path.
+  // footer. On a first visit, the visible × records the opt-out explicitly.
   useEffect(() => {
     if (!dialogOpen || activeDecision === null) return
     const onKeyDown = (event: KeyboardEvent) => {
@@ -198,32 +183,24 @@ export default function MarketingConsent() {
   if (!dialogOpen) return null
 
   return (
-    <div
+    <section
       id="marketing-consent-overlay"
       data-bootstrap-pending={resolutionPending ? 'true' : 'false'}
-      role="presentation"
-      onMouseDown={event => {
-        if (dismissible && event.target === event.currentTarget) setPreferencesOpen(false)
-      }}
-      className="animate-in fade-in fixed inset-0 z-[10050] flex items-center justify-center bg-gray-950/60 p-4 backdrop-blur-md duration-200"
+      role="dialog"
+      aria-labelledby="marketing-consent-title"
+      aria-describedby="marketing-consent-description"
+      className="animate-in slide-in-from-bottom-4 fixed inset-x-0 bottom-0 z-[10050] max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-2xl border border-b-0 border-gray-200 bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-14px_45px_rgba(15,23,42,0.18)] duration-200 md:inset-x-auto md:bottom-6 md:left-6 md:w-[42rem] md:max-w-[calc(100vw-3rem)] md:rounded-2xl md:border md:p-6 md:shadow-[0_18px_55px_rgba(15,23,42,0.22)]"
     >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="marketing-consent-title"
-        aria-describedby="marketing-consent-description"
-        className="animate-in zoom-in-95 relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto border border-gray-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.35)] duration-200 sm:p-7"
-      >
-        {dismissible && (
-          <button
-            type="button"
-            onClick={() => setPreferencesOpen(false)}
-            aria-label="Cerrar"
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        )}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => dismissible ? setPreferencesOpen(false) : saveChoice('denied')}
+          aria-label={dismissible ? 'Cerrar preferencias' : 'Rechazar cookies opcionales y cerrar'}
+          title="Cerrar"
+          className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center text-gray-300 transition-colors hover:text-gray-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-400"
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+        </button>
 
         <div className="flex items-center gap-2.5">
           <Image src="/favicon.svg" alt="" width={32} height={32} className="h-8 w-8" />
@@ -233,24 +210,16 @@ export default function MarketingConsent() {
         </div>
 
         <p id="marketing-consent-description" className="mt-3 text-sm leading-6 text-gray-600">
-          Usamos cookies esenciales y, con tu permiso, Meta Pixel para mejorar nuestros anuncios. Rechazar no limita tu experiencia.
+          Usamos cookies esenciales y, con tu permiso, Meta Pixel para mejorar nuestros anuncios.
         </p>
 
         <div className="mt-6 flex flex-col gap-2">
           <button
             type="button"
-            autoFocus
             onClick={() => saveChoice('granted')}
             className="min-h-12 w-full bg-brand-500 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
           >
             Aceptar todo
-          </button>
-          <button
-            type="button"
-            onClick={() => saveChoice('denied')}
-            className="min-h-11 w-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-          >
-            No, gracias
           </button>
           <Link
             href="/privacidad"
@@ -259,7 +228,7 @@ export default function MarketingConsent() {
             Más información
           </Link>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   )
 }

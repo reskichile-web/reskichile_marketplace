@@ -6,6 +6,7 @@ import EmptyState from '@/components/illustrations/EmptyState'
 import ProductStatusBlock from '@/components/ProductStatusBlock'
 import DeleteProductButton from '@/components/DeleteProductButton'
 import MarkSoldButton from '@/components/MarkSoldButton'
+import { PRODUCT_WITH_IMAGES_SELECT } from '@/lib/product-select'
 
 export default async function MyProductsPage() {
   const { user } = await getAuthUser()
@@ -18,7 +19,7 @@ export default async function MyProductsPage() {
 
   const { data: products } = await supabase
     .from('products')
-    .select('*, product_images(*)')
+    .select(PRODUCT_WITH_IMAGES_SELECT)
     .eq('seller_id', user.id)
     .order('created_at', { ascending: false })
 

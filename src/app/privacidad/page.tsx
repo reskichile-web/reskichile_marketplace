@@ -25,6 +25,15 @@ export default function PrivacyPage() {
           </p>
         </section>
         <section>
+          <h2 className="font-body text-lg font-black text-gray-950">Contacto por WhatsApp</h2>
+          <p className="mt-2">
+            Cuando un vendedor habilita WhatsApp, una persona interesada puede iniciar el contacto aunque no tenga una cuenta de ReskiChile. El número se entrega al navegador únicamente después de que la persona pulsa el botón de contacto en una publicación aprobada; WhatsApp mostrará ese número al abrir la conversación.
+          </p>
+          <p className="mt-2">
+            Para reducir usos abusivos aplicamos límites por visitante, dirección de red y publicación. Registramos el clic inicial y, si validamos el contacto, la derivación a WhatsApp para medir el funcionamiento del marketplace. ReskiChile no puede leer el mensaje en WhatsApp ni confirmar si finalmente fue enviado. Un vendedor con cuenta puede desactivar este canal desde su publicación.
+          </p>
+        </section>
+        <section>
           <h2 className="font-body text-lg font-black text-gray-950">Cambiar tu decisión</h2>
           <p className="mt-2">
             Puedes aceptar o rechazar sin perder acceso al sitio. Si tienes una cuenta, guardamos la preferencia en ella para respetarla en otros dispositivos. Si navegas sin iniciar sesión, la conservamos en este navegador durante 180 días.

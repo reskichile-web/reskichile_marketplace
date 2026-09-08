@@ -124,6 +124,9 @@ CREATE TABLE public.products (
   -- Anonymous listings keep this null and store their WhatsApp/email in
   -- anon_contact. Registered sellers continue to use this foreign key.
   seller_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  -- Private at the privilege layer: never grant browser roles SELECT on this
+  -- column. It is resolved only by service-role contact/admin workflows.
+  anon_contact TEXT,
   product_type TEXT NOT NULL CHECK (product_type IN (
     'esquis', 'snowboards', 'botas_esqui', 'botas_snowboard',
     'bastones', 'cascos', 'guantes', 'fijaciones',
@@ -980,6 +983,34 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 ALTER TABLE public.products ADD COLUMN search_text TEXT;
 CREATE INDEX products_search_trgm_idx ON public.products USING gin (search_text gin_trgm_ops);
+-- RLS decides which rows a browser can see; column privileges additionally
+-- keep the anonymous seller contact out of every public/authenticated SELECT.
+REVOKE SELECT ON public.products FROM anon, authenticated;
+DO $$
+DECLARE
+  v_public_columns TEXT;
+BEGIN
+  SELECT string_agg(format('%I', column_name), ', ' ORDER BY ordinal_position)
+  INTO v_public_columns
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'products'
+    AND column_name = ANY (ARRAY[
+      'id', 'seller_id', 'product_type', 'brand', 'model', 'condition',
+      'description', 'price', 'previous_price', 'region', 'comuna',
+      'attributes', 'status', 'rejection_reason', 'terms_accepted',
+      'days_published', 'sale_price', 'sold_at', 'sold_channel', 'sold_speed',
+      'commerce_owned', 'shipping_origin_code', 'packaged_length_cm',
+      'packaged_width_cm', 'packaged_height_cm', 'packaged_weight_kg',
+      'created_at', 'updated_at', 'slug', 'sale_reminder_sent_at', 'search_text',
+      'catalog_bumped_at'
+    ]::TEXT[]);
+  EXECUTE format(
+    'GRANT SELECT (%s) ON public.products TO anon, authenticated',
+    v_public_columns
+  );
+END
+$$;
 -- Full definitions of product_type_synonyms(), products_search_text_sync()
 -- and search_products(q, max_results, relaxed) live in the migrations
 -- 'product_search' and 'search_products_primary_boost'.

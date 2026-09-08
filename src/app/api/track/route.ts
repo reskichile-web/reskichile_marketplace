@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceRoleClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { sanitizeCampaignAttribution } from '@/lib/campaign-attribution'
 import {
   VISITOR_COOKIE,
@@ -14,6 +14,17 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const INVITE_SLUG_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/
 
 const EVENT_TYPES = new Set(['pageview', 'product_view', 'click', 'login', 'signup', 'invite_open'])
+const CONTACT_INTENT_EVENTS = new Set(['contact_intent_whatsapp', 'contact_intent_chat'])
+
+function hasSameRequestOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get('origin')
+  if (!origin) return false
+  try {
+    return new URL(origin).origin === new URL(request.url).origin
+  } catch {
+    return false
+  }
+}
 
 // Fire-and-forget analytics ingest. Always answers 204 — a failed insert
 // must never surface as an error in the visitor's console.
@@ -40,6 +51,12 @@ export async function POST(request: NextRequest) {
       typeof body?.product_id === 'string' && UUID_RE.test(body.product_id)
         ? body.product_id
         : null
+    const isContactIntent =
+      eventType === 'click' && eventName != null && CONTACT_INTENT_EVENTS.has(eventName)
+    // Contact intent powers a business funnel, so accept only the two events
+    // emitted by the product UI, with a real product and a same-origin POST.
+    if (eventName?.startsWith('contact_intent_') && !isContactIntent) return res
+    if (isContactIntent && (!productId || !hasSameRequestOrigin(request))) return res
     const referrer =
       typeof body?.referrer === 'string' && body.referrer.length <= 500
         ? body.referrer
@@ -56,6 +73,20 @@ export async function POST(request: NextRequest) {
       res.cookies.set(VISITOR_COOKIE, visitorId, visitorCookieOptions())
     }
 
+    // Contact intents are rare and need an accurate auth-state split in the
+    // admin funnel. Only these events pay the session-validation round trip;
+    // high-volume pageview/product_view beacons stay on the cheap path.
+    let userId: string | null = null
+    if (isContactIntent) {
+      try {
+        const session = createServerSupabaseClient()
+        const { data } = await session.auth.getUser()
+        userId = data.user?.id || null
+      } catch {
+        // A failed auth lookup is safely represented as no verified session.
+      }
+    }
+
     const service = createServiceRoleClient()
 
     const country = request.headers.get('x-vercel-ip-country')
@@ -68,10 +99,7 @@ export async function POST(request: NextRequest) {
       category,
       product_id: productId,
       visitor_id: visitorId,
-      // Public tracking intentionally avoids auth/session lookups. Admin and
-      // API paths are rejected above, so a pageview beacon must stay one cheap
-      // insert instead of adding two database reads per event.
-      user_id: null,
+      user_id: userId,
       referrer,
       user_agent: ua.slice(0, 300) || null,
       country,

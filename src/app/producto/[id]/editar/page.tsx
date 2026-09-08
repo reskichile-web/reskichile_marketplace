@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { PRODUCT_WITH_EDIT_IMAGES_SELECT } from '@/lib/product-select'
 import PageLoader from '@/components/PageLoader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type ImageItem } from '@/components/SortableImageGrid'
@@ -163,7 +164,7 @@ export default function EditProductPage() {
         .from('users').select('is_admin').eq('id', user.id).single()
 
       const { data: product } = await supabase
-        .from('products').select('*, product_images(id, url, order)')
+        .from('products').select(PRODUCT_WITH_EDIT_IMAGES_SELECT)
         .eq('id', params.id).single()
 
       if (!product) { router.push('/catalogo'); return }

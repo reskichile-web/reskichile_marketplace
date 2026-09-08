@@ -60,7 +60,8 @@ for migration in \
   20260903025000_pickup_email_details.sql \
   202609040001_product_price_discounts.sql \
   202609070001_ski_rack_wood_discount.sql \
-  202609070002_catalog_bump_order.sql
+  202609070002_catalog_bump_order.sql \
+  202609070003_protect_anonymous_seller_contact.sql
 do
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
