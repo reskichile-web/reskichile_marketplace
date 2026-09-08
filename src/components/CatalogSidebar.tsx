@@ -803,18 +803,30 @@ function SkiLengthRange({
 
   return (
     <div className="space-y-3">
-      <div className="relative h-14" data-testid="ski-length-slider">
+      <div className="relative h-16" data-testid="ski-length-slider">
         <svg
-          viewBox="0 0 260 42"
-          className="pointer-events-none absolute inset-x-2 top-1/2 h-9 w-[calc(100%-1rem)] -translate-y-1/2 text-slate-200"
+          viewBox="0 0 260 48"
+          className="pointer-events-none absolute inset-x-1 top-1/2 h-12 w-[calc(100%-0.5rem)] -translate-y-1/2"
           aria-hidden="true"
         >
+          {/* Perfil lateral: cola levemente levantada, patín fino y espátula curvada. */}
           <path
-            d="M7 29c4-1 7-4 9-9l2-5c1-4 5-6 9-6h207c9 0 15 5 18 12l1 3c1 4-2 7-6 7H18c-5 0-9-1-11-2Z"
-            fill="currentColor"
+            d="M6 29c5 0 8-1 12-4h207c12 0 19-6 27-18-1 14-7 24-20 27H17c-6 0-10-2-11-5Z"
+            fill="rgb(226 232 240)"
+            stroke="rgb(148 163 184)"
+            strokeWidth="1.25"
+            strokeLinejoin="round"
           />
-          <path d="M118 10h24v20h-24z" fill="rgb(203 213 225)" />
-          <path d="M123 13h14M123 27h14" stroke="rgb(148 163 184)" strokeWidth="2" strokeLinecap="round" />
+          {/* Bota y fijación vistas de costado para que se lea claramente como esquí. */}
+          <path
+            d="M111 25v-5h7v-9h12l3 8 12 2c4 1 7 2 9 4Z"
+            fill="rgb(203 213 225)"
+            stroke="rgb(100 116 139)"
+            strokeWidth="1.25"
+            strokeLinejoin="round"
+          />
+          <path d="M105 25v-6h7v6M154 25v-6h7v6" fill="none" stroke="rgb(100 116 139)" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M102 26h62" stroke="rgb(100 116 139)" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
 
         <div className="absolute inset-x-0 top-1/2 z-10 h-1 -translate-y-1/2 rounded-full bg-slate-300" aria-hidden="true">
