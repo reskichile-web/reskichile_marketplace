@@ -803,64 +803,60 @@ function SkiLengthRange({
 
   return (
     <div className="space-y-3">
-      <div className="relative h-16" data-testid="ski-length-slider">
-        <svg
-          viewBox="0 0 260 48"
-          className="pointer-events-none absolute inset-x-1 top-1/2 h-12 w-[calc(100%-0.5rem)] -translate-y-1/2"
-          aria-hidden="true"
-        >
-          {/* Perfil lateral: cola levemente levantada, patín fino y espátula curvada. */}
-          <path
-            d="M6 29c5 0 8-1 12-4h207c12 0 19-6 27-18-1 14-7 24-20 27H17c-6 0-10-2-11-5Z"
-            fill="rgb(226 232 240)"
-            stroke="rgb(148 163 184)"
-            strokeWidth="1.25"
-            strokeLinejoin="round"
+      <div className="relative h-20" data-testid="ski-length-slider">
+        <div className="absolute inset-x-0 top-0 h-8">
+          <div className="absolute inset-x-0 top-1/2 z-10 h-1 -translate-y-1/2 rounded-full bg-slate-300" aria-hidden="true">
+            <span
+              className="absolute h-full rounded-full bg-brand-400"
+              style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
+            />
+          </div>
+          <input
+            type="range"
+            min={lowerBound}
+            max={upperBound}
+            step="1"
+            value={min}
+            onChange={event => changeMin(Number(event.target.value))}
+            onPointerUp={() => apply()}
+            onKeyUp={() => apply()}
+            aria-label="Largo mínimo del esquí"
+            className={styles.rangeInput}
+            style={{ zIndex: min >= upperBound - 2 ? 30 : 20 }}
           />
-          {/* Bota y fijación vistas de costado para que se lea claramente como esquí. */}
-          <path
-            d="M111 25v-5h7v-9h12l3 8 12 2c4 1 7 2 9 4Z"
-            fill="rgb(203 213 225)"
-            stroke="rgb(100 116 139)"
-            strokeWidth="1.25"
-            strokeLinejoin="round"
-          />
-          <path d="M105 25v-6h7v6M154 25v-6h7v6" fill="none" stroke="rgb(100 116 139)" strokeWidth="2" strokeLinejoin="round" />
-          <path d="M102 26h62" stroke="rgb(100 116 139)" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-
-        <div className="absolute inset-x-0 top-1/2 z-10 h-1 -translate-y-1/2 rounded-full bg-slate-300" aria-hidden="true">
-          <span
-            className="absolute h-full rounded-full bg-brand-400"
-            style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
+          <input
+            type="range"
+            min={lowerBound}
+            max={upperBound}
+            step="1"
+            value={max}
+            onChange={event => changeMax(Number(event.target.value))}
+            onPointerUp={() => apply()}
+            onKeyUp={() => apply()}
+            aria-label="Largo máximo del esquí"
+            className={styles.rangeInput}
+            style={{ zIndex: 20 }}
           />
         </div>
-        <input
-          type="range"
-          min={lowerBound}
-          max={upperBound}
-          step="1"
-          value={min}
-          onChange={event => changeMin(Number(event.target.value))}
-          onPointerUp={() => apply()}
-          onKeyUp={() => apply()}
-          aria-label="Largo mínimo del esquí"
-          className={styles.rangeInput}
-          style={{ zIndex: min >= upperBound - 2 ? 30 : 20 }}
-        />
-        <input
-          type="range"
-          min={lowerBound}
-          max={upperBound}
-          step="1"
-          value={max}
-          onChange={event => changeMax(Number(event.target.value))}
-          onPointerUp={() => apply()}
-          onKeyUp={() => apply()}
-          aria-label="Largo máximo del esquí"
-          className={styles.rangeInput}
-          style={{ zIndex: 20 }}
-        />
+
+        <svg
+          viewBox="0 0 260 32"
+          className="pointer-events-none absolute inset-x-1 bottom-0 h-10 w-[calc(100%-0.5rem)]"
+          aria-hidden="true"
+        >
+          {/* Vista superior twin-tip: ambos extremos y ambos lados son simétricos. */}
+          <path
+            d="M8 16c0-5 11-8 25-6 28 3 49 3 76 3h42c27 0 48 0 76-3 14-2 25 1 25 6s-11 8-25 6c-28-3-49-3-76-3h-42c-27 0-48 0-76 3-14 2-25-1-25-6Z"
+            fill="rgb(241 245 249)"
+            stroke="rgb(148 163 184)"
+            strokeWidth="1"
+            strokeLinejoin="round"
+          />
+          {/* Dos piezas de fijación reducidas a geometría esencial. */}
+          <rect x="117" y="11" width="7" height="10" rx="1.5" fill="white" stroke="rgb(100 116 139)" strokeWidth="1" />
+          <rect x="136" y="11" width="7" height="10" rx="1.5" fill="white" stroke="rgb(100 116 139)" strokeWidth="1" />
+          <path d="M120.5 13v6M139.5 13v6M124 16h12" stroke="rgb(148 163 184)" strokeWidth="1" strokeLinecap="round" />
+        </svg>
       </div>
 
       <div className="flex items-center gap-2">
@@ -903,7 +899,7 @@ function SkiLengthRange({
         </label>
       </div>
       <p className="text-center text-[10px] font-normal text-gray-400">
-        Desliza los controles sobre el esquí
+        Desliza los controles para elegir el largo
       </p>
     </div>
   )
