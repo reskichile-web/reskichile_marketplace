@@ -73,6 +73,7 @@ describe('product card image loading', () => {
     expect(skiCatalogCard).toContain('192 cm')
     expect(skiCatalogCard).toContain('115 mm')
     expect(skiCatalogCard).toContain('font-normal')
+    expect(skiCatalogCard).toContain('absolute right-2.5 top-2.5')
     expect(generalCatalogCard).not.toContain('192 cm')
     expect(generalCatalogCard).not.toContain('115 mm')
   })
