@@ -20,12 +20,17 @@ import {
   displayLocalDate,
   storyStatus,
 } from '@/lib/instagram/admin-ui'
-import { instagramStoryRuleForDate } from '@/lib/instagram/schedule-rules'
+import { instagramStoryRuleForDate, INSTAGRAM_STORY_NEW_SCHEDULE_DATE } from '@/lib/instagram/schedule-rules'
 import type { InstagramSlotOption } from './InstagramStoryEditorModal'
+import type { InstagramAdminCatalogBatch } from '@/lib/instagram/catalog-contracts'
+import { CatalogBatchDetails, CatalogBatchPreview, CatalogBatchState, catalogPreparationTime } from './InstagramCatalogBatch'
 
 interface Props {
   products: InstagramAdminProduct[]
   publications: InstagramAdminPublication[]
+  catalogBatches?: InstagramAdminCatalogBatch[]
+  catalogEnabled?: boolean
+  catalogAvailable?: boolean
   dates: string[]
   today: string
   currentTime: string
@@ -47,6 +52,9 @@ async function responseError(response: Response): Promise<string> {
 export default function InstagramStoryCalendarTable({
   products,
   publications,
+  catalogBatches = [],
+  catalogEnabled = false,
+  catalogAvailable = false,
   dates,
   today,
   currentTime,
@@ -182,8 +190,11 @@ export default function InstagramStoryCalendarTable({
                 const product = occupied.get(key)
                 const publication = published.get(key)
                 const capture = product?.capture
+                const catalogBatch = slot.kind === 'catalog' ? catalogBatches.find(batch => batch.localDate === localDate) : undefined
+                const generationOverdue = localDate < today || (localDate === today && currentTime > catalogPreparationTime(slot.time))
                 const state = product ? storyStatus(product) : null
                 const slotPassed = localDate < today
+                  || localDate < INSTAGRAM_STORY_NEW_SCHEDULE_DATE
                   || (localDate === today && slot.time <= currentTime)
                 return (
                   <tr key={key} className={`${index === 0 ? 'border-t-2 border-t-blue-200' : ''} ${index === rule.slots.length - 1 ? 'border-b-2 border-b-blue-200' : 'border-b border-b-gray-100'} transition hover:bg-blue-50/25`}>
@@ -224,6 +235,8 @@ export default function InstagramStoryCalendarTable({
                             </span>
                           </span>
                         </button>
+                      ) : slot.kind === 'catalog' ? (
+                        <CatalogBatchPreview batch={catalogBatch} />
                       ) : slotPassed ? (
                         <span className="text-xs font-bold uppercase tracking-wide text-gray-300">Sin publicación registrada</span>
                       ) : (
@@ -237,6 +250,8 @@ export default function InstagramStoryCalendarTable({
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-700">
                           <CheckCircle2 className="h-3.5 w-3.5" /> Publicada
                         </span>
+                      ) : slot.kind === 'catalog' ? (
+                        <CatalogBatchState batch={catalogBatch} overdue={generationOverdue} enabled={catalogEnabled} available={catalogAvailable} />
                       ) : state && (
                         <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide ${state.className}`}>{state.label}</span>
                       )}
@@ -270,6 +285,8 @@ export default function InstagramStoryCalendarTable({
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
+                      ) : slot.kind === 'catalog' ? (
+                        <CatalogBatchDetails batch={catalogBatch} time={slot.time} />
                       ) : slotPassed ? (
                         <span className="text-xs font-semibold text-gray-300">Sin publicación</span>
                       ) : (

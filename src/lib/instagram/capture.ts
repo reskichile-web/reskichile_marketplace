@@ -71,7 +71,7 @@ export function sanitizeCaptureError(error: unknown): string {
     .slice(0, 500) || fallback
 }
 
-async function launchBrowser(): Promise<Browser> {
+export async function launchBrowser(): Promise<Browser> {
   const localExecutable = LOCAL_CHROME_PATHS.find(existsSync)
   const executablePath = localExecutable || await chromium.executablePath()
   const headless = localExecutable ? true : 'shell'

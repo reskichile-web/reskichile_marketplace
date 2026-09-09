@@ -15,7 +15,9 @@
     "test": "vitest run",
     "test:db": "bash scripts/test-commerce-migrations.sh",
     "secrets:check": "node scripts/check-secrets.mjs",
-    "ig:render": "node scripts/render-ig-post.mjs"
+    "ig:render": "node scripts/render-ig-post.mjs",
+    "ig:catalog": "node scripts/render-ig-catalog.mjs",
+    "ig:intro": "node scripts/render-ig-intro.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

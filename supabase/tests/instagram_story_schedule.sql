@@ -1,7 +1,13 @@
--- Five-slot Instagram editorial calendar. This test only exercises local
+-- Three-block Instagram editorial calendar. This test only exercises local
 -- database state; it never contacts Meta or publishes media.
 
 BEGIN;
+
+-- Start on a future Monday, independent of the date the tests execute.
+CREATE FUNCTION pg_temp.schedule_start() RETURNS DATE LANGUAGE sql STABLE AS $$
+  SELECT d + ((8 - EXTRACT(ISODOW FROM d)::INTEGER) % 7)
+  FROM (SELECT (NOW() AT TIME ZONE 'America/Santiago')::DATE + 10 AS d) base;
+$$;
 
 INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
   ('93000000-0000-4000-8000-000000000001', 'schedule-seller@example.com', '{}');
@@ -34,7 +40,7 @@ SELECT capture.product_id, schedule.*
 FROM public.instagram_story_captures capture
 CROSS JOIN LATERAL public.instagram_schedule_capture_next(
   capture.id,
-  ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10),
+  pg_temp.schedule_start(),
   'manual'
 ) schedule
 WHERE capture.product_id::TEXT LIKE '94000000-0000-4000-8000-00000000000%'
@@ -43,14 +49,13 @@ ORDER BY capture.product_id;
 SELECT 1 / CASE WHEN COUNT(*) = 6 THEN 1 ELSE 0 END
 FROM scheduled_results;
 
-SELECT 1 / CASE WHEN COUNT(*) = 5 THEN 1 ELSE 0 END
+SELECT 1 / CASE WHEN COUNT(*) = 3 THEN 1 ELSE 0 END
 FROM scheduled_results
-WHERE scheduled_local_date = ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10);
+WHERE scheduled_local_date = pg_temp.schedule_start();
 
-SELECT 1 / CASE WHEN COUNT(*) = 1 THEN 1 ELSE 0 END
+SELECT 1 / CASE WHEN COUNT(*) = 3 THEN 1 ELSE 0 END
 FROM scheduled_results
-WHERE scheduled_local_date = ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 11)
-  AND scheduled_slot = 1;
+WHERE scheduled_local_date = (pg_temp.schedule_start() + 1);
 
 SELECT 1 / CASE WHEN COUNT(DISTINCT (scheduled_local_date, scheduled_slot)) = 6 THEN 1 ELSE 0 END
 FROM scheduled_results;
@@ -139,12 +144,12 @@ CREATE TEMP TABLE internal_gap AS
 SELECT * FROM public.instagram_schedule_capture_next(
   (SELECT id FROM public.instagram_story_captures
    WHERE product_id = '94000000-0000-4000-8000-000000000003'),
-  ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10),
+  pg_temp.schedule_start(),
   'manual'
 );
 
 SELECT 1 / CASE WHEN scheduled_local_date =
-    ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10)
+    pg_temp.schedule_start()
   AND scheduled_slot = 3
   THEN 1 ELSE 0 END
 FROM internal_gap;
@@ -181,7 +186,7 @@ BEGIN
   BEGIN
     PERFORM public.instagram_move_capture_schedule(
       v_capture,
-      ((NOW() AT TIME ZONE 'America/Santiago')::DATE + 10),
+      pg_temp.schedule_start(),
       1::SMALLINT
     );
     RAISE EXCEPTION 'occupied slot was accepted';
@@ -295,4 +300,80 @@ SELECT 1 / CASE WHEN
   )
   THEN 1 ELSE 0 END;
 
+-- There are 18 individual slots + 3 reserved catalog blocks per week.
+SELECT 1 / CASE WHEN COUNT(*) = 18 THEN 1 ELSE 0 END
+FROM public.instagram_story_schedule_rules;
+SELECT 1 / CASE WHEN COUNT(*) = 3 THEN 1 ELSE 0 END
+FROM public.instagram_catalog_schedule_rules;
+
+-- Chile daylight saving is resolved by PostgreSQL, never a fixed UTC offset.
+SELECT 1 / CASE WHEN
+  public.instagram_story_slot_time('2027-07-14', 1::SMALLINT) = TIMESTAMPTZ '2027-07-14 15:30:00+00'
+  AND public.instagram_story_slot_time('2027-01-13', 1::SMALLINT) = TIMESTAMPTZ '2027-01-13 14:30:00+00'
+  THEN 1 ELSE 0 END;
+
+DO $$
+DECLARE
+  v_capture UUID;
+  v_start DATE := pg_temp.schedule_start() + 2;
+BEGIN
+  SELECT id INTO v_capture FROM public.instagram_story_captures
+  WHERE product_id = '94000000-0000-4000-8000-000000000006';
+  BEGIN
+    PERFORM public.instagram_move_capture_schedule(v_capture, v_start, 3::SMALLINT);
+    RAISE EXCEPTION 'reserved catalog slot was accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.instagram_story_slot_time(pg_temp.schedule_start(), 4::SMALLINT);
+    RAISE EXCEPTION 'fourth slot was accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+END;
+$$;
+
+-- Automatic allocation fills exactly two Wednesday daytime slots, then spills
+-- to Thursday. A completed publication continues occupying its editorial slot.
+DO $$
+DECLARE
+  v_start DATE := pg_temp.schedule_start() + 2;
+  v_capture UUID;
+  v_result RECORD;
+  v_index INTEGER := 0;
+BEGIN
+  FOR v_capture IN SELECT id FROM public.instagram_story_captures
+    WHERE product_id::TEXT LIKE '94000000-0000-4000-8000-00000000000%'
+    ORDER BY product_id LIMIT 3
+  LOOP
+    PERFORM public.instagram_unschedule_capture(v_capture);
+    SELECT * INTO v_result FROM public.instagram_schedule_capture_next(v_capture, v_start, 'manual');
+    v_index := v_index + 1;
+    IF v_index <= 2 THEN
+      IF v_result.scheduled_local_date <> v_start OR v_result.scheduled_slot <> v_index THEN
+        RAISE EXCEPTION 'wrong daytime allocation';
+      END IF;
+    ELSIF v_result.scheduled_local_date <> v_start + 1 OR v_result.scheduled_slot <> 1 THEN
+      RAISE EXCEPTION 'did not spill to Thursday after two products';
+    END IF;
+  END LOOP;
+
+  SELECT id INTO v_capture FROM public.instagram_story_captures
+  WHERE product_id = '94000000-0000-4000-8000-000000000006';
+  INSERT INTO public.instagram_story_publications (
+    capture_id, product_id, container_id, published_at,
+    scheduled_local_date, scheduled_slot, scheduled_for, schedule_source
+  ) VALUES (
+    v_capture, '94000000-0000-4000-8000-000000000006', 'consumed-slot', NOW(),
+    v_start + 7, 1, public.instagram_story_slot_time(v_start + 7, 1::SMALLINT), 'manual'
+  );
+  PERFORM public.instagram_unschedule_capture(v_capture);
+  SELECT * INTO v_result FROM public.instagram_schedule_capture_next(v_capture, v_start + 7, 'manual');
+  IF v_result.scheduled_slot <> 2 THEN RAISE EXCEPTION 'refilled a consumed slot'; END IF;
+  BEGIN
+    PERFORM public.instagram_move_capture_schedule(v_capture, v_start + 7, 1::SMALLINT);
+    RAISE EXCEPTION 'manual move refilled a consumed slot';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+END;
+$$;
 ROLLBACK;

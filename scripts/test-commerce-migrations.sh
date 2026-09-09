@@ -63,14 +63,27 @@ for migration in \
   202609070002_catalog_bump_order.sql \
   202609070003_protect_anonymous_seller_contact.sql \
   202609090001_admin_products_time_sort.sql \
-  202609090002_admin_products_multi_filters.sql
+  202609090002_admin_products_multi_filters.sql \
+  202609090003_instagram_three_editorial_blocks.sql \
+  202609090004_instagram_catalog_rotation.sql \
+  202609090005_instagram_catalog_batches.sql
 do
+  if [[ "$migration" == "202609090003_instagram_three_editorial_blocks.sql" ]]; then
+    psql -v ON_ERROR_STOP=1 -d "$test_database" \
+      -f "$repository_root/supabase/tests/instagram_schedule_reflow_setup.sql"
+  fi
   psql -v ON_ERROR_STOP=1 -d "$test_database" \
     -f "$repository_root/supabase/migrations/$migration"
+  if [[ "$migration" == "202609090003_instagram_three_editorial_blocks.sql" ]]; then
+    psql -v ON_ERROR_STOP=1 -d "$test_database" \
+      -f "$repository_root/supabase/tests/instagram_schedule_reflow_verify.sql"
+  fi
 done
 
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/admin_view_performance.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/instagram_catalog_batches.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/admin_metrics_since_date.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
@@ -97,3 +110,5 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/instagram_story_schedule.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/instagram_story_sold_cleanup.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/instagram_catalog_rotation.sql"

@@ -1,40 +1,57 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import {
-  INSTAGRAM_STORY_CALENDAR_START_DATE,
-  INSTAGRAM_STORY_DAY_RULES,
-  INSTAGRAM_STORY_SLOTS_PER_DAY,
-  isInstagramStorySlotForDate,
-  instagramStoryRuleForDate,
-} from '@/lib/instagram/schedule-rules'
+import { INSTAGRAM_STORY_DAY_RULES, INSTAGRAM_STORY_SLOTS_PER_DAY,
+  isInstagramStorySlotForDate, instagramStoryRuleForDate } from '@/lib/instagram/schedule-rules'
 
 describe('Instagram Story schedule rules', () => {
-  it('starts the editorial history on Sunday, August 23, 2026', () => {
-    expect(INSTAGRAM_STORY_CALENDAR_START_DATE).toBe('2026-08-23')
-    expect(instagramStoryRuleForDate(INSTAGRAM_STORY_CALENDAR_START_DATE).label)
-      .toBe('Domingo')
+  it('preserves five historical slots with original times', () => {
+    expect(instagramStoryRuleForDate('2026-09-09').slots.map(s => s.time))
+      .toEqual(['19:00', '19:15', '19:30', '19:45', '20:00'])
   })
-
-  it('uses five quarter-hour slots and leaves the final Hobby delay inside each window', () => {
-    expect(INSTAGRAM_STORY_SLOTS_PER_DAY).toBe(5)
-    expect(INSTAGRAM_STORY_DAY_RULES).toEqual([
-      expect.objectContaining({ label: 'Lunes', slots: [{ slot: 1, time: '19:30' }, { slot: 2, time: '19:45' }, { slot: 3, time: '20:00' }, { slot: 4, time: '20:15' }, { slot: 5, time: '20:30' }] }),
-      expect.objectContaining({ label: 'Martes', slots: [{ slot: 1, time: '19:30' }, { slot: 2, time: '19:45' }, { slot: 3, time: '20:00' }, { slot: 4, time: '20:15' }, { slot: 5, time: '20:30' }] }),
-      expect.objectContaining({ label: 'Miércoles', slots: [{ slot: 1, time: '19:00' }, { slot: 2, time: '19:15' }, { slot: 3, time: '19:30' }, { slot: 4, time: '19:45' }, { slot: 5, time: '20:00' }] }),
-      expect.objectContaining({ label: 'Jueves', slots: [{ slot: 1, time: '18:00' }, { slot: 2, time: '18:15' }, { slot: 3, time: '18:30' }, { slot: 4, time: '18:45' }, { slot: 5, time: '19:00' }] }),
-      expect.objectContaining({ label: 'Viernes', slots: [{ slot: 1, time: '17:30' }, { slot: 2, time: '17:45' }, { slot: 3, time: '18:00' }, { slot: 4, time: '18:15' }, { slot: 5, time: '18:30' }] }),
-      expect.objectContaining({ label: 'Sábado', slots: [{ slot: 1, time: '18:30' }, { slot: 2, time: '18:45' }, { slot: 3, time: '19:00' }, { slot: 4, time: '19:15' }, { slot: 5, time: '19:30' }] }),
-      expect.objectContaining({ label: 'Domingo', slots: [{ slot: 1, time: '19:00' }, { slot: 2, time: '19:15' }, { slot: 3, time: '19:30' }, { slot: 4, time: '19:45' }, { slot: 5, time: '20:00' }] }),
-    ])
+  it('caps every day at three editorial blocks', () => {
+    expect(INSTAGRAM_STORY_SLOTS_PER_DAY).toBe(3)
+    expect(INSTAGRAM_STORY_DAY_RULES).toHaveLength(7)
+    for (const rule of INSTAGRAM_STORY_DAY_RULES) expect(rule.slots).toHaveLength(3)
   })
-
-  it('maps a local date to its weekday rule without depending on server timezone', () => {
-    expect(instagramStoryRuleForDate('2026-08-24').label).toBe('Lunes')
-    expect(instagramStoryRuleForDate('2026-08-30').label).toBe('Domingo')
+  it('reserves Wednesday 19:30, Friday 20:00 and Sunday 20:00 for catalog only', () => {
+    for (const [date, time] of [['2026-09-16', '19:30'], ['2026-09-11', '20:00'], ['2026-09-13', '20:00']]) {
+      expect(instagramStoryRuleForDate(date).slots).toEqual([
+        { slot: 1, time: '11:30' }, { slot: 2, time: '12:30' }, { slot: 3, time, kind: 'catalog' },
+      ])
+      expect(isInstagramStorySlotForDate(date, 2)).toBe(true)
+      expect(isInstagramStorySlotForDate(date, 3)).toBe(false)
+    }
   })
-
-  it('validates slots from the configured weekday instead of a fixed TypeScript union', () => {
-    expect(isInstagramStorySlotForDate('2026-08-24', 5)).toBe(true)
-    expect(isInstagramStorySlotForDate('2026-08-24', 6)).toBe(false)
+  it('keeps three individual slots on other days and rejects overflow', () => {
+    for (const date of ['2026-09-14', '2026-09-15', '2026-09-10', '2026-09-12']) {
+      expect(isInstagramStorySlotForDate(date, 3)).toBe(true)
+      expect(isInstagramStorySlotForDate(date, 4)).toBe(false)
+      expect(isInstagramStorySlotForDate(date, 5)).toBe(false)
+    }
     expect(isInstagramStorySlotForDate('invalid-date', 1)).toBe(false)
+    expect(isInstagramStorySlotForDate('2026-09-14', 1.5)).toBe(false)
+  })
+  it('matches assignable PostgreSQL rules exactly', () => {
+    const sql = readFileSync('supabase/migrations/202609090003_instagram_three_editorial_blocks.sql', 'utf8')
+    const rows = [...sql.matchAll(/\((\d), (\d), '(\d\d:\d\d)'\)/g)]
+      .map(([, day, slot, time]) => [Number(day), Number(slot), time])
+    expect(rows).toEqual(INSTAGRAM_STORY_DAY_RULES.flatMap(rule => rule.slots
+      .filter(slot => slot.kind !== 'catalog').map(slot => [rule.isoWeekday, slot.slot, slot.time])))
+    for (const rule of INSTAGRAM_STORY_DAY_RULES) {
+      const catalog = rule.slots.find(slot => slot.kind === 'catalog')
+      if (catalog) expect(sql).toContain(`(${rule.isoWeekday}, '${catalog.time}')`)
+    }
+  })
+  it('has cron ticks for all slots and retries in summer and winter', () => {
+    const { crons } = JSON.parse(readFileSync('vercel.json', 'utf8')) as { crons: { path: string, schedule: string }[] }
+    expect(new Set(crons.map(c => c.path)).size).toBe(crons.length)
+    const ticks = new Set(crons.map(c => c.schedule))
+    for (const rule of INSTAGRAM_STORY_DAY_RULES) for (const slot of rule.slots) {
+      const [hour, minute] = slot.time.split(':').map(Number)
+      for (const offset of [3, 4]) for (const retry of [0, 15, 30, 45]) {
+        const total = (hour + offset) * 60 + minute + retry
+        expect(ticks.has(`${total % 60} ${Math.floor(total / 60) % 24} * * *`)).toBe(true)
+      }
+    }
   })
 })

@@ -396,6 +396,15 @@ async function publishInstagramStories(
   async function advanceContainer(item: PendingContainer): Promise<'done' | 'pending'> {
     const capture = item.capture
     try {
+      // A calendar edit may move/unschedule a row between listing and claiming.
+      // Re-check the claimed placement before contacting Meta.
+      if (selection.mode === 'scheduled' && (
+        !capture.scheduled_for || new Date(capture.scheduled_for).getTime() > now().getTime()
+      )) {
+        await repository.markPending(capture.id, 'Calendario actualizado; esperando el nuevo horario')
+        summary.skipped += 1
+        return 'done'
+      }
       if (
         selection.mode === 'scheduled'
         && capture.scheduled_for

@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { InstagramAdminCalendarResponse } from '@/lib/instagram/admin-contracts'
+import { isInstagramCatalogEnabled } from '@/lib/instagram/catalog-config'
 import {
   INSTAGRAM_STORY_CALENDAR_START_DATE,
 } from '@/lib/instagram/schedule-rules'
@@ -287,10 +288,17 @@ export async function getAdminInstagramStories(options: {
   })
   if (error) throwAdminReadError(error, 'admin instagram stories')
   const payload = asRecord(data, 'admin instagram stories')
+  const catalog = await client.rpc('admin_instagram_catalog_batches', { p_history_start: historyStart })
+  // Allow an explicitly visible pre-migration state during a coordinated rollout.
+  const missingCatalog = catalog.error && ['PGRST202', '42883'].includes(catalog.error.code)
+  if (catalog.error && !missingCatalog) throwAdminReadError(catalog.error, 'admin instagram catalog')
   return {
     ok: true,
     publishingEnabled: getInstagramPublishingConfig().enabled,
     products: (payload.products || []) as InstagramAdminCalendarResponse['products'],
     publications: (payload.publications || []) as InstagramAdminCalendarResponse['publications'],
+    catalogBatches: catalog.error ? [] : (catalog.data || []) as NonNullable<InstagramAdminCalendarResponse['catalogBatches']>,
+    catalogAvailable: !catalog.error,
+    catalogEnabled: isInstagramCatalogEnabled() && getInstagramPublishingConfig().enabled,
   }
 }

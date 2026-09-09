@@ -68,6 +68,22 @@ const publishedStory: InstagramAdminPublication = {
 }
 
 describe('Instagram Story admin UI', () => {
+  it('shows the evening catalog reservation without an assignment control', () => {
+    const html = renderToStaticMarkup(<InstagramStoryCalendarTable
+      products={[preparedProduct]} publications={[]} dates={['2026-09-11']}
+      catalogAvailable catalogEnabled
+      today="2026-09-10" currentTime="10:00" historyDays={0} maxHistoryDays={18}
+      loading={false} availableSlots={[]} onOpen={vi.fn()}
+      onChanged={vi.fn(async () => undefined)} onLoadEarlier={vi.fn()} onReturnToToday={vi.fn()}
+    />)
+    expect(html).toContain('Catálogo trending')
+    expect(html).toContain('Pendiente de generación')
+    expect(html).toContain('11:30')
+    expect(html).toContain('12:30')
+    expect(html).toContain('20:00')
+    expect((html.match(/aria-label="Asignar Story/g) ?? []).length).toBe(2)
+    expect(html).not.toContain('Cupo 4')
+  })
   it('offers only generation before a product has a prepared Story', () => {
     const html = renderToStaticMarkup(
       <InstagramStoryEditorModal

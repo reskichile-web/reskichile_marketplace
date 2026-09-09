@@ -1,6 +1,18 @@
 {
   "regions": ["gru1"],
   "crons": [
+    { "path": "/api/cron/instagram-publish/t1430", "schedule": "30 14 * * *" },
+    { "path": "/api/cron/instagram-publish/t1445", "schedule": "45 14 * * *" },
+    { "path": "/api/cron/instagram-publish/t1500", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/instagram-publish/t1515", "schedule": "15 15 * * *" },
+    { "path": "/api/cron/instagram-publish/t1530", "schedule": "30 15 * * *" },
+    { "path": "/api/cron/instagram-publish/t1545", "schedule": "45 15 * * *" },
+    { "path": "/api/cron/instagram-publish/t1600", "schedule": "0 16 * * *" },
+    { "path": "/api/cron/instagram-publish/t1615", "schedule": "15 16 * * *" },
+    { "path": "/api/cron/instagram-publish/t1630", "schedule": "30 16 * * *" },
+    { "path": "/api/cron/instagram-publish/t1645", "schedule": "45 16 * * *" },
+    { "path": "/api/cron/instagram-publish/t1700", "schedule": "0 17 * * *" },
+    { "path": "/api/cron/instagram-publish/t1715", "schedule": "15 17 * * *" },
     { "path": "/api/cron/instagram-publish/t2030", "schedule": "30 20 * * *" },
     { "path": "/api/cron/instagram-publish/t2045", "schedule": "45 20 * * *" },
     { "path": "/api/cron/instagram-publish/t2100", "schedule": "0 21 * * *" },
@@ -17,6 +29,22 @@
     { "path": "/api/cron/instagram-publish/t2345", "schedule": "45 23 * * *" },
     { "path": "/api/cron/instagram-publish/t0000", "schedule": "0 0 * * *" },
     { "path": "/api/cron/instagram-publish/t0015", "schedule": "15 0 * * *" },
-    { "path": "/api/cron/instagram-publish/t0030", "schedule": "30 0 * * *" }
+    { "path": "/api/cron/instagram-publish/t0030", "schedule": "30 0 * * *" },
+    { "path": "/api/cron/instagram-publish/t0045", "schedule": "45 0 * * *" },
+    {"path":"/api/cron/instagram-catalog/t2130","schedule":"30 21 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2145","schedule":"45 21 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2200","schedule":"0 22 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2215","schedule":"15 22 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2230","schedule":"30 22 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2245","schedule":"45 22 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2300","schedule":"0 23 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2315","schedule":"15 23 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2330","schedule":"30 23 * * *"},
+    {"path":"/api/cron/instagram-catalog/t2345","schedule":"45 23 * * *"},
+    {"path":"/api/cron/instagram-catalog/t0000","schedule":"0 0 * * *"},
+    {"path":"/api/cron/instagram-catalog/t0015","schedule":"15 0 * * *"},
+    {"path":"/api/cron/instagram-catalog/t0030","schedule":"30 0 * * *"},
+    {"path":"/api/cron/instagram-catalog/t0045","schedule":"45 0 * * *"},
+    {"path":"/api/cron/instagram-catalog/t0100","schedule":"0 1 * * *"}
   ]
 }

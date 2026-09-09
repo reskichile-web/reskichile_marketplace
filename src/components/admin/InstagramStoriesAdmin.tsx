@@ -16,6 +16,7 @@ import {
 import {
   INSTAGRAM_STORY_CALENDAR_START_DATE,
   instagramStoryRuleForDate,
+  isInstagramStorySlotForDate,
 } from '@/lib/instagram/schedule-rules'
 
 const CALENDAR_DAYS = 35
@@ -62,6 +63,13 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
     void load()
   }, [load])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load()
+    }, 30_000)
+    return () => window.clearInterval(timer)
+  }, [load])
+
   const showPrepare = useCallback(() => {
     setView('prepare')
     if (!includeUncapturedRef.current) void load(true)
@@ -85,6 +93,9 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
   const occupiedKeys = products
     .filter((product) => product.capture?.scheduledLocalDate && product.capture.scheduledSlot)
     .map((product) => `${product.capture!.scheduledLocalDate}|${product.capture!.scheduledSlot}`)
+    .concat((data?.publications ?? [])
+      .filter((publication) => publication.scheduledLocalDate && publication.scheduledSlot)
+      .map((publication) => `${publication.scheduledLocalDate}|${publication.scheduledSlot}`))
   const availableSlots = useMemo(() => {
     const occupied = new Set(occupiedKeys)
     return dates.flatMap((localDate) => {
@@ -92,7 +103,9 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
       return rule.slots.flatMap((slot): InstagramSlotOption[] => {
         const key = `${localDate}|${slot.slot}`
         if (
-          occupied.has(key)
+          slot.kind === 'catalog'
+          || !isInstagramStorySlotForDate(localDate, slot.slot)
+          || occupied.has(key)
           || localDate < today
           || (localDate === today && slot.time <= currentTime)
         ) return []
@@ -179,6 +192,9 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
           <InstagramStoryProductList products={products} onOpen={setSelectedProductId} />
         ) : (
           <InstagramStoryCalendarTable
+            catalogBatches={data?.catalogBatches}
+            catalogAvailable={data?.catalogAvailable}
+            catalogEnabled={data?.catalogEnabled}
             products={products}
             publications={data?.publications ?? []}
             dates={dates}

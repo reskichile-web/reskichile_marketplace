@@ -12,6 +12,16 @@ const nextConfig = {
   // infer the Brotli archives loaded dynamically by executablePath(). Include
   // them only in the two serverless functions that render Stories.
   outputFileTracingIncludes: {
+    '/api/cron/instagram-catalog': [
+      './node_modules/@sparticuz/chromium/bin/**/*',
+      './public/logo.svg', './public/brand-logos/*.png',
+      './public/ig-assets/sourced/montserrat*.woff2', './public/images/_ (1).jpeg',
+    ],
+    '/api/cron/instagram-catalog/*': [
+      './node_modules/@sparticuz/chromium/bin/**/*',
+      './public/logo.svg', './public/brand-logos/*.png',
+      './public/ig-assets/sourced/montserrat*.woff2', './public/images/_ (1).jpeg',
+    ],
     '/api/admin/products/*/approve': [
       './node_modules/@sparticuz/chromium/bin/**/*',
     ],

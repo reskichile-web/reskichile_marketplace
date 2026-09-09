@@ -1,4 +1,5 @@
 import type { InstagramStoryCaptureStatus } from './contracts'
+import type { InstagramAdminCatalogBatch } from './catalog-contracts'
 
 export interface InstagramAdminCapture {
   id: string
@@ -54,4 +55,7 @@ export interface InstagramAdminCalendarResponse {
   publishingEnabled: boolean
   products: InstagramAdminProduct[]
   publications: InstagramAdminPublication[]
+  catalogBatches?: InstagramAdminCatalogBatch[]
+  catalogEnabled?: boolean
+  catalogAvailable?: boolean
 }

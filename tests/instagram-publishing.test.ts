@@ -203,6 +203,23 @@ function metaClient(overrides: Partial<InstagramMetaClient> = {}): InstagramMeta
 describe('Instagram daily Story publisher', () => {
   const fixedNow = () => new Date('2026-08-22T17:00:00.000Z')
 
+  it('does not publish a placement moved into the future between listing and claiming', async () => {
+    const repository = new MemoryRepository([capture()])
+    const originalClaim = repository.claim.bind(repository)
+    vi.spyOn(repository, 'claim').mockImplementation(async (id) => {
+      const row = await originalClaim(id)
+      if (row) row.scheduled_for = '2026-08-23T17:00:00.000Z'
+      return row
+    })
+    const meta = metaClient()
+    const result = await publishEligibleInstagramStories(enabledConfig, {
+      repository, metaClient: meta, now: fixedNow,
+    })
+    expect(result.skipped).toBe(1)
+    expect(meta.createStoryContainer).not.toHaveBeenCalled()
+    expect(meta.publishContainer).not.toHaveBeenCalled()
+  })
+
   it('calculates Chile midnight correctly across daylight-saving offsets', () => {
     expect(startOfTodayInChile(new Date('2026-08-22T17:00:00.000Z')).toISOString())
       .toBe('2026-08-22T04:00:00.000Z')
