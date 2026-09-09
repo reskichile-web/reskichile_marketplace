@@ -286,8 +286,8 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
       tone: 'pending',
     },
     draft: {
-      title: 'Borrador',
-      body: 'Esta publicación todavía no se ha enviado a revisión.',
+      title: 'Pausado',
+      body: 'Esta publicación está pausada y no aparece en el catálogo.',
       tone: 'neutral',
     },
     rejected: {

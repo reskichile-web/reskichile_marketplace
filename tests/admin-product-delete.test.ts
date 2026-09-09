@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/admin-security', () => ({
   assertSameOrigin: vi.fn(),
   requireAdmin: vi.fn().mockResolvedValue({ id: 'admin-id', email: 'admin@example.com' }),
+  readSmallJson: vi.fn(),
   adminErrorResponse: (error: unknown) => ({
     message: error instanceof Error ? error.message : 'Error',
     code: 'INTERNAL_ERROR',

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { MoreHorizontal, Pause, Play, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
 import Spinner from '@/components/Spinner'
@@ -112,6 +113,100 @@ function EditableSalePrice({
       />
       {saving && (
         <span className="ml-1 inline-block w-3 h-3 border-2 border-green-300 border-t-green-600 rounded-full animate-spin" />
+      )}
+    </div>
+  )
+}
+
+function ProductOptionsMenu({
+  title,
+  status,
+  deleting,
+  changingStatus,
+  onTogglePaused,
+  onDelete,
+}: {
+  title: string
+  status: string
+  deleting: boolean
+  changingStatus: boolean
+  onTogglePaused: () => void
+  onDelete: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const isPaused = status === 'draft'
+  const canTogglePaused = status === 'approved' || isPaused
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        aria-label={`Opciones de ${title}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-40 mt-1 w-48 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canTogglePaused || changingStatus}
+            onClick={() => {
+              setOpen(false)
+              onTogglePaused()
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300"
+            title={!canTogglePaused ? 'Solo disponible para productos aprobados o pausados' : undefined}
+          >
+            {changingStatus ? (
+              <Spinner size="sm" color="brand" />
+            ) : isPaused ? (
+              <Play className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Pause className="h-4 w-4" aria-hidden="true" />
+            )}
+            {changingStatus ? 'Guardando…' : isPaused ? 'Reactivar producto' : 'Pausar producto'}
+          </button>
+          <div className="my-1 border-t border-gray-100" />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={deleting}
+            onClick={() => {
+              setOpen(false)
+              onDelete()
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {deleting ? <Spinner size="sm" color="brand" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+            {deleting ? 'Eliminando…' : 'Eliminar'}
+          </button>
+        </div>
       )}
     </div>
   )
@@ -380,6 +475,37 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
   }
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
+
+  async function handlePauseToggle(product: AdminProduct) {
+    if (product.status !== 'approved' && product.status !== 'draft') return
+    const previousStatus = product.status
+    const nextStatus = previousStatus === 'draft' ? 'approved' : 'draft'
+    const action = previousStatus === 'draft' ? 'resume' : 'pause'
+    const previousProducts = products
+
+    setStatusChangingId(product.id)
+    setProducts(current => current.map(item => item.id === product.id
+      ? { ...item, status: nextStatus }
+      : item))
+    try {
+      const response = await fetch(`/api/admin/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || 'No pudimos cambiar la disponibilidad')
+      }
+      recordStatusTransition(previousStatus, nextStatus)
+    } catch (error) {
+      setProducts(previousProducts)
+      alert(error instanceof Error ? error.message : 'No pudimos cambiar la disponibilidad')
+    } finally {
+      setStatusChangingId(null)
+    }
+  }
 
   async function handleDelete(productId: string) {
     if (!confirm('¿Estás seguro de que quieres eliminar esta publicación? Esta acción no se puede deshacer.')) return
@@ -634,14 +760,14 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
                           <Link href={`/producto/${product.id}/editar`} className="text-xs border px-3 py-1.5 rounded hover:bg-gray-100">
                             Editar
                           </Link>
-                          <button onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded hover:bg-red-50 disabled:opacity-50 flex items-center gap-1">
-                            {deletingId === product.id ? (
-                              <>
-                                <Spinner size="sm" color="brand" />
-                                Eliminando
-                              </>
-                            ) : 'Eliminar'}
-                          </button>
+                          <ProductOptionsMenu
+                            title={title}
+                            status={product.status}
+                            deleting={deletingId === product.id}
+                            changingStatus={statusChangingId === product.id}
+                            onTogglePaused={() => void handlePauseToggle(product)}
+                            onDelete={() => void handleDelete(product.id)}
+                          />
                         </div>
                       </td>
                     </tr>

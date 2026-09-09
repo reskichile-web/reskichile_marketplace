@@ -65,7 +65,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
     ),
   },
   draft: {
-    label: 'Borrador',
+    label: 'Pausado',
     color: 'bg-gray-400',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">

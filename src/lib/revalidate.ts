@@ -10,4 +10,5 @@ export function revalidateProduct(opts: { id?: string | null; slug?: string | nu
   if (opts.slug) revalidatePath(`/producto/${opts.slug}`)
   if (opts.id) revalidatePath(`/producto/${opts.id}`)
   revalidatePath('/')
+  revalidatePath('/catalogo')
 }

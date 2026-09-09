@@ -27,7 +27,7 @@ export const CONDITIONS: Record<string, string> = {
 }
 
 export const PRODUCT_STATUSES: Record<string, string> = {
-  draft: 'Borrador',
+  draft: 'Pausado',
   pending: 'Pendiente',
   approved: 'Aprobado',
   rejected: 'Rechazado',

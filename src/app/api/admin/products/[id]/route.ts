@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import {
   adminErrorResponse,
   assertSameOrigin,
+  readSmallJson,
   requireAdmin,
 } from '@/lib/admin-security'
 import { storyStoragePath } from '@/lib/instagram/contracts'
@@ -67,6 +68,79 @@ export async function GET(
       product: { ...productResult.data, details_loaded: true },
       viewCount: viewsResult.count || 0,
     }, { headers: { 'Cache-Control': 'no-store, private' } })
+  } catch (error) {
+    const known = adminErrorResponse(error)
+    return NextResponse.json(
+      { error: known.message, code: known.code },
+      { status: known.status, headers: { 'Cache-Control': 'no-store, private' } },
+    )
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    assertSameOrigin(request)
+    await requireAdmin()
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json(
+        { error: 'Producto inválido', code: 'INVALID_PRODUCT_ID' },
+        { status: 422, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+
+    const body = await readSmallJson(request)
+    const action = body.action
+    if (action !== 'pause' && action !== 'resume') {
+      return NextResponse.json(
+        { error: 'Acción inválida', code: 'INVALID_PRODUCT_ACTION' },
+        { status: 422, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+
+    const service = createServiceRoleClient()
+    const { data: product, error: productError } = await service
+      .from('products')
+      .select('id, slug, status')
+      .eq('id', id)
+      .maybeSingle()
+    if (productError) throw new Error('admin product pause read failed')
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Producto no encontrado', code: 'PRODUCT_NOT_FOUND' },
+        { status: 404, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+
+    const expectedStatus = action === 'pause' ? 'approved' : 'draft'
+    const nextStatus = action === 'pause' ? 'draft' : 'approved'
+    if (product.status !== expectedStatus) {
+      return NextResponse.json(
+        {
+          error: action === 'pause'
+            ? 'Solo se pueden pausar productos aprobados'
+            : 'Solo se pueden reactivar productos pausados',
+          code: 'INVALID_PRODUCT_STATUS',
+        },
+        { status: 409, headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
+
+    const { error: updateError } = await service
+      .from('products')
+      .update({ status: nextStatus })
+      .eq('id', id)
+      .eq('status', expectedStatus)
+    if (updateError) throw new Error('admin product pause update failed')
+
+    revalidateProduct({ id, slug: product.slug })
+    return NextResponse.json(
+      { ok: true, status: nextStatus },
+      { headers: { 'Cache-Control': 'no-store, private' } },
+    )
   } catch (error) {
     const known = adminErrorResponse(error)
     return NextResponse.json(
