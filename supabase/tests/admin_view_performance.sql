@@ -46,6 +46,21 @@ INSERT INTO public.product_images (product_id, url, "order") VALUES
   ('a2000000-0000-4000-8000-000000000001', 'https://example.com/second.jpg', 1),
   ('a2000000-0000-4000-8000-000000000002', 'https://example.com/pending.jpg', 0);
 
+UPDATE public.products
+SET
+  days_published = CASE id
+    WHEN 'a2000000-0000-4000-8000-000000000001' THEN 50
+    ELSE 5
+  END,
+  created_at = CASE id
+    WHEN 'a2000000-0000-4000-8000-000000000001' THEN '2026-01-01 12:00:00+00'::TIMESTAMPTZ
+    ELSE '2026-02-01 12:00:00+00'::TIMESTAMPTZ
+  END
+WHERE id IN (
+  'a2000000-0000-4000-8000-000000000001',
+  'a2000000-0000-4000-8000-000000000002'
+);
+
 INSERT INTO public.events (
   event_type, path, product_id, user_id, visitor_id, country, city
 ) VALUES
@@ -61,7 +76,9 @@ DECLARE
   dashboard JSONB := public.admin_dashboard_snapshot();
   viewer JSONB := public.admin_viewer();
   users_page JSONB := public.admin_users_page(0, 1, 'all', '');
-  products_page JSONB := public.admin_products_page(0, 30, 'all', '', '', '');
+  products_page JSONB := public.admin_products_page(0, 30, 'all', '', '', '', '');
+  products_desc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'desc');
+  products_asc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'asc');
   instagram_page JSONB := public.admin_instagram_stories(current_date, TRUE);
 BEGIN
   IF viewer->>'email' <> 'admin@example.com'
@@ -83,9 +100,16 @@ BEGIN
 
   IF (products_page->>'totalCount')::INTEGER <> 2
     OR jsonb_array_length(products_page->'products') <> 2
+    OR products_page #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000002'
     OR jsonb_array_length(products_page #> '{products,0,product_images}') <> 1
     OR (products_page #>> '{viewCounts,a2000000-0000-4000-8000-000000000001}')::INTEGER <> 1 THEN
     RAISE EXCEPTION 'products page returned unexpected data: %', products_page;
+  END IF;
+
+  IF products_desc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000001'
+    OR products_asc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000002' THEN
+    RAISE EXCEPTION 'products time sorting returned an unexpected order: desc=%, asc=%',
+      products_desc->'products', products_asc->'products';
   END IF;
 
   IF jsonb_array_length(instagram_page->'products') <> 1 THEN
@@ -101,7 +125,7 @@ BEGIN
   IF has_function_privilege('anon', 'public.admin_dashboard_snapshot()', 'EXECUTE')
     OR has_function_privilege('anon', 'public.admin_viewer()', 'EXECUTE')
     OR has_function_privilege('anon', 'public.admin_users_page(integer,integer,text,text)', 'EXECUTE')
-    OR has_function_privilege('anon', 'public.admin_products_page(integer,integer,text,text,text,text)', 'EXECUTE')
+    OR has_function_privilege('anon', 'public.admin_products_page(integer,integer,text,text,text,text,text)', 'EXECUTE')
     OR has_function_privilege('anon', 'public.admin_instagram_stories(date,boolean)', 'EXECUTE') THEN
     RAISE EXCEPTION 'anonymous role can execute an admin view function';
   END IF;

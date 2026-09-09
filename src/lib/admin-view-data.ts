@@ -8,6 +8,7 @@ import { getInstagramPublishingConfig } from '@/lib/instagram/publishing-config'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { adminPageMeta, type AdminPageMeta } from '@/lib/admin-pagination'
 import { AdminRequestError } from '@/lib/admin-security'
+import type { AdminTimeSort } from '@/lib/admin-product-sort'
 
 export interface AdminDashboardPendingProduct {
   id: string
@@ -212,6 +213,7 @@ export async function getAdminProductsPage(options: {
   brand?: string
   productType?: string
   search?: string
+  timeSort?: AdminTimeSort
 } = {}): Promise<AdminProductsPageData> {
   const offset = options.offset ?? 0
   const limit = options.limit ?? 30
@@ -223,6 +225,7 @@ export async function getAdminProductsPage(options: {
     p_brand: options.brand || '',
     p_product_type: options.productType || '',
     p_search: options.search || '',
+    p_time_sort: options.timeSort || '',
   })
   if (error) throwAdminReadError(error, 'admin products page')
   const payload = asRecord(data, 'admin products')

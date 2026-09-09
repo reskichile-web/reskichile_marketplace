@@ -12,6 +12,7 @@ import { useStoryApproval } from '@/components/admin/useStoryApproval'
 import type { AdminApprovalResponse } from '@/lib/instagram/contracts'
 import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 import type { AdminProductsPageData } from '@/lib/admin-view-data'
+import { nextAdminTimeSort, type AdminTimeSort } from '@/lib/admin-product-sort'
 
 interface AdminProduct {
   id: string
@@ -132,6 +133,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
+  const [timeSort, setTimeSort] = useState<AdminTimeSort>('')
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -161,6 +163,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
       if (brandFilter) params.set('brand', brandFilter)
       if (typeFilter) params.set('type', typeFilter)
       if (debouncedSearch) params.set('search', debouncedSearch)
+      if (timeSort) params.set('time_sort', timeSort)
       const response = await fetch(`/api/admin/products?${params.toString()}`, {
         cache: 'no-store',
         signal: controller.signal,
@@ -191,7 +194,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
         setLoadingMore(false)
       }
     }
-  }, [brandFilter, debouncedSearch, statusFilter, typeFilter])
+  }, [brandFilter, debouncedSearch, statusFilter, timeSort, typeFilter])
 
   useEffect(() => {
     if (initialRenderRef.current) {
@@ -208,10 +211,14 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
     void loadProducts(nextOffset, true)
   }, [loadProducts, nextOffset])
 
-  // The API/RPC returns products by created_at DESC, so preserve that order
-  // across pages and infinite-scroll appends. Client-side sorting would only
-  // sort the currently loaded slice and make the result misleading.
+  // Preserve the server order across pages and infinite-scroll appends.
   const filtered = products
+
+  const timeSortTitle = timeSort === ''
+    ? 'Ordenar por antigüedad descendente'
+    : timeSort === 'desc'
+      ? 'Ordenar por antigüedad ascendente'
+      : 'Quitar orden por antigüedad'
 
   async function toggleExpanded(product: AdminProduct) {
     if (expandedId === product.id) {
@@ -478,7 +485,23 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
                 <th className="pb-2 pr-4 font-medium">Producto</th>
                 <th className="pb-2 pr-4 font-medium hidden sm:table-cell">Precio</th>
                 <th className="pb-2 pr-4 font-medium hidden md:table-cell">Vendedor</th>
-                <th className="pb-2 pr-4 font-medium hidden md:table-cell">Tiempo</th>
+                <th
+                  aria-sort={timeSort === '' ? 'none' : timeSort === 'desc' ? 'descending' : 'ascending'}
+                  className="pb-2 pr-4 font-medium hidden md:table-cell"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setTimeSort(current => nextAdminTimeSort(current))}
+                    className={`inline-flex items-center gap-1 rounded transition-colors hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${timeSort ? 'text-gray-900' : ''}`}
+                    title={timeSortTitle}
+                    aria-label={timeSortTitle}
+                  >
+                    Tiempo
+                    <span aria-hidden="true" className="inline-block w-3 text-center text-xs">
+                      {timeSort === 'desc' ? '↓' : timeSort === 'asc' ? '↑' : '↕'}
+                    </span>
+                  </button>
+                </th>
                 <th className="pb-2 pr-4 font-medium">Estado</th>
                 <th className="pb-2 font-medium">Acciones</th>
               </tr>
