@@ -77,4 +77,23 @@ describe('product card image loading', () => {
     expect(generalCatalogCard).not.toContain('192 cm')
     expect(generalCatalogCard).not.toContain('115 mm')
   })
+
+  it('keeps the reduced price visible on narrow mobile cards', () => {
+    const html = renderToStaticMarkup(
+      <ProductCard
+        id="product-1"
+        title="Faction Prodigy"
+        productType="esquis"
+        price={750000}
+        previousPrice={900000}
+      />,
+    )
+
+    expect(html).toContain('data-price-drop="true"')
+    expect(html).toContain('$750.000')
+    expect(html).toContain('Antes')
+    expect(html).toContain('$900.000')
+    expect(html).toContain('-17%')
+    expect(html).toContain('basis-full')
+  })
 })

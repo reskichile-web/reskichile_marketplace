@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { createElement } from 'react'
+import AutomatedProductPost from '@/components/ig/AutomatedProductPost'
 import {
   productFacts,
   productStoryTitle,
@@ -23,6 +26,19 @@ function product(overrides: Partial<AutomatedPostProduct> = {}): AutomatedPostPr
 }
 
 describe('automated product post facts', () => {
+  it('shows price reductions visually in generated stories', () => {
+    const html = renderToStaticMarkup(
+      createElement(AutomatedProductPost, {
+        product: product({ price: 750_000, previous_price: 900_000 }),
+      }),
+    )
+
+    expect(html).toContain('data-ig-price-drop="true"')
+    expect(html).toContain('$750.000')
+    expect(html).toContain('$900.000')
+    expect(html).toContain('-17%')
+  })
+
   it('shows only intrinsic product attributes without location or condition fallbacks', () => {
     expect(productFacts(product({ attributes: { tiene_ruedas: false } }))).toEqual([
       { label: 'RUEDAS', value: 'SIN RUEDAS' },

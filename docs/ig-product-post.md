@@ -52,3 +52,4 @@ El render usa Chrome en modo headless y produce siempre un PNG de 1080 × 1920 p
 - Todas las categorías utilizan el mismo esquiador azul para mantener consistencia de marca.
 - El producto ocupa una zona segura de 600 px con 50 px de margen izquierdo; la ficha comienza después de un buffer mínimo de 40 px y termina al menos 50 px antes del borde derecho.
 - El precio se mide con la tipografía cargada y reduce su tamaño únicamente cuando excede el ancho seguro de su columna.
+- Cuando existe una rebaja, la pieza muestra el precio anterior tachado, el precio vigente destacado y el porcentaje de descuento.

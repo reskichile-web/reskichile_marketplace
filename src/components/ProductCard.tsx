@@ -6,6 +6,7 @@ import { MoveHorizontal, PackageCheck, Ruler } from 'lucide-react'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { track } from '@/lib/track'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
+import { getPriceDrop } from '@/lib/price-drop'
 
 interface Props {
   id: string
@@ -35,6 +36,7 @@ export default function ProductCard({ id, slug, title, brand, productType, price
   const [secondLoaded, setSecondLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
   const brandLogoUrl = getBrandLogoUrl(brand || '')
+  const priceDrop = getPriceDrop(price, previousPrice)
 
   return (
     <Link
@@ -157,11 +159,21 @@ export default function ProductCard({ id, slug, title, brand, productType, price
           {PRODUCT_TYPES[productType]}
         </p>
         <h3 className="font-body font-semibold text-sm truncate mt-1">{title}</h3>
-        {previousPrice && previousPrice > price ? (
-          <p className="mt-0.5 flex items-baseline gap-2 font-body">
-            <span className="text-xs text-gray-400 line-through">${previousPrice.toLocaleString('es-CL')}</span>
-            <span className="text-base font-bold text-red-600">${price.toLocaleString('es-CL')}</span>
-            <span className="text-[10px] font-bold text-red-600">-{Math.round((1 - price / previousPrice) * 100)}%</span>
+        {priceDrop ? (
+          <p
+            className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 font-body sm:gap-x-2"
+            data-price-drop
+            aria-label={`Precio rebajado de $${priceDrop.previousPrice.toLocaleString('es-CL')} a $${priceDrop.currentPrice.toLocaleString('es-CL')}`}
+          >
+            <span className="order-1 whitespace-nowrap text-base font-bold text-red-600">
+              ${priceDrop.currentPrice.toLocaleString('es-CL')}
+            </span>
+            <span className="order-2 whitespace-nowrap rounded-sm bg-red-50 px-1 py-0.5 text-[9px] font-bold text-red-600 sm:text-[10px]">
+              -{priceDrop.percent}%
+            </span>
+            <span className="order-3 basis-full whitespace-nowrap text-[10px] text-gray-400 sm:order-first sm:basis-auto sm:text-xs">
+              Antes <span className="line-through">${priceDrop.previousPrice.toLocaleString('es-CL')}</span>
+            </span>
           </p>
         ) : (
           <p className="font-body text-base font-bold text-black mt-0.5">${price.toLocaleString('es-CL')}</p>

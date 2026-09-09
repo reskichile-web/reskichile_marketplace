@@ -1,5 +1,6 @@
 import { PRODUCT_TYPES, PRODUCT_ATTRIBUTES, CONDITIONS } from '@/lib/constants'
 import type { ProductWithImages } from '@/lib/types'
+import { getPriceDrop } from '@/lib/price-drop'
 
 const W = 1080
 const H = 1920
@@ -103,6 +104,7 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   const title = [product.brand, product.model].filter(Boolean).join(' ') || 'Producto'
   const typeLabel = PRODUCT_TYPES[product.product_type] || product.product_type
   const price = `$${product.price.toLocaleString('es-CL')}`
+  const priceDrop = getPriceDrop(product.price, product.previous_price)
   const conditionLabel = CONDITIONS[product.condition] || product.condition
   const location = `${product.region}${product.comuna ? ', ' + product.comuna : ''}`
 
@@ -125,11 +127,39 @@ export async function generateStoryCard(product: ProductWithImages): Promise<Fil
   // Everything below: LEFT-aligned at the image edge
   ctx.textAlign = 'left'
 
-  // Price — LEFT
-  ctx.fillStyle = BRAND
+  // Price — LEFT. When the value dropped, keep the new price dominant and
+  // make the change unmistakable with the previous value crossed out.
+  ctx.fillStyle = priceDrop ? '#dc2626' : BRAND
   ctx.font = `600 64px ${FONT_STACK}`
   ctx.fillText(price, LEFT, y)
-  y += 54
+  y += 48
+
+  if (priceDrop) {
+    const previousPrefix = 'Antes '
+    const previousPrice = `$${priceDrop.previousPrice.toLocaleString('es-CL')}`
+    const previousLabel = `${previousPrefix}${previousPrice}`
+    ctx.fillStyle = TEXT_SOFT
+    ctx.font = `500 28px ${FONT_STACK}`
+    ctx.fillText(previousLabel, LEFT, y)
+
+    const previousPrefixWidth = ctx.measureText(previousPrefix).width
+    const previousWidth = ctx.measureText(previousLabel).width
+    ctx.save()
+    ctx.strokeStyle = TEXT_SOFT
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(LEFT + previousPrefixWidth, y - 9)
+    ctx.lineTo(LEFT + previousWidth, y - 9)
+    ctx.stroke()
+    ctx.restore()
+
+    ctx.fillStyle = '#dc2626'
+    ctx.font = `700 28px ${FONT_STACK}`
+    ctx.fillText(`-${priceDrop.percent}%`, LEFT + previousWidth + 28, y)
+    y += 50
+  } else {
+    y += 6
+  }
 
   // Condition — LEFT
   ctx.fillStyle = TEXT_MUTED

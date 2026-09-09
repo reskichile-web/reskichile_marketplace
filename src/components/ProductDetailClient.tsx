@@ -21,6 +21,7 @@ import { track } from '@/lib/track'
 import { getCampaignAttribution } from '@/lib/campaign-attribution'
 import { authRouteWithRedirect, currentBrowserAuthRedirect } from '@/lib/auth-redirect'
 import { getBrandLogoUrl } from '@/lib/brand-logos'
+import { getPriceDrop } from '@/lib/price-drop'
 
 // Contact intent is recorded before resolving the channel. WhatsApp is open to
 // guests; internal chat still redirects guests to login. A later handoff or
@@ -312,6 +313,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
     neutral: { wrap: 'bg-gray-50 border-gray-200', icon: 'text-gray-400', title: 'text-gray-900', body: 'text-gray-600' },
   }
   const title = [product.brand, product.model].filter(Boolean).join(' ')
+  const priceDrop = getPriceDrop(product.price, product.previous_price)
   const brandLogoUrl = getBrandLogoUrl(product.brand || '')
   const attrFields = PRODUCT_ATTRIBUTES[product.product_type] || []
   const attrs = (product.attributes || {}) as Record<string, unknown>
@@ -436,11 +438,21 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
             )}
             <h1 className="min-w-0 font-body text-2xl font-black md:text-3xl">{title}</h1>
           </div>
-          {product.previous_price && product.previous_price > product.price ? (
-            <p className="mt-1 flex items-baseline gap-2 font-body">
-              <span className="text-sm text-gray-400 line-through">${product.previous_price.toLocaleString('es-CL')}</span>
-              <span className="text-2xl font-semibold text-red-600 md:text-3xl">${product.price.toLocaleString('es-CL')}</span>
-              <span className="text-xs font-bold text-red-600">-{Math.round((1 - product.price / product.previous_price) * 100)}%</span>
+          {priceDrop ? (
+            <p
+              className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-body"
+              data-price-drop
+              aria-label={`Precio rebajado de $${priceDrop.previousPrice.toLocaleString('es-CL')} a $${priceDrop.currentPrice.toLocaleString('es-CL')}`}
+            >
+              <span className="order-1 whitespace-nowrap text-2xl font-semibold text-red-600 md:order-2 md:text-3xl">
+                ${priceDrop.currentPrice.toLocaleString('es-CL')}
+              </span>
+              <span className="order-2 whitespace-nowrap rounded-sm bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-600 md:order-3">
+                -{priceDrop.percent}%
+              </span>
+              <span className="order-3 basis-full whitespace-nowrap text-sm text-gray-400 md:order-1 md:basis-auto">
+                Antes <span className="line-through">${priceDrop.previousPrice.toLocaleString('es-CL')}</span>
+              </span>
             </p>
           ) : (
             <p className="font-body text-2xl md:text-3xl font-semibold text-brand-500 mt-1">${product.price.toLocaleString('es-CL')}</p>

@@ -17,7 +17,7 @@ export default async function AutomatedPostPage({ params }: { params: Promise<{ 
   const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
   const { data: product } = await supabase
     .from('products')
-    .select('id, slug, product_type, brand, model, price, condition, region, comuna, attributes, product_images(url, order)')
+    .select('id, slug, product_type, brand, model, price, previous_price, condition, region, comuna, attributes, product_images(url, order)')
     .eq('status', 'approved')
     .eq(isId ? 'id' : 'slug', slug)
     .single()

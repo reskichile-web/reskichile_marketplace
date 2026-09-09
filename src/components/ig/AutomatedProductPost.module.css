@@ -159,6 +159,56 @@
   white-space: nowrap;
 }
 
+.discountPriceBlock {
+  margin: 0 0 28px;
+}
+
+.previousPrice {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 8px;
+  color: #718096;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.previousPrice s {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration-thickness: 2px;
+}
+
+.discountPriceRow {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.discountPriceRow .price {
+  min-width: 0;
+  margin: 0;
+  color: #dc2626;
+}
+
+.discountPercent {
+  flex: none;
+  padding: 8px 10px 7px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .negotiablePrice {
   display: flex;
   align-items: center;
@@ -281,6 +331,14 @@
   margin-bottom: 38px;
 }
 
+.detailsSparse .discountPriceBlock {
+  margin-bottom: 38px;
+}
+
+.detailsSparse .discountPriceBlock .price {
+  margin-bottom: 0;
+}
+
 .detailsSparse .negotiablePrice {
   margin-bottom: 12px;
 }
@@ -316,6 +374,14 @@
   --price-font-size: 96px;
 
   margin-bottom: 42px;
+}
+
+.poster[data-artwork-shape='narrow'] .detailsSparse .discountPriceBlock {
+  margin-bottom: 42px;
+}
+
+.poster[data-artwork-shape='narrow'] .detailsSparse .discountPriceBlock .price {
+  margin-bottom: 0;
 }
 
 .poster[data-artwork-shape='narrow'] .detailsSparse .negotiablePrice {

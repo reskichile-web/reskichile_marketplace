@@ -7,6 +7,7 @@ import FitFactValue from './FitFactValue'
 import FitTitle from './FitTitle'
 import FitPrice from './FitPrice'
 import RiderArtwork from './RiderArtwork'
+import { getPriceDrop } from '@/lib/price-drop'
 
 export interface AutomatedPostProduct {
   id: string
@@ -15,6 +16,7 @@ export interface AutomatedPostProduct {
   brand: string
   model: string | null
   price: number
+  previous_price?: number | null
   condition: string
   region: string
   comuna: string | null
@@ -238,6 +240,7 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
   const facts = productFacts(product)
   const ConditionIcon = CONDITION_ICONS[product.condition] || CheckCircle2
   const isSealed = product.condition === 'nuevo_sellado'
+  const priceDrop = getPriceDrop(product.price, product.previous_price)
 
   return (
     <div className={styles.viewport}>
@@ -287,7 +290,20 @@ export default function AutomatedProductPost({ product }: { product: AutomatedPo
             <MessageCircle className={styles.negotiablePriceIcon} strokeWidth={1.25} aria-hidden="true" />
             <span>Precio conversable</span>
           </p>
-          <FitPrice>{`$${product.price.toLocaleString('es-CL')}`}</FitPrice>
+          {priceDrop ? (
+            <div className={styles.discountPriceBlock} data-ig-price-drop>
+              <p className={styles.previousPrice}>
+                <span>Antes</span>
+                <s>{`$${priceDrop.previousPrice.toLocaleString('es-CL')}`}</s>
+              </p>
+              <div className={styles.discountPriceRow}>
+                <FitPrice>{`$${priceDrop.currentPrice.toLocaleString('es-CL')}`}</FitPrice>
+                <span className={styles.discountPercent}>-{priceDrop.percent}%</span>
+              </div>
+            </div>
+          ) : (
+            <FitPrice>{`$${product.price.toLocaleString('es-CL')}`}</FitPrice>
+          )}
           {facts.length > 0 && (
             <ul className={styles.facts} aria-label="Características destacadas">
               {facts.map((fact, index) => (
