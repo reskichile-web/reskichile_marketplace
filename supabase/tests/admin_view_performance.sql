@@ -37,7 +37,7 @@ INSERT INTO public.products (
   (
     'a2000000-0000-4000-8000-000000000002',
     'a1000000-0000-4000-8000-000000000002',
-    'esquis', 'Head', 'Pending', 'usado_buen_estado', 'Pending product',
+    'botas_esqui', 'Head', 'Pending', 'usado_buen_estado', 'Pending product',
     90000, 'Metropolitana', 'Providencia', '{}', 'pending', 'head-pending'
   );
 
@@ -79,6 +79,10 @@ DECLARE
   products_page JSONB := public.admin_products_page(0, 30, 'all', '', '', '', '');
   products_desc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'desc');
   products_asc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'asc');
+  products_views_desc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'views_desc');
+  products_views_asc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'views_asc');
+  products_atomic JSONB := public.admin_products_page(0, 30, 'all', 'Atomic', 'esquis', '', '');
+  products_multi JSONB := public.admin_products_page(0, 30, 'all', E'Atomic\nHead', E'esquis\nbotas_esqui', '', '');
   instagram_page JSONB := public.admin_instagram_stories(current_date, TRUE);
 BEGIN
   IF viewer->>'email' <> 'admin@example.com'
@@ -110,6 +114,19 @@ BEGIN
     OR products_asc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000002' THEN
     RAISE EXCEPTION 'products time sorting returned an unexpected order: desc=%, asc=%',
       products_desc->'products', products_asc->'products';
+  END IF;
+
+  IF products_views_desc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000001'
+    OR products_views_asc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000002' THEN
+    RAISE EXCEPTION 'products view sorting returned an unexpected order: desc=%, asc=%',
+      products_views_desc->'products', products_views_asc->'products';
+  END IF;
+
+  IF (products_atomic->>'totalCount')::INTEGER <> 1
+    OR products_atomic #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000001'
+    OR (products_multi->>'totalCount')::INTEGER <> 2 THEN
+    RAISE EXCEPTION 'products multi filters returned unexpected data: atomic=%, multi=%',
+      products_atomic->'products', products_multi->'products';
   END IF;
 
   IF jsonb_array_length(instagram_page->'products') <> 1 THEN

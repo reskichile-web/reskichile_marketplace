@@ -6,9 +6,17 @@ import {
 } from '@/lib/instagram/schedule-rules'
 import { getInstagramPublishingConfig } from '@/lib/instagram/publishing-config'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { adminPageMeta, type AdminPageMeta } from '@/lib/admin-pagination'
+import {
+  adminPageMeta,
+  serializeAdminFacetValues,
+  type AdminPageMeta,
+} from '@/lib/admin-pagination'
 import { AdminRequestError } from '@/lib/admin-security'
-import type { AdminTimeSort } from '@/lib/admin-product-sort'
+import {
+  toAdminDatabaseProductSort,
+  type AdminTimeSort,
+  type AdminViewSort,
+} from '@/lib/admin-product-sort'
 
 export interface AdminDashboardPendingProduct {
   id: string
@@ -210,10 +218,11 @@ export async function getAdminProductsPage(options: {
   offset?: number
   limit?: number
   status?: string
-  brand?: string
-  productType?: string
+  brands?: string[]
+  productTypes?: string[]
   search?: string
   timeSort?: AdminTimeSort
+  viewSort?: AdminViewSort
 } = {}): Promise<AdminProductsPageData> {
   const offset = options.offset ?? 0
   const limit = options.limit ?? 30
@@ -222,10 +231,10 @@ export async function getAdminProductsPage(options: {
     p_offset: offset,
     p_limit: limit,
     p_status: options.status || 'all',
-    p_brand: options.brand || '',
-    p_product_type: options.productType || '',
+    p_brand: serializeAdminFacetValues(options.brands || []),
+    p_product_type: serializeAdminFacetValues(options.productTypes || []),
     p_search: options.search || '',
-    p_time_sort: options.timeSort || '',
+    p_time_sort: toAdminDatabaseProductSort(options.timeSort || '', options.viewSort || ''),
   })
   if (error) throwAdminReadError(error, 'admin products page')
   const payload = asRecord(data, 'admin products')

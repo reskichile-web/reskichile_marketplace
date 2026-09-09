@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { MoreHorizontal, Pause, Play, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Eye, MoreHorizontal, Pause, Play, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, PRODUCT_STATUSES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
 import Spinner from '@/components/Spinner'
@@ -13,7 +13,12 @@ import { useStoryApproval } from '@/components/admin/useStoryApproval'
 import type { AdminApprovalResponse } from '@/lib/instagram/contracts'
 import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
 import type { AdminProductsPageData } from '@/lib/admin-view-data'
-import { nextAdminTimeSort, type AdminTimeSort } from '@/lib/admin-product-sort'
+import {
+  nextAdminTimeSort,
+  nextAdminViewSort,
+  type AdminTimeSort,
+  type AdminViewSort,
+} from '@/lib/admin-product-sort'
 
 interface AdminProduct {
   id: string
@@ -212,6 +217,117 @@ function ProductOptionsMenu({
   )
 }
 
+function AdminMultiSelect({
+  allLabel,
+  singularLabel,
+  pluralLabel,
+  options,
+  selected,
+  onChange,
+  align = 'left',
+}: {
+  allLabel: string
+  singularLabel: string
+  pluralLabel: string
+  options: { value: string; label: string }[]
+  selected: string[]
+  onChange: (values: string[]) => void
+  align?: 'left' | 'right'
+}) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  const selectedLabels = options
+    .filter(option => selected.includes(option.value))
+    .map(option => option.label)
+  const buttonLabel = selectedLabels.length === 0
+    ? allLabel
+    : selectedLabels.length === 1
+      ? selectedLabels[0]
+      : `${selectedLabels.length} ${pluralLabel}`
+
+  function toggle(value: string) {
+    onChange(selected.includes(value)
+      ? selected.filter(current => current !== value)
+      : [...selected, value])
+  }
+
+  return (
+    <div ref={menuRef} className="relative w-full sm:w-48">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className={`flex h-10 w-full items-center justify-between gap-3 rounded-lg border bg-white px-3 text-left text-sm text-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${open || selected.length > 0 ? 'border-brand-500' : 'border-gray-200 hover:border-gray-300'}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`${singularLabel}: ${buttonLabel}`}
+      >
+        <span className="truncate">{buttonLabel}</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label={singularLabel}
+          className={`absolute top-full z-50 mt-1 max-h-80 w-full min-w-56 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl ${align === 'right' ? 'right-0' : 'left-0'}`}
+        >
+          {options.map(option => {
+            const checked = selected.includes(option.value)
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={checked}
+                onClick={() => toggle(option.value)}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${checked ? 'border-brand-500 bg-brand-500 text-white' : 'border-gray-300 bg-white'}`}>
+                  {checked && <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />}
+                </span>
+                <span className="truncate">{option.label}</span>
+              </button>
+            )
+          })}
+          {selected.length > 0 && (
+            <>
+              <div className="my-1 border-t border-gray-100" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => onChange([])}
+                className="w-full px-3 py-2 text-left text-xs font-medium text-brand-600 transition-colors hover:bg-brand-50"
+              >
+                Limpiar selección
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminProductsClient({ initialData }: { initialData: AdminProductsPageData }) {
   const [products, setProducts] = useState<AdminProduct[]>(initialData.products)
   const [viewCounts, setViewCounts] = useState<Record<string, number>>(initialData.viewCounts)
@@ -226,9 +342,10 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [brandFilter, setBrandFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
+  const [brandFilters, setBrandFilters] = useState<string[]>([])
+  const [typeFilters, setTypeFilters] = useState<string[]>([])
   const [timeSort, setTimeSort] = useState<AdminTimeSort>('')
+  const [viewSort, setViewSort] = useState<AdminViewSort>('')
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -255,10 +372,11 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
     try {
       const params = new URLSearchParams({ offset: String(offset) })
       if (statusFilter !== 'all') params.set('status', statusFilter)
-      if (brandFilter) params.set('brand', brandFilter)
-      if (typeFilter) params.set('type', typeFilter)
+      brandFilters.forEach(brand => params.append('brand', brand))
+      typeFilters.forEach(type => params.append('type', type))
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (timeSort) params.set('time_sort', timeSort)
+      if (viewSort) params.set('view_sort', viewSort)
       const response = await fetch(`/api/admin/products?${params.toString()}`, {
         cache: 'no-store',
         signal: controller.signal,
@@ -289,7 +407,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
         setLoadingMore(false)
       }
     }
-  }, [brandFilter, debouncedSearch, statusFilter, timeSort, typeFilter])
+  }, [brandFilters, debouncedSearch, statusFilter, timeSort, typeFilters, viewSort])
 
   useEffect(() => {
     if (initialRenderRef.current) {
@@ -314,6 +432,22 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
     : timeSort === 'desc'
       ? 'Ordenar por antigüedad ascendente'
       : 'Quitar orden por antigüedad'
+
+  const viewSortTitle = viewSort === ''
+    ? 'Ordenar por más vistas'
+    : viewSort === 'desc'
+      ? 'Ordenar por menos vistas'
+      : 'Quitar orden por vistas'
+
+  function cycleTimeSort() {
+    setTimeSort(current => nextAdminTimeSort(current))
+    setViewSort('')
+  }
+
+  function cycleViewSort() {
+    setViewSort(current => nextAdminViewSort(current))
+    setTimeSort('')
+  }
 
   async function toggleExpanded(product: AdminProduct) {
     if (expandedId === product.id) {
@@ -557,26 +691,36 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
             placeholder="Buscar marca, modelo o vendedor..."
             className="flex-1 border rounded-lg px-3 py-2 text-sm"
           />
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm sm:w-40"
+          <AdminMultiSelect
+            allLabel="Todos los tipos"
+            singularLabel="Tipo"
+            pluralLabel="tipos"
+            options={Object.entries(PRODUCT_TYPES).map(([value, label]) => ({ value, label }))}
+            selected={typeFilters}
+            onChange={setTypeFilters}
+          />
+          <AdminMultiSelect
+            allLabel="Todas las marcas"
+            singularLabel="Marca"
+            pluralLabel="marcas"
+            options={brands.map(brand => ({ value: brand, label: brand }))}
+            selected={brandFilters}
+            onChange={setBrandFilters}
+            align="right"
+          />
+          <button
+            type="button"
+            onClick={cycleViewSort}
+            className={`flex h-10 w-full items-center justify-center gap-2 rounded-lg border bg-white px-3 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:w-auto ${viewSort ? 'border-brand-500 text-brand-600' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}
+            title={viewSortTitle}
+            aria-label={viewSortTitle}
           >
-            <option value="">Todos los tipos</option>
-            {Object.entries(PRODUCT_TYPES).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
-          <select
-            value={brandFilter}
-            onChange={e => setBrandFilter(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm sm:w-40"
-          >
-            <option value="">Todas las marcas</option>
-            {brands.map(b => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
+            <Eye className="h-4 w-4" aria-hidden="true" />
+            <span>Vistas</span>
+            <span aria-hidden="true" className="inline-block w-3 text-center text-xs">
+              {viewSort === 'desc' ? '↓' : viewSort === 'asc' ? '↑' : '↕'}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -617,7 +761,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
                 >
                   <button
                     type="button"
-                    onClick={() => setTimeSort(current => nextAdminTimeSort(current))}
+                    onClick={cycleTimeSort}
                     className={`inline-flex items-center gap-1 rounded transition-colors hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${timeSort ? 'text-gray-900' : ''}`}
                     title={timeSortTitle}
                     aria-label={timeSortTitle}

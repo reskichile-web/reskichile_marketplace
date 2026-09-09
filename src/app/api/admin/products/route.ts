@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { adminErrorResponse } from '@/lib/admin-security'
 import { getAdminProductsPage } from '@/lib/admin-view-data'
-import { parseAdminPageParams, sanitizeAdminSearch } from '@/lib/admin-pagination'
-import { parseAdminTimeSort } from '@/lib/admin-product-sort'
+import {
+  parseAdminPageParams,
+  sanitizeAdminFacetValues,
+  sanitizeAdminSearch,
+} from '@/lib/admin-pagination'
+import { parseAdminTimeSort, parseAdminViewSort } from '@/lib/admin-product-sort'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,10 +18,11 @@ export async function GET(request: Request) {
       offset,
       limit,
       status: sanitizeAdminSearch(searchParams.get('status'), 40) || 'all',
-      brand: sanitizeAdminSearch(searchParams.get('brand')),
-      productType: sanitizeAdminSearch(searchParams.get('type'), 40),
+      brands: sanitizeAdminFacetValues(searchParams.getAll('brand')),
+      productTypes: sanitizeAdminFacetValues(searchParams.getAll('type'), { maximumLength: 40 }),
       search: sanitizeAdminSearch(searchParams.get('search')),
       timeSort: parseAdminTimeSort(searchParams.get('time_sort')),
+      viewSort: parseAdminViewSort(searchParams.get('view_sort')),
     })
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'no-store, private' },

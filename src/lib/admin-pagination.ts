@@ -51,3 +51,24 @@ export function sanitizeAdminSearch(value: string | null, maximumLength = 80): s
     .trim()
     .slice(0, maximumLength)
 }
+
+export function sanitizeAdminFacetValues(
+  values: string[],
+  options: { maximumItems?: number; maximumLength?: number } = {},
+): string[] {
+  const maximumItems = options.maximumItems ?? 100
+  const maximumLength = options.maximumLength ?? 100
+  const sanitized = values
+    .map(value => value
+      .replace(/[\u0000-\u001f\u007f]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, maximumLength))
+    .filter(Boolean)
+
+  return [...new Set(sanitized)].slice(0, maximumItems)
+}
+
+export function serializeAdminFacetValues(values: string[]): string {
+  return values.join('\n')
+}

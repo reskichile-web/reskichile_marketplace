@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   adminPageMeta,
   parseAdminPageParams,
+  sanitizeAdminFacetValues,
   sanitizeAdminSearch,
+  serializeAdminFacetValues,
 } from '@/lib/admin-pagination'
 
 describe('admin pagination', () => {
@@ -25,5 +27,17 @@ describe('admin pagination', () => {
 
   it('removes PostgREST control punctuation from searches', () => {
     expect(sanitizeAdminSearch('  marca,(modelo)%  ')).toBe('marca modelo')
+  })
+
+  it('keeps safe exact facet values, removes duplicates and caps the list', () => {
+    expect(sanitizeAdminFacetValues(
+      ['  Black Diamond, Inc. ', 'K2', 'K2', 'Atomic\nSkis'],
+      { maximumItems: 3 },
+    )).toEqual(['Black Diamond, Inc.', 'K2', 'Atomic Skis'])
+  })
+
+  it('serializes multiple exact values without treating commas as separators', () => {
+    expect(serializeAdminFacetValues(['Black Diamond, Inc.', 'K2']))
+      .toBe('Black Diamond, Inc.\nK2')
   })
 })
