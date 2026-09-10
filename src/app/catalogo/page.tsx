@@ -134,11 +134,9 @@ export default async function CatalogPage({ searchParams }: Props) {
         genero.length > 0 ||
         !!bootBoa))
 
-  const title = query
-    ? `Resultados para “${query}”`
-    : types.length === 1 && PRODUCT_TYPES[types[0]]
-      ? PRODUCT_TYPES[types[0]]
-      : 'Catálogo'
+  const catalogSection = types.length === 1 && PRODUCT_TYPES[types[0]]
+    ? PRODUCT_TYPES[types[0]]
+    : 'Catálogo'
 
   const searchDescription = searchMode === 'approximate'
     ? 'No hubo una coincidencia exacta. Te mostramos los productos más cercanos.'
@@ -161,11 +159,26 @@ export default async function CatalogPage({ searchParams }: Props) {
   return (
     <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-4 md:pt-6 pb-24">
       <div className="pt-2 md:pt-4 mb-8 md:mb-10">
-        <h1 className={`font-body font-black tracking-tight text-brand-400 ${query ? 'text-3xl md:text-5xl' : 'text-4xl md:text-5xl'}`}>{title}</h1>
-        <p className="mt-2.5 max-w-2xl text-sm md:text-base text-gray-500 leading-relaxed">
-          {query ? searchDescription : 'Equipo de montaña usado, directo de quien lo usó.'}
-        </p>
-        {query && <CatalogSearchForm initialQuery={query} />}
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <h1 className="font-body text-4xl font-black tracking-tight text-brand-400 md:text-5xl">
+            {catalogSection}
+          </h1>
+          <CatalogSearchForm initialQuery={query} />
+        </div>
+        {query ? (
+          <div className="mt-4">
+            <p className="font-body text-lg font-bold text-gray-900 md:text-xl">
+              Resultados para “{query}”
+            </p>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-gray-500 md:text-base">
+              {searchDescription}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-gray-500 md:text-base">
+            Equipo de montaña usado, directo de quien lo usó.
+          </p>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
