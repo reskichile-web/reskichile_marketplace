@@ -497,12 +497,12 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
               <p className="mb-1.5 font-body text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                 Contactar al vendedor
               </p>
-              <div className="flex w-full gap-2">
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-stretch">
                 {isApproved && !hidePhone && (
                 <button
                   onClick={handleContact}
                   disabled={contacting}
-                  className="pressable flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap bg-brand-400 px-2 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
+                  className="pressable flex min-h-12 min-w-0 w-full flex-1 items-center justify-center gap-2 whitespace-normal bg-brand-400 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50 sm:h-12 sm:whitespace-nowrap sm:px-4 sm:text-sm"
                 >
                   <WhatsAppIcon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
                   {contacting ? 'Conectando…' : 'Contactar WhatsApp'}
@@ -512,7 +512,7 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
                 <button
                   onClick={handleChat}
                   disabled={chatOpening}
-                  className="pressable flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap bg-brand-400 px-1 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
+                  className="pressable flex min-h-12 min-w-0 w-full flex-1 items-center justify-center gap-2 whitespace-normal border-2 border-brand-400 bg-white px-3 py-2 text-xs font-medium text-brand-500 hover:bg-brand-50 disabled:opacity-50 sm:h-12 sm:whitespace-nowrap sm:px-4 sm:text-sm"
                 >
                   <ReskiMessageIcon className="h-4 w-4 shrink-0 fill-current sm:h-5 sm:w-5" />
                   {chatOpening ? 'Abriendo…' : 'Enviar mensaje'}
