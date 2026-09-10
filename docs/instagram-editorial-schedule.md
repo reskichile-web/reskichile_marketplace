@@ -20,7 +20,7 @@ generador de servidor y el publicador de tandas están implementados, con rankin
 50% novedad y 50% vistas únicas de siete días y rotación de 14 días (ver
 `ig-catalog.md`). **Desplegado en producción el 9 de septiembre de 2026 mediante
 la integración GitHub → Vercel (`reskichile-webs-projects/reskichile_web`). Las
-migraciones 003, 004 y 005 ya están aplicadas.**
+migraciones 003, 004, 005 y 006 ya están aplicadas.**
 La tabla `instagram_catalog_schedule_rules` conserva esos horarios para esa
 integración. Los cupos asignables viven en `instagram_story_schedule_rules`.
 
