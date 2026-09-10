@@ -18,10 +18,18 @@ de catálogo (intro y una o dos láminas) cuenta como un bloque, no como una ima
 Las reservas nocturnas no se pueden ocupar con historias individuales. El
 generador de servidor y el publicador de tandas están implementados, con ranking
 50% novedad y 50% vistas únicas de siete días y rotación de 14 días (ver
-`ig-catalog.md`). **El código local aún debe desplegarse y activarse en el proyecto
-correcto de Vercel; las migraciones 003, 004 y 005 siguen pendientes en producción.**
+`ig-catalog.md`). **Desplegado en producción el 9 de septiembre de 2026 mediante
+la integración GitHub → Vercel (`reskichile-webs-projects/reskichile_web`). Las
+migraciones 003, 004 y 005 ya están aplicadas.**
 La tabla `instagram_catalog_schedule_rules` conserva esos horarios para esa
 integración. Los cupos asignables viven en `instagram_story_schedule_rules`.
+
+Verificación de activación: el endpoint autenticado del catálogo respondió
+HTTP 200 con `state: idle` fuera de su ventana; sin autenticación responde 401.
+Se conservaron las 74 publicaciones históricas y las seis capturas pendientes.
+La primera tanda prevista es viernes 11/09: preparar 19:00, publicar 20:00.
+No se enviaron historias de prueba. El minuto efectivo depende del plan Vercel,
+como se detalla abajo; no se pudo consultar el plan con la cuenta CLI disponible.
 
 ## Generación automática y visibilidad
 
