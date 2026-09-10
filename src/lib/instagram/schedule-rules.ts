@@ -33,12 +33,12 @@ function slotsFrom(firstTime: string, count = INSTAGRAM_STORY_SLOTS_PER_DAY): In
 
 export const INSTAGRAM_STORY_DAY_RULES: InstagramStoryDayRule[] = [
   { isoWeekday: 1, label: 'Lunes', target: '20:00', window: '19:30–20:00', slots: slotsFrom('19:30') },
-  { isoWeekday: 2, label: 'Martes', target: '20:00', window: '19:30–20:00', slots: slotsFrom('19:30') },
-  { isoWeekday: 3, label: 'Miércoles', target: '19:30', window: '11:30 / 12:30 · Catálogo 19:30', slots: catalogDay('19:30') },
+  { isoWeekday: 2, label: 'Martes', target: '20:00', window: '11:30 / 12:30 · Catálogo 20:00', slots: catalogDay('20:00') },
+  { isoWeekday: 3, label: 'Miércoles', target: '20:00', window: '19:30–20:00', slots: slotsFrom('19:30') },
   { isoWeekday: 4, label: 'Jueves', target: '18:30', window: '18:00–18:30', slots: slotsFrom('18:00') },
   { isoWeekday: 5, label: 'Viernes', target: '20:00', window: '11:30 / 12:30 · Catálogo 20:00', slots: catalogDay('20:00') },
   { isoWeekday: 6, label: 'Sábado', target: '19:00', window: '18:30–19:00', slots: slotsFrom('18:30') },
-  { isoWeekday: 7, label: 'Domingo', target: '20:00', window: '11:30 / 12:30 · Catálogo 20:00', slots: catalogDay('20:00') },
+  { isoWeekday: 7, label: 'Domingo', target: '20:00', window: '19:30–20:00', slots: slotsFrom('19:30') },
 ]
 
 function catalogDay(time: string): InstagramStorySlotRule[] {

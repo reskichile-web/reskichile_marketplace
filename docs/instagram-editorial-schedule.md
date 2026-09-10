@@ -6,12 +6,12 @@ de catálogo (intro y una o dos láminas) cuenta como un bloque, no como una ima
 | Día | Historias individuales | Reserva de catálogo |
 | --- | --- | --- |
 | Lunes | 19:30, 19:45, 20:00 | — |
-| Martes | 19:30, 19:45, 20:00 | — |
-| Miércoles | 11:30, 12:30 | 19:30 |
+| Martes | 11:30, 12:30 | 20:00 |
+| Miércoles | 19:30, 19:45, 20:00 | — |
 | Jueves | 18:00, 18:15, 18:30 | — |
 | Viernes | 11:30, 12:30 | 20:00 |
 | Sábado | 18:30, 18:45, 19:00 | — |
-| Domingo | 11:30, 12:30 | 20:00 |
+| Domingo | 19:30, 19:45, 20:00 | — |
 
 ## Estado y alcance
 
@@ -27,7 +27,9 @@ integración. Los cupos asignables viven en `instagram_story_schedule_rules`.
 Verificación de activación: el endpoint autenticado del catálogo respondió
 HTTP 200 con `state: idle` fuera de su ventana; sin autenticación responde 401.
 Se conservaron las 74 publicaciones históricas y las seis capturas pendientes.
-La primera tanda prevista es viernes 11/09: preparar 19:00, publicar 20:00.
+La primera tanda prevista es viernes 11/09: preparar 19:00, publicar 20:00. Desde
+el 10/09 las tandas quedan fijadas en martes y viernes, los dos días más
+separados del calendario semanal.
 No se enviaron historias de prueba. El minuto efectivo depende del plan Vercel,
 como se detalla abajo; no se pudo consultar el plan con la cuenta CLI disponible.
 
@@ -35,9 +37,8 @@ como se detalla abajo; no se pudo consultar el plan con la cuenta CLI disponible
 
 | Día | Generar | Publicar |
 | --- | --- | --- |
-| Miércoles | 18:30 | 19:30 |
+| Martes | 19:00 | 20:00 |
 | Viernes | 19:00 | 20:00 |
-| Domingo | 19:00 | 20:00 |
 
 `/api/cron/instagram-catalog/[tick]` usa el mismo `CRON_SECRET` que las historias
 individuales. La tanda está habilitada por configuración versionada únicamente

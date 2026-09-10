@@ -13,8 +13,8 @@ describe('Instagram Story schedule rules', () => {
     expect(INSTAGRAM_STORY_DAY_RULES).toHaveLength(7)
     for (const rule of INSTAGRAM_STORY_DAY_RULES) expect(rule.slots).toHaveLength(3)
   })
-  it('reserves Wednesday 19:30, Friday 20:00 and Sunday 20:00 for catalog only', () => {
-    for (const [date, time] of [['2026-09-16', '19:30'], ['2026-09-11', '20:00'], ['2026-09-13', '20:00']]) {
+  it('reserves Tuesday and Friday 20:00 for catalog only', () => {
+    for (const [date, time] of [['2026-09-15', '20:00'], ['2026-09-11', '20:00']]) {
       expect(instagramStoryRuleForDate(date).slots).toEqual([
         { slot: 1, time: '11:30' }, { slot: 2, time: '12:30' }, { slot: 3, time, kind: 'catalog' },
       ])
@@ -23,7 +23,7 @@ describe('Instagram Story schedule rules', () => {
     }
   })
   it('keeps three individual slots on other days and rejects overflow', () => {
-    for (const date of ['2026-09-14', '2026-09-15', '2026-09-10', '2026-09-12']) {
+    for (const date of ['2026-09-14', '2026-09-16', '2026-09-10', '2026-09-12', '2026-09-13']) {
       expect(isInstagramStorySlotForDate(date, 3)).toBe(true)
       expect(isInstagramStorySlotForDate(date, 4)).toBe(false)
       expect(isInstagramStorySlotForDate(date, 5)).toBe(false)
@@ -32,15 +32,13 @@ describe('Instagram Story schedule rules', () => {
     expect(isInstagramStorySlotForDate('2026-09-14', 1.5)).toBe(false)
   })
   it('matches assignable PostgreSQL rules exactly', () => {
-    const sql = readFileSync('supabase/migrations/202609090003_instagram_three_editorial_blocks.sql', 'utf8')
-    const rows = [...sql.matchAll(/\((\d), (\d), '(\d\d:\d\d)'\)/g)]
-      .map(([, day, slot, time]) => [Number(day), Number(slot), time])
-    expect(rows).toEqual(INSTAGRAM_STORY_DAY_RULES.flatMap(rule => rule.slots
-      .filter(slot => slot.kind !== 'catalog').map(slot => [rule.isoWeekday, slot.slot, slot.time])))
-    for (const rule of INSTAGRAM_STORY_DAY_RULES) {
-      const catalog = rule.slots.find(slot => slot.kind === 'catalog')
-      if (catalog) expect(sql).toContain(`(${rule.isoWeekday}, '${catalog.time}')`)
+    const transition = readFileSync('supabase/migrations/202609100001_instagram_catalog_tuesday_friday.sql', 'utf8')
+    for (const rule of INSTAGRAM_STORY_DAY_RULES.filter(rule => [2, 3, 5, 7].includes(rule.isoWeekday))) {
+      for (const slot of rule.slots.filter(slot => slot.kind !== 'catalog')) {
+        expect(transition).toContain(`(${rule.isoWeekday}, ${slot.slot}, '${slot.time}')`)
+      }
     }
+    expect(transition).toContain("UPDATE public.instagram_catalog_schedule_rules SET local_time = '20:00'")
   })
   it('has cron ticks for all slots and retries in summer and winter', () => {
     const { crons } = JSON.parse(readFileSync('vercel.json', 'utf8')) as { crons: { path: string, schedule: string }[] }

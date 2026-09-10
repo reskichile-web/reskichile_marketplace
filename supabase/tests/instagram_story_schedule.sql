@@ -53,7 +53,7 @@ SELECT 1 / CASE WHEN COUNT(*) = 3 THEN 1 ELSE 0 END
 FROM scheduled_results
 WHERE scheduled_local_date = pg_temp.schedule_start();
 
-SELECT 1 / CASE WHEN COUNT(*) = 3 THEN 1 ELSE 0 END
+SELECT 1 / CASE WHEN COUNT(*) = 2 THEN 1 ELSE 0 END
 FROM scheduled_results
 WHERE scheduled_local_date = (pg_temp.schedule_start() + 1);
 
@@ -300,27 +300,27 @@ SELECT 1 / CASE WHEN
   )
   THEN 1 ELSE 0 END;
 
--- There are 18 individual slots + 3 reserved catalog blocks per week.
-SELECT 1 / CASE WHEN COUNT(*) = 18 THEN 1 ELSE 0 END
+-- There are 19 individual slots + 2 reserved catalog blocks per week.
+SELECT 1 / CASE WHEN COUNT(*) = 19 THEN 1 ELSE 0 END
 FROM public.instagram_story_schedule_rules;
-SELECT 1 / CASE WHEN COUNT(*) = 3 THEN 1 ELSE 0 END
+SELECT 1 / CASE WHEN COUNT(*) = 2 THEN 1 ELSE 0 END
 FROM public.instagram_catalog_schedule_rules;
 
 -- Chile daylight saving is resolved by PostgreSQL, never a fixed UTC offset.
 SELECT 1 / CASE WHEN
-  public.instagram_story_slot_time('2027-07-14', 1::SMALLINT) = TIMESTAMPTZ '2027-07-14 15:30:00+00'
-  AND public.instagram_story_slot_time('2027-01-13', 1::SMALLINT) = TIMESTAMPTZ '2027-01-13 14:30:00+00'
+  public.instagram_story_slot_time('2027-07-14', 1::SMALLINT) = TIMESTAMPTZ '2027-07-14 23:30:00+00'
+  AND public.instagram_story_slot_time('2027-01-13', 1::SMALLINT) = TIMESTAMPTZ '2027-01-13 22:30:00+00'
   THEN 1 ELSE 0 END;
 
 DO $$
 DECLARE
   v_capture UUID;
-  v_start DATE := pg_temp.schedule_start() + 2;
+  v_start DATE := pg_temp.schedule_start();
 BEGIN
   SELECT id INTO v_capture FROM public.instagram_story_captures
   WHERE product_id = '94000000-0000-4000-8000-000000000006';
   BEGIN
-    PERFORM public.instagram_move_capture_schedule(v_capture, v_start, 3::SMALLINT);
+    PERFORM public.instagram_move_capture_schedule(v_capture, v_start + 1, 3::SMALLINT);
     RAISE EXCEPTION 'reserved catalog slot was accepted';
   EXCEPTION WHEN invalid_parameter_value THEN NULL;
   END;
@@ -332,11 +332,11 @@ BEGIN
 END;
 $$;
 
--- Automatic allocation fills exactly two Wednesday daytime slots, then spills
--- to Thursday. A completed publication continues occupying its editorial slot.
+-- Automatic allocation fills three Monday slots, then spills to Tuesday.
+-- A completed publication continues occupying its editorial slot.
 DO $$
 DECLARE
-  v_start DATE := pg_temp.schedule_start() + 2;
+  v_start DATE := pg_temp.schedule_start();
   v_capture UUID;
   v_result RECORD;
   v_index INTEGER := 0;
@@ -348,12 +348,12 @@ BEGIN
     PERFORM public.instagram_unschedule_capture(v_capture);
     SELECT * INTO v_result FROM public.instagram_schedule_capture_next(v_capture, v_start, 'manual');
     v_index := v_index + 1;
-    IF v_index <= 2 THEN
+    IF v_index <= 3 THEN
       IF v_result.scheduled_local_date <> v_start OR v_result.scheduled_slot <> v_index THEN
         RAISE EXCEPTION 'wrong daytime allocation';
       END IF;
     ELSIF v_result.scheduled_local_date <> v_start + 1 OR v_result.scheduled_slot <> 1 THEN
-      RAISE EXCEPTION 'did not spill to Thursday after two products';
+      RAISE EXCEPTION 'did not spill to Tuesday after three products';
     END IF;
   END LOOP;
 

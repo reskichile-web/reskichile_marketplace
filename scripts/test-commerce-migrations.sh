@@ -66,7 +66,8 @@ for migration in \
   202609090002_admin_products_multi_filters.sql \
   202609090003_instagram_three_editorial_blocks.sql \
   202609090004_instagram_catalog_rotation.sql \
-  202609090005_instagram_catalog_batches.sql
+  202609090005_instagram_catalog_batches.sql \
+  202609100001_instagram_catalog_tuesday_friday.sql
 do
   if [[ "$migration" == "202609090003_instagram_three_editorial_blocks.sql" ]]; then
     psql -v ON_ERROR_STOP=1 -d "$test_database" \

@@ -28,12 +28,10 @@ BEGIN
   END;
   PERFORM public.instagram_save_catalog_batch('2026-09-11', (b->>'lock_token')::uuid, 'published', jsonb_set(sent, '{0,publishedAt}', '"2026-09-11T23:00:01Z"'), NOW(), 1, NULL, TRUE);
   IF public.instagram_claim_catalog_batch('2026-09-11 23:15:00+00') IS NOT NULL THEN RAISE EXCEPTION 'published batch claimed twice'; END IF;
-  b := public.instagram_claim_catalog_batch('2026-09-13 22:00:00+00');
-  IF b IS NULL OR (b->>'scheduled_for')::timestamptz <> '2026-09-13 23:00:00+00' THEN RAISE EXCEPTION 'Sunday summer schedule'; END IF;
-  b := public.instagram_claim_catalog_batch('2026-09-16 21:30:00+00');
-  IF b IS NULL OR (b->>'scheduled_for')::timestamptz <> '2026-09-16 22:30:00+00' THEN RAISE EXCEPTION 'Wednesday summer schedule'; END IF;
-  b := public.instagram_claim_catalog_batch('2027-07-14 22:30:00+00');
-  IF b IS NULL OR (b->>'scheduled_for')::timestamptz <> '2027-07-14 23:30:00+00' THEN RAISE EXCEPTION 'Wednesday winter schedule'; END IF;
+  b := public.instagram_claim_catalog_batch('2026-09-15 22:00:00+00');
+  IF b IS NULL OR (b->>'scheduled_for')::timestamptz <> '2026-09-15 23:00:00+00' THEN RAISE EXCEPTION 'Tuesday summer schedule'; END IF;
+  b := public.instagram_claim_catalog_batch('2027-07-13 23:00:00+00');
+  IF b IS NULL OR (b->>'scheduled_for')::timestamptz <> '2027-07-14 00:00:00+00' THEN RAISE EXCEPTION 'Tuesday winter schedule'; END IF;
   IF public.instagram_claim_catalog_batch('2027-07-15 23:30:00+00') IS NOT NULL THEN RAISE EXCEPTION 'wrong weekday'; END IF;
   IF (SELECT status FROM public.instagram_catalog_batches WHERE local_date = '2027-07-14') <> 'failed' THEN RAISE EXCEPTION 'missed batch invisible'; END IF;
   INSERT INTO public.instagram_catalog_batches(local_date, scheduled_for, prepare_at, status, generated_at, slides)
