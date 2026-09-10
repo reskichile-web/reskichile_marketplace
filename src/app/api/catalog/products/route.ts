@@ -12,10 +12,20 @@ export async function GET(request: NextRequest) {
   const offset = Number.isFinite(rawOffset) && rawOffset >= 0
     ? Math.min(Math.floor(rawOffset), 10_000)
     : 0
+  const rawLimit = Number(request.nextUrl.searchParams.get('limit') || '24')
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0
+    ? Math.min(Math.floor(rawLimit), 24)
+    : 24
 
   try {
     const filters = parseCatalogFilters(request.nextUrl.searchParams)
-    const page = await fetchCatalogProductPage(createPublicServerClient(), filters, offset)
+    const page = await fetchCatalogProductPage(
+      createPublicServerClient(),
+      filters,
+      offset,
+      undefined,
+      limit,
+    )
 
     return NextResponse.json(page, { headers: CACHE_HEADERS })
   } catch {

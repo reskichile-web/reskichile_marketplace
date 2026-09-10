@@ -5,8 +5,8 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
 import { PRODUCT_TYPES, CONDITIONS, PRODUCT_ATTRIBUTES, formatAttributeValue } from '@/lib/constants'
+import type { CatalogProduct, CatalogSearchMode } from '@/lib/catalog'
 
 interface SearchResult {
   id: string
@@ -19,7 +19,11 @@ interface SearchResult {
   region: string
   attributes: Record<string, unknown> | null
   image_url: string | null
-  rank: number
+}
+
+interface SearchResponse {
+  products?: CatalogProduct[]
+  searchMode?: CatalogSearchMode | null
 }
 
 // Key attributes worth surfacing on a result card (max 2), with labels
@@ -46,7 +50,7 @@ export default function SearchBar() {
   const [mounted, setMounted] = useState(false)
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
-  const [approximate, setApproximate] = useState(false)
+  const [searchMode, setSearchMode] = useState<CatalogSearchMode | null>(null)
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -58,12 +62,13 @@ export default function SearchBar() {
     if (expanded && inputRef.current) inputRef.current.focus()
   }, [expanded])
 
-  // Debounced live search. Strict first (every word must match); if that
-  // returns nothing, fall back to relaxed so the user always sees the
-  // closest available products.
+  // Debounced preview powered by the exact same relevance and fallback rules
+  // as the full catalog results page.
   useEffect(() => {
+    const id = ++requestId.current
     const q = query.trim()
-    if (q.length < 2) {
+    setActiveIndex(-1)
+    if (q.length < 1) {
       setResults([])
       setOpen(false)
       setSearching(false)
@@ -71,31 +76,45 @@ export default function SearchBar() {
     }
     setSearching(true)
     setOpen(true) // dropdown opens immediately with a minimal spinner
-    const id = ++requestId.current
     const timer = setTimeout(async () => {
-      const supabase = createClient()
-      let approx = false
-      let { data } = await supabase.rpc('search_products', { q, max_results: 8, relaxed: false })
-      if (!data || data.length === 0) {
-        const fallback = await supabase.rpc('search_products', { q, max_results: 8, relaxed: true })
-        data = fallback.data
-        approx = true
+      try {
+        const params = new URLSearchParams({ q, sort: 'relevance', limit: '8' })
+        const response = await fetch(`/api/catalog/products?${params.toString()}`, {
+          headers: { Accept: 'application/json' },
+        })
+        const data = await response.json() as SearchResponse
+        if (!response.ok || !Array.isArray(data.products)) throw new Error('search_failed')
+        if (id !== requestId.current) return
+
+        setResults(data.products.slice(0, 8).map(product => ({
+          ...product,
+          condition: product.condition || '',
+          region: product.region || '',
+          image_url: [...(product.product_images || [])]
+            .sort((left, right) => left.order - right.order)[0]?.url || null,
+        })))
+        setSearchMode(data.searchMode || null)
+      } catch {
+        if (id !== requestId.current) return
+        setResults([])
+        setSearchMode(null)
+      } finally {
+        if (id !== requestId.current) return
+        setOpen(true)
+        setActiveIndex(-1)
+        setSearching(false)
       }
-      if (id !== requestId.current) return // stale response
-      setResults((data as SearchResult[]) || [])
-      setApproximate(approx && !!data?.length)
-      setOpen(true)
-      setActiveIndex(-1)
-      setSearching(false)
     }, 250)
     return () => clearTimeout(timer)
   }, [query])
 
   const close = useCallback(() => {
+    requestId.current += 1
     setOpen(false)
     setExpanded(false)
     setQuery('')
     setResults([])
+    setSearchMode(null)
     setActiveIndex(-1)
   }, [])
 
@@ -104,7 +123,24 @@ export default function SearchBar() {
     close()
   }
 
+  function resultsHref() {
+    const q = query.replace(/\s+/g, ' ').trim()
+    return q ? `/catalogo?q=${encodeURIComponent(q)}` : '/catalogo'
+  }
+
+  function showAllResults() {
+    const href = resultsHref()
+    if (href === '/catalogo') return
+    router.push(href)
+    close()
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && activeIndex < 0) {
+      e.preventDefault()
+      showAllResults()
+      return
+    }
     if (!open || results.length === 0) {
       if (e.key === 'Escape') close()
       return
@@ -117,7 +153,7 @@ export default function SearchBar() {
       setActiveIndex(i => (i - 1 + results.length) % results.length)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      go(results[activeIndex >= 0 ? activeIndex : 0])
+      go(results[activeIndex])
     } else if (e.key === 'Escape') {
       close()
     }
@@ -132,15 +168,17 @@ export default function SearchBar() {
       ) : results.length === 0 ? (
         <div className="px-4 py-6 text-center">
           <p className="text-sm text-gray-500">Sin resultados para «{query.trim()}»</p>
-          <Link href="/catalogo" onClick={close} className="inline-block mt-2 text-xs text-brand-500 hover:underline">
-            Explorar el catálogo completo
+          <Link href={resultsHref()} onClick={close} className="inline-block mt-2 text-xs text-brand-500 hover:underline">
+            Ver resultados en el catálogo
           </Link>
         </div>
       ) : (
         <>
-          {approximate && (
+          {searchMode && searchMode !== 'exact' && (
             <p className="px-4 pt-2.5 pb-1 text-[11px] text-gray-400">
-              No hay coincidencias exactas — esto es lo más parecido:
+              {searchMode === 'fallback'
+                ? 'No hubo coincidencias — quizás te interese:'
+                : 'No hay coincidencias exactas — esto es lo más parecido:'}
             </p>
           )}
           <ul className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
@@ -174,9 +212,11 @@ export default function SearchBar() {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{title}</p>
                       <p className="text-xs text-gray-400 truncate">
-                        {PRODUCT_TYPES[r.product_type] || r.product_type}
-                        {' · '}{CONDITIONS[r.condition] || r.condition}
-                        {' · '}{r.region}
+                        {[
+                          PRODUCT_TYPES[r.product_type] || r.product_type,
+                          CONDITIONS[r.condition] || r.condition,
+                          r.region,
+                        ].filter(Boolean).join(' · ')}
                       </p>
                       {attrLine && <p className="text-[11px] text-gray-400 truncate">{attrLine}</p>}
                     </div>
@@ -189,11 +229,11 @@ export default function SearchBar() {
             })}
           </ul>
           <Link
-            href="/catalogo"
+            href={resultsHref()}
             onClick={close}
             className="block px-4 py-2.5 text-center text-xs font-medium text-brand-500 hover:bg-brand-50 border-t border-gray-100 transition-colors"
           >
-            Ver catálogo completo
+            Ver todos los resultados para “{query.trim()}”
           </Link>
         </>
       )}
@@ -217,12 +257,12 @@ export default function SearchBar() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => { if (results.length || query.trim().length >= 2) setOpen(true) }}
+            onFocus={() => { if (results.length || query.trim().length >= 1) setOpen(true) }}
             placeholder="Buscar marca, modelo, talla, tipo..."
             className="w-full bg-gray-100 border-0 rounded-full pl-10 pr-4 py-2.5 text-sm font-nav focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:bg-white transition-colors"
           />
         </div>
-        {open && query.trim().length >= 2 && (
+        {open && query.trim().length >= 1 && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
             <div className="absolute top-full left-0 right-0 mt-2 z-50">
@@ -269,7 +309,7 @@ export default function SearchBar() {
                 </svg>
               </button>
             </div>
-            {open && query.trim().length >= 2 && (
+            {open && query.trim().length >= 1 && (
               <div className="mt-2">
                 {resultsPanel}
               </div>

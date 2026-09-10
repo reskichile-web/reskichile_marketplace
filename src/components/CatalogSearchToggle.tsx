@@ -37,7 +37,7 @@ export default function CatalogSearchToggle({ defaultValue }: { defaultValue?: s
           >
             <input
               ref={inputRef}
-              name="brand"
+              name="q"
               type="text"
               defaultValue={defaultValue}
               placeholder="Marca, modelo..."

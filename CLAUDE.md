@@ -115,14 +115,14 @@ token, marks the payment `approved`/`rejected`, and on success moves the product
 
 ### Product search
 
-`SearchBar` (header) does live search via the `search_products(q, max_results, relaxed)`
-RPC: pg_trgm + unaccent over `products.search_text` (normalized concat of brand, model,
-type synonyms ES/EN, condition, description, attributes, location — maintained by the
-`products_search_text_sync` trigger). Strict mode requires every word to match
-(substring or fuzzy); the frontend falls back to `relaxed: true` so something always
-shows. Brand/model/type matches outrank description-only matches. SECURITY INVOKER —
-anon only sees approved products. Type synonyms live in `product_type_synonyms()` (SQL);
-update it when adding a product type.
+`SearchBar` and `/catalogo?q=...` use the same search ranking in `src/lib/catalog.ts`.
+It normalizes accents and punctuation, searches brand/model/category synonyms,
+description, location and structured attributes, tolerates small spelling errors, and
+ranks primary brand/model/type matches first. Queries with no meaningful match fall
+back to the recent approved catalog so search never dead-ends. Results retain the
+normal catalog filters, sort and pagination. Keep `PRODUCT_TYPE_SEARCH_TERMS` in sync
+when adding a product type. The historical `search_products` RPC remains in the
+database but is no longer the storefront search entry point.
 
 ### Observability (first-party analytics)
 

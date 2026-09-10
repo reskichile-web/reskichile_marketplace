@@ -4,23 +4,24 @@ import { unstable_cache } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   CATALOG_PAGE_SIZE,
-  filterCatalogMetadata,
-  hasCatalogAttributeFilters,
-  pageCatalogMetadata,
+  requiresCatalogMetadata,
+  resolveCatalogMetadata,
   type CatalogFilters,
   type CatalogMetadata,
   type CatalogProduct,
+  type CatalogSearchMode,
 } from '@/lib/catalog'
 import { createPublicServerClient } from '@/lib/supabase/server'
 
-const CATALOG_CARD_SELECT = 'id, slug, product_type, brand, model, price, previous_price, condition, attributes, product_images(url, order)'
-const CATALOG_METADATA_SELECT = 'id, product_type, condition, region, brand, price, previous_price, attributes, created_at, catalog_bumped_at'
+const CATALOG_CARD_SELECT = 'id, slug, product_type, brand, model, price, previous_price, condition, region, attributes, product_images(url, order)'
+const CATALOG_METADATA_SELECT = 'id, product_type, condition, region, comuna, brand, model, description, price, previous_price, attributes, created_at, catalog_bumped_at'
 
 export interface CatalogProductPage {
   products: CatalogProduct[]
   totalCount: number
   nextOffset: number
   hasMore: boolean
+  searchMode: CatalogSearchMode | null
 }
 
 async function loadCatalogMetadata(): Promise<CatalogMetadata[]> {
@@ -39,7 +40,7 @@ async function loadCatalogMetadata(): Promise<CatalogMetadata[]> {
 // database round trip for every click.
 export const fetchCatalogMetadata = unstable_cache(
   loadCatalogMetadata,
-  ['catalog-filter-metadata-v1'],
+  ['catalog-filter-metadata-v2'],
   { revalidate: 30 },
 )
 
@@ -47,6 +48,7 @@ async function fetchDirectCatalogPage(
   supabase: SupabaseClient,
   filters: CatalogFilters,
   offset: number,
+  pageSize: number,
 ): Promise<CatalogProductPage> {
   let query = supabase
     .from('products')
@@ -74,7 +76,7 @@ async function fetchDirectCatalogPage(
     .order('id', { ascending: true })
     .order('order', { referencedTable: 'product_images', ascending: true })
     .limit(2, { referencedTable: 'product_images' })
-    .range(offset, offset + CATALOG_PAGE_SIZE - 1)
+    .range(offset, offset + pageSize - 1)
 
   if (error) throw new Error(`catalog_products_failed:${error.code || 'database_error'}`)
 
@@ -87,25 +89,28 @@ async function fetchDirectCatalogPage(
     totalCount,
     nextOffset,
     hasMore: nextOffset < totalCount,
+    searchMode: null,
   }
 }
 
-async function fetchAttributeFilteredCatalogPage(
+async function fetchMetadataCatalogPage(
   supabase: SupabaseClient,
   filters: CatalogFilters,
   offset: number,
   metadata: CatalogMetadata[],
+  pageSize: number,
 ): Promise<CatalogProductPage> {
-  const filtered = filterCatalogMetadata(metadata, filters)
-  const page = pageCatalogMetadata(metadata, filters, offset)
+  const resolved = resolveCatalogMetadata(metadata, filters)
+  const page = resolved.products.slice(offset, offset + pageSize)
   const ids = page.map(product => product.id)
 
   if (ids.length === 0) {
     return {
       products: [],
-      totalCount: filtered.length,
+      totalCount: resolved.products.length,
       nextOffset: offset,
       hasMore: false,
+      searchMode: resolved.searchMode,
     }
   }
 
@@ -129,9 +134,10 @@ async function fetchAttributeFilteredCatalogPage(
 
   return {
     products,
-    totalCount: filtered.length,
+    totalCount: resolved.products.length,
     nextOffset,
-    hasMore: nextOffset < filtered.length,
+    hasMore: nextOffset < resolved.products.length,
+    searchMode: resolved.searchMode,
   }
 }
 
@@ -140,13 +146,15 @@ export async function fetchCatalogProductPage(
   filters: CatalogFilters,
   requestedOffset = 0,
   existingMetadata?: CatalogMetadata[],
+  requestedPageSize = CATALOG_PAGE_SIZE,
 ): Promise<CatalogProductPage> {
   const offset = Math.max(0, Math.floor(requestedOffset))
+  const pageSize = Math.max(1, Math.min(CATALOG_PAGE_SIZE, Math.floor(requestedPageSize)))
 
-  if (!hasCatalogAttributeFilters(filters)) {
-    return fetchDirectCatalogPage(supabase, filters, offset)
+  if (!requiresCatalogMetadata(filters)) {
+    return fetchDirectCatalogPage(supabase, filters, offset, pageSize)
   }
 
   const metadata = existingMetadata || await fetchCatalogMetadata()
-  return fetchAttributeFilteredCatalogPage(supabase, filters, offset, metadata)
+  return fetchMetadataCatalogPage(supabase, filters, offset, metadata, pageSize)
 }

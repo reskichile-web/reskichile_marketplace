@@ -6,12 +6,13 @@ import CatalogSidebar from '@/components/CatalogSidebar'
 import CatalogMobileFilterButton from '@/components/CatalogMobileFilterButton'
 import CatalogSortSelect from '@/components/CatalogSortSelect'
 import CatalogProductGrid from '@/components/CatalogProductGrid'
+import CatalogSearchForm from '@/components/CatalogSearchForm'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
 import EmptyState from '@/components/illustrations/EmptyState'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { computeSkiCounts } from '@/lib/ski-filters'
 import { computeBootCounts } from '@/lib/boot-filters'
-import { hasCatalogAttributeFilters, parseCatalogFilters } from '@/lib/catalog'
+import { parseCatalogFilters, requiresCatalogMetadata } from '@/lib/catalog'
 import { fetchCatalogMetadata, fetchCatalogProductPage } from '@/lib/catalog-server'
 import { getRecentlyPublishedProductIds } from '@/lib/recent-products'
 
@@ -23,6 +24,7 @@ export const metadata: Metadata = {
 interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined> & {
     product_type?: string
+    q?: string
     condition?: string
     region?: string
     brand?: string
@@ -50,6 +52,7 @@ export default async function CatalogPage({ searchParams }: Props) {
   const supabase = createPublicServerClient()
   const filters = parseCatalogFilters(queryParams)
   const {
+    query,
     types,
     conditions,
     regions,
@@ -70,7 +73,7 @@ export default async function CatalogPage({ searchParams }: Props) {
   } = filters
 
   const metadataPromise = fetchCatalogMetadata()
-  const productPagePromise = hasCatalogAttributeFilters(filters)
+  const productPagePromise = requiresCatalogMetadata(filters)
     ? metadataPromise.then(metadata => fetchCatalogProductPage(supabase, filters, 0, metadata))
     : fetchCatalogProductPage(supabase, filters)
   const [allProducts, productPage] = await Promise.all([
@@ -79,6 +82,7 @@ export default async function CatalogPage({ searchParams }: Props) {
   ])
   const products = productPage.products
   const totalCount = productPage.totalCount
+  const searchMode = productPage.searchMode
   const recentProductIds = [...getRecentlyPublishedProductIds(allProducts)]
 
   const conditionCounts: Record<string, number> = {}
@@ -110,6 +114,7 @@ export default async function CatalogPage({ searchParams }: Props) {
   )
 
   const hasFilters =
+    types.length > 0 ||
     conditions.length > 0 ||
     regions.length > 0 ||
     brands.length > 0 ||
@@ -129,10 +134,23 @@ export default async function CatalogPage({ searchParams }: Props) {
         genero.length > 0 ||
         !!bootBoa))
 
-  const title =
-    types.length === 1 && PRODUCT_TYPES[types[0]]
+  const title = query
+    ? `Resultados para “${query}”`
+    : types.length === 1 && PRODUCT_TYPES[types[0]]
       ? PRODUCT_TYPES[types[0]]
       : 'Catálogo'
+
+  const searchDescription = searchMode === 'approximate'
+    ? 'No hubo una coincidencia exacta. Te mostramos los productos más cercanos.'
+    : searchMode === 'fallback'
+      ? 'No encontramos una coincidencia, pero puede que alguno de estos equipos te sirva.'
+      : `${totalCount} ${totalCount === 1 ? 'producto encontrado' : 'productos encontrados'}.`
+
+  const clearFiltersParams = new URLSearchParams()
+  if (query) clearFiltersParams.set('q', query)
+  const clearFiltersHref = clearFiltersParams.toString()
+    ? `/catalogo?${clearFiltersParams.toString()}`
+    : '/catalogo'
 
   const incrementalParams = new URLSearchParams()
   for (const [key, value] of Object.entries(queryParams)) {
@@ -143,10 +161,11 @@ export default async function CatalogPage({ searchParams }: Props) {
   return (
     <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-4 md:pt-6 pb-24">
       <div className="pt-2 md:pt-4 mb-8 md:mb-10">
-        <h1 className="font-body font-black text-4xl md:text-5xl tracking-tight text-brand-400">{title}</h1>
+        <h1 className={`font-body font-black tracking-tight text-brand-400 ${query ? 'text-3xl md:text-5xl' : 'text-4xl md:text-5xl'}`}>{title}</h1>
         <p className="mt-2.5 max-w-2xl text-sm md:text-base text-gray-500 leading-relaxed">
-          Equipo de montaña usado, directo de quien lo usó.
+          {query ? searchDescription : 'Equipo de montaña usado, directo de quien lo usó.'}
         </p>
+        {query && <CatalogSearchForm initialQuery={query} />}
       </div>
 
       <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
@@ -228,7 +247,7 @@ export default async function CatalogPage({ searchParams }: Props) {
                   : 'Aún no hay productos publicados.'
               }
               actionLabel={hasFilters ? 'Limpiar filtros' : 'Publicar producto'}
-              actionHref={hasFilters ? '/catalogo' : '/vender'}
+              actionHref={hasFilters ? clearFiltersHref : '/vender'}
             />
           ) : (
             <CatalogProductGrid
