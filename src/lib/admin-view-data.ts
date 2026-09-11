@@ -148,6 +148,7 @@ export interface AdminProductListItem {
 export interface AdminProductsPageData extends AdminPageMeta {
   products: AdminProductListItem[]
   viewCounts: Record<string, number>
+  contactCounts?: Record<string, { whatsapp: number; chat: number }>
   facets: {
     statusCounts: Record<string, number>
     brands: string[]
@@ -241,9 +242,29 @@ export async function getAdminProductsPage(options: {
   const payload = asRecord(data, 'admin products')
   const products = (payload.products || []) as AdminProductListItem[]
   const totalCount = Number(payload.totalCount || 0)
+  const productIds = products.map(product => product.id)
+  const contactCounts: AdminProductsPageData['contactCounts'] = {}
+  if (productIds.length > 0) {
+    const { data: contactRows, error: contactError } = await client
+      .from('events')
+      .select('product_id, event_name')
+      .in('product_id', productIds)
+      .eq('event_type', 'click')
+      .in('event_name', ['whatsapp_contact', 'chat_contact'])
+
+    if (contactError) throwAdminReadError(contactError, 'admin product contact counts')
+    for (const row of contactRows || []) {
+      if (!row.product_id) continue
+      const counts = contactCounts[row.product_id] || { whatsapp: 0, chat: 0 }
+      if (row.event_name === 'whatsapp_contact') counts.whatsapp += 1
+      if (row.event_name === 'chat_contact') counts.chat += 1
+      contactCounts[row.product_id] = counts
+    }
+  }
   return {
     products,
     viewCounts: (payload.viewCounts || {}) as Record<string, number>,
+    contactCounts,
     facets: payload.facets as AdminProductsPageData['facets'],
     ...adminPageMeta(totalCount, offset, products.length),
   }

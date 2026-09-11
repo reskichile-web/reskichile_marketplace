@@ -331,6 +331,7 @@ function AdminMultiSelect({
 export default function AdminProductsClient({ initialData }: { initialData: AdminProductsPageData }) {
   const [products, setProducts] = useState<AdminProduct[]>(initialData.products)
   const [viewCounts, setViewCounts] = useState<Record<string, number>>(initialData.viewCounts)
+  const [contactCounts, setContactCounts] = useState(initialData.contactCounts || {})
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadError, setLoadError] = useState('')
@@ -390,6 +391,9 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
       setViewCounts(current => append
         ? { ...current, ...(data.viewCounts || {}) }
         : (data.viewCounts || {}))
+      setContactCounts(current => append
+        ? { ...current, ...(data.contactCounts || {}) }
+        : (data.contactCounts || {}))
       if (data.facets) {
         setStatusCounts(data.facets.statusCounts || {})
         setBrands(data.facets.brands || [])
@@ -792,6 +796,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
                 const hasReminderEmail = Boolean(
                   product.users?.email || product.anon_contact?.includes('@'),
                 )
+                const contacts = contactCounts[product.id]
 
                 return (
                   <React.Fragment key={product.id}>
@@ -813,6 +818,8 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
                           <div>
                             <span className="block text-[10px] font-semibold text-gray-500">
                               {new Date(product.created_at).toLocaleDateString('es-CL')} · {viewCounts[product.id] ?? 0} vistas
+                              {contacts?.whatsapp ? <span className="text-green-600"> · {contacts.whatsapp} contactos</span> : null}
+                              {contacts?.chat ? <span className="text-brand-600"> · {contacts.chat} mensajes</span> : null}
                             </span>
                             <span className="font-medium">{title}</span>
                             {detailLoadingId === product.id && (
