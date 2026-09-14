@@ -60,9 +60,9 @@ function ReskiMessageIcon({ className }: { className: string }) {
 
 function CompactShareActions({ product }: { product: ProductWithImages }) {
   return (
-    <div className="flex shrink-0 gap-1">
-      <ShareButton product={product} className="h-12 w-8" iconOnly />
-      <CopyLinkButton product={product} className="h-12 w-8" bare />
+    <div className="ml-1 flex shrink-0 gap-1 border-l border-gray-200 pl-2">
+      <ShareButton product={product} className="h-12 w-10" iconOnly />
+      <CopyLinkButton product={product} className="h-12 w-10" bare />
     </div>
   )
 }
@@ -502,17 +502,25 @@ export default function ProductDetailClient({ product, sellerHidePhone }: Props)
                 <button
                   onClick={handleContact}
                   disabled={contacting}
-                  className="pressable flex min-h-12 min-w-0 w-full flex-1 items-center justify-center gap-2 whitespace-normal bg-brand-400 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50 sm:h-12 sm:whitespace-nowrap sm:px-4 sm:text-sm"
+                  aria-label={contacting ? 'Conectando con WhatsApp' : 'Contactar al vendedor por WhatsApp'}
+                  className="pressable flex min-h-12 min-w-0 w-full flex-1 items-center justify-center gap-2 whitespace-normal bg-brand-400 px-3 py-2 text-xs font-medium text-white hover:bg-brand-500 disabled:opacity-50 sm:h-12 sm:whitespace-nowrap sm:text-sm"
                 >
                   <WhatsAppIcon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                  {contacting ? 'Conectando…' : 'Contactar WhatsApp'}
+                  {contacting ? (
+                    'Conectando…'
+                  ) : (
+                    <>
+                      <span className="sm:hidden">Contactar por WhatsApp</span>
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </>
+                  )}
                 </button>
                 )}
 
                 <button
                   onClick={handleChat}
                   disabled={chatOpening}
-                  className="pressable flex min-h-12 min-w-0 w-full flex-1 items-center justify-center gap-2 whitespace-normal border-2 border-brand-400 bg-white px-3 py-2 text-xs font-medium text-brand-500 hover:bg-brand-50 disabled:opacity-50 sm:h-12 sm:whitespace-nowrap sm:px-4 sm:text-sm"
+                  className="pressable flex min-h-12 min-w-0 w-full flex-1 items-center justify-center gap-2 whitespace-normal border-2 border-brand-400 bg-white px-3 py-2 text-xs font-medium text-brand-500 hover:bg-brand-50 disabled:opacity-50 sm:h-12 sm:whitespace-nowrap sm:text-sm"
                 >
                   <ReskiMessageIcon className="h-4 w-4 shrink-0 fill-current sm:h-5 sm:w-5" />
                   {chatOpening ? 'Abriendo…' : 'Enviar mensaje'}
