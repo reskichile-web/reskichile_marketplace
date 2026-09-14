@@ -73,7 +73,7 @@ describe('Instagram Story admin UI', () => {
       products={[preparedProduct]} publications={[]} dates={['2026-09-11']}
       catalogAvailable catalogEnabled
       today="2026-09-10" currentTime="10:00" historyDays={0} maxHistoryDays={18}
-      loading={false} availableSlots={[]} onOpen={vi.fn()}
+      loading={false} availableSlots={[]} occupiedSlotKeys={[]} onOpen={vi.fn()}
       onChanged={vi.fn(async () => undefined)} onLoadEarlier={vi.fn()} onReturnToToday={vi.fn()}
     />)
     expect(html).toContain('Catálogo trending')
@@ -154,6 +154,7 @@ describe('Instagram Story admin UI', () => {
         maxHistoryDays={0}
         loading={false}
         availableSlots={slots}
+        occupiedSlotKeys={[]}
         onOpen={vi.fn()}
         onChanged={vi.fn(async () => undefined)}
         onLoadEarlier={vi.fn()}
@@ -180,6 +181,7 @@ describe('Instagram Story admin UI', () => {
         maxHistoryDays={2}
         loading={false}
         availableSlots={[]}
+        occupiedSlotKeys={[]}
         onOpen={vi.fn()}
         onChanged={vi.fn(async () => undefined)}
         onLoadEarlier={vi.fn()}
@@ -191,5 +193,30 @@ describe('Instagram Story admin UI', () => {
     expect(html).toContain('Cron automático')
     expect(html).toContain('Publicada con éxito')
     expect(html).toContain('Meta confirmó a las')
+  })
+
+  it('does not offer an assignment control for an occupied capture hidden from the preparation queue', () => {
+    const html = renderToStaticMarkup(
+      <InstagramStoryCalendarTable
+        products={[preparedProduct]}
+        publications={[]}
+        dates={['2026-09-16']}
+        today="2026-09-14"
+        currentTime="12:00"
+        historyDays={0}
+        maxHistoryDays={0}
+        loading={false}
+        availableSlots={[]}
+        occupiedSlotKeys={['2026-09-16|2']}
+        onOpen={vi.fn()}
+        onChanged={vi.fn(async () => undefined)}
+        onLoadEarlier={vi.fn()}
+        onReturnToToday={vi.fn()}
+      />,
+    )
+
+    expect(html).toContain('Cupo ocupado')
+    expect(html).toContain('Cupo no disponible')
+    expect((html.match(/aria-label="Asignar Story/g) ?? []).length).toBe(2)
   })
 })

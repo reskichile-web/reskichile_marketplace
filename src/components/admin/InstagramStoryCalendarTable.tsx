@@ -38,6 +38,7 @@ interface Props {
   maxHistoryDays: number
   loading: boolean
   availableSlots: InstagramSlotOption[]
+  occupiedSlotKeys: string[]
   onOpen: (productId: string) => void
   onChanged: () => Promise<void>
   onLoadEarlier: () => void
@@ -62,6 +63,7 @@ export default function InstagramStoryCalendarTable({
   maxHistoryDays,
   loading,
   availableSlots,
+  occupiedSlotKeys,
   onOpen,
   onChanged,
   onLoadEarlier,
@@ -82,6 +84,7 @@ export default function InstagramStoryCalendarTable({
       publication,
     ]),
   )
+  const allOccupied = new Set(occupiedSlotKeys)
   const preparedUnscheduled = products.filter((product) => {
     const capture = product.capture
     return Boolean(
@@ -190,6 +193,7 @@ export default function InstagramStoryCalendarTable({
                 const product = occupied.get(key)
                 const publication = published.get(key)
                 const capture = product?.capture
+                const hiddenOccupancy = allOccupied.has(key) && !product && !publication
                 const catalogBatch = slot.kind === 'catalog' ? catalogBatches.find(batch => batch.localDate === localDate) : undefined
                 const generationOverdue = localDate < today || (localDate === today && currentTime > catalogPreparationTime(slot.time))
                 const state = product ? storyStatus(product) : null
@@ -237,6 +241,8 @@ export default function InstagramStoryCalendarTable({
                         </button>
                       ) : slot.kind === 'catalog' ? (
                         <CatalogBatchPreview batch={catalogBatch} />
+                      ) : hiddenOccupancy ? (
+                        <span className="text-xs font-bold uppercase tracking-wide text-amber-600">Cupo ocupado</span>
                       ) : slotPassed ? (
                         <span className="text-xs font-bold uppercase tracking-wide text-gray-300">Sin publicación registrada</span>
                       ) : (
@@ -252,6 +258,8 @@ export default function InstagramStoryCalendarTable({
                         </span>
                       ) : slot.kind === 'catalog' ? (
                         <CatalogBatchState batch={catalogBatch} overdue={generationOverdue} enabled={catalogEnabled} available={catalogAvailable} />
+                      ) : hiddenOccupancy ? (
+                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-amber-700">Agendada</span>
                       ) : state && (
                         <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide ${state.className}`}>{state.label}</span>
                       )}
@@ -287,6 +295,8 @@ export default function InstagramStoryCalendarTable({
                         </div>
                       ) : slot.kind === 'catalog' ? (
                         <CatalogBatchDetails batch={catalogBatch} time={slot.time} />
+                      ) : hiddenOccupancy ? (
+                        <span className="text-xs font-semibold text-amber-600">Cupo no disponible</span>
                       ) : slotPassed ? (
                         <span className="text-xs font-semibold text-gray-300">Sin publicación</span>
                       ) : (

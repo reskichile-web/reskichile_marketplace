@@ -50,11 +50,17 @@ export interface InstagramAdminPublication {
   scheduleSource: 'automatic' | 'manual' | null
 }
 
+export interface InstagramAdminOccupiedSlot {
+  localDate: string
+  slot: number
+}
+
 export interface InstagramAdminCalendarResponse {
   ok: true
   publishingEnabled: boolean
   products: InstagramAdminProduct[]
   publications: InstagramAdminPublication[]
+  occupiedSlots: InstagramAdminOccupiedSlot[]
   catalogBatches?: InstagramAdminCatalogBatch[]
   catalogEnabled?: boolean
   catalogAvailable?: boolean

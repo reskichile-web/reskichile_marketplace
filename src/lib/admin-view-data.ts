@@ -6,7 +6,7 @@ import {
   INSTAGRAM_STORY_CALENDAR_START_DATE,
 } from '@/lib/instagram/schedule-rules'
 import { getInstagramPublishingConfig } from '@/lib/instagram/publishing-config'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import {
   adminPageMeta,
   serializeAdminFacetValues,
@@ -309,15 +309,30 @@ export async function getAdminInstagramStories(options: {
   })
   if (error) throwAdminReadError(error, 'admin instagram stories')
   const payload = asRecord(data, 'admin instagram stories')
-  const catalog = await client.rpc('admin_instagram_catalog_batches', { p_history_start: historyStart })
+  const service = createServiceRoleClient()
+  const futureEnd = addLocalDays(today, 35)
+  const [catalog, occupied] = await Promise.all([
+    client.rpc('admin_instagram_catalog_batches', { p_history_start: historyStart }),
+    service
+      .from('instagram_story_captures')
+      .select('scheduled_local_date, scheduled_slot')
+      .gte('scheduled_local_date', historyStart)
+      .lte('scheduled_local_date', futureEnd),
+  ])
   // Allow an explicitly visible pre-migration state during a coordinated rollout.
   const missingCatalog = catalog.error && ['PGRST202', '42883'].includes(catalog.error.code)
   if (catalog.error && !missingCatalog) throwAdminReadError(catalog.error, 'admin instagram catalog')
+  if (occupied.error) throwAdminReadError(occupied.error, 'admin instagram occupied slots')
   return {
     ok: true,
     publishingEnabled: getInstagramPublishingConfig().enabled,
     products: (payload.products || []) as InstagramAdminCalendarResponse['products'],
     publications: (payload.publications || []) as InstagramAdminCalendarResponse['publications'],
+    occupiedSlots: (occupied.data || []).flatMap((row) => (
+      row.scheduled_local_date && row.scheduled_slot
+        ? [{ localDate: row.scheduled_local_date, slot: row.scheduled_slot }]
+        : []
+    )),
     catalogBatches: catalog.error ? [] : (catalog.data || []) as NonNullable<InstagramAdminCalendarResponse['catalogBatches']>,
     catalogAvailable: !catalog.error,
     catalogEnabled: isInstagramCatalogEnabled() && getInstagramPublishingConfig().enabled,

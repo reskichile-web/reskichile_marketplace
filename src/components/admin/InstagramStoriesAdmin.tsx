@@ -86,18 +86,21 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
     ),
     [today, visibleHistoryDays],
   )
-  const products = data?.products ?? []
+  const products = useMemo(() => data?.products ?? [], [data])
   const selectedProduct = selectedProductId
     ? products.find((product) => product.id === selectedProductId) || null
     : null
-  const occupiedKeys = products
-    .filter((product) => product.capture?.scheduledLocalDate && product.capture.scheduledSlot)
-    .map((product) => `${product.capture!.scheduledLocalDate}|${product.capture!.scheduledSlot}`)
-    .concat((data?.publications ?? [])
+  const occupiedKeys = useMemo(() => new Set([
+    ...products
+      .filter((product) => product.capture?.scheduledLocalDate && product.capture.scheduledSlot)
+      .map((product) => `${product.capture!.scheduledLocalDate}|${product.capture!.scheduledSlot}`),
+    ...(data?.publications ?? [])
       .filter((publication) => publication.scheduledLocalDate && publication.scheduledSlot)
-      .map((publication) => `${publication.scheduledLocalDate}|${publication.scheduledSlot}`))
+      .map((publication) => `${publication.scheduledLocalDate}|${publication.scheduledSlot}`),
+    ...(data?.occupiedSlots ?? [])
+      .map((slot) => `${slot.localDate}|${slot.slot}`),
+  ]), [data?.occupiedSlots, data?.publications, products])
   const availableSlots = useMemo(() => {
-    const occupied = new Set(occupiedKeys)
     return dates.flatMap((localDate) => {
       const rule = instagramStoryRuleForDate(localDate)
       return rule.slots.flatMap((slot): InstagramSlotOption[] => {
@@ -105,7 +108,7 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
         if (
           slot.kind === 'catalog'
           || !isInstagramStorySlotForDate(localDate, slot.slot)
-          || occupied.has(key)
+          || occupiedKeys.has(key)
           || localDate < today
           || (localDate === today && slot.time <= currentTime)
         ) return []
@@ -204,6 +207,7 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
             maxHistoryDays={maxHistoryDays}
             loading={loading}
             availableSlots={availableSlots}
+            occupiedSlotKeys={[...occupiedKeys]}
             onOpen={setSelectedProductId}
             onChanged={() => load()}
             onLoadEarlier={() => setHistoryDays((days) => (
