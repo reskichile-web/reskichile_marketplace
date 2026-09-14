@@ -390,7 +390,7 @@ export default function EditProductPage() {
     const oldPrice = Number(initialSnapshot?.form.price || form.price)
     const pricePatch = price < oldPrice
       ? { previous_price: oldPrice }
-      : price >= oldPrice ? { previous_price: null } : {}
+      : price > oldPrice ? { previous_price: null } : {}
 
     const { error: updateError } = await supabase.from('products').update({
       product_type: form.product_type,
