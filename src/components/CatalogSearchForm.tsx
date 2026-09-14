@@ -20,7 +20,7 @@ export default function CatalogSearchForm({ initialQuery }: { initialQuery: stri
   }
 
   return (
-    <form onSubmit={submit} role="search" className="relative w-full lg:max-w-xl">
+    <form onSubmit={submit} role="search" className="relative hidden w-full md:block lg:max-w-xl">
       <Search
         className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
         aria-hidden="true"

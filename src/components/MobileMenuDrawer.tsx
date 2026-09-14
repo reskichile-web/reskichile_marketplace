@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronRight } from 'lucide-react'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 import SellTagIcon from './SellTagIcon'
 
@@ -73,34 +74,47 @@ export default function MobileMenuDrawer({
                 </Link>
               )}
 
-              <Link
-                href="/vender"
-                onClick={onClose}
-                className="pressable mb-5 inline-flex w-full items-center justify-center gap-2 rounded-none bg-brand-500 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-brand-600"
-              >
-                <SellTagIcon className="h-4 w-4" />
-                Vender
-              </Link>
+              <div className="mb-5">
+                <p className="mb-2 font-nav text-sm font-light text-gray-500">
+                  ¿Tienes equipo que quieras vender?
+                </p>
+                <Link
+                  href="/vender"
+                  onClick={onClose}
+                  className="pressable inline-flex w-full items-center justify-center gap-2 bg-brand-500 py-3 text-center font-nav text-sm font-bold tracking-wide text-white transition-colors hover:bg-brand-600"
+                >
+                  <SellTagIcon className="h-4 w-4" />
+                  PUBLICAR
+                </Link>
+              </div>
 
               <nav className="border-t border-gray-100 pt-4" aria-label="Categorías de equipamiento">
                 <p className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-400">Categorías</p>
-                <div className="space-y-0.5">
-                  <Link href="/catalogo" onClick={onClose} className="block py-2 text-sm font-medium hover:text-brand-500">
-                    Todo
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+                  <Link
+                    href="/catalogo"
+                    onClick={onClose}
+                    className="group flex min-h-12 items-center justify-between px-4 py-3 font-nav text-base font-bold text-gray-900 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                  >
+                    <span>Todo</span>
+                    <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-brand-400" strokeWidth={1.5} aria-hidden="true" />
                   </Link>
                   {CATEGORIES.filter(category => showSkiRacks || category.key !== 'racks').map((category) => (
                     <Link
                       key={category.key}
                       href={category.href || `/catalogo?product_type=${category.key}`}
                       onClick={onClose}
-                      className={`relative flex items-center text-sm font-bold text-gray-600 hover:text-brand-500 ${category.key === 'racks' ? 'pb-2 pt-4' : 'py-2'}`}
+                      className="group flex min-h-12 items-center justify-between px-4 py-3 font-nav text-base font-light text-gray-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
                     >
-                      {category.label}
-                      {category.key === 'racks' && (
-                        <span className="absolute -top-0.5 left-0 rounded-sm bg-brand-400 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-wider text-white">
-                          Nuevo
-                        </span>
-                      )}
+                      <span className="flex items-center gap-2.5">
+                        {category.label}
+                        {category.key === 'racks' && (
+                          <span className="rounded-sm bg-brand-400 px-1.5 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider text-white">
+                            Nuevo
+                          </span>
+                        )}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-brand-400" strokeWidth={1.5} aria-hidden="true" />
                     </Link>
                   ))}
                 </div>
