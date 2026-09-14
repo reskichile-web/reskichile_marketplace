@@ -1,6 +1,7 @@
 import 'server-only'
 
 import type { InstagramAdminCalendarResponse } from '@/lib/instagram/admin-contracts'
+import type { InstagramStoryCaptureStatus } from '@/lib/instagram/contracts'
 import { isInstagramCatalogEnabled } from '@/lib/instagram/catalog-config'
 import {
   INSTAGRAM_STORY_CALENDAR_START_DATE,
@@ -291,6 +292,71 @@ function localDateDistance(startDate: string, endDate: string): number {
   return Math.max(0, Math.floor((end - start) / 86_400_000))
 }
 
+interface StoryLibraryRow {
+  id: string
+  product_id: string
+  status: string
+  jpeg_public_url: string | null
+  approved_at: string
+  generated_at: string | null
+  updated_at: string
+  scheduled_local_date: string | null
+  scheduled_slot: number | null
+  scheduled_for: string | null
+  schedule_source: 'automatic' | 'manual' | null
+  container_id: string | null
+  media_id: string | null
+  published_at: string | null
+  publication_count: number
+  last_published_at: string | null
+  attempts: number
+  last_error: string | null
+  products: {
+    id: string
+    brand: string
+    model: string | null
+    slug: string | null
+    product_type: string
+    price: number
+    product_images: { url: string; order: number }[]
+  } | null
+}
+
+function storyLibraryProduct(row: StoryLibraryRow): InstagramAdminCalendarResponse['products'][number] | null {
+  const product = row.products
+  if (!product) return null
+  const imageUrl = [...(product.product_images || [])]
+    .sort((left, right) => left.order - right.order)[0]?.url || null
+  return {
+    id: product.id,
+    title: [product.brand, product.model].filter(Boolean).join(' '),
+    slug: product.slug || product.id,
+    productType: product.product_type,
+    price: product.price,
+    imageUrl,
+    capture: {
+      id: row.id,
+      productId: row.product_id,
+      status: row.status as InstagramStoryCaptureStatus,
+      jpegPublicUrl: row.jpeg_public_url,
+      approvedAt: row.approved_at,
+      generatedAt: row.generated_at,
+      updatedAt: row.updated_at,
+      scheduledLocalDate: row.scheduled_local_date,
+      scheduledSlot: row.scheduled_slot,
+      scheduledFor: row.scheduled_for,
+      scheduleSource: row.schedule_source,
+      containerId: row.container_id,
+      mediaId: row.media_id,
+      publishedAt: row.published_at,
+      publicationCount: row.publication_count,
+      lastPublishedAt: row.last_published_at,
+      attempts: row.attempts,
+      lastError: row.last_error,
+    },
+  }
+}
+
 export async function getAdminInstagramStories(options: {
   historyDays?: number
   includeUncaptured?: boolean
@@ -311,22 +377,40 @@ export async function getAdminInstagramStories(options: {
   const payload = asRecord(data, 'admin instagram stories')
   const service = createServiceRoleClient()
   const futureEnd = addLocalDays(today, 35)
-  const [catalog, occupied] = await Promise.all([
+  // The RPC keeps already-published products out of the pending generation
+  // queue. Merge their reusable JPEG captures back into the admin library so
+  // an editor can deliberately schedule them again without automatic slots.
+  const [catalog, occupied, storyLibrary] = await Promise.all([
     client.rpc('admin_instagram_catalog_batches', { p_history_start: historyStart }),
     service
       .from('instagram_story_captures')
       .select('scheduled_local_date, scheduled_slot')
       .gte('scheduled_local_date', historyStart)
       .lte('scheduled_local_date', futureEnd),
+    service
+      .from('instagram_story_captures')
+      .select('id, product_id, status, jpeg_public_url, approved_at, generated_at, updated_at, scheduled_local_date, scheduled_slot, scheduled_for, schedule_source, container_id, media_id, published_at, publication_count, last_published_at, attempts, last_error, products!inner(id, brand, model, slug, product_type, price, status, product_images(url, order))')
+      .eq('products.status', 'approved')
+      .not('jpeg_public_url', 'is', null)
+      .not('generated_at', 'is', null),
   ])
   // Allow an explicitly visible pre-migration state during a coordinated rollout.
   const missingCatalog = catalog.error && ['PGRST202', '42883'].includes(catalog.error.code)
   if (catalog.error && !missingCatalog) throwAdminReadError(catalog.error, 'admin instagram catalog')
   if (occupied.error) throwAdminReadError(occupied.error, 'admin instagram occupied slots')
+  if (storyLibrary.error) throwAdminReadError(storyLibrary.error, 'admin instagram story library')
+  const productsById = new Map(
+    ((payload.products || []) as InstagramAdminCalendarResponse['products'])
+      .map((product) => [product.id, product]),
+  )
+  for (const row of storyLibrary.data || []) {
+    const product = storyLibraryProduct(row as unknown as StoryLibraryRow)
+    if (product) productsById.set(product.id, product)
+  }
   return {
     ok: true,
     publishingEnabled: getInstagramPublishingConfig().enabled,
-    products: (payload.products || []) as InstagramAdminCalendarResponse['products'],
+    products: [...productsById.values()],
     publications: (payload.publications || []) as InstagramAdminCalendarResponse['publications'],
     occupiedSlots: (occupied.data || []).flatMap((row) => (
       row.scheduled_local_date && row.scheduled_slot

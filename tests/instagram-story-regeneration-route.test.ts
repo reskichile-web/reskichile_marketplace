@@ -4,7 +4,6 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   from: vi.fn(),
   generate: vi.fn(),
-  schedule: vi.fn(),
 }))
 
 vi.mock('@/lib/admin-security', () => ({
@@ -39,8 +38,6 @@ vi.mock('@/lib/instagram/capture', () => ({
   }),
   generateAndStoreStoryCapture: mocks.generate,
 }))
-
-vi.mock('@/lib/instagram/scheduling', () => ({ scheduleCaptureNext: mocks.schedule }))
 
 import { POST } from '@/app/api/admin/products/[id]/instagram-story/retry/route'
 
@@ -109,7 +106,7 @@ describe('Instagram Story regeneration route', () => {
       ),
       previousStoragePath: `_instagram/products/${productId}/story.jpg`,
     })
-    expect(mocks.schedule).not.toHaveBeenCalled()
+    expect((await response.json()).schedule).toBeNull()
   })
 
   it('reports a missing regeneration migration instead of hiding it as a generic 500', async () => {
