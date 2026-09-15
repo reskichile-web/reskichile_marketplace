@@ -23,7 +23,7 @@ describe('admin products filter controls', () => {
     expect(html).toContain('Todas las marcas')
     expect(html.match(/aria-haspopup="menu"/g)).toHaveLength(2)
     expect(html).toContain('Ordenar por más contactos y luego vistas')
-    expect(html).toContain('Contactos + vistas')
+    expect(html).toContain('>Vistas<')
     expect(html).not.toContain('<select')
   })
 })

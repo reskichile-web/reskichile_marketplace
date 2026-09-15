@@ -720,7 +720,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
             aria-label={viewSortTitle}
           >
             <Eye className="h-4 w-4" aria-hidden="true" />
-            <span>Contactos + vistas</span>
+            <span>Vistas</span>
             <span aria-hidden="true" className="inline-block w-3 text-center text-xs">
               {viewSort === 'desc' ? '↓' : viewSort === 'asc' ? '↑' : '↕'}
             </span>
