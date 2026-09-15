@@ -438,10 +438,10 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
       : 'Quitar orden por antigüedad'
 
   const viewSortTitle = viewSort === ''
-    ? 'Ordenar por más vistas'
+    ? 'Ordenar por más contactos y luego vistas'
     : viewSort === 'desc'
-      ? 'Ordenar por menos vistas'
-      : 'Quitar orden por vistas'
+      ? 'Ordenar por menos contactos y luego vistas'
+      : 'Quitar orden por contactos y vistas'
 
   function cycleTimeSort() {
     setTimeSort(current => nextAdminTimeSort(current))
@@ -720,7 +720,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
             aria-label={viewSortTitle}
           >
             <Eye className="h-4 w-4" aria-hidden="true" />
-            <span>Vistas</span>
+            <span>Contactos + vistas</span>
             <span aria-hidden="true" className="inline-block w-3 text-center text-xs">
               {viewSort === 'desc' ? '↓' : viewSort === 'asc' ? '↑' : '↕'}
             </span>

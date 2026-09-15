@@ -67,6 +67,14 @@ INSERT INTO public.events (
   ('pageview', '/catalogo', NULL, 'a1000000-0000-4000-8000-000000000002', 'a3000000-0000-4000-8000-000000000001', 'Chile', 'Santiago'),
   ('product_view', '/producto/atomic-test', 'a2000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000002', 'a3000000-0000-4000-8000-000000000001', 'Chile', 'Santiago');
 
+-- Atomic has one contact and one view. Head has two contacts and no views.
+-- Compound descending order must therefore put Head first despite its lower
+-- view count; ascending order must put Atomic first.
+INSERT INTO public.events (event_type, event_name, path, product_id) VALUES
+  ('click', 'whatsapp_contact', '/producto/atomic-test', 'a2000000-0000-4000-8000-000000000001'),
+  ('click', 'whatsapp_contact', '/producto/head-pending', 'a2000000-0000-4000-8000-000000000002'),
+  ('click', 'chat_contact', '/producto/head-pending', 'a2000000-0000-4000-8000-000000000002');
+
 SELECT set_config('request.jwt.claim.sub', 'a1000000-0000-4000-8000-000000000001', TRUE);
 SELECT set_config('request.jwt.claim.role', 'authenticated', TRUE);
 SET LOCAL ROLE authenticated;
@@ -116,9 +124,9 @@ BEGIN
       products_desc->'products', products_asc->'products';
   END IF;
 
-  IF products_views_desc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000001'
-    OR products_views_asc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000002' THEN
-    RAISE EXCEPTION 'products view sorting returned an unexpected order: desc=%, asc=%',
+  IF products_views_desc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000002'
+    OR products_views_asc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000001' THEN
+    RAISE EXCEPTION 'products contact-first sorting returned an unexpected order: desc=%, asc=%',
       products_views_desc->'products', products_views_asc->'products';
   END IF;
 
@@ -131,6 +139,26 @@ BEGIN
 
   IF jsonb_array_length(instagram_page->'products') <> 1 THEN
     RAISE EXCEPTION 'instagram page returned unexpected data: %', instagram_page;
+  END IF;
+END;
+$$;
+
+-- Give Atomic a second contact so both products tie on the primary signal.
+-- Views must now decide their relative order in both directions.
+RESET ROLE;
+INSERT INTO public.events (event_type, event_name, path, product_id) VALUES
+  ('click', 'chat_contact', '/producto/atomic-test', 'a2000000-0000-4000-8000-000000000001');
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+  products_engagement_desc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'views_desc');
+  products_engagement_asc JSONB := public.admin_products_page(0, 30, 'all', '', '', '', 'views_asc');
+BEGIN
+  IF products_engagement_desc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000001'
+    OR products_engagement_asc #>> '{products,0,id}' <> 'a2000000-0000-4000-8000-000000000002' THEN
+    RAISE EXCEPTION 'views did not break the contact tie: desc=%, asc=%',
+      products_engagement_desc->'products', products_engagement_asc->'products';
   END IF;
 END;
 $$;
