@@ -15,8 +15,13 @@ describe('Meta Pixel product events', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-26T15:00:00Z'))
 
+    const storage = new Map<string, string>()
     vi.stubGlobal('window', {
       location: { pathname: '/producto/producto-de-prueba' },
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+      },
     })
     vi.stubGlobal('document', {
       cookie: '',
@@ -135,6 +140,108 @@ describe('Meta Pixel product events', () => {
           currency: 'CLP',
           contact_method: 'internal_chat',
         },
+      ],
+    ])
+  })
+
+  it('queues rack commerce events until consent and PageView are ready', async () => {
+    const {
+      loadMetaPixel,
+      trackMetaAddToCart,
+      trackMetaInitiateCheckout,
+      trackMetaPageView,
+    } = await import('@/lib/meta-pixel')
+    const item = {
+      contentId: 'ski-rack:madera',
+      contentName: 'Ski Rack Madera · Talla M',
+      category: 'ski_rack',
+      value: 15990,
+      quantity: 1,
+    }
+
+    trackMetaAddToCart({ items: [item], value: 15990 })
+    trackMetaInitiateCheckout({ items: [item], value: 15990 })
+    expect(metaQueue()).toEqual([])
+
+    loadMetaPixel()
+    trackMetaPageView('/producto/producto-de-prueba')
+
+    expect(metaQueue().filter((entry) => ['AddToCart', 'InitiateCheckout'].includes(String(entry[1])))).toEqual([
+      [
+        'track',
+        'AddToCart',
+        {
+          content_ids: ['ski-rack:madera'],
+          content_name: 'Ski Rack Madera · Talla M',
+          content_category: 'ski_rack',
+          content_type: 'product',
+          contents: [{ id: 'ski-rack:madera', quantity: 1, item_price: 15990 }],
+          num_items: 1,
+          value: 15990,
+          currency: 'CLP',
+        },
+      ],
+      [
+        'track',
+        'InitiateCheckout',
+        {
+          content_ids: ['ski-rack:madera'],
+          content_name: 'Ski Rack Madera · Talla M',
+          content_category: 'ski_rack',
+          content_type: 'product',
+          contents: [{ id: 'ski-rack:madera', quantity: 1, item_price: 15990 }],
+          num_items: 1,
+          value: 15990,
+          currency: 'CLP',
+        },
+      ],
+    ])
+  })
+
+  it('sends one Purchase for an authorized order and persists its deduplication key', async () => {
+    const {
+      loadMetaPixel,
+      trackMetaPageView,
+      trackMetaPurchase,
+    } = await import('@/lib/meta-pixel')
+    const browserWindow = globalThis.window as unknown as MetaWindow & {
+      location: { pathname: string }
+    }
+    browserWindow.location.pathname = '/checkout/resultado'
+
+    loadMetaPixel()
+    trackMetaPageView('/checkout/resultado')
+    const purchase = {
+      orderId: '10000000-0000-4000-8000-000000000001',
+      value: 19480,
+      items: [{
+        contentId: 'ski-rack:madera',
+        contentName: 'Ski Rack Madera · Talla M',
+        category: 'ski_rack',
+        value: 15990,
+        quantity: 1,
+      }],
+    }
+
+    trackMetaPurchase(purchase)
+    vi.advanceTimersByTime(2000)
+    trackMetaPurchase(purchase)
+
+    expect(metaQueue().filter((entry) => entry[1] === 'Purchase')).toEqual([
+      [
+        'track',
+        'Purchase',
+        {
+          content_ids: ['ski-rack:madera'],
+          content_name: 'Ski Rack Madera · Talla M',
+          content_category: 'ski_rack',
+          content_type: 'product',
+          contents: [{ id: 'ski-rack:madera', quantity: 1, item_price: 15990 }],
+          num_items: 1,
+          value: 19480,
+          currency: 'CLP',
+        },
+        { eventID: 'purchase:10000000-0000-4000-8000-000000000001' },
       ],
     ])
   })

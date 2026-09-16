@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, Fragment, useEffect, useState } from 'react'
+import { FormEvent, Fragment, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -21,6 +21,7 @@ import {
   parseAndValidatePhone,
   type CountryOption,
 } from '@/lib/phone'
+import { trackMetaInitiateCheckout } from '@/lib/meta-pixel'
 
 export interface CheckoutItemSummary {
   id: string
@@ -116,6 +117,7 @@ function CheckoutProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
 }
 
 export default function CheckoutForm({ items, kind, enabled, sandbox, unavailableMessage, addressValidationEnabled = false }: Props) {
+  const initiateCheckoutTracked = useRef(false)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -141,6 +143,22 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const [loading, setLoading] = useState<'quote' | 'create' | null>(null)
   const [error, setError] = useState('')
   const selectedPickupPoint = pickupPoints.find(point => point.id === pickupPointId)
+  const itemSubtotal = items.reduce((total, item) => total + item.priceClp * item.quantity, 0)
+
+  useEffect(() => {
+    if (initiateCheckoutTracked.current || kind !== 'racks' || !enabled || items.length === 0) return
+    initiateCheckoutTracked.current = true
+    trackMetaInitiateCheckout({
+      items: items.map(item => ({
+        contentId: item.slug ? `ski-rack:${item.slug}` : item.id,
+        contentName: item.selectedSize ? `${item.name} · Talla ${item.selectedSize}` : item.name,
+        category: 'ski_rack',
+        value: item.priceClp,
+        quantity: item.quantity,
+      })),
+      value: itemSubtotal,
+    })
+  }, [enabled, itemSubtotal, items, kind])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -360,7 +378,6 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
   const fieldClass = 'mt-2 min-h-12 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100'
   const backHref = items[0]?.backHref || (kind === 'racks' ? '/carrito' : '/catalogo')
   const backLabel = kind === 'racks' ? 'Volver al carrito' : 'Volver al producto'
-  const itemSubtotal = items.reduce((total, item) => total + item.priceClp * item.quantity, 0)
   const deliveryLines = method === 'home'
       ? [
         `${street} ${number}`.trim(),

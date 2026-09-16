@@ -38,5 +38,5 @@ export default async function CheckoutResultPage({ searchParams }: Props) {
     )
   }
 
-  return <CheckoutResultCard order={order} />
+  return <CheckoutResultCard order={order} allowPurchaseTracking={!acceso} />
 }

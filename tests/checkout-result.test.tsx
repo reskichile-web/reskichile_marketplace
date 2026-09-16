@@ -11,6 +11,10 @@ vi.mock('@/components/checkout/ClearSkiRackCart', () => ({
   default: () => <span data-cart-clear="authorized" />,
 }))
 
+vi.mock('@/components/checkout/MetaPurchaseTracker', () => ({
+  default: ({ orderId }: { orderId: string }) => <span data-meta-purchase={orderId} />,
+}))
+
 const order: GuestOrderResult = {
   publicId: '10000000-0000-4000-8000-000000000001',
   orderNumber: 'RC-260819-91D2C397',
@@ -39,7 +43,14 @@ const order: GuestOrderResult = {
   createdAt: '2026-08-19T20:00:00.000Z',
   paidAt: '2026-08-19T20:01:00.000Z',
   containsRackItems: false,
-  items: [{ name: 'Ski Rack Madera · Talla M', priceClp: 11990 }],
+  items: [{
+    contentId: 'ski-rack:madera',
+    name: 'Ski Rack Madera · Talla M',
+    category: 'ski_rack',
+    unitPriceClp: 11990,
+    quantity: 1,
+    priceClp: 11990,
+  }],
 }
 
 describe('checkout result', () => {
@@ -103,7 +114,20 @@ describe('checkout result', () => {
     )
 
     expect(authorized).toContain('data-cart-clear="authorized"')
+    expect(authorized).toContain(`data-meta-purchase="${order.publicId}"`)
     expect(rejected).not.toContain('data-cart-clear="authorized"')
+    expect(rejected).not.toContain('data-meta-purchase')
+  })
+
+  it('does not repeat Purchase when an authorized order is opened from an email link', () => {
+    const html = renderToStaticMarkup(
+      <CheckoutResultCard
+        order={{ ...order, containsRackItems: true }}
+        allowPurchaseTracking={false}
+      />
+    )
+
+    expect(html).not.toContain('data-meta-purchase')
   })
 
   it.each([

@@ -1,6 +1,7 @@
 const META_PIXEL_ID = '1033239198909712'
 const META_PIXEL_SCRIPT_ID = 'meta-pixel-library'
 const VIEW_CONTENT_DEDUPLICATION_MS = 1500
+const MAX_PENDING_COMMERCE_EVENTS = 20
 
 export interface MetaViewContent {
   contentId: string
@@ -9,10 +10,32 @@ export interface MetaViewContent {
   value: number
 }
 
+export interface MetaCommerceItem extends MetaViewContent {
+  quantity: number
+}
+
+export interface MetaCommerceEvent {
+  items: MetaCommerceItem[]
+  value: number
+}
+
+export interface MetaPurchaseEvent extends MetaCommerceEvent {
+  orderId: string
+}
+
 export type MetaContactMethod = 'whatsapp' | 'internal_chat'
 
 interface PendingViewContent extends MetaViewContent {
   path: string
+}
+
+type MetaCommerceEventName = 'AddToCart' | 'InitiateCheckout' | 'Purchase'
+
+interface PendingCommerceEvent extends MetaCommerceEvent {
+  eventName: MetaCommerceEventName
+  eventId?: string
+  path: string
+  storageOrderId?: string
 }
 
 let metaConsentGranted = false
@@ -20,6 +43,8 @@ let pendingViewContent: PendingViewContent | null = null
 let lastViewContent: { key: string; sentAt: number } | null = null
 let lastContact: { key: string; sentAt: number } | null = null
 let lastContactIntent: { key: string; sentAt: number } | null = null
+const pendingCommerceEvents = new Map<string, PendingCommerceEvent>()
+const lastCommerceEvents = new Map<string, number>()
 
 type MetaPixelFunction = ((...args: unknown[]) => void) & {
   callMethod?: (...args: unknown[]) => void
@@ -80,9 +105,11 @@ export function loadMetaPixel(): void {
 }
 
 export function trackMetaPageView(path: string): void {
-  if (!window.fbq || window.__reskiMetaLastPageView === path) return
-  window.__reskiMetaLastPageView = path
-  window.fbq('track', 'PageView')
+  if (!window.fbq) return
+  if (window.__reskiMetaLastPageView !== path) {
+    window.__reskiMetaLastPageView = path
+    window.fbq('track', 'PageView')
+  }
   flushPendingMetaEvents(path)
 }
 
@@ -181,12 +208,151 @@ export function trackMetaViewContent(event: MetaViewContent): void {
   sendMetaViewContent(pending)
 }
 
-function flushPendingMetaEvents(path: string): void {
-  if (!metaConsentGranted || !window.fbq || !pendingViewContent) return
+function validCommerceEvent(event: MetaCommerceEvent): boolean {
+  return (
+    Number.isFinite(event.value) &&
+    event.value >= 0 &&
+    event.items.length > 0 &&
+    event.items.every(item => (
+      Boolean(item.contentId.trim()) &&
+      Boolean(item.contentName.trim()) &&
+      Boolean(item.category.trim()) &&
+      Number.isFinite(item.value) &&
+      item.value >= 0 &&
+      Number.isInteger(item.quantity) &&
+      item.quantity > 0
+    ))
+  )
+}
 
-  const pending = pendingViewContent
-  pendingViewContent = null
-  if (pending.path === path) sendMetaViewContent(pending)
+function purchaseStorageKey(orderId: string): string {
+  return `reski:meta-purchase:${orderId}`
+}
+
+function purchaseAlreadyTracked(orderId: string): boolean {
+  try {
+    return window.localStorage?.getItem(purchaseStorageKey(orderId)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markPurchaseTracked(orderId: string): void {
+  try {
+    window.localStorage?.setItem(purchaseStorageKey(orderId), '1')
+  } catch {
+    // The in-memory deduplication below still protects this page load.
+  }
+}
+
+function commerceEventKey(event: PendingCommerceEvent): string {
+  const contents = event.items
+    .map(item => `${item.contentId}:${item.quantity}:${item.value}`)
+    .join('|')
+  return `${event.eventName}:${event.path}:${event.eventId || contents}:${event.value}`
+}
+
+function sendMetaCommerceEvent(event: PendingCommerceEvent): void {
+  if (!window.fbq) return
+  if (event.storageOrderId && purchaseAlreadyTracked(event.storageOrderId)) return
+
+  const key = commerceEventKey(event)
+  const now = Date.now()
+  const lastSentAt = lastCommerceEvents.get(key)
+  if (lastSentAt && now - lastSentAt < VIEW_CONTENT_DEDUPLICATION_MS) return
+
+  const contentIds = Array.from(new Set(event.items.map(item => item.contentId)))
+  const categories = Array.from(new Set(event.items.map(item => item.category)))
+  const params = {
+    content_ids: contentIds,
+    content_name: event.items.length === 1 ? event.items[0].contentName : undefined,
+    content_category: categories.length === 1 ? categories[0] : undefined,
+    content_type: 'product',
+    contents: event.items.map(item => ({
+      id: item.contentId,
+      quantity: item.quantity,
+      item_price: item.value,
+    })),
+    num_items: event.items.reduce((total, item) => total + item.quantity, 0),
+    value: event.value,
+    currency: 'CLP',
+  }
+
+  if (event.eventId) {
+    window.fbq('track', event.eventName, params, { eventID: event.eventId })
+  } else {
+    window.fbq('track', event.eventName, params)
+  }
+
+  lastCommerceEvents.set(key, now)
+  if (event.storageOrderId) markPurchaseTracked(event.storageOrderId)
+}
+
+function queueOrSendMetaCommerceEvent(event: PendingCommerceEvent): void {
+  if (!validCommerceEvent(event)) return
+
+  const key = commerceEventKey(event)
+  if (
+    !metaConsentGranted ||
+    !window.fbq ||
+    window.__reskiMetaLastPageView !== event.path
+  ) {
+    pendingCommerceEvents.set(key, event)
+    while (pendingCommerceEvents.size > MAX_PENDING_COMMERCE_EVENTS) {
+      const oldestKey = pendingCommerceEvents.keys().next().value
+      if (typeof oldestKey !== 'string') break
+      pendingCommerceEvents.delete(oldestKey)
+    }
+    return
+  }
+
+  sendMetaCommerceEvent(event)
+}
+
+export function trackMetaAddToCart(event: MetaCommerceEvent): void {
+  if (typeof window === 'undefined') return
+  queueOrSendMetaCommerceEvent({
+    ...event,
+    eventName: 'AddToCart',
+    path: window.location.pathname,
+  })
+}
+
+export function trackMetaInitiateCheckout(event: MetaCommerceEvent): void {
+  if (typeof window === 'undefined') return
+  queueOrSendMetaCommerceEvent({
+    ...event,
+    eventName: 'InitiateCheckout',
+    path: window.location.pathname,
+  })
+}
+
+export function trackMetaPurchase(event: MetaPurchaseEvent): void {
+  if (typeof window === 'undefined' || !event.orderId.trim()) return
+  queueOrSendMetaCommerceEvent({
+    items: event.items,
+    value: event.value,
+    eventName: 'Purchase',
+    eventId: `purchase:${event.orderId}`,
+    path: window.location.pathname,
+    storageOrderId: event.orderId,
+  })
+}
+
+function flushPendingMetaEvents(path: string): void {
+  if (!metaConsentGranted || !window.fbq) return
+
+  if (pendingViewContent) {
+    const pending = pendingViewContent
+    pendingViewContent = null
+    if (pending.path === path) sendMetaViewContent(pending)
+  }
+
+  for (const [key, event] of pendingCommerceEvents) {
+    if (event.path !== path) continue
+    pendingCommerceEvents.delete(key)
+    sendMetaCommerceEvent(event)
+  }
 }
 
 export function revokeMetaPixel(): void {

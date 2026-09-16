@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Ruler } from 'lucide-react'
 import SkiRackGallery from '@/components/SkiRackGallery'
 import SkiRackRelatedProducts from '@/components/SkiRackRelatedProducts'
 import SkiRackSizeGuide from '@/components/SkiRackSizeGuide'
+import { trackMetaAddToCart, trackMetaViewContent } from '@/lib/meta-pixel'
 import {
   SKI_RACK_SIZES,
   getSkiRackDescription,
@@ -23,6 +24,7 @@ const money = new Intl.NumberFormat('es-CL', {
 })
 
 export default function SkiRackProductDetail({ product }: { product: SkiRackProduct }) {
+  const viewTracked = useRef(false)
   const [selectedSize, setSelectedSize] = useState<SkiRackSize>('S')
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
@@ -34,6 +36,17 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
   const soldOut = !inventoryLoading && totalAvailable === 0
   const selectedAvailable = variantAvailability(productInventory, selectedSize)
   const quantityLimit = Math.min(MAX_CART_QUANTITY, selectedAvailable)
+
+  useEffect(() => {
+    if (viewTracked.current || inventoryLoading) return
+    viewTracked.current = true
+    trackMetaViewContent({
+      contentId: `ski-rack:${product.slug}`,
+      contentName: product.name,
+      category: 'ski_rack',
+      value: priceClp,
+    })
+  }, [inventoryLoading, priceClp, product.name, product.slug])
 
   useEffect(() => {
     if (inventoryLoading || selectedAvailable > 0) return
@@ -50,6 +63,16 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
   function handleAddToCart() {
     if (inventoryLoading || selectedAvailable < quantity) return
     addSkiRackCartItem(product.slug, selectedSize, quantity)
+    trackMetaAddToCart({
+      items: [{
+        contentId: `ski-rack:${product.slug}`,
+        contentName: `${product.name} · Talla ${selectedSize}`,
+        category: 'ski_rack',
+        value: priceClp,
+        quantity,
+      }],
+      value: priceClp * quantity,
+    })
     setAdded(true)
   }
 

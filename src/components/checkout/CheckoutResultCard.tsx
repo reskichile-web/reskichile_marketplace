@@ -3,6 +3,7 @@ import { AlertTriangle, Check, Clock3, LoaderCircle, XCircle } from 'lucide-reac
 import type { GuestOrderResult } from '@/lib/commerce/order-service'
 import ClearSkiRackCart from '@/components/checkout/ClearSkiRackCart'
 import CopyOrderNumberButton from '@/components/checkout/CopyOrderNumberButton'
+import MetaPurchaseTracker from '@/components/checkout/MetaPurchaseTracker'
 import PaymentStatusRefresh from '@/components/checkout/PaymentStatusRefresh'
 
 const money = new Intl.NumberFormat('es-CL', {
@@ -192,7 +193,13 @@ function CompactPaymentResult({ order }: { order: GuestOrderResult }) {
   )
 }
 
-export default function CheckoutResultCard({ order }: { order: GuestOrderResult }) {
+export default function CheckoutResultCard({
+  order,
+  allowPurchaseTracking = true,
+}: {
+  order: GuestOrderResult
+  allowPurchaseTracking?: boolean
+}) {
   if (order.paymentStatus !== 'authorized') {
     return <CompactPaymentResult order={order} />
   }
@@ -223,7 +230,22 @@ export default function CheckoutResultCard({ order }: { order: GuestOrderResult 
     <main className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
       <section className="border border-gray-200 bg-white">
         {order.containsRackItems && (
-          <ClearSkiRackCart />
+          <>
+            <ClearSkiRackCart />
+            {allowPurchaseTracking && (
+              <MetaPurchaseTracker
+                orderId={order.publicId}
+                value={order.totalClp}
+                items={order.items.map(item => ({
+                  contentId: item.contentId,
+                  contentName: item.name,
+                  category: item.category,
+                  value: item.unitPriceClp,
+                  quantity: item.quantity,
+                }))}
+              />
+            )}
+          </>
         )}
         <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
           <div className="p-6 sm:p-8 lg:p-10">

@@ -39,7 +39,11 @@ export interface GuestOrderResult {
   paidAt: string | null
   containsRackItems: boolean
   items: Array<{
+    contentId: string
     name: string
+    category: string
+    unitPriceClp: number
+    quantity: number
     priceClp: number
   }>
 }
@@ -88,7 +92,7 @@ export async function getGuestOrder(
 
   const { data: itemRows, error: itemError } = await supabase
     .from('order_items')
-    .select('product_name, line_total_clp, rack_inventory_id')
+    .select('product_name, product_type, unit_price_clp, quantity, line_total_clp, rack_inventory_id, sku, package_snapshot')
     .eq('order_id', order.id)
     .order('created_at', { ascending: true })
 
@@ -129,9 +133,22 @@ export async function getGuestOrder(
     createdAt: String(order.created_at),
     paidAt: order.paid_at ? String(order.paid_at) : null,
     containsRackItems: (itemRows || []).some(item => Boolean(item.rack_inventory_id)),
-    items: (itemRows || []).map((item) => ({
-      name: String(item.product_name),
-      priceClp: Number(item.line_total_clp),
-    })),
+    items: (itemRows || []).map((item) => {
+      const packageSnapshot = item.package_snapshot &&
+        typeof item.package_snapshot === 'object' &&
+        !Array.isArray(item.package_snapshot)
+        ? item.package_snapshot as Record<string, unknown>
+        : {}
+      const rackSlug = snapshotString(packageSnapshot, 'rack_slug')
+
+      return {
+        contentId: rackSlug ? `ski-rack:${rackSlug}` : String(item.sku || item.product_name),
+        name: String(item.product_name),
+        category: String(item.product_type),
+        unitPriceClp: Number(item.unit_price_clp),
+        quantity: Number(item.quantity),
+        priceClp: Number(item.line_total_clp),
+      }
+    }),
   }
 }
