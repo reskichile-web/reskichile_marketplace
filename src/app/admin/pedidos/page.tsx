@@ -268,26 +268,207 @@ function actionAppearance(status: string): ActionAppearance {
   return { className: 'border-blue-200 text-blue-700 hover:border-blue-300', icon: Package }
 }
 
-function nextFulfillment(order: Order): Array<{ value: string; label: string }> {
+interface FulfillmentAction {
+  value: string
+  label: string
+  compactLabel: string
+}
+
+function nextFulfillment(order: Order): FulfillmentAction[] {
   if (
     order.payment_status === 'refunded'
     && ['pending', 'preparing', 'ready_for_pickup'].includes(order.fulfillment_status)
   ) {
-    return [{ value: 'cancelled', label: 'Cancelar pedido' }]
+    return [{ value: 'cancelled', label: 'Cancelar pedido', compactLabel: 'Cancelar' }]
   }
 
   if (order.fulfillment_status === 'pending') {
-    return [{ value: 'preparing', label: 'Comenzar preparación' }]
+    return [{ value: 'preparing', label: 'Comenzar preparación', compactLabel: 'Preparar' }]
   }
   if (order.fulfillment_status === 'preparing') {
     return order.delivery_method === 'pickup'
-      ? [{ value: 'ready_for_pickup', label: 'Listo para retiro' }]
-      : [{ value: 'shipped', label: 'Marcar enviado' }]
+      ? [{ value: 'ready_for_pickup', label: 'Listo para retiro', compactLabel: 'Listo' }]
+      : [{ value: 'shipped', label: 'Marcar enviado', compactLabel: 'Enviar' }]
   }
   if (['ready_for_pickup', 'shipped'].includes(order.fulfillment_status)) {
-    return [{ value: 'delivered', label: 'Marcar entregado' }]
+    return [{ value: 'delivered', label: 'Marcar entregado', compactLabel: 'Entregar' }]
   }
   return []
+}
+
+function OrderDetails({
+  order,
+  refundsEnabled,
+  onRefund,
+}: {
+  order: Order
+  refundsEnabled: boolean
+  onRefund: (order: Order) => void
+}) {
+  return (
+    <>
+      <section aria-label={`Cliente de ${order.order_number}`} className="mb-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:mb-4">
+        <div className="grid gap-4 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+              <UserRound className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Cliente</p>
+              <p className="truncate font-semibold text-gray-900">{order.buyer_name}</p>
+            </div>
+          </div>
+          <a href={`mailto:${order.buyer_email}`} className="flex min-w-0 items-center gap-3 rounded-lg transition-colors hover:text-blue-700">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+              <Mail className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Correo</p>
+              <p className="truncate text-sm text-gray-700">{order.buyer_email}</p>
+            </div>
+          </a>
+          <a href={`tel:${order.buyer_phone}`} className="flex min-w-0 items-center gap-3 rounded-lg transition-colors hover:text-blue-700">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+              <Phone className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Teléfono</p>
+              <p className="truncate text-sm text-gray-700">{order.buyer_phone}</p>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <div className="grid gap-3 sm:gap-4 xl:grid-cols-12">
+        <section aria-label={`Productos de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 xl:col-span-5">
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="h-4 w-4 text-blue-600" aria-hidden="true" />
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Productos</h3>
+          </div>
+          <div className="mt-3 divide-y divide-gray-100">
+            {order.order_items.map(item => (
+              <div key={item.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0 sm:gap-4">
+                <div className="min-w-0">
+                  <p className="font-semibold leading-5 text-gray-900">{item.product_name}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {item.quantity} × {money.format(item.unit_price_clp)}
+                    {item.sku ? ` · SKU ${item.sku}` : ''}
+                  </p>
+                </div>
+                <span className="shrink-0 font-body font-black text-gray-900">{money.format(item.line_total_clp)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section aria-label={`Entrega de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 xl:col-span-4">
+          <div className="flex items-center gap-2">
+            {order.delivery_method === 'pickup'
+              ? <MapPin className="h-4 w-4 text-violet-600" aria-hidden="true" />
+              : <Truck className="h-4 w-4 text-indigo-600" aria-hidden="true" />}
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Entrega</h3>
+          </div>
+          <div className="mt-3 text-sm leading-6">
+            <p className="font-bold text-gray-900">{order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
+            {order.shipping_snapshot.street && <p className="mt-1 text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
+            {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{pickupPointLabel(order.shipping_snapshot.pickup_point_id)}</p>}
+            {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
+            <p className="text-gray-600">{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
+            {order.tracking_number && (
+              <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-600">
+                <p><span className="font-bold text-gray-800">{order.shipping_carrier}</span> · {order.tracking_number}</p>
+                {order.tracking_url && (
+                  <a href={order.tracking_url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-brand-600 hover:underline">
+                    Abrir seguimiento
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section aria-label={`Totales de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 xl:col-span-3">
+          <div className="flex items-center gap-2">
+            <ReceiptText className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Totales</h3>
+          </div>
+          <dl className="mt-3 space-y-2.5 text-sm">
+            <div className="flex justify-between gap-3 text-gray-600"><dt>Subtotal</dt><dd>{money.format(order.subtotal_clp)}</dd></div>
+            {order.discount_clp > 0 && <div className="flex justify-between gap-3 text-emerald-700"><dt>Descuento</dt><dd>-{money.format(order.discount_clp)}</dd></div>}
+            <div className="flex justify-between gap-3 text-gray-600"><dt>Despacho</dt><dd>{money.format(order.shipping_clp)}</dd></div>
+            <div className="flex justify-between gap-3 border-t border-gray-200 pt-3 font-body text-base font-black text-gray-950"><dt>Total</dt><dd>{money.format(order.total_clp)}</dd></div>
+          </dl>
+        </section>
+      </div>
+
+      {(order.refunds.length > 0 || (refundsEnabled && order.refundable_clp > 0 && !order.has_open_refund)) && (
+        <div className="mt-4 flex flex-col items-stretch gap-4 border-t border-gray-200 pt-4 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div>
+            {order.refunds.length > 0 && (
+              <>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Reembolsos</p>
+                {order.refunds.map(refund => (
+                  <p key={refund.id} className="mt-1 text-xs text-gray-600">
+                    {money.format(refund.amount_clp)} · {STATUS_LABELS[refund.state] || refund.state} · {refund.reason}
+                  </p>
+                ))}
+              </>
+            )}
+          </div>
+          {refundsEnabled && order.refundable_clp > 0 && !order.has_open_refund && (
+            <button type="button" onClick={() => onRefund(order)} className="rounded-lg border border-red-200 bg-white px-4 py-2.5 text-xs font-semibold text-red-700 hover:bg-red-50 sm:py-2">
+              Reembolsar
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+function FulfillmentActionButton({
+  action,
+  busy,
+  mobile = false,
+  onAction,
+}: {
+  action: FulfillmentAction
+  busy: boolean
+  mobile?: boolean
+  onAction: () => void
+}) {
+  const appearance = actionAppearance(action.value)
+  const Icon = appearance.icon
+
+  return (
+    <button
+      type="button"
+      aria-label={busy ? 'Actualizando pedido' : action.label}
+      title={action.label}
+      disabled={busy}
+      onClick={event => {
+        event.stopPropagation()
+        onAction()
+      }}
+      className={`${mobile
+        ? 'flex h-11 w-full gap-2 rounded-xl px-4 text-sm'
+        : 'inline-flex h-8 max-w-full gap-0 rounded-md px-2 text-[11px] lg:gap-1.5 lg:px-3'} items-center justify-center whitespace-nowrap border bg-white font-bold shadow-[0_2px_5px_rgba(15,23,42,0.09)] transition-all hover:-translate-y-px hover:shadow-[0_3px_7px_rgba(15,23,42,0.11)] active:translate-y-px active:shadow-none disabled:translate-y-0 disabled:opacity-50 ${appearance.className}`}
+    >
+      <Icon className={`${mobile ? 'h-4 w-4' : 'h-3.5 w-3.5'} shrink-0`} strokeWidth={2.4} aria-hidden="true" />
+      {mobile ? (
+        <span>{busy ? 'Actualizando…' : action.label}</span>
+      ) : (
+        <>
+          <span className="hidden xl:inline 2xl:hidden">
+            {busy ? 'Espera…' : action.compactLabel}
+          </span>
+          <span className="hidden 2xl:inline">
+            {busy ? 'Actualizando…' : action.label}
+          </span>
+        </>
+      )}
+    </button>
+  )
 }
 
 export default function AdminOrdersPage() {
@@ -416,16 +597,33 @@ export default function AdminOrdersPage() {
     }
   }
 
+  function startFulfillmentAction(order: Order, status: string) {
+    if (status === 'shipped') {
+      setShippingOrder(order)
+      setShippingCarrier('Starken')
+      setTrackingNumber('')
+      setTrackingUrl('https://www.starken.cl/seguimiento')
+      return
+    }
+    void updateFulfillment(order, status)
+  }
+
+  function openRefund(order: Order) {
+    setRefundOrder(order)
+    setRefundAmount(String(order.refundable_clp))
+    setRefundIdempotencyKey(crypto.randomUUID())
+  }
+
   return (
-    <main className="mx-auto max-w-7xl px-4 pb-16 pt-4 md:px-8">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="font-body text-2xl font-black text-gray-900">Pedidos Webpay</h1>
+    <main className="mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 md:px-8">
+      <div className="flex items-start justify-between gap-3 sm:items-end sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="font-body text-xl font-black text-gray-900 sm:text-2xl">Pedidos Webpay</h1>
           <p className="mt-1 text-sm text-gray-500">
             Pago, preparación, despacho y reembolsos auditados{totalCount > 0 ? ` · ${totalCount} pedidos` : ''}.
           </p>
         </div>
-        <button type="button" onClick={() => void load(0)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+        <button type="button" onClick={() => void load(0)} className="shrink-0 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50 sm:px-4 sm:text-sm">
           Actualizar
         </button>
       </div>
@@ -436,9 +634,83 @@ export default function AdminOrdersPage() {
       ) : orders.length === 0 ? (
         <div className="mt-8 rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">Aún no hay pedidos de Webpay.</div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="overflow-x-hidden">
-            <table className="w-full table-fixed border-collapse text-left text-sm">
+        <>
+          <div className="mt-5 space-y-3 xl:hidden">
+            {orders.map(order => {
+              const expanded = expandedOrderId === order.public_id
+              const action = nextFulfillment(order)[0]
+              const detailId = `mobile-order-detail-${order.public_id}`
+
+              return (
+                <article key={order.public_id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={detailId}
+                    aria-label={`${expanded ? 'Ocultar' : 'Ver'} detalle de ${order.order_number}`}
+                    onClick={() => setExpandedOrderId(expanded ? '' : order.public_id)}
+                    className="w-full p-4 text-left transition-colors hover:bg-gray-50/70"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-body text-sm font-black text-gray-900">{order.order_number}</p>
+                        <p className="mt-1 truncate text-sm font-semibold text-gray-800">{order.buyer_name}</p>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">{order.buyer_email}</p>
+                      </div>
+                      <div className="flex shrink-0 items-start gap-2">
+                        <div className="text-right">
+                          <p className="font-body text-base font-black text-gray-950">{money.format(order.total_clp)}</p>
+                          <p className="mt-1 text-[11px] text-gray-400">{new Date(order.created_at).toLocaleDateString('es-CL')}</p>
+                        </div>
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-500">
+                          <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <PaymentStatus
+                        label={STATUS_LABELS[order.payment_status] || order.payment_status}
+                        appearance={PAYMENT_STATUS_APPEARANCE[order.payment_status] || FALLBACK_PAYMENT_STATUS_APPEARANCE}
+                      />
+                      <StatusPill
+                        label={FULFILLMENT_STATUS_LABELS[order.fulfillment_status] || order.fulfillment_status}
+                        appearance={FULFILLMENT_STATUS_APPEARANCE[order.fulfillment_status] || FALLBACK_STATUS_APPEARANCE}
+                      />
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
+                      <span className="text-gray-500">
+                        {order.order_items.length} {order.order_items.length === 1 ? 'producto' : 'productos'}
+                      </span>
+                      <span className="font-semibold text-brand-600">{expanded ? 'Ocultar detalle' : 'Ver detalle'}</span>
+                    </div>
+                  </button>
+
+                  {action && (
+                    <div className="border-t border-gray-100 bg-gray-50/70 p-3">
+                      <FulfillmentActionButton
+                        action={action}
+                        busy={busy === order.public_id}
+                        mobile
+                        onAction={() => startFulfillmentAction(order, action.value)}
+                      />
+                    </div>
+                  )}
+
+                  {expanded && (
+                    <div id={detailId} className="border-t border-gray-200 bg-slate-50 p-3 sm:p-4">
+                      <OrderDetails order={order} refundsEnabled={refundsEnabled} onRefund={openRefund} />
+                    </div>
+                  )}
+                </article>
+              )
+            })}
+          </div>
+
+          <div className="mt-6 hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm xl:block">
+            <div className="overflow-x-hidden">
+              <table className="w-full table-fixed border-collapse text-left text-sm">
               <colgroup>
                 <col style={{ width: '20%' }} />
                 <col style={{ width: '15%' }} />
@@ -454,7 +726,7 @@ export default function AdminOrdersPage() {
                   <th scope="col" className="px-5 py-3">Pedido</th>
                   <th scope="col" className="px-4 py-3">Cliente</th>
                   <th scope="col" className="px-4 py-3">Pago</th>
-                  <th scope="col" className="px-4 py-3">Estado</th>
+                  <th scope="col" className="px-2 py-3">Estado</th>
                   <th scope="col" className="px-4 py-3 text-right">Total</th>
                   <th scope="col" className="px-4 py-3">Fecha</th>
                   <th scope="col" className="px-4 py-3 text-right">Acción</th>
@@ -465,9 +737,7 @@ export default function AdminOrdersPage() {
                 {orders.map(order => {
                   const expanded = expandedOrderId === order.public_id
                   const action = nextFulfillment(order)[0]
-                  const actionStyle = action ? actionAppearance(action.value) : null
-                  const ActionIcon = actionStyle?.icon
-                  const detailId = `order-detail-${order.public_id}`
+                  const detailId = `desktop-order-detail-${order.public_id}`
 
                   return (
                     <Fragment key={order.public_id}>
@@ -491,7 +761,7 @@ export default function AdminOrdersPage() {
                           appearance={PAYMENT_STATUS_APPEARANCE[order.payment_status] || FALLBACK_PAYMENT_STATUS_APPEARANCE}
                         />
                       </td>
-                      <td className="px-4 py-4 align-middle">
+                      <td className="px-2 py-4 align-middle">
                         <StatusPill
                           label={FULFILLMENT_STATUS_LABELS[order.fulfillment_status] || order.fulfillment_status}
                           appearance={FULFILLMENT_STATUS_APPEARANCE[order.fulfillment_status] || FALLBACK_STATUS_APPEARANCE}
@@ -505,25 +775,11 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="px-4 py-4 text-right align-middle">
                         {action ? (
-                          <button
-                            type="button"
-                            disabled={busy === order.public_id}
-                            onClick={event => {
-                              event.stopPropagation()
-                              if (action.value === 'shipped') {
-                                setShippingOrder(order)
-                                setShippingCarrier('Starken')
-                                setTrackingNumber('')
-                                setTrackingUrl('https://www.starken.cl/seguimiento')
-                              } else {
-                                void updateFulfillment(order, action.value)
-                              }
-                            }}
-                            className={`inline-flex h-8 max-w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md border bg-white px-3 text-[11px] font-bold shadow-[0_2px_5px_rgba(15,23,42,0.09)] transition-all hover:-translate-y-px hover:shadow-[0_3px_7px_rgba(15,23,42,0.11)] active:translate-y-px active:shadow-none disabled:translate-y-0 disabled:opacity-50 ${actionStyle?.className || ''}`}
-                          >
-                            {ActionIcon && <ActionIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.4} aria-hidden="true" />}
-                            {busy === order.public_id ? 'Actualizando…' : action.label}
-                          </button>
+                          <FulfillmentActionButton
+                            action={action}
+                            busy={busy === order.public_id}
+                            onAction={() => startFulfillmentAction(order, action.value)}
+                          />
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
@@ -549,121 +805,7 @@ export default function AdminOrdersPage() {
                       {expanded && (
                         <tr>
                         <td id={detailId} colSpan={8} className="border-t border-gray-200 bg-slate-50 px-5 py-5">
-                          <section aria-label={`Cliente de ${order.order_number}`} className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                            <div className="grid gap-4 sm:grid-cols-3">
-                              <div className="flex min-w-0 items-center gap-3">
-                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-                                  <UserRound className="h-4 w-4" aria-hidden="true" />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Cliente</p>
-                                  <p className="truncate font-semibold text-gray-900">{order.buyer_name}</p>
-                                </div>
-                              </div>
-                              <a href={`mailto:${order.buyer_email}`} className="flex min-w-0 items-center gap-3 rounded-lg transition-colors hover:text-blue-700">
-                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                                  <Mail className="h-4 w-4" aria-hidden="true" />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Correo</p>
-                                  <p className="truncate text-sm text-gray-700">{order.buyer_email}</p>
-                                </div>
-                              </a>
-                              <a href={`tel:${order.buyer_phone}`} className="flex min-w-0 items-center gap-3 rounded-lg transition-colors hover:text-blue-700">
-                                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                                  <Phone className="h-4 w-4" aria-hidden="true" />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Teléfono</p>
-                                  <p className="truncate text-sm text-gray-700">{order.buyer_phone}</p>
-                                </div>
-                              </a>
-                            </div>
-                          </section>
-
-                          <div className="grid gap-4 lg:grid-cols-12">
-                            <section aria-label={`Productos de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-5">
-                              <div className="flex items-center gap-2">
-                                <ShoppingBag className="h-4 w-4 text-blue-600" aria-hidden="true" />
-                                <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Productos</h3>
-                              </div>
-                              <div className="mt-3 divide-y divide-gray-100">
-                                {order.order_items.map(item => (
-                                  <div key={item.id} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
-                                    <div className="min-w-0">
-                                      <p className="font-semibold leading-5 text-gray-900">{item.product_name}</p>
-                                      <p className="mt-1 text-xs text-gray-500">
-                                        {item.quantity} × {money.format(item.unit_price_clp)}
-                                        {item.sku ? ` · SKU ${item.sku}` : ''}
-                                      </p>
-                                    </div>
-                                    <span className="shrink-0 font-body font-black text-gray-900">{money.format(item.line_total_clp)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </section>
-
-                            <section aria-label={`Entrega de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-4">
-                              <div className="flex items-center gap-2">
-                                {order.delivery_method === 'pickup'
-                                  ? <MapPin className="h-4 w-4 text-violet-600" aria-hidden="true" />
-                                  : <Truck className="h-4 w-4 text-indigo-600" aria-hidden="true" />}
-                                <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Entrega</h3>
-                              </div>
-                              <div className="mt-3 text-sm leading-6">
-                                <p className="font-bold text-gray-900">{order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
-                                {order.shipping_snapshot.street && <p className="mt-1 text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
-                                {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{pickupPointLabel(order.shipping_snapshot.pickup_point_id)}</p>}
-                                {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
-                                <p className="text-gray-600">{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
-                                {order.tracking_number && (
-                                  <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-600">
-                                    <p><span className="font-bold text-gray-800">{order.shipping_carrier}</span> · {order.tracking_number}</p>
-                                    {order.tracking_url && (
-                                      <a href={order.tracking_url} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-brand-600 hover:underline">
-                                        Abrir seguimiento
-                                      </a>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </section>
-
-                            <section aria-label={`Totales de ${order.order_number}`} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-3">
-                              <div className="flex items-center gap-2">
-                                <ReceiptText className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-                                <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Totales</h3>
-                              </div>
-                              <dl className="mt-3 space-y-2.5 text-sm">
-                                <div className="flex justify-between gap-3 text-gray-600"><dt>Subtotal</dt><dd>{money.format(order.subtotal_clp)}</dd></div>
-                                {order.discount_clp > 0 && <div className="flex justify-between gap-3 text-emerald-700"><dt>Descuento</dt><dd>-{money.format(order.discount_clp)}</dd></div>}
-                                <div className="flex justify-between gap-3 text-gray-600"><dt>Despacho</dt><dd>{money.format(order.shipping_clp)}</dd></div>
-                                <div className="flex justify-between gap-3 border-t border-gray-200 pt-3 font-body text-base font-black text-gray-950"><dt>Total</dt><dd>{money.format(order.total_clp)}</dd></div>
-                              </dl>
-                            </section>
-                          </div>
-
-                          {(order.refunds.length > 0 || (refundsEnabled && order.refundable_clp > 0 && !order.has_open_refund)) && (
-                            <div className="mt-5 flex flex-wrap items-end justify-between gap-4 border-t border-gray-200 pt-4">
-                              <div>
-                                {order.refunds.length > 0 && (
-                                  <>
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">Reembolsos</p>
-                                    {order.refunds.map(refund => (
-                                      <p key={refund.id} className="mt-1 text-xs text-gray-600">
-                                        {money.format(refund.amount_clp)} · {STATUS_LABELS[refund.state] || refund.state} · {refund.reason}
-                                      </p>
-                                    ))}
-                                  </>
-                                )}
-                              </div>
-                              {refundsEnabled && order.refundable_clp > 0 && !order.has_open_refund && (
-                                <button type="button" onClick={() => { setRefundOrder(order); setRefundAmount(String(order.refundable_clp)); setRefundIdempotencyKey(crypto.randomUUID()) }} className="rounded-lg border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
-                                  Reembolsar
-                                </button>
-                              )}
-                            </div>
-                          )}
+                          <OrderDetails order={order} refundsEnabled={refundsEnabled} onRefund={openRefund} />
                         </td>
                         </tr>
                       )}
@@ -671,9 +813,10 @@ export default function AdminOrdersPage() {
                   )
                 })}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {!loading && orders.length > 0 && (
@@ -687,8 +830,8 @@ export default function AdminOrdersPage() {
       )}
 
       {shippingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="shipping-title">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="shipping-title">
+          <div className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-xl sm:p-6">
             <h2 id="shipping-title" className="font-body text-xl font-black">Despachar {shippingOrder.order_number}</h2>
             <p className="mt-2 text-sm leading-6 text-gray-600">Al confirmar, el comprador recibirá automáticamente el transportista y su número de seguimiento.</p>
             <label className="mt-5 block text-sm font-semibold">Transportista
@@ -700,8 +843,8 @@ export default function AdminOrdersPage() {
             <label className="mt-4 block text-sm font-semibold">Link de seguimiento <span className="font-normal text-gray-400">(opcional)</span>
               <input type="url" maxLength={500} placeholder="https://…" value={trackingUrl} onChange={event => setTrackingUrl(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
             </label>
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setShippingOrder(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold">Cancelar</button>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setShippingOrder(null)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold sm:w-auto sm:py-2">Cancelar</button>
               <button
                 type="button"
                 disabled={busy === shippingOrder.public_id || shippingCarrier.trim().length < 2 || trackingNumber.trim().length < 2}
@@ -710,7 +853,7 @@ export default function AdminOrdersPage() {
                   trackingNumber: trackingNumber.trim(),
                   trackingUrl: trackingUrl.trim(),
                 })}
-                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-40"
+                className="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-40 sm:w-auto sm:py-2"
               >
                 {busy === shippingOrder.public_id ? 'Despachando…' : 'Confirmar despacho'}
               </button>
@@ -720,8 +863,8 @@ export default function AdminOrdersPage() {
       )}
 
       {refundOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="refund-title">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="refund-title">
+          <div className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-xl sm:p-6">
             <h2 id="refund-title" className="font-body text-xl font-black">Reembolsar {refundOrder.order_number}</h2>
             <p className="mt-2 text-sm text-gray-600">Saldo máximo: {money.format(refundOrder.refundable_clp)}. El stock no se repone automáticamente.</p>
             <label className="mt-5 block text-sm font-semibold">Monto CLP
@@ -733,9 +876,9 @@ export default function AdminOrdersPage() {
             <label className="mt-4 block text-sm font-semibold">Escribe REEMBOLSAR para confirmar
               <input value={refundConfirmation} onChange={event => setRefundConfirmation(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
             </label>
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => { setRefundOrder(null); setRefundIdempotencyKey('') }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold">Cancelar</button>
-              <button type="button" disabled={busy.startsWith('refund:') || !refundIdempotencyKey || refundConfirmation !== 'REEMBOLSAR' || refundReason.trim().length < 5} onClick={() => void submitRefund()} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40">
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => { setRefundOrder(null); setRefundIdempotencyKey('') }} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold sm:w-auto sm:py-2">Cancelar</button>
+              <button type="button" disabled={busy.startsWith('refund:') || !refundIdempotencyKey || refundConfirmation !== 'REEMBOLSAR' || refundReason.trim().length < 5} onClick={() => void submitRefund()} className="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 sm:w-auto sm:py-2">
                 {busy.startsWith('refund:') ? 'Procesando…' : 'Confirmar reembolso'}
               </button>
             </div>
