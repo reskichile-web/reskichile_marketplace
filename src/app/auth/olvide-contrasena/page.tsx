@@ -52,19 +52,6 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     const supabase = createClient()
-
-    const { data: userExists } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', trimmedEmail)
-      .single()
-
-    if (!userExists) {
-      setError('No encontramos una cuenta con ese email')
-      setLoading(false)
-      return
-    }
-
     const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
       redirectTo: authRecoveryUrl(window.location.origin, redirect),
     })
@@ -208,7 +195,7 @@ export default function ForgotPasswordPage() {
           </div>
           <h1 className="font-body text-2xl font-black text-gray-900">Ingresa el código</h1>
           <p className="text-sm text-gray-500 mt-2">
-            Enviamos un código de 6 dígitos a
+            Si existe una cuenta asociada, enviaremos un código de 6 dígitos a
           </p>
           <p className="text-sm font-semibold text-gray-900 mt-1">{email}</p>
         </div>
