@@ -6,6 +6,7 @@ import {
   ChevronDown,
   CircleAlert,
   Clock3,
+  ExternalLink,
   Mail,
   MapPin,
   Package,
@@ -110,6 +111,27 @@ const PICKUP_POINT_LABELS: Record<string, string> = {
 
 function pickupPointLabel(pointId: string): string {
   return PICKUP_POINT_LABELS[pointId] || 'Punto de retiro ReSkiChile'
+}
+
+function googleMapsUrl(snapshot: Order['shipping_snapshot']): string | null {
+  const formattedAddress = snapshot.formatted_address?.trim()
+  const streetAddress = [snapshot.street, snapshot.number]
+    .map(value => value?.trim())
+    .filter(Boolean)
+    .join(' ')
+  const query = formattedAddress || [
+    streetAddress,
+    snapshot.commune,
+    snapshot.region,
+    'Chile',
+  ]
+    .map(value => value?.trim())
+    .filter(Boolean)
+    .join(', ')
+
+  return query
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+    : null
 }
 
 interface StatusAppearance {
@@ -305,6 +327,10 @@ function OrderDetails({
   refundsEnabled: boolean
   onRefund: (order: Order) => void
 }) {
+  const mapUrl = order.delivery_method === 'home'
+    ? googleMapsUrl(order.shipping_snapshot)
+    : null
+
   return (
     <>
       <section aria-label={`Cliente de ${order.order_number}`} className="mb-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:mb-4">
@@ -370,10 +396,30 @@ function OrderDetails({
           </div>
           <div className="mt-3 text-sm leading-6">
             <p className="font-bold text-gray-900">{order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
-            {order.shipping_snapshot.street && <p className="mt-1 text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
-            {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{pickupPointLabel(order.shipping_snapshot.pickup_point_id)}</p>}
-            {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
-            <p className="text-gray-600">{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
+            {mapUrl ? (
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="group mt-1 inline-block rounded-md text-gray-600 outline-none transition-colors hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label="Abrir dirección de despacho en Google Maps"
+              >
+                {order.shipping_snapshot.street && <p className="group-hover:underline">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
+                {order.shipping_snapshot.extra && <p>{order.shipping_snapshot.extra}</p>}
+                <p>{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
+                <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 group-hover:underline">
+                  Abrir en Google Maps
+                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                </span>
+              </a>
+            ) : (
+              <>
+                {order.shipping_snapshot.street && <p className="mt-1 text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
+                {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{pickupPointLabel(order.shipping_snapshot.pickup_point_id)}</p>}
+                {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
+                <p className="text-gray-600">{[order.shipping_snapshot.commune, order.shipping_snapshot.region].filter(Boolean).join(', ')}</p>
+              </>
+            )}
             {order.tracking_number && (
               <div className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-600">
                 <p><span className="font-bold text-gray-800">{order.shipping_carrier}</span> · {order.tracking_number}</p>

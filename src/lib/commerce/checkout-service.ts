@@ -38,6 +38,11 @@ import {
   StarkenError,
   type StarkenPackage,
 } from '@/lib/shipping/starken'
+import {
+  combineStarkenParcel,
+  starkenTariffTier,
+  type StarkenTariffTier,
+} from '@/lib/shipping/starken-tariff'
 
 interface CommerceProduct {
   id: string
@@ -256,6 +261,7 @@ interface ShippingRateRow {
   id: string
   shipping_origin_code: ShippingOriginCode
   service_code: string
+  package_tier: StarkenTariffTier | null
   amount_clp: number
   min_delivery_days: number | null
   max_delivery_days: number | null
@@ -270,76 +276,14 @@ interface ShippingRateRow {
   }>
 }
 
-interface PackagedLine {
-  packaged_length_cm: number | null
-  packaged_width_cm: number | null
-  packaged_height_cm: number | null
-  packaged_weight_kg: number | null
-  quantity?: number
-}
-
-function combinedParcel(lines: PackagedLine[]): StarkenPackage | null {
-  if (lines.length === 0 || lines.some(line => (
-    line.packaged_length_cm == null || line.packaged_width_cm == null ||
-    line.packaged_height_cm == null || line.packaged_weight_kg == null
-  ))) return null
-
-  const unitCount = lines.reduce((sum, line) => sum + Number(line.quantity || 1), 0)
-  const weightKg = lines.reduce(
-    (sum, line) => sum + Number(line.packaged_weight_kg) * Number(line.quantity || 1),
-    0,
-  )
-  const volumeCm3 = lines.reduce((sum, line) => (
-    sum + Number(line.packaged_length_cm) * Number(line.packaged_width_cm) *
-      Number(line.packaged_height_cm) * Number(line.quantity || 1)
-  ), 0)
-  const dimensions = lines.flatMap(line => [
-    Number(line.packaged_length_cm),
-    Number(line.packaged_width_cm),
-    Number(line.packaged_height_cm),
-  ])
-  const parcel = unitCount === 1
-    ? {
-        lengthCm: Number(lines[0].packaged_length_cm),
-        widthCm: Number(lines[0].packaged_width_cm),
-        heightCm: Number(lines[0].packaged_height_cm),
-        weightKg,
-      }
-    : (() => {
-        // Starken's official plugin represents a multi-product cart as one
-        // volume-equivalent parcel while preserving the longest dimension.
-        const widthCm = Math.max(...dimensions)
-        const heightCm = Math.sqrt((volumeCm3 / widthCm) * (2 / 3))
-        return {
-          widthCm,
-          heightCm,
-          lengthCm: volumeCm3 / widthCm / heightCm,
-          weightKg,
-        }
-      })()
-  if (Object.values(parcel).some(value => !Number.isFinite(value) || value <= 0)) {
-    return null
-  }
-  return parcel
-}
-
 async function quoteShipping(
   config: PaymentConfig,
   input: CheckoutInput,
   origins: ShippingOriginCode[],
-  parcelCount: number,
   parcels: Map<ShippingOriginCode, StarkenPackage>,
 ): Promise<{ amountClp: number; source: 'sandbox_fixed' | 'table' | 'starken'; origin: ShippingOriginCode }> {
-  if (!Number.isSafeInteger(parcelCount) || parcelCount < 1 || parcelCount > 20) {
-    throw new CheckoutServiceError(
-      'INVALID_PACKAGE_COUNT',
-      'No pudimos calcular los paquetes de este carrito.',
-      422,
-    )
-  }
-
-  const orderAmount = (unitAmountClp: number): number => {
-    const amount = Number(unitAmountClp) * parcelCount
+  const validOrderAmount = (rateAmountClp: number): number => {
+    const amount = Number(rateAmountClp)
     if (!Number.isSafeInteger(amount) || amount < 0 || amount > 10000000) {
       throw new CheckoutServiceError(
         'INVALID_SHIPPING_RATE',
@@ -361,7 +305,7 @@ async function quoteShipping(
     // Sandbox uses a fixed rate, so a stable warehouse preference is enough.
     // Production compares persisted rates before selecting the origin.
     return {
-      amountClp: orderAmount(config.sandboxShippingClp),
+      amountClp: validOrderAmount(config.sandboxShippingClp),
       source: 'sandbox_fixed',
       origin: origins[0],
     }
@@ -431,7 +375,7 @@ async function quoteShipping(
   const { data, error } = await supabase
     .from('shipping_rates')
     .select(
-      'id, shipping_origin_code, service_code, amount_clp, min_delivery_days, max_delivery_days, shipping_zones!inner(region, commune, priority)'
+      'id, shipping_origin_code, service_code, package_tier, amount_clp, min_delivery_days, max_delivery_days, shipping_zones!inner(region, commune, priority)'
     )
     .in('shipping_origin_code', origins)
     .eq('handling_class', 'standard')
@@ -449,12 +393,19 @@ async function quoteShipping(
         ? row.shipping_zones[0]
         : row.shipping_zones
       if (!zone || !Number.isSafeInteger(Number(row.amount_clp))) return []
+      if (input.delivery.method === 'home') {
+        const parcel = parcels.get(row.shipping_origin_code)
+        const tier = parcel ? starkenTariffTier(parcel) : null
+        if (!tier || row.package_tier !== tier) return []
+      } else if (row.package_tier != null) {
+        return []
+      }
       return [{
         id: row.id,
         originCode: row.shipping_origin_code,
         serviceCode: row.service_code,
-        // One finished box per unit. Persisted table rates are per box.
-        amountClp: orderAmount(Number(row.amount_clp)),
+        // The rate applies once to the cart's consolidated parcel.
+        amountClp: validOrderAmount(Number(row.amount_clp)),
         minDeliveryDays: row.min_delivery_days == null ? null : Number(row.min_delivery_days),
         maxDeliveryDays: row.max_delivery_days == null ? null : Number(row.max_delivery_days),
         zonePriority: Number(zone.priority),
@@ -640,21 +591,17 @@ export async function quoteCheckout(
       )
     }
   }
-  const parcelCount = input.rackItems.length > 0
-    ? input.rackItems.reduce((sum, item) => sum + item.quantity, 0)
-    : input.productIds.length
   const parcels = new Map<ShippingOriginCode, StarkenPackage>()
   for (const origin of candidateOrigins) {
     const parcel = rackCandidates.size > 0
-      ? combinedParcel(rackCandidates.get(origin) || [])
-      : combinedParcel(products.filter(product => product.shipping_origin_code === origin))
+      ? combineStarkenParcel(rackCandidates.get(origin) || [])
+      : combineStarkenParcel(products.filter(product => product.shipping_origin_code === origin))
     if (parcel) parcels.set(origin, parcel)
   }
   const shipping = await quoteShipping(
     config,
     input,
     candidateOrigins,
-    parcelCount,
     parcels,
   )
   const rackVariants = rackCandidates.get(shipping.origin) || []

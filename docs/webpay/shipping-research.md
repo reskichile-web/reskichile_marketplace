@@ -49,10 +49,11 @@ Para cotizar correctamente se necesita:
 - entrega a domicilio o sucursal/punto;
 - número de piezas físicas.
 
-Decisión ReskiChile: cada unidad comprada viaja en una caja terminada separada.
-En la tabla propia, `amount_clp` es por caja y el total se multiplica por el
-número de unidades. La futura API del courier debe recibir todas las piezas y
-su respuesta reemplazará esa multiplicación cuando el contrato lo indique.
+Decisión ReskiChile: las unidades compatibles de un pedido se consolidan en un
+solo paquete. El motor suma el peso y el volumen de todas las unidades, calcula
+el peso facturable de Starken como el mayor entre el físico y el volumétrico
+(`largo × ancho × alto / 4000`) y aplica una sola tarifa XS, S, M o L. La API
+del courier recibe ese mismo paquete consolidado cuando está habilitada.
 
 El tamaño del producto sin embalar no basta. Hay que medir la caja o envoltorio
 final, incluyendo protecciones.
@@ -265,7 +266,7 @@ referencia un paquete de 20 × 10 × 10 cm. El perfil registrado para el Ski Rac
 es menor: 15 × 10 × 3 cm y 0,140 kg por unidad embalada. Se usa el peso máximo
 de la talla L para cubrir todas las tallas con un único perfil conservador.
 
-| Zona Starken | Tarifa pública | Tarifa ReskiChile por caja |
+| Zona Starken | Tarifa pública XS | Tarifa ReskiChile XS por pedido |
 | --- | ---: | ---: |
 | Misma ciudad | $4.500 | $1.990 |
 | Extremo norte (Arica a Antofagasta) | $7.660 | $4.490 |
@@ -277,11 +278,16 @@ es la misma comuna de la bodega: Las Condes o Los Ángeles. Las demás comunas
 usan su zona regional. Retiro coordinado en cualquiera de las dos bodegas
 permanece en $0.
 
-ReskiChile subsidia la diferencia entre la tarifa pública y la tarifa mostrada
-al comprador. La misma tabla se aplica a los modelos Madera y Filamento. El Ski
-Rack Madera queda en $17.990 y el Ski Rack Filamento conserva su precio de
-$7.990. No se agrega IVA por separado: el comprador ve un precio final. La
-tabla se cobra por caja, es decir, una vez por cada unidad del carrito.
+ReskiChile subsidia la diferencia entre la tarifa pública XS y la tarifa
+mostrada al comprador. La misma tabla se aplica a los modelos Madera y
+Filamento. No se agrega IVA por separado: el comprador ve un precio final. La
+tabla se cobra una vez por el paquete consolidado, no por cada unidad.
+
+Desde el 2026-09-17 también están versionadas las tarifas públicas Persona para
+las categorías S, M y L. Si el peso facturable supera 850 g, el checkout sube a
+la categoría correspondiente; si supera 10 kg, detiene el checkout para exigir
+una cotización especial. Con el perfil actual de 140 g y 450 cm³ por Ski Rack,
+cinco unidades suman 700 g y 2.250 cm³, por lo que siguen siendo XS.
 
 Este modelo sigue el patrón habitual de e-commerce para un catálogo pequeño y
 un paquete estandarizado: retiro gratis más tarifa plana por zona y clase de
@@ -293,8 +299,8 @@ Fuentes:
 - [Tarifa Simple de Starken](https://www.starken.cl/tarifa-simple)
 - [Tarifa plana por zona y clase en WooCommerce](https://woocommerce.com/document/flat-rate-shipping/)
 
-Si el producto, la caja o sus protecciones cambian y el paquete supera 850 g,
-esta tabla no puede usarse y debe recalcularse con la categoría siguiente.
+Si el producto, la caja o sus protecciones cambian, sus medidas y peso deben
+actualizarse para que el motor seleccione la categoría correcta.
 
 Blue Express se prueba después si confirma acceso API para el volumen real de
 ReskiChile. Sus plugins publicados no se pueden instalar directamente en Next.js.
@@ -370,7 +376,8 @@ Asociado a cada producto:
 - packaged_width_cm;
 - packaged_height_cm;
 - packaged_weight_kg;
-- parcel_count: uno por cada unidad comprada;
+- consolidación: una pieza lógica por pedido compatible, preservando peso y
+  volumen totales;
 - handling_class: standard, long, fragile u otra;
 - updated_at y updated_by.
 
