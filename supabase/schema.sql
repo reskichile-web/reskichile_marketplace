@@ -167,7 +167,7 @@ CREATE TABLE public.products (
   sold_at TIMESTAMPTZ,
   sold_channel TEXT,            -- 'reski' | 'otro_medio' | 'otro'
   sold_speed TEXT,             -- 'rapido' | 'normal' | 'baje_precio'
-  -- Last "¿lo vendiste?" reminder timestamp (30-day cron; re-reminds >30d).
+  -- Last "¿lo vendiste?" reminder timestamp (15-day cron; re-reminds >15d).
   sale_reminder_sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

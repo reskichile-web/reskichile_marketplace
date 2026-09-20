@@ -7,6 +7,7 @@ import { generateToken } from '@/lib/sold'
 
 interface SellerEmail {
   email: string | null
+  notify_reminders_email?: boolean | null
 }
 
 export interface SaleReminderProduct {
@@ -28,14 +29,32 @@ export type SaleReminderSendResult =
     }
   | {
       ok: false
-      code: 'NO_RECIPIENT' | 'TOKEN_CREATE_FAILED' | 'EMAIL_SEND_FAILED'
+      code:
+        | 'REMINDERS_DISABLED'
+        | 'NO_RECIPIENT'
+        | 'TOKEN_CREATE_FAILED'
+        | 'EMAIL_SEND_FAILED'
       error: string
     }
 
-function reminderRecipient(product: SaleReminderProduct): string | null {
-  const seller = Array.isArray(product.users)
+export interface SaleReminderSendOptions {
+  /** Stable provider key for cron retries. */
+  idempotencyKey?: string
+  /** Stable links keep an idempotent retry byte-for-byte equivalent. */
+  actionTokens?: {
+    confirmSold: string
+    stillAvailable: string
+  }
+}
+
+function reminderSeller(product: SaleReminderProduct): SellerEmail | null {
+  return Array.isArray(product.users)
     ? product.users[0] ?? null
     : product.users
+}
+
+function reminderRecipient(product: SaleReminderProduct): string | null {
+  const seller = reminderSeller(product)
   const sellerEmail = seller?.email?.trim()
   const anonEmail = product.anon_contact?.includes('@')
     ? product.anon_contact.trim()
@@ -51,7 +70,16 @@ function reminderRecipient(product: SaleReminderProduct): string | null {
 export async function sendSaleReminderForProduct(
   admin: SupabaseClient,
   product: SaleReminderProduct,
+  options: SaleReminderSendOptions = {},
 ): Promise<SaleReminderSendResult> {
+  if (reminderSeller(product)?.notify_reminders_email === false) {
+    return {
+      ok: false,
+      code: 'REMINDERS_DISABLED',
+      error: 'El vendedor desactivó los correos de recordatorio',
+    }
+  }
+
   const recipient = reminderRecipient(product)
   if (!recipient) {
     return {
@@ -61,12 +89,19 @@ export async function sendSaleReminderForProduct(
     }
   }
 
-  const confirmToken = generateToken()
-  const availableToken = generateToken()
-  const { error: tokenError } = await admin.from('product_action_tokens').insert([
+  const confirmToken = options.actionTokens?.confirmSold || generateToken()
+  const availableToken = options.actionTokens?.stillAvailable || generateToken()
+  const tokenRows = [
     { token: confirmToken, product_id: product.id, action: 'confirm_sold' },
     { token: availableToken, product_id: product.id, action: 'still_available' },
-  ])
+  ]
+  const tokenWrite = admin.from('product_action_tokens')
+  const { error: tokenError } = options.actionTokens
+    ? await tokenWrite.upsert(tokenRows, {
+        onConflict: 'token',
+        ignoreDuplicates: true,
+      })
+    : await tokenWrite.insert(tokenRows)
   if (tokenError) {
     return {
       ok: false,
@@ -86,7 +121,15 @@ export async function sendSaleReminderForProduct(
     availablePath: `/p/disponible/${availableToken}?alt=${confirmToken}`,
   })
 
-  const delivery = await sendEmail({ to: recipient, subject, html, text })
+  const delivery = await sendEmail({
+    to: recipient,
+    subject,
+    html,
+    text,
+    ...(options.idempotencyKey
+      ? { idempotencyKey: options.idempotencyKey }
+      : {}),
+  })
   if (!delivery.ok) {
     return {
       ok: false,

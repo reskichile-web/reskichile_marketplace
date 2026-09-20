@@ -1,4 +1,4 @@
-export const SALE_REMINDER_INTERVAL_DAYS = 30
+export const SALE_REMINDER_INTERVAL_DAYS = 15
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -10,7 +10,7 @@ interface SaleReminderTiming {
 
 /**
  * Mirrors the cron eligibility rules: the listing must be approved, have at
- * least 30 published days, and be 30 days past the latest reminder/reset.
+ * least 15 published days, and be 15 days past the latest reminder/reset.
  */
 export function daysUntilSaleReminder(
   timing: SaleReminderTiming,

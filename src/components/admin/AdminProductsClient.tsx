@@ -854,7 +854,7 @@ export default function AdminProductsClient({ initialData }: { initialData: Admi
                                   className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-red-500"
                                   title={product.sale_reminder_sent_at
                                     ? `Reloj reiniciado el ${new Date(product.sale_reminder_sent_at).toLocaleString('es-CL')}`
-                                    : 'Primer recordatorio al cumplir 30 días publicado'}
+                                    : 'Primer recordatorio al cumplir 15 días publicado'}
                                 >
                                   <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v10.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 17.25V6.75z" />

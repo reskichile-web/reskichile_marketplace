@@ -5,8 +5,8 @@ import { buildInternalNotice } from '@/lib/email/templates'
 
 const SUPPORT_EMAIL = 'reskichile@gmail.com'
 
-// "No, sigue disponible" from the 30-day reminder. Notifies the team fast and
-// resets the reminder clock (cron will re-remind in ~30 more days).
+// "No, sigue disponible" from the 15-day reminder. Notifies the team fast and
+// resets the reminder clock (cron will re-remind in ~15 more days).
 export async function POST(request: Request) {
   const { token } = await request.json().catch(() => ({}))
   if (!token || typeof token !== 'string') {
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     .eq('id', row.product_id)
     .single()
 
-  // Reset the reminder clock so the cron re-reminds in ~30 days, and mark used.
+  // Reset the reminder clock so the cron re-reminds in ~15 days, and mark used.
   await admin.from('products').update({ sale_reminder_sent_at: new Date().toISOString() }).eq('id', row.product_id)
   await admin.from('product_action_tokens').update({ used_at: new Date().toISOString() }).eq('token', token)
 

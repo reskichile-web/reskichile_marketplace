@@ -1,6 +1,9 @@
 {
   "regions": ["gru1"],
   "crons": [
+    { "path": "/api/cron/sale-reminders/contacted/t1000", "schedule": "0 13 21 9 *" },
+    { "path": "/api/cron/sale-reminders/contacted/t1030", "schedule": "30 13 21 9 *" },
+    { "path": "/api/cron/sale-reminders", "schedule": "0 14 * * *" },
     { "path": "/api/cron/instagram-publish/t1430", "schedule": "30 14 * * *" },
     { "path": "/api/cron/instagram-publish/t1445", "schedule": "45 14 * * *" },
     { "path": "/api/cron/instagram-publish/t1500", "schedule": "0 15 * * *" },

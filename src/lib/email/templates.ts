@@ -421,7 +421,7 @@ export function buildSaleEmail(p: SaleEmail): BuiltEmail {
   return { subject, html, text: lines.join('\n') }
 }
 
-// ─── Template: recordatorio 30 días "¿lo vendiste?" ──────────────────────────
+// ─── Template: recordatorio 15 días "¿lo vendiste?" ──────────────────────────
 
 export interface SaleReminderEmail {
   brand: string

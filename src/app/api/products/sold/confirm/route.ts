@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { markProductSold } from '@/lib/sold'
 
-// "Sí, lo vendí" from the 30-day reminder email. Token-authorized; runs only on
+// "Sí, lo vendí" from the 15-day reminder email. Token-authorized; runs only on
 // the confirmation page's POST. Accepts optional sale price / channel / speed.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))

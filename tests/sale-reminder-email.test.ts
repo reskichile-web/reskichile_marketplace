@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   insertTokens: vi.fn(),
+  upsertTokens: vi.fn(),
   updateProduct: vi.fn(),
   updateEq: vi.fn(),
   tokenNumber: 0,
@@ -36,7 +37,10 @@ function serviceClient(): SupabaseClient {
   return {
     from: vi.fn((table: string) => {
       if (table === 'product_action_tokens') {
-        return { insert: mocks.insertTokens }
+        return {
+          insert: mocks.insertTokens,
+          upsert: mocks.upsertTokens,
+        }
       }
       if (table === 'products') {
         return {
@@ -56,6 +60,7 @@ describe('canonical sale reminder sender', () => {
     vi.clearAllMocks()
     mocks.tokenNumber = 0
     mocks.insertTokens.mockResolvedValue({ error: null })
+    mocks.upsertTokens.mockResolvedValue({ error: null })
     mocks.sendEmail.mockResolvedValue({ ok: true, id: 'email-id' })
     mocks.updateEq.mockResolvedValue({ error: null })
   })
@@ -95,6 +100,50 @@ describe('canonical sale reminder sender', () => {
 
     expect(result).toEqual(expect.objectContaining({ ok: true, recipient: 'anon@example.com' }))
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'anon@example.com' }))
+  })
+
+  it('uses stable tokens and a provider key for an idempotent campaign retry', async () => {
+    const result = await sendSaleReminderForProduct(serviceClient(), product, {
+      idempotencyKey: 'contacted-products-2026-09-21/product-1',
+      actionTokens: {
+        confirmSold: 'stable-confirm-token',
+        stillAvailable: 'stable-available-token',
+      },
+    })
+
+    expect(result).toEqual(expect.objectContaining({ ok: true }))
+    expect(mocks.insertTokens).not.toHaveBeenCalled()
+    expect(mocks.upsertTokens).toHaveBeenCalledWith([
+      { token: 'stable-confirm-token', product_id: product.id, action: 'confirm_sold' },
+      { token: 'stable-available-token', product_id: product.id, action: 'still_available' },
+    ], {
+      onConflict: 'token',
+      ignoreDuplicates: true,
+    })
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      idempotencyKey: 'contacted-products-2026-09-21/product-1',
+      html: expect.stringContaining('/p/vendi/stable-confirm-token?alt=stable-available-token'),
+      text: expect.stringContaining('/p/disponible/stable-available-token?alt=stable-confirm-token'),
+    }))
+  })
+
+  it('honors a seller who disabled reminder emails', async () => {
+    const result = await sendSaleReminderForProduct(serviceClient(), {
+      ...product,
+      users: {
+        email: 'seller@example.com',
+        notify_reminders_email: false,
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'REMINDERS_DISABLED',
+      error: 'El vendedor desactivó los correos de recordatorio',
+    })
+    expect(mocks.insertTokens).not.toHaveBeenCalled()
+    expect(mocks.upsertTokens).not.toHaveBeenCalled()
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
   })
 
   it('does not advance the reminder clock when delivery fails', async () => {
