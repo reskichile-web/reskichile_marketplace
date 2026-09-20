@@ -456,16 +456,16 @@ export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
       </tr>
     </table>
     ${ctaTwoUp(soldUrl, 'Sí, ya la vendí', availUrl, 'No, sigue disponible')}
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#edf4fb"
-      style="border-collapse:separate;background-color:#edf4fb;border:1px solid #d4e5f5;border-radius:12px;margin:24px 0 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#ffffff"
+      style="border-collapse:collapse;background-color:#ffffff;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;margin:24px 0 0;">
       <tr>
-        <td style="padding:18px 20px;">
-          <p style="margin:0 0 7px;font-size:14px;font-weight:800;color:#174a7a;">Fin de temporada</p>
-          <p style="margin:0 0 15px;font-size:14px;line-height:1.55;color:#374151;">La demanda empieza a bajar. Si tu producto sigue disponible, te recomendamos evaluar un ajuste de precio para aumentar sus posibilidades de venta.</p>
-          <p style="margin:0 0 15px;font-size:13px;line-height:1.5;color:#6b7280;">Usa como referencia todas las ventas registradas en ReSkiChile durante 2026.</p>
+        <td style="padding:22px 12px;">
+          <p style="margin:0 0 9px;font-size:15px;font-weight:800;color:#174a7a;text-align:center;"><span style="color:#174a7a;font-weight:400;">&#9888;&#xfe0e;</span>&nbsp; Fin de temporada 2026</p>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.55;color:#374151;text-align:center;">La demanda empieza a bajar. Si tu producto sigue disponible, te recomendamos evaluar un ajuste de precio para aumentar sus posibilidades de venta.</p>
+          <p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7280;text-align:center;font-style:italic;">Usa como referencia todas las ventas registradas en ReSkiChile durante 2026.</p>
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:0 auto;">
             <tr><td align="center" bgcolor="${BRAND}" style="background-color:${BRAND};">
-              <a href="${SALES_REFERENCE_URL}" style="display:inline-block;padding:13px 24px;font-size:12px;font-weight:700;letter-spacing:0.02em;color:#ffffff;text-decoration:none;text-align:center;">VER PRECIOS DE VENTA 2026</a>
+              <a href="${SALES_REFERENCE_URL}" style="display:inline-block;padding:13px 24px;font-size:12px;font-weight:700;letter-spacing:0.02em;color:#ffffff;text-decoration:none;text-align:center;">VER PRECIOS DE VENTA 2026&nbsp; &#8599;</a>
             </td></tr>
           </table>
         </td>
@@ -474,7 +474,7 @@ export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
     ${contactBlock()}
   `)
 
-  const text = `Hola,\n\nTu publicación de ${title} sigue en ReSkiChile. ¿Ya la vendiste?\n\nSí, ya la vendí: ${soldUrl}\nNo, sigue disponible: ${availUrl}\n\nFin de temporada\nLa demanda empieza a bajar. Si tu producto sigue disponible, te recomendamos evaluar un ajuste de precio para aumentar sus posibilidades de venta.\n\nRevisa todas las ventas registradas en ReSkiChile durante 2026: ${SALES_REFERENCE_URL}\n\nReSkiChile`
+  const text = `Hola,\n\nTu publicación de ${title} sigue en ReSkiChile. ¿Ya la vendiste?\n\nSí, ya la vendí: ${soldUrl}\nNo, sigue disponible: ${availUrl}\n\nFin de temporada 2026\nLa demanda empieza a bajar. Si tu producto sigue disponible, te recomendamos evaluar un ajuste de precio para aumentar sus posibilidades de venta.\n\nRevisa todas las ventas registradas en ReSkiChile durante 2026: ${SALES_REFERENCE_URL}\n\nReSkiChile`
   return { subject, html, text }
 }
 

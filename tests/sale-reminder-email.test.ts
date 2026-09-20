@@ -85,7 +85,9 @@ describe('canonical sale reminder sender', () => {
     }))
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain('https://example.com/first.jpg')
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain('https://www.reskichile.cl/ventas-2026')
-    expect(mocks.sendEmail.mock.calls[0][0].html).toContain('Fin de temporada')
+    expect(mocks.sendEmail.mock.calls[0][0].html).toContain('Fin de temporada 2026')
+    expect(mocks.sendEmail.mock.calls[0][0].html).toContain('&#9888;&#xfe0e;')
+    expect(mocks.sendEmail.mock.calls[0][0].html).toContain('&#8599;')
     expect(mocks.sendEmail.mock.calls[0][0].text).toContain('La demanda empieza a bajar')
     expect(mocks.sendEmail.mock.calls[0][0].html).not.toContain('Cuéntanos con un toque')
     expect(mocks.updateProduct).toHaveBeenCalledWith({
