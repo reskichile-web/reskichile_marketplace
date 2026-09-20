@@ -18,7 +18,9 @@ import {
 } from '@/lib/sales-reference'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
-export const revalidate = 900
+// Runtime-only: CI deliberately uses an unreachable Supabase URL, while this
+// public page reads the current sales directly from the production database.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Ventas 2026 · Precios reales de equipamiento usado',
