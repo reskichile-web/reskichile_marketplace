@@ -58,7 +58,10 @@ async function getRecordedSales(): Promise<SaleRow[]> {
 
   return ((data || []) as unknown as SaleRow[])
     .filter(sale => isRecordedSaleFromYear(sale))
-    .sort((a, b) => recordedSaleDate(b).getTime() - recordedSaleDate(a).getTime())
+    .sort((a, b) => {
+      const imageOrder = Number(Boolean(saleImage(b))) - Number(Boolean(saleImage(a)))
+      return imageOrder || recordedSaleDate(b).getTime() - recordedSaleDate(a).getTime()
+    })
 }
 
 export default async function SalesReferencePage() {
@@ -85,22 +88,9 @@ export default async function SalesReferencePage() {
   return (
     <div className="bg-slate-50">
       <section className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-12">
-        <header className="max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-600">Ventas 2026</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">Precios reales de venta</h1>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600 md:text-base">
-            Referencias simples para comparar tu equipo y ajustar su precio al cierre de temporada.
-          </p>
-        </header>
-
-        <div className="mt-5 border-l-2 border-brand-400 bg-white px-4 py-3 text-sm leading-relaxed text-slate-600">
-          La demanda empieza a bajar. Un precio competitivo puede ayudarte a vender antes de que termine la temporada.
-        </div>
-
-        <div className="mb-4 mt-7 flex items-center justify-between gap-4">
-          <p className="text-sm font-bold text-slate-900">{items.length} ventas registradas</p>
-          <p className="text-xs text-slate-400">Toca una para ver el detalle</p>
-        </div>
+        <h1 className="mb-7 font-body text-3xl font-black italic tracking-tight text-brand-500 md:mb-9 md:text-5xl">
+          Productos vendidos 2026
+        </h1>
 
         <SalesReferenceGrid sales={items} />
 
