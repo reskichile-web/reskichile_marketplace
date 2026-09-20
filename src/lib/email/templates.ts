@@ -457,7 +457,7 @@ export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
     </table>
     ${ctaTwoUp(soldUrl, 'Sí, ya la vendí', availUrl, 'No, sigue disponible')}
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#ffffff"
-      style="border-collapse:collapse;background-color:#ffffff;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;margin:24px 0 0;">
+      style="border-collapse:separate;background-color:#ffffff;border:1px solid #d4e5f5;border-radius:12px;margin:24px 0 0;overflow:hidden;">
       <tr>
         <td style="padding:22px 12px;">
           <p style="margin:0 0 9px;font-size:15px;font-weight:800;color:#174a7a;text-align:center;"><span style="color:#174a7a;font-weight:400;">&#9888;&#xfe0e;</span>&nbsp; Fin de temporada 2026</p>

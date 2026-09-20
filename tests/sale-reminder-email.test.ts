@@ -88,6 +88,7 @@ describe('canonical sale reminder sender', () => {
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain('Fin de temporada 2026')
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain('&#9888;&#xfe0e;')
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain('&#8599;')
+    expect(mocks.sendEmail.mock.calls[0][0].html).toContain('border:1px solid #d4e5f5;border-radius:12px')
     expect(mocks.sendEmail.mock.calls[0][0].text).toContain('La demanda empieza a bajar')
     expect(mocks.sendEmail.mock.calls[0][0].html).not.toContain('Cuéntanos con un toque')
     expect(mocks.updateProduct).toHaveBeenCalledWith({
