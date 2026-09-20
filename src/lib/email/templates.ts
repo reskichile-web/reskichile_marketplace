@@ -20,6 +20,7 @@ const CHECK_ICON =
 // APP_URL is deployment-specific (for example, the Webpay sandbox preview),
 // so it must never determine links delivered to real users.
 const SITE_URL = 'https://www.reskichile.cl'
+const SALES_REFERENCE_URL = `${SITE_URL}/ventas-2026`
 const SUPPORT_EMAIL = 'reskichile@gmail.com'
 const BRAND = '#2674c0' // azul ReSkiChile para los correos
 
@@ -455,10 +456,25 @@ export function buildSaleReminderEmail(p: SaleReminderEmail): BuiltEmail {
       </tr>
     </table>
     ${ctaTwoUp(soldUrl, 'Sí, ya la vendí', availUrl, 'No, sigue disponible')}
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#edf4fb"
+      style="border-collapse:separate;background-color:#edf4fb;border:1px solid #d4e5f5;border-radius:12px;margin:24px 0 0;">
+      <tr>
+        <td style="padding:18px 20px;">
+          <p style="margin:0 0 7px;font-size:14px;font-weight:800;color:#174a7a;">Fin de temporada</p>
+          <p style="margin:0 0 15px;font-size:14px;line-height:1.55;color:#374151;">La demanda empieza a bajar. Si tu producto sigue disponible, te recomendamos evaluar un ajuste de precio para aumentar sus posibilidades de venta.</p>
+          <p style="margin:0 0 15px;font-size:13px;line-height:1.5;color:#6b7280;">Usa como referencia todas las ventas registradas en ReSkiChile durante 2026.</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;margin:0 auto;">
+            <tr><td align="center" bgcolor="${BRAND}" style="background-color:${BRAND};">
+              <a href="${SALES_REFERENCE_URL}" style="display:inline-block;padding:13px 24px;font-size:12px;font-weight:700;letter-spacing:0.02em;color:#ffffff;text-decoration:none;text-align:center;">VER PRECIOS DE VENTA 2026</a>
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
     ${contactBlock()}
   `)
 
-  const text = `Hola,\n\nTu publicación de ${title} sigue en ReSkiChile. ¿Ya la vendiste?\n\nSí, ya la vendí: ${soldUrl}\nNo, sigue disponible: ${availUrl}\n\nReSkiChile`
+  const text = `Hola,\n\nTu publicación de ${title} sigue en ReSkiChile. ¿Ya la vendiste?\n\nSí, ya la vendí: ${soldUrl}\nNo, sigue disponible: ${availUrl}\n\nFin de temporada\nLa demanda empieza a bajar. Si tu producto sigue disponible, te recomendamos evaluar un ajuste de precio para aumentar sus posibilidades de venta.\n\nRevisa todas las ventas registradas en ReSkiChile durante 2026: ${SALES_REFERENCE_URL}\n\nReSkiChile`
   return { subject, html, text }
 }
 

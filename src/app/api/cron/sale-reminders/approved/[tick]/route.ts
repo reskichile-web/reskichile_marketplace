@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import {
-  CONTACTED_REMINDER_STARTED_AT,
-  contactedProductIds,
-  contactedReminderActionTokens,
-  contactedReminderDeliveryKey,
-  isContactedReminderCampaignDay,
+  approvedReminderActionTokens,
+  approvedReminderDeliveryKey,
+  isApprovedReminderCampaignDay,
+  isApprovedReminderCandidate,
 } from '@/lib/sale-reminder-campaign'
 import {
   sendSaleReminderForProduct,
@@ -16,6 +15,11 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 const BATCH_SIZE = 5
+const BATCH_DELAY_MS = 600
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, milliseconds))
+}
 
 function authorized(request: Request, secret: string | undefined): secret is string {
   return Boolean(
@@ -29,7 +33,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  if (!isContactedReminderCampaignDay(new Date())) {
+  if (!isApprovedReminderCampaignDay(new Date())) {
     return NextResponse.json({
       ok: true,
       active: false,
@@ -45,41 +49,19 @@ export async function GET(request: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } },
   )
 
-  const { data: contactRows, error: contactError } = await admin
-    .from('events')
-    .select('product_id')
-    .eq('event_type', 'click')
-    .in('event_name', ['whatsapp_contact', 'chat_contact'])
-    .not('product_id', 'is', null)
-
-  if (contactError) {
-    return NextResponse.json({ error: 'No pudimos consultar los contactos' }, { status: 500 })
-  }
-
-  const productIds = contactedProductIds(contactRows || [])
-  if (productIds.length === 0) {
-    return NextResponse.json({
-      ok: true,
-      active: true,
-      candidates: 0,
-      sent: 0,
-      skipped: 0,
-    })
-  }
-
   const { data: products, error: productError } = await admin
     .from('products')
     .select('id, brand, model, price, anon_contact, sale_reminder_sent_at, product_images(url, "order"), users:seller_id(email, notify_reminders_email)')
-    .in('id', productIds)
     .eq('status', 'approved')
-    .or(`sale_reminder_sent_at.is.null,sale_reminder_sent_at.lt.${CONTACTED_REMINDER_STARTED_AT}`)
-    .limit(200)
+    .order('id')
+    .limit(1000)
 
   if (productError) {
     return NextResponse.json({ error: 'No pudimos consultar las publicaciones' }, { status: 500 })
   }
 
-  const candidates = (products || []) as unknown as SaleReminderProduct[]
+  const candidates = ((products || []) as unknown as SaleReminderProduct[])
+    .filter(product => isApprovedReminderCandidate(product.sale_reminder_sent_at))
   let sent = 0
   let skipped = 0
   let trackingPending = 0
@@ -90,8 +72,9 @@ export async function GET(request: Request) {
     const results = await Promise.all(batch.map(async product => {
       try {
         return await sendSaleReminderForProduct(admin, product, {
-          idempotencyKey: contactedReminderDeliveryKey(product.id),
-          actionTokens: contactedReminderActionTokens(secret, product.id),
+          idempotencyKey: approvedReminderDeliveryKey(product.id),
+          actionTokens: approvedReminderActionTokens(secret, product.id),
+          ignoreReminderPreference: true,
         })
       } catch {
         return {
@@ -110,6 +93,10 @@ export async function GET(request: Request) {
         skipped++
         skippedByCode[result.code] = (skippedByCode[result.code] || 0) + 1
       }
+    }
+
+    if (offset + BATCH_SIZE < candidates.length) {
+      await wait(BATCH_DELAY_MS)
     }
   }
 

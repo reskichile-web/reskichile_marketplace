@@ -84,6 +84,9 @@ describe('canonical sale reminder sender', () => {
       text: expect.stringContaining('/p/disponible/token-2?alt=token-1'),
     }))
     expect(mocks.sendEmail.mock.calls[0][0].html).toContain('https://example.com/first.jpg')
+    expect(mocks.sendEmail.mock.calls[0][0].html).toContain('https://www.reskichile.cl/ventas-2026')
+    expect(mocks.sendEmail.mock.calls[0][0].html).toContain('Fin de temporada')
+    expect(mocks.sendEmail.mock.calls[0][0].text).toContain('La demanda empieza a bajar')
     expect(mocks.sendEmail.mock.calls[0][0].html).not.toContain('Cuéntanos con un toque')
     expect(mocks.updateProduct).toHaveBeenCalledWith({
       sale_reminder_sent_at: expect.any(String),
@@ -104,7 +107,7 @@ describe('canonical sale reminder sender', () => {
 
   it('uses stable tokens and a provider key for an idempotent campaign retry', async () => {
     const result = await sendSaleReminderForProduct(serviceClient(), product, {
-      idempotencyKey: 'contacted-products-2026-09-21/product-1',
+      idempotencyKey: 'approved-products-2026-09-21/product-1',
       actionTokens: {
         confirmSold: 'stable-confirm-token',
         stillAvailable: 'stable-available-token',
@@ -121,7 +124,7 @@ describe('canonical sale reminder sender', () => {
       ignoreDuplicates: true,
     })
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
-      idempotencyKey: 'contacted-products-2026-09-21/product-1',
+      idempotencyKey: 'approved-products-2026-09-21/product-1',
       html: expect.stringContaining('/p/vendi/stable-confirm-token?alt=stable-available-token'),
       text: expect.stringContaining('/p/disponible/stable-available-token?alt=stable-confirm-token'),
     }))
@@ -144,6 +147,24 @@ describe('canonical sale reminder sender', () => {
     expect(mocks.insertTokens).not.toHaveBeenCalled()
     expect(mocks.upsertTokens).not.toHaveBeenCalled()
     expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('can include disabled reminders in an explicitly authorized one-off campaign', async () => {
+    const result = await sendSaleReminderForProduct(serviceClient(), {
+      ...product,
+      users: {
+        email: 'seller@example.com',
+        notify_reminders_email: false,
+      },
+    }, {
+      ignoreReminderPreference: true,
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      ok: true,
+      recipient: 'seller@example.com',
+    }))
+    expect(mocks.sendEmail).toHaveBeenCalledOnce()
   })
 
   it('does not advance the reminder clock when delivery fails', async () => {

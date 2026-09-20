@@ -16,6 +16,7 @@ export interface SaleReminderProduct {
   model: string | null
   price: number
   anon_contact: string | null
+  sale_reminder_sent_at?: string | null
   product_images: { url: string; order: number }[] | null
   users: SellerEmail | SellerEmail[] | null
 }
@@ -45,6 +46,8 @@ export interface SaleReminderSendOptions {
     confirmSold: string
     stillAvailable: string
   }
+  /** Reserved for an explicitly authorized, one-off service campaign. */
+  ignoreReminderPreference?: boolean
 }
 
 function reminderSeller(product: SaleReminderProduct): SellerEmail | null {
@@ -72,7 +75,10 @@ export async function sendSaleReminderForProduct(
   product: SaleReminderProduct,
   options: SaleReminderSendOptions = {},
 ): Promise<SaleReminderSendResult> {
-  if (reminderSeller(product)?.notify_reminders_email === false) {
+  if (
+    !options.ignoreReminderPreference
+    && reminderSeller(product)?.notify_reminders_email === false
+  ) {
     return {
       ok: false,
       code: 'REMINDERS_DISABLED',
