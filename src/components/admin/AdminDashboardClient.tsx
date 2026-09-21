@@ -333,10 +333,12 @@ export default function AdminDashboardClient({ initialData }: { initialData: Adm
           )}
         </div>
 
-        {/* Recent chat activity — below the pending queue */}
+        {/* Important commercial activity — below the pending queue */}
         <RecentMessagesCard
           initialMessages={initialData.recentMessages}
           initialWhatsappClicks={initialData.recentWhatsappClicks}
+          initialRackCartEvents={initialData.recentRackCartEvents}
+          initialRackOrders={initialData.recentRackOrders}
         />
         </div>
 

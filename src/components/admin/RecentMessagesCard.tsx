@@ -2,7 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import type { AdminRecentMessage, AdminRecentWhatsappClick } from '@/lib/admin-view-data'
+import type {
+  AdminRecentMessage,
+  AdminRecentRackCartEvent,
+  AdminRecentRackOrder,
+  AdminRecentWhatsappClick,
+} from '@/lib/admin-view-data'
+import { parseRackEventDetail } from '@/lib/rack-analytics'
+import { getSkiRackProduct } from '@/lib/ski-rack-products'
+
+const money = new Intl.NumberFormat('es-CL', {
+  style: 'currency',
+  currency: 'CLP',
+  maximumFractionDigits: 0,
+})
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -15,21 +28,29 @@ function timeAgo(iso: string): string {
 }
 
 /**
- * Latest chat messages across all conversations (admin-only data).
- * Each row links into the read-only god-mode viewer at /admin/chats.
+ * Important commercial activity across conversations, contacts and Ski Rack.
  */
 export default function RecentMessagesCard({
   className,
   initialMessages,
   initialWhatsappClicks,
+  initialRackCartEvents,
+  initialRackOrders,
 }: {
   className?: string
   initialMessages?: AdminRecentMessage[]
   initialWhatsappClicks?: AdminRecentWhatsappClick[]
+  initialRackCartEvents?: AdminRecentRackCartEvent[]
+  initialRackOrders?: AdminRecentRackOrder[]
 }) {
-  const hasInitialData = initialMessages !== undefined && initialWhatsappClicks !== undefined
+  const hasInitialData = initialMessages !== undefined
+    && initialWhatsappClicks !== undefined
+    && initialRackCartEvents !== undefined
+    && initialRackOrders !== undefined
   const [messages, setMessages] = useState<AdminRecentMessage[]>(initialMessages || [])
   const [whatsappClicks, setWhatsappClicks] = useState<AdminRecentWhatsappClick[]>(initialWhatsappClicks || [])
+  const [rackCartEvents] = useState<AdminRecentRackCartEvent[]>(initialRackCartEvents || [])
+  const [rackOrders] = useState<AdminRecentRackOrder[]>(initialRackOrders || [])
   const [loading, setLoading] = useState(!hasInitialData)
 
   useEffect(() => {
@@ -52,6 +73,12 @@ export default function RecentMessagesCard({
   const activity = [
     ...messages.map(message => ({ kind: 'message' as const, createdAt: message.created_at, message })),
     ...whatsappClicks.map(click => ({ kind: 'whatsapp' as const, createdAt: click.created_at, click })),
+    ...rackCartEvents.map(event => ({ kind: 'rack-cart' as const, createdAt: event.created_at, event })),
+    ...rackOrders.map(order => ({
+      kind: 'rack-purchase' as const,
+      createdAt: order.paid_at || order.created_at,
+      order,
+    })),
   ]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 30)
@@ -64,22 +91,82 @@ export default function RecentMessagesCard({
             <svg className="w-5 h-5 text-gray-900 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
             </svg>
-            Últimos mensajes
+            Eventos importantes
           </h2>
-          <p className="text-xs text-gray-400 mt-0.5">Actividad reciente del chat y WhatsApp</p>
+          <p className="text-xs text-gray-400 mt-0.5">Chats, contactos, carritos y compras de Ski Rack</p>
         </div>
-        <Link href="/admin/chats" className="text-xs text-brand-500 hover:underline shrink-0">
-          Ver chats
+        <Link href="/admin/metricas" className="text-xs text-brand-500 hover:underline shrink-0">
+          Ver métricas
         </Link>
       </div>
 
       {loading ? (
         <p className="px-5 py-8 text-xs text-gray-400 text-center">Cargando…</p>
       ) : activity.length === 0 ? (
-        <p className="px-5 py-8 text-sm text-gray-400 text-center">Sin mensajes ni contactos todavía.</p>
+        <p className="px-5 py-8 text-sm text-gray-400 text-center">Sin eventos importantes todavía.</p>
       ) : (
         <ul className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
           {activity.map(item => {
+            if (item.kind === 'rack-purchase') {
+              const { order } = item
+              const units = order.order_items.reduce((total, orderItem) => total + Number(orderItem.quantity), 0)
+              const names = Array.from(new Set(order.order_items.map(orderItem => orderItem.product_name))).join(', ')
+              return (
+                <li key={`rack-purchase-${order.public_id}`} className="border-l-4 border-brand-500 bg-brand-50/70 transition-colors hover:bg-brand-100/70">
+                  <Link
+                    href={`/api/admin/orders/${order.public_id}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-4 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-500 px-2 py-1 text-[10px] font-black leading-none tracking-wide text-white">
+                          COMPRA RACK
+                        </span>
+                        <p className="truncate text-sm font-bold text-brand-900">{order.buyer_name || order.buyer_email}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-medium text-brand-700">{timeAgo(item.createdAt)}</span>
+                    </div>
+                    <p className="mt-1 truncate text-xs text-brand-800">
+                      {order.order_number} · {units} {units === 1 ? 'unidad' : 'unidades'} · <span className="font-black">{money.format(order.total_clp)}</span>
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px] text-brand-700/80">{names}</p>
+                  </Link>
+                </li>
+              )
+            }
+
+            if (item.kind === 'rack-cart') {
+              const { event } = item
+              const detail = parseRackEventDetail(event.category)
+              const product = detail.slug ? getSkiRackProduct(detail.slug) : null
+              const quantity = Number(detail.qty || 1)
+              const location = [event.city, event.country].filter(Boolean).join(', ')
+              return (
+                <li key={`rack-cart-${event.id}`} className="border-l-4 border-amber-400 bg-amber-50/60 transition-colors hover:bg-amber-100/70">
+                  <Link href={detail.slug ? `/ski-rack/${detail.slug}` : '/ski-rack'} target="_blank" rel="noopener noreferrer" className="block px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="inline-flex shrink-0 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-black leading-none tracking-wide text-white">
+                          CARRITO
+                        </span>
+                        <p className="truncate text-sm font-bold text-amber-950">
+                          Visitante {event.visitor_id ? `#${event.visitor_id.slice(-6)}` : 'anónimo'}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-medium text-amber-700">{timeAgo(event.created_at)}</span>
+                    </div>
+                    <p className="mt-1 truncate text-xs text-amber-800">
+                      Agregó {quantity}× <span className="font-bold">{product?.name || detail.slug || 'Ski Rack'}</span>
+                      {detail.size ? ` · talla ${detail.size}` : ''}
+                      {location ? ` · ${location}` : ''}
+                    </p>
+                  </Link>
+                </li>
+              )
+            }
+
             if (item.kind === 'whatsapp') {
               const { click } = item
               const product = [click.products?.brand, click.products?.model]

@@ -25,19 +25,18 @@ export interface TrackPayload {
 export function track(evt: TrackPayload): void {
   if (typeof window === 'undefined') return
 
-  const attribution = getCampaignAttribution()
-
-  const payload = JSON.stringify({
-    path: evt.path ?? window.location.pathname,
-    referrer: evt.referrer !== undefined ? evt.referrer : document.referrer || null,
-    ...(evt.type ? { type: evt.type } : {}),
-    ...(evt.name ? { name: evt.name } : {}),
-    ...(evt.category ? { category: evt.category } : {}),
-    ...(evt.product_id ? { product_id: evt.product_id } : {}),
-    ...(attribution ?? {}),
-  })
-
   try {
+    const attribution = getCampaignAttribution()
+    const payload = JSON.stringify({
+      path: evt.path ?? window.location.pathname,
+      referrer: evt.referrer !== undefined ? evt.referrer : document.referrer || null,
+      ...(evt.type ? { type: evt.type } : {}),
+      ...(evt.name ? { name: evt.name } : {}),
+      ...(evt.category ? { category: evt.category } : {}),
+      ...(evt.product_id ? { product_id: evt.product_id } : {}),
+      ...(attribution ?? {}),
+    })
+
     if (navigator.sendBeacon) {
       navigator.sendBeacon('/api/track', new Blob([payload], { type: 'application/json' }))
     } else {

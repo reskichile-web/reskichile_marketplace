@@ -159,6 +159,104 @@ interface ActivityRow {
   users: { name: string | null } | null
 }
 
+interface RackMetricsData {
+  summary: {
+    trackedEvents: number
+    catalogViews: number
+    catalogVisitors: number
+    productViews: number
+    productVisitors: number
+    addEvents: number
+    addVisitors: number
+    unitsAdded: number
+    cartOpens: number
+    cartVisitors: number
+    checkoutStarts: number
+    checkoutVisitors: number
+    contactCompletions: number
+    shippingQuotes: number
+    paymentStarts: number
+    paymentVisitors: number
+    trackedPurchases: number
+    purchases: number
+    purchaseUnits: number
+    productRevenueClp: number
+    shippingRevenueClp: number
+    totalRevenueClp: number
+    refundedClp: number
+    netRevenueClp: number
+    averageOrderClp: number
+    refundedOrders: number
+  }
+  products: Array<{
+    slug: string
+    name: string
+    views: number
+    viewVisitors: number
+    addEvents: number
+    addVisitors: number
+    unitsAdded: number
+    orders: number
+    unitsSold: number
+    revenueClp: number
+    sizes: Record<string, { added: number; sold: number }>
+  }>
+  sources: Array<{
+    label: string
+    events: number
+    visitors: number
+    carts: number
+    checkouts: number
+  }>
+  journeys: Array<{
+    visitorKey: string
+    firstAt: string
+    lastAt: string
+    eventCount: number
+    location: string | null
+    device: string
+    source: string | null
+    campaign: string | null
+    purchased: boolean
+    steps: Array<{ name: string; label: string }>
+  }>
+  recentEvents: Array<{
+    id: number
+    name: string
+    label: string
+    createdAt: string
+    path: string
+    detail: Record<string, string>
+    visitorKey: string | null
+    location: string | null
+    device: string
+    source: string | null
+    campaign: string | null
+    content: string | null
+    medium: string | null
+  }>
+  orders: Array<{
+    publicId: string
+    orderNumber: string
+    buyerName: string
+    buyerEmail: string
+    deliveryMethod: string
+    paymentStatus: string
+    fulfillmentStatus: string
+    subtotalClp: number
+    shippingClp: number
+    totalClp: number
+    paidAt: string
+    items: Array<{
+      name: string
+      slug: string
+      size: string | null
+      quantity: number
+      totalClp: number
+    }>
+  }>
+}
+
 const CLICK_LABELS: Record<string, string> = {
   hero_explorar: 'Hero: Explorar ofertas',
   hero_publicar: 'Hero: Publicar equipo',
@@ -167,6 +265,12 @@ const CLICK_LABELS: Record<string, string> = {
   category_descubre: 'Categoría → Descubre (IA)',
   product_card: 'Card de producto (home)',
 }
+
+const rackMoney = new Intl.NumberFormat('es-CL', {
+  style: 'currency',
+  currency: 'CLP',
+  maximumFractionDigits: 0,
+})
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -241,6 +345,230 @@ function SectionCard({ title, subtitle, right, children }: {
   )
 }
 
+function RackMetricsCard({ data, periodLabel }: { data: RackMetricsData | null; periodLabel: string }) {
+  if (!data) {
+    return (
+      <div className={`${CARD} mb-8 p-6`}>
+        <h2 className="font-body text-lg font-black text-gray-900">Ski Rack · compra</h2>
+        <p className="mt-2 text-sm text-gray-400">No se pudo cargar el detalle comercial.</p>
+      </div>
+    )
+  }
+
+  const { summary } = data
+  const funnel = [
+    { label: 'Vieron producto', value: summary.productVisitors, total: summary.productViews },
+    { label: 'Agregaron', value: summary.addVisitors, total: summary.addEvents },
+    { label: 'Abrieron carrito', value: summary.cartVisitors, total: summary.cartOpens },
+    { label: 'Checkout', value: summary.checkoutVisitors, total: summary.checkoutStarts },
+    { label: 'Iniciaron pago', value: summary.paymentVisitors, total: summary.paymentStarts },
+    { label: 'Compras reales', value: summary.purchases, total: summary.purchaseUnits },
+  ]
+  const keyLabels: Record<string, string> = {
+    slug: 'producto', size: 'talla', qty: 'unidades', cartQty: 'en carrito',
+    from: 'antes', to: 'después', lines: 'líneas', units: 'unidades',
+    value: 'valor', total: 'total', shipping: 'despacho', method: 'entrega', order: 'orden',
+  }
+
+  return (
+    <section className={`${CARD} mb-8 overflow-hidden`}>
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 px-5 py-5 sm:px-6">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden="true">
+              <svg className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386a1.5 1.5 0 011.455 1.136L5.4 5.37m0 0h14.35l-1.5 7.5H6.9L5.4 5.37zM8.25 20.25h.008v.008H8.25v-.008zm8.25 0h.008v.008H16.5v-.008z" />
+              </svg>
+            </span>
+            <div>
+              <h2 className="font-body text-lg font-black tracking-tight text-gray-950">Ski Rack · clickstream y ventas</h2>
+              <p className="text-xs text-gray-400">Embudo completo y órdenes autorizadas · {periodLabel}</p>
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="font-body text-2xl font-black text-brand-600">{rackMoney.format(summary.netRevenueClp)}</p>
+          <p className="text-[11px] text-gray-400">ingreso neto · ticket bruto {rackMoney.format(summary.averageOrderClp)}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-px bg-gray-100 sm:grid-cols-3 xl:grid-cols-6">
+        {[
+          ['Visitas a productos', summary.productViews, `${summary.productVisitors} personas · ${summary.catalogViews} catálogo`],
+          ['Agregados', summary.addEvents, `${summary.unitsAdded} unidades`],
+          ['Checkout', summary.checkoutStarts, `${summary.contactCompletions} datos · ${summary.shippingQuotes} cotizaciones`],
+          ['Inicio Webpay', summary.paymentStarts, `${summary.paymentVisitors} personas`],
+          ['Compras', summary.purchases, `${summary.purchaseUnits} unidades`],
+          ['Venta bruta', rackMoney.format(summary.totalRevenueClp), `${rackMoney.format(summary.productRevenueClp)} productos + ${rackMoney.format(summary.shippingRevenueClp)} despacho`],
+        ].map(([label, value, note]) => (
+          <div key={String(label)} className="bg-white px-4 py-4 sm:px-5">
+            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400">{label}</p>
+            <p className="mt-1 font-body text-xl font-black text-gray-900">{value}</p>
+            <p className="mt-0.5 text-[11px] text-gray-400">{note}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-gray-100 px-5 py-5 sm:px-6">
+        <div className="overflow-x-auto">
+          <div className="grid min-w-[760px] grid-cols-6 gap-2">
+            {funnel.map((step, index) => {
+              const previous = index > 0 ? funnel[index - 1].value : 0
+              return (
+                <div key={step.label} className="relative rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  {index > 0 && <span className="absolute -left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-300">→</span>}
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{step.label}</p>
+                  <p className="mt-1 text-xl font-black text-gray-900">{step.value}</p>
+                  <p className="text-[10px] text-gray-400">
+                    {index === 0 ? `${step.total} eventos` : `${pct(step.value, previous)} del paso anterior`}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <p className="mt-3 text-[11px] leading-5 text-gray-400">
+          “Compras reales” viene de órdenes pagadas; el resto identifica navegadores anónimos. Los eventos detallados de carrito y checkout se acumulan desde este despliegue.
+          {summary.refundedClp > 0 ? ` Se descontaron ${rackMoney.format(summary.refundedClp)} en reembolsos de ${summary.refundedOrders} ${summary.refundedOrders === 1 ? 'orden' : 'órdenes'}.` : ''}
+        </p>
+      </div>
+
+      <div className="grid border-t border-gray-100 lg:grid-cols-2 xl:grid-cols-4">
+        <div className="min-w-0 border-b border-gray-100 p-5 lg:border-r xl:border-b-0">
+          <h3 className="text-xs font-black uppercase tracking-wider text-gray-500">Productos y tallas</h3>
+          <div className="mt-3 space-y-3">
+            {data.products.map(product => (
+              <div key={product.slug} className="rounded-xl border border-gray-100 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <Link href={`/ski-rack/${product.slug}`} target="_blank" className="text-sm font-bold text-gray-900 hover:text-brand-600">{product.name}</Link>
+                  <span className="shrink-0 text-xs font-black text-brand-600">{rackMoney.format(product.revenueClp)}</span>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  {product.views} vistas · {product.unitsAdded} al carrito · {product.unitsSold} vendidas
+                </p>
+                {Object.keys(product.sizes).length > 0 && (
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    {Object.entries(product.sizes).map(([size, counts]) => `Talla ${size}: ${counts.added} agregadas / ${counts.sold} vendidas`).join(' · ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="min-w-0 border-b border-gray-100 p-5 xl:border-b-0 xl:border-r">
+          <h3 className="text-xs font-black uppercase tracking-wider text-gray-500">Origen</h3>
+          {data.sources.length === 0 ? (
+            <p className="mt-4 text-xs text-gray-400">Aún sin atribución.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-gray-50">
+              {data.sources.slice(0, 8).map(source => (
+                <li key={source.label} className="py-2">
+                  <div className="flex justify-between gap-3">
+                    <span className="truncate text-xs font-semibold text-gray-800">{source.label}</span>
+                    <span className="shrink-0 text-xs font-black text-gray-600">{source.visitors}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">{source.events} eventos · {source.carts} carritos · {source.checkouts} checkout</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="min-w-0 border-b border-gray-100 p-5 lg:border-r lg:border-b-0">
+          <h3 className="text-xs font-black uppercase tracking-wider text-gray-500">Sesiones recientes</h3>
+          {data.journeys.length === 0 ? (
+            <p className="mt-4 text-xs text-gray-400">Aún sin sesiones de racks.</p>
+          ) : (
+            <ul className="mt-3 max-h-72 space-y-3 overflow-y-auto pr-1">
+              {data.journeys.slice(0, 12).map(journey => (
+                <li key={`${journey.visitorKey}-${journey.lastAt}`} className="rounded-xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-bold text-gray-800">Visitante #{journey.visitorKey}</p>
+                    <span className={`text-[9px] font-black uppercase ${journey.purchased ? 'text-green-600' : 'text-gray-400'}`}>
+                      {journey.purchased ? 'Compró' : timeAgo(journey.lastAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-[10px] text-gray-400">
+                    {[journey.device, journey.location, journey.campaign || journey.source].filter(Boolean).join(' · ')}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {journey.steps.slice(-5).map(step => (
+                      <span key={step.name} title={step.label} className="rounded bg-gray-100 px-1.5 py-1 text-[9px] font-semibold text-gray-600">
+                        {step.label.replace('Vio el ', '').replace('Completó ', '')}
+                      </span>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="min-w-0 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-gray-500">Compras reales</h3>
+            <Link href="/admin/pedidos" className="text-[10px] font-bold text-brand-600 hover:underline">Ver pedidos</Link>
+          </div>
+          {data.orders.length === 0 ? (
+            <p className="mt-4 text-xs text-gray-400">Sin compras en este período.</p>
+          ) : (
+            <ul className="mt-3 max-h-72 space-y-3 overflow-y-auto pr-1">
+              {data.orders.map(order => (
+                <li key={order.publicId}>
+                  <Link href={`/api/admin/orders/${order.publicId}/view`} target="_blank" className="block rounded-xl border border-brand-100 bg-brand-50/50 p-3 hover:bg-brand-50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-black text-gray-900">{order.orderNumber} · {order.buyerName}</p>
+                        <p className="truncate text-[10px] text-gray-500">{order.buyerEmail}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-black text-brand-600">{rackMoney.format(order.totalClp)}</span>
+                    </div>
+                    <p className="mt-2 text-[10px] leading-4 text-gray-500">
+                      {order.items.map(item => `${item.quantity}× ${item.name}`).join(' · ')}<br />
+                      Despacho {rackMoney.format(order.shippingClp)} · {order.deliveryMethod === 'pickup' ? 'retiro' : 'envío'} · {timeAgo(order.paidAt)}
+                      {order.paymentStatus === 'refunded' ? ' · reembolsada' : ''}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <details className="border-t border-gray-100">
+        <summary className="cursor-pointer px-5 py-4 text-xs font-black uppercase tracking-wider text-gray-600 hover:bg-gray-50 sm:px-6">
+          Ver últimos {data.recentEvents.length} eventos del clickstream
+        </summary>
+        <ul className="max-h-96 divide-y divide-gray-50 overflow-y-auto border-t border-gray-100">
+          {data.recentEvents.map(event => {
+            const details = Object.entries(event.detail).map(([key, value]) => `${keyLabels[key] || key}: ${value}`)
+            const attribution = event.campaign || event.source
+            return (
+              <li key={`${event.name}-${event.id}`} className="flex items-start justify-between gap-4 px-5 py-3 sm:px-6">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-gray-800">{event.label}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-gray-400">
+                    {[
+                      event.visitorKey ? `#${event.visitorKey}` : 'anónimo',
+                      event.device,
+                      event.location,
+                      attribution,
+                      ...details,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[10px] text-gray-400">{timeAgo(event.createdAt)}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </details>
+    </section>
+  )
+}
+
 export default function MetricasPage() {
   const [period, setPeriod] = useState<MetricsPeriod>(7)
   const [customDate, setCustomDate] = useState(() => santiagoDay(new Date()))
@@ -258,6 +586,7 @@ export default function MetricasPage() {
   const [productFunnel, setProductFunnel] = useState<ProductFunnelRow[]>([])
   const [topProducts, setTopProducts] = useState<TopProductRow[]>([])
   const [activity, setActivity] = useState<ActivityRow[]>([])
+  const [rackMetrics, setRackMetrics] = useState<RackMetricsData | null>(null)
   const [consent, setConsent] = useState<CookieConsentSummary>({
     metrics: [], bannerViewers: 0, bannerViews: 0,
   })
@@ -306,6 +635,7 @@ export default function MetricasPage() {
         .neq('event_name', 'chat_contact')
         .not('event_name', 'like', 'cookie_consent_%')
         .not('event_name', 'like', 'contact_intent_%')
+        .not('event_name', 'like', 'rack_%')
         .order('created_at', { ascending: false })
         .limit(50)
       let activityQuery = supabase
@@ -332,10 +662,17 @@ export default function MetricasPage() {
       const topProductsQuery = period === 'custom'
         ? supabase.rpc('admin_top_products_since', { p_since: sinceDay!, p_limit: 10 })
         : supabase.rpc('admin_top_products', { p_days: rpcDays, p_limit: 10 })
+      const rackMetricsQuery = fetch(
+        `/api/admin/metrics/racks${since ? `?since=${encodeURIComponent(since)}` : ''}`,
+        { cache: 'no-store' }
+      ).then(async response => {
+        if (!response.ok) throw new Error('No se pudieron cargar las métricas de Ski Rack')
+        return response.json() as Promise<RackMetricsData>
+      }).catch(() => null)
 
       const [
         dailyRes, catRes, clickRes, contactRes, chatCountRes, guestWhatsappCountRes, topRes, actRes,
-        consentRes, intentRes, campaignFunnelRes, productFunnelRes,
+        consentRes, intentRes, campaignFunnelRes, productFunnelRes, rackMetricsRes,
       ] = await Promise.all([
         dailyQuery,
         categoryQuery,
@@ -349,6 +686,7 @@ export default function MetricasPage() {
         intentQuery,
         supabase.rpc('admin_contact_funnel', { p_since: since }),
         supabase.rpc('admin_product_funnel', { p_since: since, p_limit: 15 }),
+        rackMetricsQuery,
       ])
       if (cancelled) return
       const dailyRows = ((dailyRes.data as DailyRow[]) || [])
@@ -367,6 +705,7 @@ export default function MetricasPage() {
       setIntentCount(intentRes.count ?? 0)
       setCampaignFunnel((campaignFunnelRes.data as CampaignFunnelRow[]) || [])
       setProductFunnel((productFunnelRes.data as ProductFunnelRow[]) || [])
+      setRackMetrics(rackMetricsRes)
       setLoading(false)
     }
     load()
@@ -515,6 +854,8 @@ export default function MetricasPage() {
           </div>
         ))}
       </div>
+
+      <RackMetricsCard data={rackMetrics} periodLabel={periodLabel} />
 
       {/* Daily visits chart */}
       <div className={`${CARD} p-5 mb-8`}>

@@ -14,6 +14,8 @@ import {
   type AdminPageMeta,
 } from '@/lib/admin-pagination'
 import { AdminRequestError } from '@/lib/admin-security'
+import { RACK_EVENTS } from '@/lib/rack-analytics'
+import { SKI_RACK_PRODUCTS } from '@/lib/ski-rack-products'
 import {
   toAdminDatabaseProductSort,
   type AdminTimeSort,
@@ -66,6 +68,36 @@ export interface AdminRecentWhatsappClick {
   } | null
 }
 
+export interface AdminRecentRackCartEvent {
+  id: number
+  created_at: string
+  category: string | null
+  path: string
+  country: string | null
+  city: string | null
+  visitor_id: string | null
+}
+
+export interface AdminRecentRackOrder {
+  public_id: string
+  order_number: string
+  buyer_name: string
+  buyer_email: string
+  delivery_method: string
+  payment_status: string
+  total_clp: number
+  shipping_clp: number
+  paid_at: string | null
+  created_at: string
+  order_items: Array<{
+    product_name: string
+    quantity: number
+    line_total_clp: number
+    rack_inventory_id: string | null
+    package_snapshot: Record<string, unknown> | null
+  }>
+}
+
 export interface AdminDashboardData {
   stats: {
     total: number
@@ -79,6 +111,8 @@ export interface AdminDashboardData {
   visits: AdminDashboardVisit[]
   recentMessages: AdminRecentMessage[]
   recentWhatsappClicks: AdminRecentWhatsappClick[]
+  recentRackCartEvents: AdminRecentRackCartEvent[]
+  recentRackOrders: AdminRecentRackOrder[]
 }
 
 export interface AdminViewerData {
@@ -180,7 +214,52 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const client = createServerSupabaseClient()
   const { data, error } = await client.rpc('admin_dashboard_snapshot')
   if (error) throwAdminReadError(error, 'admin dashboard snapshot')
-  return asRecord(data, 'admin dashboard') as unknown as AdminDashboardData
+  const snapshot = asRecord(data, 'admin dashboard') as unknown as Omit<
+    AdminDashboardData,
+    'recentRackCartEvents' | 'recentRackOrders'
+  >
+  const service = createServiceRoleClient()
+  const [cartResult, orderResult] = await Promise.all([
+    service
+      .from('events')
+      .select('id, created_at, category, path, country, city, visitor_id')
+      .eq('event_type', 'click')
+      .eq('event_name', RACK_EVENTS.cartAdd)
+      .order('created_at', { ascending: false })
+      .limit(20),
+    service
+      .from('orders')
+      .select(`
+        public_id, order_number, buyer_name, buyer_email, delivery_method,
+        payment_status, total_clp, shipping_clp, paid_at, created_at,
+        order_items(product_name, quantity, line_total_clp, rack_inventory_id, package_snapshot)
+      `)
+      .in('payment_status', ['authorized', 'partially_refunded', 'refunded'])
+      .order('paid_at', { ascending: false })
+      .limit(30),
+  ])
+  if (cartResult.error || orderResult.error) {
+    throw new Error('admin rack activity failed')
+  }
+  const visibleSlugs = new Set(
+    SKI_RACK_PRODUCTS.filter(product => product.catalogVisible !== false).map(product => product.slug)
+  )
+  const recentRackOrders = ((orderResult.data || []) as unknown as AdminRecentRackOrder[])
+    .map(order => ({
+      ...order,
+      order_items: (order.order_items || []).filter(item => {
+        const slug = item.package_snapshot?.rack_slug
+        return item.rack_inventory_id && typeof slug === 'string' && visibleSlugs.has(slug)
+      }),
+    }))
+    .filter(order => order.order_items.length > 0)
+    .slice(0, 20)
+
+  return {
+    ...snapshot,
+    recentRackCartEvents: (cartResult.data || []) as AdminRecentRackCartEvent[],
+    recentRackOrders,
+  }
 }
 
 export async function getAdminViewer(): Promise<AdminViewerData> {

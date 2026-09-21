@@ -6,6 +6,8 @@ import {
   getSkiRackProduct,
   type SkiRackSize,
 } from '@/lib/ski-rack-products'
+import { RACK_EVENTS, rackEventDetail } from '@/lib/rack-analytics'
+import { track } from '@/lib/track'
 
 const STORAGE_KEY = 'reskichile:ski-rack-cart'
 const CHANGE_EVENT = 'reskichile:ski-rack-cart-change'
@@ -76,6 +78,7 @@ export function addSkiRackCartItem(slug: string, size: SkiRackSize, quantity: nu
   const items = readCart()
   const existing = items.find((item) => item.slug === slug && item.size === size)
 
+  const previousQuantity = existing?.quantity || 0
   if (existing) {
     existing.quantity = Math.min(MAX_CART_QUANTITY, existing.quantity + safeQuantity)
   } else {
@@ -83,10 +86,28 @@ export function addSkiRackCartItem(slug: string, size: SkiRackSize, quantity: nu
   }
 
   writeCart(items)
+  const nextQuantity = items.find(item => item.slug === slug && item.size === size)?.quantity || 0
+  const addedQuantity = Math.max(0, nextQuantity - previousQuantity)
+  if (addedQuantity > 0) {
+    track({
+      type: 'click',
+      name: RACK_EVENTS.cartAdd,
+      category: rackEventDetail({ slug, size, qty: addedQuantity, cartQty: nextQuantity }),
+    })
+  }
 }
 
 export function openSkiRackCart() {
   if (typeof window === 'undefined') return
+  const items = readCart()
+  track({
+    type: 'click',
+    name: RACK_EVENTS.cartOpen,
+    category: rackEventDetail({
+      lines: items.length,
+      units: items.reduce((total, item) => total + item.quantity, 0),
+    }),
+  })
   window.dispatchEvent(new Event(OPEN_EVENT))
 }
 
@@ -119,15 +140,45 @@ export function useSkiRackCart() {
     const items = readCart()
     const item = items.find((entry) => entry.slug === slug && entry.size === size)
     if (!item) return
-    item.quantity = Math.min(MAX_CART_QUANTITY, Math.max(1, Math.floor(quantity)))
+    const previousQuantity = item.quantity
+    const nextQuantity = Math.min(MAX_CART_QUANTITY, Math.max(1, Math.floor(quantity)))
+    if (previousQuantity === nextQuantity) return
+    item.quantity = nextQuantity
     writeCart(items)
+    track({
+      type: 'click',
+      name: RACK_EVENTS.cartQuantity,
+      category: rackEventDetail({ slug, size, from: previousQuantity, to: nextQuantity }),
+    })
   }, [])
 
   const removeItem = useCallback((slug: string, size: SkiRackSize) => {
-    writeCart(readCart().filter((item) => item.slug !== slug || item.size !== size))
+    const items = readCart()
+    const removed = items.find(item => item.slug === slug && item.size === size)
+    writeCart(items.filter((item) => item.slug !== slug || item.size !== size))
+    if (removed) {
+      track({
+        type: 'click',
+        name: RACK_EVENTS.cartRemove,
+        category: rackEventDetail({ slug, size, qty: removed.quantity }),
+      })
+    }
   }, [])
 
-  const clearCart = useCallback(() => writeCart([]), [])
+  const clearCart = useCallback(() => {
+    const items = readCart()
+    writeCart([])
+    if (items.length > 0) {
+      track({
+        type: 'click',
+        name: RACK_EVENTS.cartClear,
+        category: rackEventDetail({
+          lines: items.length,
+          units: items.reduce((total, item) => total + item.quantity, 0),
+        }),
+      })
+    }
+  }, [])
 
   return {
     items,

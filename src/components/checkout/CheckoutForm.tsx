@@ -22,6 +22,8 @@ import {
   type CountryOption,
 } from '@/lib/phone'
 import { trackMetaInitiateCheckout } from '@/lib/meta-pixel'
+import { RACK_EVENTS, rackEventDetail } from '@/lib/rack-analytics'
+import { track } from '@/lib/track'
 
 export interface CheckoutItemSummary {
   id: string
@@ -118,6 +120,7 @@ function CheckoutProgress({ currentStep }: { currentStep: 1 | 2 | 3 }) {
 
 export default function CheckoutForm({ items, kind, enabled, sandbox, unavailableMessage, addressValidationEnabled = false }: Props) {
   const initiateCheckoutTracked = useRef(false)
+  const shippingStepTracked = useRef(false)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -158,7 +161,30 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
       })),
       value: itemSubtotal,
     })
+    track({
+      type: 'click',
+      name: RACK_EVENTS.checkoutView,
+      category: rackEventDetail({
+        lines: items.length,
+        units: items.reduce((total, item) => total + item.quantity, 0),
+        value: itemSubtotal,
+      }),
+    })
   }, [enabled, itemSubtotal, items, kind])
+
+  useEffect(() => {
+    if (shippingStepTracked.current || kind !== 'racks' || currentStep !== 3 || !quote) return
+    shippingStepTracked.current = true
+    track({
+      type: 'click',
+      name: RACK_EVENTS.checkoutShipping,
+      category: rackEventDetail({
+        method,
+        shipping: quote.shippingClp,
+        total: quote.totalClp,
+      }),
+    })
+  }, [currentStep, kind, method, quote])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -302,6 +328,15 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
     setError('')
 
     if (currentStep === 1) {
+      if (kind === 'racks') {
+        track({
+          type: 'click',
+          name: RACK_EVENTS.checkoutContact,
+          category: rackEventDetail({
+            units: items.reduce((total, item) => total + item.quantity, 0),
+          }),
+        })
+      }
       setCurrentStep(2)
       return
     }
@@ -331,6 +366,17 @@ export default function CheckoutForm({ items, kind, enabled, sandbox, unavailabl
     if (!quote || !quotedPayload || !idempotencyKey || loading) return
     setError('')
     setLoading('create')
+    if (kind === 'racks') {
+      track({
+        type: 'click',
+        name: RACK_EVENTS.paymentStart,
+        category: rackEventDetail({
+          method,
+          units: items.reduce((total, item) => total + item.quantity, 0),
+          total: quote.totalClp,
+        }),
+      })
+    }
     try {
       const data = await requestJson('/api/checkout/create', quotedPayload)
       const total = Number(data.totalClp)
