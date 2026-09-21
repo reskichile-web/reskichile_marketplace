@@ -34,7 +34,10 @@ describe('email template links', () => {
     expect(confirmation.html).toContain('&amp;acceso=')
     expect(confirmation.text).toContain('&acceso=')
     expect(confirmation.text).toContain('Apoquindo 1234, Depto. 502')
-    expect(confirmation.text).toContain('transportista y el número de seguimiento')
+    expect(confirmation.html).not.toContain('transportista y el número de seguimiento')
+    expect(confirmation.text).not.toContain('transportista y el número de seguimiento')
+    expect(confirmation.html).not.toContain('datos de tu tarjeta')
+    expect(confirmation.text).not.toContain('datos de tu tarjeta')
     expect(confirmation.text).not.toContain('Punto de retiro')
 
     const shipment = buildShipmentEmail({

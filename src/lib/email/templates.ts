@@ -566,12 +566,10 @@ export function buildHomeOrderConfirmationEmail(
     ${orderSummaryHtml(order)}
     <p style="margin:18px 0 4px;color:#374151;font-weight:700;">Dirección de entrega</p>
     <p style="margin:0 0 14px;color:#6b7280;font-size:14px;">${escapeHtml(order.deliveryAddress)}</p>
-    <p style="margin:0 0 20px;padding:12px 14px;background:#f3f8fd;color:#374151;font-size:13px;line-height:1.55;">Cuando el pedido salga, recibirás otro correo con el transportista y el número de seguimiento.</p>
     ${ctaOutline(resultUrl, 'Ver estado de la orden')}
-    <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#9ca3af;text-align:center;">ReskiChile nunca recibe ni almacena los datos de tu tarjeta.</p>
     ${contactBlock()}
   `)
-  const text = `Hola ${order.buyerName},\n\nRecibimos tu pago. Tu orden ${order.orderNumber} ya está en preparación para despacho.\n\n${orderSummaryText(order)}\n\nDirección de entrega: ${order.deliveryAddress}\n\nCuando el pedido salga, recibirás otro correo con el transportista y el número de seguimiento.\n\nVer estado: ${resultUrl}\n\nReSkiChile`
+  const text = `Hola ${order.buyerName},\n\nRecibimos tu pago. Tu orden ${order.orderNumber} ya está en preparación para despacho.\n\n${orderSummaryText(order)}\n\nDirección de entrega: ${order.deliveryAddress}\n\nVer estado: ${resultUrl}\n\nReSkiChile`
   return { subject, html, text }
 }
 
