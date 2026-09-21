@@ -855,8 +855,6 @@ export default function MetricasPage() {
         ))}
       </div>
 
-      <RackMetricsCard data={rackMetrics} periodLabel={periodLabel} />
-
       {/* Daily visits chart */}
       <div className={`${CARD} p-5 mb-8`}>
         <div className="flex items-center justify-between mb-5">
@@ -1271,6 +1269,8 @@ export default function MetricasPage() {
           )}
         </SectionCard>
       </div>
+
+      <RackMetricsCard data={rackMetrics} periodLabel={periodLabel} />
     </div>
   )
 }
