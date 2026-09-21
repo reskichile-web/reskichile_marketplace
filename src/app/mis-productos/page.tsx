@@ -224,6 +224,8 @@ export default async function MyProductsPage() {
                     <DeleteProductButton
                       productId={product.id}
                       productTitle={title || 'esta publicación'}
+                      listedPrice={product.price}
+                      canMarkSold={status === 'approved' || status === 'pending'}
                       iconClassName={trashIconCls}
                     />
                   </div>
