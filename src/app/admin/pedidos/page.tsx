@@ -333,6 +333,18 @@ function OrderDetails({
 
   return (
     <>
+      <div className="mb-3 flex justify-end sm:mb-4">
+        <a
+          href={`/api/admin/orders/${order.public_id}/view`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50 sm:w-auto sm:py-2"
+        >
+          Abrir vista de la orden
+          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        </a>
+      </div>
+
       <section aria-label={`Cliente de ${order.order_number}`} className="mb-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:mb-4">
         <div className="grid gap-4 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
           <div className="flex min-w-0 items-center gap-3">
