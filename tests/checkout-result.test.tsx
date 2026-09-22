@@ -98,6 +98,28 @@ describe('checkout result', () => {
     expect(html).not.toContain('>las_condes<')
   })
 
+  it('shows a home delivery as completed instead of leaving it en route', () => {
+    const html = renderToStaticMarkup(
+      <CheckoutResultCard order={{ ...order, fulfillmentStatus: 'delivered' }} />
+    )
+
+    expect(html).toContain('Entregado')
+    expect(html).not.toContain('En camino')
+  })
+
+  it('shows a completed pickup as collected', () => {
+    const html = renderToStaticMarkup(
+      <CheckoutResultCard order={{
+        ...order,
+        fulfillmentStatus: 'delivered',
+        delivery: { ...order.delivery, method: 'pickup', pickupPointId: 'las_condes' },
+      }} />
+    )
+
+    expect(html).toContain('Retirado')
+    expect(html).not.toContain('Lista para retirar')
+  })
+
   it('clears the rack cart only after an authorized purchase', () => {
     const authorized = renderToStaticMarkup(
       <CheckoutResultCard order={{ ...order, containsRackItems: true }} />

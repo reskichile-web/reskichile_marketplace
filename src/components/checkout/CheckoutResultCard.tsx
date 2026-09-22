@@ -87,22 +87,24 @@ function fulfillmentStep(status: string): 1 | 2 | 3 {
 }
 
 function OrderTimeline({
-  currentStep,
+  status,
   pickup,
 }: {
-  currentStep: 1 | 2 | 3
+  status: string
   pickup: boolean
 }) {
+  const currentStep = fulfillmentStep(status)
+  const delivered = status === 'delivered'
   const steps = pickup
-    ? ['Confirmada', 'Preparación', 'Lista para retirar']
-    : ['Confirmada', 'Preparación', 'En camino']
+    ? ['Confirmada', 'Preparación', delivered ? 'Retirado' : 'Lista para retirar']
+    : ['Confirmada', 'Preparación', delivered ? 'Entregado' : 'En camino']
 
   return (
     <ol aria-label="Estado del pedido" className="mt-6 grid grid-cols-3">
       {steps.map((step, index) => {
         const stepNumber = (index + 1) as 1 | 2 | 3
-        const completed = currentStep > stepNumber
-        const active = currentStep === stepNumber
+        const completed = currentStep > stepNumber || (delivered && stepNumber === 3)
+        const active = currentStep === stepNumber && !completed
 
         return (
           <li key={step} aria-current={active ? 'step' : undefined} className="relative flex min-w-0 flex-col items-center text-center">
@@ -295,7 +297,7 @@ export default function CheckoutResultCard({
           <aside className="border-t border-gray-200 bg-gray-50 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
             <h2 className="font-body text-lg font-black text-gray-900">Estado de tu pedido</h2>
             <OrderTimeline
-              currentStep={fulfillmentStep(order.fulfillmentStatus)}
+              status={order.fulfillmentStatus}
               pickup={pickup}
             />
 
