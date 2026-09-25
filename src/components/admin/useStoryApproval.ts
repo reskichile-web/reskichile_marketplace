@@ -37,7 +37,7 @@ export function useStoryApproval({ onApproved }: UseStoryApprovalOptions) {
       const result = await response.json() as AdminApprovalResponse
       onApproved(result)
       setState(result.story.status === 'ready' && result.story.jpegPublicUrl
-        ? { phase: 'ready', product: result.product, story: result.story }
+        ? { phase: 'ready', product: result.product, story: result.story, schedule: result.schedule, scheduleError: result.scheduleError }
         : { phase: 'capture-failed', product: result.product, story: result.story })
     } catch (error) {
       setState({
@@ -60,7 +60,7 @@ export function useStoryApproval({ onApproved }: UseStoryApprovalOptions) {
       if (!response.ok) throw new Error(await responseError(response))
       const result = await response.json() as AdminStoryRetryResponse
       setState(result.story.status === 'ready' && result.story.jpegPublicUrl
-        ? { phase: 'ready', product: result.product, story: result.story }
+        ? { phase: 'ready', product: result.product, story: result.story, schedule: result.schedule, scheduleError: result.scheduleError }
         : { phase: 'capture-failed', product: result.product, story: result.story })
     } catch (error) {
       setState({

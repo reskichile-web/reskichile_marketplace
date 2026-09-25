@@ -15,6 +15,7 @@ import type {
   InstagramStoryCaptureStatus,
 } from '@/lib/instagram/contracts'
 import { versionedStoryStoragePath } from '@/lib/instagram/contracts'
+import { scheduleCaptureNext } from '@/lib/instagram/scheduling'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -81,6 +82,7 @@ export async function POST(
       ? await readSmallJson(request)
       : {}
     const forceRegeneration = body.force === true
+    const shouldSchedule = body.schedule !== false
     const { id } = await params
     if (!UUID_RE.test(id)) {
       return NextResponse.json(
@@ -150,6 +152,17 @@ export async function POST(
         { status: 409, headers: { 'Cache-Control': 'no-store' } },
       )
     }
+    let schedule = null
+    let scheduleError: string | undefined
+    if (shouldSchedule && story.status === 'ready' && story.jpegPublicUrl) {
+      try {
+        schedule = await scheduleCaptureNext(story.id, 'automatic')
+      } catch {
+        console.error('[instagram-story-retry] Story ready but calendar assignment failed')
+        scheduleError = 'La Story está preparada, pero no pudimos agregarla al cron. Agrégala desde el calendario de Instagram.'
+      }
+    }
+
     const response: AdminStoryRetryResponse = {
       ok: true,
       approved: true,
@@ -159,7 +172,8 @@ export async function POST(
         slug: product.slug || product.id,
       },
       story,
-      schedule: null,
+      schedule,
+      ...(scheduleError ? { scheduleError } : {}),
     }
     return NextResponse.json(response, {
       headers: { 'Cache-Control': 'no-store, private' },

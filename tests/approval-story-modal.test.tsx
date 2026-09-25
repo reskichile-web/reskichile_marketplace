@@ -75,4 +75,34 @@ describe('approval Story modal', () => {
     expect(html).toContain('Producto aprobado, pero no pudimos generar la Story')
     expect(html).toContain('Reintentar captura')
   })
+
+  it('confirms the assigned cron date in Chile time', () => {
+    const html = renderToStaticMarkup(<ApprovalStoryModal
+      state={{
+        phase: 'ready', product,
+        story: { id: 'capture-id', status: 'ready', jpegPublicUrl: 'https://storage.example/story.jpg', updatedAt: '2026-09-25T13:00:00Z', width: 1080, height: 1920, format: 'jpeg' },
+        schedule: { scheduledLocalDate: '2026-09-26', scheduledSlot: 1, scheduledFor: '2026-09-26T21:30:00Z', scheduleSource: 'automatic' },
+      }}
+      onClose={vi.fn()} onRetry={vi.fn()}
+    />)
+    expect(html).toContain('Story agregada al cron:')
+    expect(html).toMatch(/26(?: sept |[/-]09[/-])2026/)
+    expect(html).toMatch(/18:30|6:30/)
+    expect(html).toContain('(hora de Chile)')
+  })
+
+  it('shows a scheduling warning alongside the prepared JPEG', () => {
+    const html = renderToStaticMarkup(<ApprovalStoryModal
+      state={{
+        phase: 'ready', product,
+        story: { id: 'capture-id', status: 'ready', jpegPublicUrl: 'https://storage.example/story.jpg', updatedAt: '2026-09-25T13:00:00Z', width: 1080, height: 1920, format: 'jpeg' },
+        schedule: null, scheduleError: 'No pudimos agregarla al cron',
+      }}
+      onClose={vi.fn()} onRetry={vi.fn()}
+    />)
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('No pudimos agregarla al cron')
+    expect(html).toContain('story.jpg?v=')
+    expect(html).not.toContain('Story agregada al cron:')
+  })
 })

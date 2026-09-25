@@ -42,6 +42,7 @@ export interface AdminApprovalResponse {
   product: InstagramStoryProductSummary
   story: InstagramStoryCaptureResult
   schedule: InstagramStoryScheduleResult | null
+  scheduleError?: string
 }
 
 export interface AdminStoryRetryResponse {
@@ -50,6 +51,7 @@ export interface AdminStoryRetryResponse {
   product: InstagramStoryProductSummary
   story: InstagramStoryCaptureResult
   schedule: InstagramStoryScheduleResult | null
+  scheduleError?: string
 }
 
 export function storyStoragePath(productId: string): string {

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import PublishLoadingDots from '@/components/PublishLoadingDots'
 import type { InstagramAdminProduct } from '@/lib/instagram/admin-contracts'
+import type { AdminStoryRetryResponse } from '@/lib/instagram/contracts'
 import {
   displayLocalDate,
   formatClp,
@@ -110,18 +111,10 @@ export default function InstagramStoryEditorModal({
       const response = await fetch(`/api/admin/products/${product.id}/instagram-story/retry`, {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ schedule: false, force }),
+        body: JSON.stringify({ force }),
       })
       if (!response.ok) throw new Error(await responseError(response))
-      const result = await response.json() as {
-        story: {
-          id: string
-          status: string
-          jpegPublicUrl: string | null
-          updatedAt: string
-          error?: string
-        }
-      }
+      const result = await response.json() as AdminStoryRetryResponse
       if (result.story.status !== 'ready' || !result.story.jpegPublicUrl) {
         throw new Error(result.story.error || 'No pudimos generar la Story')
       }
@@ -131,6 +124,7 @@ export default function InstagramStoryEditorModal({
         updatedAt: result.story.updatedAt,
       })
       await onChanged()
+      if (result.scheduleError) setError(result.scheduleError)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No pudimos generar la Story')
     } finally {

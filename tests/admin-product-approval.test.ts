@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   generate: vi.fn(),
   revalidate: vi.fn(),
+  schedule: vi.fn(),
 }))
 
 vi.mock('@/lib/admin-security', () => ({
@@ -27,6 +28,7 @@ vi.mock('@/lib/email/templates', () => ({
   buildApprovedEmail: () => ({ subject: 'Aprobado', html: '<p>Aprobado</p>', text: 'Aprobado' }),
 }))
 vi.mock('@/lib/revalidate', () => ({ revalidateProduct: mocks.revalidate }))
+vi.mock('@/lib/instagram/scheduling', () => ({ scheduleCaptureNext: mocks.schedule }))
 vi.mock('@/lib/instagram/capture', () => ({
   captureResultFromDatabaseRow: (row: {
     id: string
@@ -48,6 +50,12 @@ import { POST } from '@/app/api/admin/products/[id]/approve/route'
 
 const productId = '92000000-0000-4000-8000-000000000001'
 const now = '2026-08-21T15:00:00.000Z'
+const schedule = {
+  scheduledLocalDate: '2026-08-22',
+  scheduledSlot: 1,
+  scheduledFor: '2026-08-22T22:30:00.000Z',
+  scheduleSource: 'automatic',
+}
 const product = {
   id: productId,
   brand: 'Dynafit',
@@ -81,6 +89,7 @@ describe('admin product approval Story contract', () => {
     vi.clearAllMocks()
     mocks.from.mockReturnValue(productQuery())
     mocks.sendEmail.mockResolvedValue({ ok: true })
+    mocks.schedule.mockResolvedValue(schedule)
   })
 
   it('returns an existing ready capture without rendering or resending email', async () => {
@@ -109,7 +118,8 @@ describe('admin product approval Story contract', () => {
     expect(mocks.generate).not.toHaveBeenCalled()
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.revalidate).not.toHaveBeenCalled()
-    expect(body.schedule).toBeNull()
+    expect(mocks.schedule).toHaveBeenCalledWith('capture-id', 'automatic')
+    expect(body.schedule).toEqual(schedule)
   })
 
   it('keeps approval successful when rendering fails', async () => {
@@ -145,10 +155,61 @@ describe('admin product approval Story contract', () => {
     expect(response.status).toBe(200)
     expect(body.approved).toBe(true)
     expect(body.story.status).toBe('failed')
+    expect(body.schedule).toBeNull()
+    expect(mocks.schedule).not.toHaveBeenCalled()
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
     expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({
       productId,
       storagePath: `_instagram/products/${productId}/story.jpg`,
     }))
+  })
+
+  it('automatically schedules the completed Story after a new approval', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: [{
+        capture_id: 'capture-id', capture_status: 'generating',
+        transitioned: true, should_render: true,
+        jpeg_storage_path: `_instagram/products/${productId}/story.jpg`,
+        jpeg_public_url: null, approved_at: now, generated_at: null,
+        updated_at: now, last_error: null,
+      }],
+      error: null,
+    })
+    mocks.generate.mockResolvedValue({
+      id: 'capture-id', status: 'ready', jpegPublicUrl: 'https://storage.example/story.jpg',
+      updatedAt: now, width: 1080, height: 1920, format: 'jpeg',
+    })
+
+    const response = await POST(request(), { params: Promise.resolve({ id: productId }) })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.approved).toBe(true)
+    expect(body.schedule).toEqual(schedule)
+    expect(body.scheduleError).toBeUndefined()
+    expect(mocks.schedule).toHaveBeenCalledWith('capture-id', 'automatic')
+    expect(mocks.generate.mock.invocationCallOrder[0]).toBeLessThan(mocks.schedule.mock.invocationCallOrder[0])
+  })
+
+  it('keeps approval and JPEG successful while reporting a scheduling failure', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: [{
+        capture_id: 'capture-id', capture_status: 'ready',
+        transitioned: false, should_render: false,
+        jpeg_public_url: 'https://storage.example/story.jpg', updated_at: now,
+      }],
+      error: null,
+    })
+    mocks.schedule.mockRejectedValue(new Error('Calendar unavailable'))
+
+    const response = await POST(request(), { params: Promise.resolve({ id: productId }) })
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.approved).toBe(true)
+    expect(body.story.status).toBe('ready')
+    expect(body.schedule).toBeNull()
+    expect(body.scheduleError).toContain('no pudimos agregarla al cron')
+    expect(mocks.generate).not.toHaveBeenCalled()
   })
 })

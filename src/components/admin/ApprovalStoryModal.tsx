@@ -6,6 +6,7 @@ import PublishLoadingDots from '@/components/PublishLoadingDots'
 import type {
   InstagramStoryCaptureResult,
   InstagramStoryProductSummary,
+  InstagramStoryScheduleResult,
 } from '@/lib/instagram/contracts'
 
 export type ApprovalStoryModalState =
@@ -18,6 +19,8 @@ export type ApprovalStoryModalState =
       phase: 'ready'
       product: InstagramStoryProductSummary
       story: InstagramStoryCaptureResult
+      schedule?: InstagramStoryScheduleResult | null
+      scheduleError?: string
     }
   | {
       phase: 'capture-failed'
@@ -108,6 +111,20 @@ export default function ApprovalStoryModal({
                 Producto aprobado · Story preparada
               </h2>
               <p className="mt-1 text-sm text-gray-500">{state.product.title}</p>
+              {state.schedule && (
+                <p className="mt-2 text-sm font-medium text-blue-700">
+                  Story agregada al cron: {new Intl.DateTimeFormat('es-CL', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                    timeZone: 'America/Santiago',
+                  }).format(new Date(state.schedule.scheduledFor))} (hora de Chile)
+                </p>
+              )}
+              {state.scheduleError && (
+                <p role="alert" className="mt-2 text-sm font-medium text-amber-700">
+                  {state.scheduleError}
+                </p>
+              )}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
               {storyUrl && (

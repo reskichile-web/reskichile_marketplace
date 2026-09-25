@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   from: vi.fn(),
   generate: vi.fn(),
+  schedule: vi.fn(),
 }))
 
 vi.mock('@/lib/admin-security', () => ({
@@ -20,6 +21,7 @@ vi.mock('@/lib/admin-security', () => ({
 vi.mock('@/lib/supabase/server', () => ({
   createServiceRoleClient: () => ({ from: mocks.from, rpc: mocks.rpc }),
 }))
+vi.mock('@/lib/instagram/scheduling', () => ({ scheduleCaptureNext: mocks.schedule }))
 
 vi.mock('@/lib/instagram/capture', () => ({
   captureResultFromDatabaseRow: (row: {
@@ -44,10 +46,23 @@ import { POST } from '@/app/api/admin/products/[id]/instagram-story/retry/route'
 const productId = '92000000-0000-4000-8000-000000000001'
 const captureId = '93000000-0000-4000-8000-000000000001'
 const now = '2026-08-22T12:00:00.000Z'
+const schedule = {
+  scheduledLocalDate: '2026-08-23', scheduledSlot: 1,
+  scheduledFor: '2026-08-23T22:30:00.000Z', scheduleSource: 'automatic',
+}
+
+function retryRequest(body?: Record<string, unknown>) {
+  return new Request(`https://www.reskichile.cl/api/admin/products/${productId}/instagram-story/retry`, {
+    method: 'POST',
+    headers: { Origin: 'https://www.reskichile.cl', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  })
+}
 
 describe('Instagram Story regeneration route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.schedule.mockResolvedValue(schedule)
     mocks.from.mockReturnValue({
       select: () => ({
         eq: () => ({
@@ -107,6 +122,33 @@ describe('Instagram Story regeneration route', () => {
       previousStoragePath: `_instagram/products/${productId}/story.jpg`,
     })
     expect((await response.json()).schedule).toBeNull()
+    expect(mocks.schedule).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, { force: false }, { force: true }])('schedules a generated Story by default with body %j', async (body) => {
+    const response = await POST(retryRequest(body), { params: Promise.resolve({ id: productId }) })
+    expect(response.status).toBe(200)
+    expect((await response.json()).schedule).toEqual(schedule)
+    expect(mocks.schedule).toHaveBeenCalledWith(captureId, 'automatic')
+    expect(mocks.generate.mock.invocationCallOrder[0]).toBeLessThan(mocks.schedule.mock.invocationCallOrder[0])
+  })
+
+  it('does not schedule a failed render', async () => {
+    mocks.generate.mockResolvedValue({ id: captureId, status: 'failed', jpegPublicUrl: null })
+    const response = await POST(retryRequest(), { params: Promise.resolve({ id: productId }) })
+    expect(response.status).toBe(200)
+    expect((await response.json()).schedule).toBeNull()
+    expect(mocks.schedule).not.toHaveBeenCalled()
+  })
+
+  it('reports a scheduling failure without losing the generated JPEG', async () => {
+    mocks.schedule.mockRejectedValue(new Error('Calendar unavailable'))
+    const response = await POST(retryRequest(), { params: Promise.resolve({ id: productId }) })
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body.story.status).toBe('ready')
+    expect(body.schedule).toBeNull()
+    expect(body.scheduleError).toContain('no pudimos agregarla al cron')
   })
 
   it('reports a missing regeneration migration instead of hiding it as a generic 500', async () => {
