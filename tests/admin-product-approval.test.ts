@@ -92,6 +92,28 @@ describe('admin product approval Story contract', () => {
     mocks.schedule.mockResolvedValue(schedule)
   })
 
+  it('logs unexpected database failures without exposing internals or starting approval side effects', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: '21000', message: 'DELETE requires a WHERE clause' },
+    })
+    try {
+      const response = await POST(request(), { params: Promise.resolve({ id: productId }) })
+      expect(response.status).toBe(500)
+      expect(await response.json()).toEqual({ error: 'No pudimos aprobar el producto', code: 'APPROVAL_FAILED' })
+      expect(log).toHaveBeenCalledWith('[approve] database approval failed', {
+        productId, code: '21000', message: 'DELETE requires a WHERE clause',
+      })
+      expect(mocks.sendEmail).not.toHaveBeenCalled()
+      expect(mocks.generate).not.toHaveBeenCalled()
+      expect(mocks.schedule).not.toHaveBeenCalled()
+      expect(mocks.revalidate).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+    }
+  })
+
   it('returns an existing ready capture without rendering or resending email', async () => {
     mocks.rpc.mockResolvedValue({
       data: [{

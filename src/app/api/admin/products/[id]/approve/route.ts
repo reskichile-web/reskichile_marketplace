@@ -139,6 +139,13 @@ export async function POST(
     const claim = (Array.isArray(claimData) ? claimData[0] : claimData) as ApprovalClaim | null
     if (claimError || !claim) {
       const known = rpcMessage(claimError)
+      if (known.code === 'APPROVAL_FAILED') {
+        console.error('[approve] database approval failed', {
+          productId: id,
+          code: claimError?.code ?? null,
+          message: claimError?.message ?? 'Approval RPC returned no claim',
+        })
+      }
       return NextResponse.json(
         { error: known.message, code: known.code },
         { status: known.status, headers: { 'Cache-Control': 'no-store' } },

@@ -70,7 +70,8 @@ for migration in \
   202609100001_instagram_catalog_tuesday_friday.sql \
   20260914233000_admin_products_contact_view_sort.sql \
   202609170001_starken_consolidated_tariffs.sql \
-  202609290001_trending_products.sql
+  202609290001_trending_products.sql \
+  202609290002_trending_safe_refresh.sql
 do
   if [[ "$migration" == "202609090003_instagram_three_editorial_blocks.sql" ]]; then
     psql -v ON_ERROR_STOP=1 -d "$test_database" \
