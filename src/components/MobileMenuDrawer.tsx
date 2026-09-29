@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 import SellTagIcon from './SellTagIcon'
-import TrendingFlameIcon from './TrendingFlameIcon'
 
 const CATEGORIES = [
   { key: 'trending', label: 'Trending', href: '/catalogo?collection=trending' },
@@ -20,6 +19,7 @@ const CATEGORIES = [
   { key: 'parkas', label: 'Parkas' },
   { key: 'pantalones', label: 'Pantalones' },
   { key: 'fijaciones', label: 'Fijaciones' },
+  { key: 'all', label: 'Todo', href: '/catalogo' },
 ]
 
 export default function MobileMenuDrawer({
@@ -93,26 +93,17 @@ export default function MobileMenuDrawer({
               <nav className="border-t border-gray-100 pt-4" aria-label="Categorías de equipamiento">
                 <p className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-400">Categorías</p>
                 <div className="overflow-hidden rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
-                  <Link
-                    href="/catalogo"
-                    onClick={onClose}
-                    className="group flex min-h-12 items-center justify-between px-4 py-3 font-nav text-base font-bold text-gray-900 transition-colors hover:bg-brand-50 hover:text-brand-600"
-                  >
-                    <span>Todo</span>
-                    <ChevronRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-brand-400" strokeWidth={1.5} aria-hidden="true" />
-                  </Link>
                   {CATEGORIES.filter(category => showSkiRacks || category.key !== 'racks').map((category) => (
                     <Link
                       key={category.key}
                       href={category.href || `/catalogo?product_type=${category.key}`}
                       onClick={onClose}
-                      className="group flex min-h-12 items-center justify-between px-4 py-3 font-nav text-base font-light text-gray-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                      className={`group flex min-h-12 items-center justify-between px-4 py-3 font-nav text-base transition-colors hover:bg-brand-50 hover:text-brand-600 ${category.key === 'trending' ? 'font-bold text-gray-900' : 'font-light text-gray-700'}`}
                     >
                       <span className="flex items-center gap-2.5">
-                        {category.key === 'trending' && <TrendingFlameIcon />}
                         {category.label}
-                        {category.key === 'racks' && (
-                          <span className="rounded-sm bg-brand-400 px-1.5 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider text-white">
+                        {(category.key === 'racks' || category.key === 'trending') && (
+                          <span className={`rounded-sm px-1.5 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider text-white ${category.key === 'trending' ? 'bg-red-500' : 'bg-brand-400'}`}>
                             Nuevo
                           </span>
                         )}

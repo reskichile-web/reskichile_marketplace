@@ -2,10 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import TrendingFlameIcon from './TrendingFlameIcon'
 
 const CATEGORIES = [
-  { key: 'all', label: 'Todo', href: '/catalogo' },
   { key: 'trending', label: 'Trending', href: '/catalogo?collection=trending' },
   { key: 'racks', label: 'Racks', href: '/ski-rack' },
   { key: 'esquis', label: 'Esquís' },
@@ -17,6 +15,7 @@ const CATEGORIES = [
   { key: 'parkas', label: 'Parkas' },
   { key: 'pantalones', label: 'Pantalones' },
   { key: 'fijaciones', label: 'Fijaciones' },
+  { key: 'all', label: 'Todo', href: '/catalogo' },
 ]
 
 export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean }) {
@@ -39,20 +38,19 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
           <Link
             key={category.key}
             href={category.href || `/catalogo?product_type=${category.key}`}
-            className={`group relative inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap px-5 first:ml-auto last:mr-auto font-nav text-base tracking-wide ${category.key === 'all' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' ? 'overflow-visible' : 'overflow-hidden'}`}
+            className={`group relative inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap px-5 first:ml-auto last:mr-auto font-nav text-base tracking-wide ${category.key === 'trending' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' || category.key === 'trending' ? 'overflow-visible' : 'overflow-hidden'}`}
           >
             <span
               className={`absolute bottom-0 left-0 right-0 bg-brand-500 transition-all duration-300 ease-out group-hover:h-full ${isActive ? 'h-[3px]' : 'h-0'}`}
             />
-            {category.key === 'racks' && (
-              <span className="pointer-events-none absolute top-0 left-1 z-20 rounded-sm bg-brand-400 px-1.5 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider text-white">
+            {(category.key === 'racks' || category.key === 'trending') && (
+              <span className={`pointer-events-none absolute top-0 left-1 z-20 rounded-sm px-1.5 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider text-white ${category.key === 'trending' ? 'bg-red-500' : 'bg-brand-400'}`}>
                 Nuevo
               </span>
             )}
             <span
               className={`relative z-10 inline-flex items-center gap-1.5 transition-colors duration-300 ease-out group-hover:text-white ${isActive ? 'text-brand-500' : ''}`}
             >
-              {category.key === 'trending' && <TrendingFlameIcon />}
               {category.label}
             </span>
           </Link>
