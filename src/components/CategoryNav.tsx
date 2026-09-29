@@ -29,7 +29,7 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
       : null
 
   return (
-    <nav className="flex h-14 items-center justify-center gap-2 overflow-x-auto" aria-label="Categorías de equipamiento">
+    <nav className="flex h-14 items-center gap-2 overflow-x-auto" aria-label="Categorías de equipamiento">
       {CATEGORIES.filter(category => showSkiRacks || category.key !== 'racks').map((category) => {
         const isActive = category.key === 'all'
           ? pathname === '/catalogo' && activeType === null
@@ -39,11 +39,10 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
           <Link
             key={category.key}
             href={category.href || `/catalogo?product_type=${category.key}`}
-            className={`group relative whitespace-nowrap px-5 py-2.5 font-nav text-base tracking-wide ${category.key === 'all' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' ? 'overflow-visible' : 'overflow-hidden'}`}
+            className={`group relative inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap px-5 first:ml-auto last:mr-auto font-nav text-base tracking-wide ${category.key === 'all' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' ? 'overflow-visible' : 'overflow-hidden'}`}
           >
             <span
-              className="absolute bottom-0 left-0 right-0 h-0 bg-brand-500 transition-all duration-300 ease-out group-hover:h-full"
-              style={{ height: isActive ? '3px' : undefined }}
+              className={`absolute bottom-0 left-0 right-0 bg-brand-500 transition-all duration-300 ease-out group-hover:h-full ${isActive ? 'h-[3px]' : 'h-0'}`}
             />
             {category.key === 'racks' && (
               <span className="pointer-events-none absolute top-0 left-1 z-20 rounded-sm bg-brand-400 px-1.5 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider text-white">
@@ -51,8 +50,7 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
               </span>
             )}
             <span
-              className="relative z-10 inline-flex items-center gap-1.5 transition-colors duration-300 ease-out group-hover:text-white"
-              style={{ color: isActive ? '#2674bf' : undefined }}
+              className={`relative z-10 inline-flex items-center gap-1.5 transition-colors duration-300 ease-out group-hover:text-white ${isActive ? 'text-brand-500' : ''}`}
             >
               {category.key === 'trending' && <TrendingFlameIcon />}
               {category.label}
