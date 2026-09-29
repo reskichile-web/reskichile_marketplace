@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { Flame } from 'lucide-react'
 
 const CATEGORIES = [
   { key: 'all', label: 'Todo', href: '/catalogo' },
@@ -50,9 +51,12 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
               </span>
             )}
             <span
-              className="relative z-10 transition-colors duration-300 ease-out group-hover:text-white"
+              className="relative z-10 inline-flex items-center gap-1.5 transition-colors duration-300 ease-out group-hover:text-white"
               style={{ color: isActive ? '#2674bf' : undefined }}
             >
+              {category.key === 'trending' && (
+                <Flame className="h-[18px] w-[18px] shrink-0 fill-orange-400 text-orange-600" aria-hidden="true" />
+              )}
               {category.label}
             </span>
           </Link>
