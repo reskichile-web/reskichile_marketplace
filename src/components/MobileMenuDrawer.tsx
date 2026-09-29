@@ -3,9 +3,10 @@
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, Flame } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { EASE_OUT_EXPO } from '@/lib/animations'
 import SellTagIcon from './SellTagIcon'
+import TrendingFlameIcon from './TrendingFlameIcon'
 
 const CATEGORIES = [
   { key: 'trending', label: 'Trending', href: '/catalogo?collection=trending' },
@@ -108,9 +109,7 @@ export default function MobileMenuDrawer({
                       className="group flex min-h-12 items-center justify-between px-4 py-3 font-nav text-base font-light text-gray-700 transition-colors hover:bg-brand-50 hover:text-brand-600"
                     >
                       <span className="flex items-center gap-2.5">
-                        {category.key === 'trending' && (
-                          <Flame className="h-[18px] w-[18px] shrink-0 fill-orange-400 text-orange-600" aria-hidden="true" />
-                        )}
+                        {category.key === 'trending' && <TrendingFlameIcon />}
                         {category.label}
                         {category.key === 'racks' && (
                           <span className="rounded-sm bg-brand-400 px-1.5 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider text-white">
