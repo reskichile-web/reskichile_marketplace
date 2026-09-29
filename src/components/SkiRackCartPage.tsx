@@ -9,6 +9,7 @@ import {
 import { getSkiRackProduct, getSkiRackSizeImage } from '@/lib/ski-rack-products'
 import { variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
+import SkiRackStockNotice from './SkiRackStockNotice'
 
 const money = new Intl.NumberFormat('es-CL', {
   style: 'currency',
@@ -17,8 +18,10 @@ const money = new Intl.NumberFormat('es-CL', {
 })
 
 export default function SkiRackCartPage() {
-  const { items, ready, itemCount, setQuantity, removeItem, clearCart } = useSkiRackCart()
-  const { inventory, loading: inventoryLoading, error: inventoryError } = useRackInventory()
+  const { inventory, loading: inventoryLoading, error: inventoryError, refresh } = useRackInventory()
+  const { items, ready, itemCount, setQuantity, removeItem, clearCart, stockAdjustments } = useSkiRackCart(
+    !inventoryLoading && !inventoryError ? inventory : undefined,
+  )
   const lines = items.flatMap((item) => {
     const product = getSkiRackProduct(item.slug)
     const inventoryProduct = inventory[item.slug]
@@ -38,6 +41,7 @@ export default function SkiRackCartPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 md:py-10">
+      <SkiRackStockNotice changes={stockAdjustments} />
       <div className="flex items-end justify-between gap-4 border-b border-gray-100 pb-5">
         <div>
           <p className="text-sm font-medium text-brand-500">Ski Rack</p>
@@ -100,12 +104,12 @@ export default function SkiRackCartPage() {
                   </div>
                   <div className="mt-auto flex items-end justify-between gap-3">
                     <div className="inline-flex h-9 items-center overflow-hidden rounded-lg border border-gray-200">
-                      <button type="button" onClick={() => setQuantity(line.slug, line.size, line.quantity - 1)} disabled={line.quantity <= 1} className="flex h-full w-9 items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30" aria-label="Disminuir cantidad">−</button>
+                      <button type="button" onClick={() => setQuantity(line.slug, line.size, line.quantity - 1, line.available)} disabled={inventoryLoading || inventoryError || line.quantity <= 1} className="flex h-full w-9 items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30" aria-label="Disminuir cantidad">−</button>
                       <span className="flex h-full min-w-9 items-center justify-center border-x border-gray-200 px-2 text-sm font-semibold">{line.quantity}</span>
                       <button
                         type="button"
-                        onClick={() => setQuantity(line.slug, line.size, line.quantity + 1)}
-                        disabled={inventoryLoading || line.quantity >= Math.min(MAX_CART_QUANTITY, line.available)}
+                        onClick={() => setQuantity(line.slug, line.size, line.quantity + 1, line.available)}
+                        disabled={inventoryLoading || inventoryError || line.quantity >= Math.min(MAX_CART_QUANTITY, line.available)}
                         className="flex h-full w-9 items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
                         aria-label="Aumentar cantidad"
                       >
@@ -134,8 +138,8 @@ export default function SkiRackCartPage() {
               <span>{money.format(subtotal)}</span>
             </div>
             {inventoryLoading || inventoryError || hasUnavailableItems ? (
-              <button type="button" disabled className="mt-5 w-full cursor-not-allowed bg-gray-300 px-5 py-3 text-sm font-semibold text-gray-500">
-                {inventoryLoading ? 'Revisando stock…' : 'Revisa el stock del carrito'}
+              <button type="button" onClick={() => { void refresh() }} disabled={!inventoryError || inventoryLoading} className="mt-5 w-full bg-brand-500 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">
+                {inventoryError ? 'Reintentar' : inventoryLoading ? 'Revisando stock…' : 'Actualizando carrito…'}
               </button>
             ) : (
               <Link href="/checkout?racks=1" className="pressable mt-5 flex w-full items-center justify-center bg-brand-500 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-600">

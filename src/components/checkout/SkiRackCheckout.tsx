@@ -6,13 +6,26 @@ import { useSkiRackCart } from '@/lib/ski-rack-cart'
 import { getSkiRackProduct, getSkiRackSizeImage } from '@/lib/ski-rack-products'
 import { variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
+import SkiRackStockNotice from '@/components/SkiRackStockNotice'
 
 export default function SkiRackCheckout({ enabled, sandbox, addressValidationEnabled }: { enabled: boolean; sandbox: boolean; addressValidationEnabled: boolean }) {
-  const { items: cartItems, ready } = useSkiRackCart()
-  const { inventory, loading, error } = useRackInventory()
+  const { inventory, loading, error, refresh } = useRackInventory()
+  const { items: cartItems, ready, stockAdjustments } = useSkiRackCart(!loading && !error ? inventory : undefined)
 
   if (!ready || loading) {
     return <main className="mx-auto min-h-[520px] max-w-5xl px-4 py-10" />
+  }
+
+  if (error) {
+    return (
+      <main className="mx-auto max-w-lg px-4 py-20 text-center">
+        <h1 className="font-body text-2xl font-black">No pudimos confirmar el stock</h1>
+        <p className="mt-3 text-sm text-gray-500">Tu carrito sigue guardado. Reintenta para continuar.</p>
+        <button type="button" onClick={() => { void refresh() }} className="mt-6 bg-brand-500 px-6 py-3 font-semibold text-white">
+          Reintentar
+        </button>
+      </main>
+    )
   }
 
   const lines = cartItems.flatMap((item): CheckoutItemSummary[] => {
@@ -35,6 +48,7 @@ export default function SkiRackCheckout({ enabled, sandbox, addressValidationEna
   if (cartItems.length === 0 || lines.length === 0) {
     return (
       <main className="mx-auto max-w-lg px-4 py-20 text-center">
+        <SkiRackStockNotice changes={stockAdjustments} />
         <h1 className="font-body text-3xl font-black">Tu carrito está vacío</h1>
         <p className="mt-3 text-sm text-gray-500">Agrega un Ski Rack antes de continuar.</p>
         <Link href="/ski-rack" className="mt-7 inline-flex bg-brand-500 px-6 py-3 font-semibold text-white hover:bg-brand-600">
@@ -57,13 +71,16 @@ export default function SkiRackCheckout({ enabled, sandbox, addressValidationEna
         : undefined
 
   return (
-    <CheckoutForm
-      items={lines}
-      kind="racks"
-      enabled={checkoutEnabled}
-      sandbox={sandbox}
-      addressValidationEnabled={addressValidationEnabled}
-      unavailableMessage={unavailableMessage}
-    />
+    <>
+      <div className="mx-auto max-w-5xl px-4"><SkiRackStockNotice changes={stockAdjustments} /></div>
+      <CheckoutForm
+        items={lines}
+        kind="racks"
+        enabled={checkoutEnabled}
+        sandbox={sandbox}
+        addressValidationEnabled={addressValidationEnabled}
+        unavailableMessage={unavailableMessage}
+      />
+    </>
   )
 }

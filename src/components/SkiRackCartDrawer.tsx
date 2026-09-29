@@ -14,6 +14,7 @@ import {
 import { getSkiRackProduct, getSkiRackSizeImage } from '@/lib/ski-rack-products'
 import { variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
+import SkiRackStockNotice from './SkiRackStockNotice'
 
 const money = new Intl.NumberFormat('es-CL', {
   style: 'currency',
@@ -29,8 +30,10 @@ export default function SkiRackCartDrawer({
   onClose: () => void
 }) {
   const [mounted, setMounted] = useState(false)
-  const { items, ready, itemCount, setQuantity, removeItem } = useSkiRackCart()
-  const { inventory, loading: inventoryLoading, error: inventoryError } = useRackInventory()
+  const { inventory, loading: inventoryLoading, error: inventoryError, refresh } = useRackInventory()
+  const { items, ready, itemCount, setQuantity, removeItem, stockAdjustments } = useSkiRackCart(
+    !inventoryLoading && !inventoryError ? inventory : undefined,
+  )
 
   useEffect(() => setMounted(true), [])
 
@@ -112,6 +115,7 @@ export default function SkiRackCartDrawer({
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+              <SkiRackStockNotice changes={stockAdjustments} />
               {!ready ? (
                 <div className="space-y-4" aria-label="Cargando carrito">
                   {[0, 1].map(index => (
@@ -187,8 +191,8 @@ export default function SkiRackCartDrawer({
                             <div className="inline-flex h-8 items-center overflow-hidden rounded-lg border border-gray-200">
                               <button
                                 type="button"
-                                onClick={() => setQuantity(line.slug, line.size, line.quantity - 1)}
-                                disabled={line.quantity <= 1}
+                                onClick={() => setQuantity(line.slug, line.size, line.quantity - 1, line.available)}
+                                disabled={inventoryLoading || inventoryError || line.quantity <= 1}
                                 className="flex h-full w-8 items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
                                 aria-label="Disminuir cantidad"
                               >
@@ -199,8 +203,8 @@ export default function SkiRackCartDrawer({
                               </span>
                               <button
                                 type="button"
-                                onClick={() => setQuantity(line.slug, line.size, line.quantity + 1)}
-                                disabled={inventoryLoading || line.quantity >= Math.min(MAX_CART_QUANTITY, line.available)}
+                                onClick={() => setQuantity(line.slug, line.size, line.quantity + 1, line.available)}
+                                disabled={inventoryLoading || inventoryError || line.quantity >= Math.min(MAX_CART_QUANTITY, line.available)}
                                 className="flex h-full w-8 items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
                                 aria-label="Aumentar cantidad"
                               >
@@ -246,10 +250,11 @@ export default function SkiRackCartDrawer({
                 ) : (
                   <button
                     type="button"
-                    disabled
-                    className="mt-5 w-full cursor-not-allowed bg-gray-200 px-5 py-3.5 text-sm font-semibold text-gray-500"
+                    onClick={() => { void refresh() }}
+                    disabled={!inventoryError || inventoryLoading}
+                    className="mt-5 w-full bg-brand-500 px-5 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
                   >
-                    {inventoryLoading ? 'Revisando stock…' : 'Revisa el stock del carrito'}
+                    {inventoryError ? 'Reintentar' : inventoryLoading ? 'Revisando stock…' : 'Actualizando carrito…'}
                   </button>
                 )}
 

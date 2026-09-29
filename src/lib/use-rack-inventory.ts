@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  inventoryBySlug,
+  fetchRackInventory,
   type RackInventoryBySlug,
-  type RackInventoryResponse,
 } from '@/lib/rack-inventory'
 
 export function useRackInventory() {
@@ -15,17 +14,13 @@ export function useRackInventory() {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/racks/inventory', {
-        cache: 'no-store',
-        credentials: 'same-origin',
-      })
-      if (!response.ok) throw new Error('inventory request failed')
-      const data = await response.json() as RackInventoryResponse
-      setInventory(inventoryBySlug(Array.isArray(data.products) ? data.products : []))
+      const next = await fetchRackInventory()
+      setInventory(next)
       setError(false)
+      return next
     } catch {
-      setInventory({})
       setError(true)
+      return null
     } finally {
       setLoading(false)
     }

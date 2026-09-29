@@ -37,11 +37,33 @@ export function variantAvailability(
   product: RackInventoryProduct | undefined,
   size: SkiRackSize,
 ): number {
-  return product?.variants.find(variant => variant.size === size)?.availableQuantity ?? 0
+  if (!product?.active) return 0
+  const available = product.variants.find(variant => variant.size === size)?.availableQuantity
+  return Number.isSafeInteger(available) && Number(available) > 0 ? Number(available) : 0
 }
 
 export function totalRackAvailability(product: RackInventoryProduct | undefined): number {
-  return product?.variants.reduce((total, variant) => total + variant.availableQuantity, 0) ?? 0
+  if (!product?.active) return 0
+  return product.variants.reduce((total, variant) => (
+    total + (Number.isSafeInteger(variant.availableQuantity) && variant.availableQuantity > 0 ? variant.availableQuantity : 0)
+  ), 0)
+}
+
+/** A failed or malformed response must never be interpreted as zero stock. */
+export async function fetchRackInventory(): Promise<RackInventoryBySlug> {
+  const response = await fetch('/api/racks/inventory', {
+    cache: 'no-store', credentials: 'same-origin',
+  })
+  if (!response.ok) throw new Error('inventory request failed')
+  const data = await response.json() as RackInventoryResponse
+  if (!data || !Array.isArray(data.products) || data.products.some(product => (
+    !product || typeof product.slug !== 'string' || typeof product.active !== 'boolean'
+    || !Array.isArray(product.variants) || product.variants.some(variant => (
+      !variant || !SKI_RACK_SIZES.includes(variant.size)
+      || !Number.isSafeInteger(variant.availableQuantity) || variant.availableQuantity < 0
+    ))
+  ))) throw new Error('invalid inventory response')
+  return inventoryBySlug(data.products)
 }
 
 /** Only persist fields the admin actually changed. */

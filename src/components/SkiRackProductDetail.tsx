@@ -13,7 +13,7 @@ import {
   type SkiRackProduct,
   type SkiRackSize,
 } from '@/lib/ski-rack-products'
-import { addSkiRackCartItem, MAX_CART_QUANTITY, openSkiRackCart } from '@/lib/ski-rack-cart'
+import { addSkiRackCartItem, remainingRackCartQuantity, openSkiRackCart, useSkiRackCart } from '@/lib/ski-rack-cart'
 import { totalRackAvailability, variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
 
@@ -27,15 +27,21 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
   const viewTracked = useRef(false)
   const [selectedSize, setSelectedSize] = useState<SkiRackSize>('S')
   const [quantity, setQuantity] = useState(1)
-  const [added, setAdded] = useState(false)
+  const [added, setAdded] = useState(0)
+  const [adding, setAdding] = useState(false)
+  const [stockMessage, setStockMessage] = useState('')
+  const addingRef = useRef(false)
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
-  const { inventory, loading: inventoryLoading } = useRackInventory()
+  const { items: cartItems, ready: cartReady } = useSkiRackCart()
+  const { inventory, loading: inventoryLoading, error: inventoryError, refresh } = useRackInventory()
   const productInventory = inventory[product.slug]
   const priceClp = productInventory?.priceClp ?? product.priceClp
   const totalAvailable = totalRackAvailability(productInventory)
-  const soldOut = !inventoryLoading && totalAvailable === 0
+  const soldOut = !inventoryLoading && !inventoryError && totalAvailable === 0
   const selectedAvailable = variantAvailability(productInventory, selectedSize)
-  const quantityLimit = Math.min(MAX_CART_QUANTITY, selectedAvailable)
+  const quantityLimit = remainingRackCartQuantity(cartItems, product.slug, selectedSize, selectedAvailable)
+  const alreadyInCart = cartItems.find(item => item.slug === product.slug && item.size === selectedSize)?.quantity ?? 0
+  const cartHasAllAvailable = !inventoryLoading && !inventoryError && selectedAvailable > 0 && quantityLimit === 0
 
   useEffect(() => {
     if (viewTracked.current || inventoryLoading) return
@@ -49,31 +55,54 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
   }, [inventoryLoading, priceClp, product.name, product.slug])
 
   useEffect(() => {
-    if (inventoryLoading || selectedAvailable > 0) return
+    if (inventoryLoading || inventoryError || selectedAvailable > 0) return
     const firstAvailable = SKI_RACK_SIZES.find(size => (
       variantAvailability(productInventory, size) > 0
     ))
     if (firstAvailable) setSelectedSize(firstAvailable)
-  }, [inventoryLoading, productInventory, selectedAvailable])
+  }, [inventoryLoading, inventoryError, productInventory, selectedAvailable])
 
   useEffect(() => {
     if (quantityLimit > 0 && quantity > quantityLimit) setQuantity(quantityLimit)
   }, [quantity, quantityLimit])
 
-  function handleAddToCart() {
-    if (inventoryLoading || selectedAvailable < quantity) return
-    addSkiRackCartItem(product.slug, selectedSize, quantity)
-    trackMetaAddToCart({
-      items: [{
-        contentId: `ski-rack:${product.slug}`,
-        contentName: `${product.name} · Talla ${selectedSize}`,
-        category: 'ski_rack',
-        value: priceClp,
-        quantity,
-      }],
-      value: priceClp * quantity,
-    })
-    setAdded(true)
+  async function handleAddToCart() {
+    if (addingRef.current || !cartReady) return
+    if (cartHasAllAvailable) { openSkiRackCart(); return }
+    if (inventoryLoading) return
+    addingRef.current = true
+    setAdding(true)
+    setAdded(0)
+    setStockMessage('')
+    try {
+      const latest = await refresh()
+      if (!latest) return
+      const available = variantAvailability(latest[product.slug], selectedSize)
+      const addedQuantity = addSkiRackCartItem(product.slug, selectedSize, quantity, available)
+      if (addedQuantity === 0) {
+        setStockMessage(available === 0
+          ? `La talla ${selectedSize} se agotó. Elige otra talla disponible.`
+          : 'Ya tienes todas las unidades disponibles de esta talla en tu carrito.')
+        if (alreadyInCart > 0) openSkiRackCart()
+        return
+      }
+      const currentPrice = latest[product.slug].priceClp
+      trackMetaAddToCart({
+        items: [{
+          contentId: `ski-rack:${product.slug}`,
+          contentName: `${product.name} · Talla ${selectedSize}`,
+          category: 'ski_rack',
+          value: currentPrice,
+          quantity: addedQuantity,
+        }],
+        value: currentPrice * addedQuantity,
+      })
+      setAdded(addedQuantity)
+      openSkiRackCart()
+    } finally {
+      addingRef.current = false
+      setAdding(false)
+    }
   }
 
   return (
@@ -167,9 +196,10 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
                       onClick={() => {
                         setSelectedSize(size)
                         setQuantity(1)
-                        setAdded(false)
+                        setAdded(0)
+                        setStockMessage('')
                       }}
-                      disabled={unavailable}
+                      disabled={adding || unavailable}
                       className={`relative border py-3 text-sm font-semibold transition-colors ${
                         unavailable
                           ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300 line-through'
@@ -199,9 +229,9 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
                     type="button"
                     onClick={() => {
                       setQuantity((current) => Math.max(1, current - 1))
-                      setAdded(false)
+                      setAdded(0)
                     }}
-                    disabled={quantity <= 1}
+                    disabled={adding || quantity <= 1}
                     className="flex h-full w-11 items-center justify-center text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-30"
                     aria-label="Disminuir cantidad"
                   >
@@ -214,9 +244,9 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
                     type="button"
                     onClick={() => {
                       setQuantity((current) => Math.min(quantityLimit, current + 1))
-                      setAdded(false)
+                      setAdded(0)
                     }}
-                    disabled={quantityLimit === 0 || quantity >= quantityLimit}
+                    disabled={!cartReady || adding || inventoryLoading || inventoryError || quantityLimit === 0 || quantity >= quantityLimit}
                     className="flex h-full w-11 items-center justify-center text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-30"
                     aria-label="Aumentar cantidad"
                   >
@@ -227,18 +257,26 @@ export default function SkiRackProductDetail({ product }: { product: SkiRackProd
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={inventoryLoading || soldOut || selectedAvailable === 0}
+                disabled={!cartReady || adding || inventoryLoading || (!inventoryError && (soldOut || selectedAvailable === 0))}
                 className="pressable flex h-12 flex-1 items-center justify-center bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
-                {soldOut ? 'Sin stock' : added ? 'Agregado' : 'Agregar al carrito'}
+                {adding ? 'Agregando…' : inventoryError ? 'Reintentar' : soldOut ? 'Sin stock' : cartHasAllAvailable ? 'Ver carrito' : 'Agregar al carrito'}
               </button>
             </div>
 
-            {(added || soldOut) && (
-              <div className="mt-2 min-h-5 text-center text-xs">
-                {added ? (
+            {(added > 0 || soldOut || cartHasAllAvailable || inventoryError || stockMessage) && (
+              <div role="status" className="mt-2 min-h-5 text-center text-xs">
+                {inventoryError ? (
+                  <span className="text-red-600">No pudimos confirmar el stock. Reintenta para agregar tu producto.</span>
+                ) : stockMessage ? (
+                  <span className="text-amber-700">{stockMessage}</span>
+                ) : cartHasAllAvailable ? (
                   <span className="text-brand-500">
-                    {quantity} {quantity === 1 ? 'unidad agregada' : 'unidades agregadas'} ·{' '}
+                    Ya tienes {alreadyInCart} {alreadyInCart === 1 ? 'unidad' : 'unidades'} de esta talla en tu carrito.
+                  </span>
+                ) : added > 0 ? (
+                  <span className="text-brand-500">
+                    {added} {added === 1 ? 'unidad agregada' : 'unidades agregadas'} ·{' '}
                     <button type="button" onClick={openSkiRackCart} className="font-semibold underline underline-offset-2">
                       Ver carrito
                     </button>
