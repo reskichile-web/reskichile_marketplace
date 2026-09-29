@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CONDITIONS, PRODUCT_TYPES } from '@/lib/constants'
+import { fetchTrendingProductIds } from '@/lib/trending'
 
 const SITE_ORIGIN = 'https://www.reskichile.cl'
 const FEED_PAGE_SIZE = 500
@@ -35,6 +36,7 @@ export const META_CATALOG_COLUMNS = [
   'custom_label_0',
   'custom_label_1',
   'custom_label_2',
+  'custom_label_3',
 ] as const
 
 interface MetaCatalogSourceImage {
@@ -69,6 +71,7 @@ export interface MetaCatalogRow {
   custom_label_0: string
   custom_label_1: string
   custom_label_2: string
+  custom_label_3: 'trending' | 'standard'
 }
 
 export interface MetaCatalogFeed {
@@ -118,7 +121,7 @@ function primaryImage(product: MetaCatalogSourceProduct): string | null {
     .find(isHttpUrl) ?? null
 }
 
-export function toMetaCatalogRow(product: MetaCatalogSourceProduct): MetaCatalogRow | null {
+export function toMetaCatalogRow(product: MetaCatalogSourceProduct, trending = false): MetaCatalogRow | null {
   const id = cleanText(product.id, 100)
   const slug = cleanText(product.slug, 300)
   const brand = cleanText(product.brand, 100)
@@ -161,6 +164,8 @@ export function toMetaCatalogRow(product: MetaCatalogSourceProduct): MetaCatalog
     custom_label_0: cleanText(product.product_type, 100),
     custom_label_1: cleanText(product.condition, 100),
     custom_label_2: cleanText(product.region, 100),
+    // Explicitly replace the label for products that leave the selection.
+    custom_label_3: trending ? 'trending' : 'standard',
   }
 }
 
@@ -209,12 +214,16 @@ export async function fetchMetaCatalogProducts(
 export async function buildMetaCatalogFeed(
   supabase: SupabaseClient,
 ): Promise<MetaCatalogFeed> {
-  const products = await fetchMetaCatalogProducts(supabase)
+  const [products, trendingIds] = await Promise.all([
+    fetchMetaCatalogProducts(supabase),
+    fetchTrendingProductIds(supabase),
+  ])
+  const trending = new Set(trendingIds)
   const rows: MetaCatalogRow[] = []
   const excludedProductIds: string[] = []
 
   for (const product of products) {
-    const row = toMetaCatalogRow(product)
+    const row = toMetaCatalogRow(product, trending.has(product.id))
     if (row) rows.push(row)
     else excludedProductIds.push(product.id)
   }

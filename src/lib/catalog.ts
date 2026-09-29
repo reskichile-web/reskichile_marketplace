@@ -3,10 +3,11 @@ import { passesSkiFilters } from '@/lib/ski-filters'
 
 export const CATALOG_PAGE_SIZE = 24
 
-export type CatalogSort = 'relevance' | 'recent' | 'price_asc' | 'price_desc'
+export type CatalogSort = 'relevance' | 'recent' | 'price_asc' | 'price_desc' | 'trending'
 export type CatalogSearchMode = 'exact' | 'approximate' | 'fallback'
 
 export interface CatalogFilters {
+  collection?: 'trending'
   query: string
   types: string[]
   conditions: string[]
@@ -28,6 +29,7 @@ export interface CatalogFilters {
 }
 
 export interface CatalogMetadata {
+  trending_position?: number
   id: string
   product_type: string
   condition: string
@@ -102,10 +104,11 @@ function readSearchQuery(source: CatalogParamSource): string {
 
 export function parseCatalogFilters(source: CatalogParamSource): CatalogFilters {
   const query = readSearchQuery(source)
+  const collection = readParam(source, 'collection') === 'trending' ? 'trending' : undefined
   const requestedSort = readParam(source, 'sort')
-  const sort: CatalogSort = requestedSort === 'price_asc' || requestedSort === 'price_desc' || requestedSort === 'recent' || requestedSort === 'relevance'
+  const sort: CatalogSort = requestedSort === 'price_asc' || requestedSort === 'price_desc' || requestedSort === 'recent' || requestedSort === 'relevance' || (collection && requestedSort === 'trending')
     ? requestedSort
-    : query ? 'relevance' : 'recent'
+    : query ? 'relevance' : collection ? 'trending' : 'recent'
   const fij = readParam(source, 'fij')
   const bootBoa = readParam(source, 'boot_boa')
   const requestedMinLength = readLength(source, 'min_length')
@@ -118,6 +121,7 @@ export function parseCatalogFilters(source: CatalogParamSource): CatalogFilters 
     : requestedMaxLength
 
   return {
+    collection,
     query,
     types: readList(source, 'product_type'),
     conditions: readList(source, 'condition'),
@@ -164,7 +168,7 @@ export function hasCatalogAttributeFilters(filters: CatalogFilters): boolean {
 }
 
 export function requiresCatalogMetadata(filters: CatalogFilters): boolean {
-  return filters.query.length > 0 || hasCatalogAttributeFilters(filters)
+  return filters.collection === 'trending' || filters.query.length > 0 || hasCatalogAttributeFilters(filters)
 }
 
 export function filterCatalogMetadata(
@@ -176,6 +180,7 @@ export function filterCatalogMetadata(
   const isSnowboardBootsOnly = filters.types.length === 1 && filters.types[0] === 'botas_snowboard'
 
   return products.filter(product => {
+    if (filters.collection === 'trending' && product.trending_position == null) return false
     if (filters.types.length > 0 && !filters.types.includes(product.product_type)) return false
     if (filters.conditions.length > 0 && !filters.conditions.includes(product.condition)) return false
     if (filters.regions.length > 0 && !filters.regions.includes(product.region)) return false
@@ -395,6 +400,7 @@ export function sortCatalogMetadata(
   sort: CatalogSort,
 ): CatalogMetadata[] {
   return [...products].sort((a, b) => {
+    if (sort === 'trending') return (a.trending_position ?? Infinity) - (b.trending_position ?? Infinity) || compareRecent(a, b)
     if (sort === 'price_asc') return a.price - b.price || compareRecent(a, b)
     if (sort === 'price_desc') return b.price - a.price || compareRecent(a, b)
     // Query-specific relevance is handled by resolveCatalogMetadata. Outside

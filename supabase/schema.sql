@@ -1014,3 +1014,9 @@ $$;
 -- Full definitions of product_type_synonyms(), products_search_text_sync()
 -- and search_products(q, max_results, relaxed) live in the migrations
 -- 'product_search' and 'search_products_primary_boost'.
+
+-- TRENDING: persisted top 40 available products, shared by the storefront and
+-- Meta custom_label_3. RLS permits public membership reads only; scoring uses
+-- private events through a restricted SECURITY DEFINER function. Full table,
+-- index, ranking and publication/availability trigger definitions live in
+-- migrations/202609290001_trending_products.sql (apply after this base schema).

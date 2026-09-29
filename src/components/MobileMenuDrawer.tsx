@@ -8,6 +8,7 @@ import { EASE_OUT_EXPO } from '@/lib/animations'
 import SellTagIcon from './SellTagIcon'
 
 const CATEGORIES = [
+  { key: 'trending', label: 'Trending', href: '/catalogo?collection=trending' },
   { key: 'racks', label: 'Racks', href: '/ski-rack' },
   { key: 'esquis', label: 'Esquís' },
   { key: 'snowboards', label: 'Snowboards' },

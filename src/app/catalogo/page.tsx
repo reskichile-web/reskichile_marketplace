@@ -13,7 +13,7 @@ import { PRODUCT_TYPES } from '@/lib/constants'
 import { computeSkiCounts } from '@/lib/ski-filters'
 import { computeBootCounts } from '@/lib/boot-filters'
 import { parseCatalogFilters, requiresCatalogMetadata } from '@/lib/catalog'
-import { fetchCatalogMetadata, fetchCatalogProductPage } from '@/lib/catalog-server'
+import { fetchCatalogMetadata, fetchCatalogProductPage, fetchTrendingCatalogMetadata } from '@/lib/catalog-server'
 import { getRecentlyPublishedProductIds } from '@/lib/recent-products'
 
 export const metadata: Metadata = {
@@ -72,7 +72,8 @@ export default async function CatalogPage({ searchParams }: Props) {
     bootBoa,
   } = filters
 
-  const metadataPromise = fetchCatalogMetadata()
+  const isTrending = filters.collection === 'trending'
+  const metadataPromise = isTrending ? fetchTrendingCatalogMetadata(supabase) : fetchCatalogMetadata()
   const productPagePromise = requiresCatalogMetadata(filters)
     ? metadataPromise.then(metadata => fetchCatalogProductPage(supabase, filters, 0, metadata))
     : fetchCatalogProductPage(supabase, filters)
@@ -134,7 +135,7 @@ export default async function CatalogPage({ searchParams }: Props) {
         genero.length > 0 ||
         !!bootBoa))
 
-  const catalogSection = types.length === 1 && PRODUCT_TYPES[types[0]]
+  const catalogSection = isTrending ? 'Trending' : types.length === 1 && PRODUCT_TYPES[types[0]]
     ? PRODUCT_TYPES[types[0]]
     : 'Catálogo'
 
@@ -145,6 +146,7 @@ export default async function CatalogPage({ searchParams }: Props) {
       : `${totalCount} ${totalCount === 1 ? 'producto encontrado' : 'productos encontrados'}.`
 
   const clearFiltersParams = new URLSearchParams()
+  if (isTrending) clearFiltersParams.set('collection', 'trending')
   if (query) clearFiltersParams.set('q', query)
   const clearFiltersHref = clearFiltersParams.toString()
     ? `/catalogo?${clearFiltersParams.toString()}`
@@ -163,7 +165,7 @@ export default async function CatalogPage({ searchParams }: Props) {
           <h1 className="font-body text-4xl font-black tracking-tight text-brand-400 md:text-5xl">
             {catalogSection}
           </h1>
-          <CatalogSearchForm initialQuery={query} />
+          <CatalogSearchForm initialQuery={query} collection={filters.collection} />
         </div>
         {query ? (
           <div className="mt-4">
@@ -176,7 +178,9 @@ export default async function CatalogPage({ searchParams }: Props) {
           </div>
         ) : (
           <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-gray-500 md:text-base">
-            Equipo de montaña usado, directo de quien lo usó.
+            {isTrending
+              ? 'Los 40 destacados por interés y novedad. La selección se renueva con cada nueva publicación.'
+              : 'Equipo de montaña usado, directo de quien lo usó.'}
           </p>
         )}
       </div>

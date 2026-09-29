@@ -160,7 +160,10 @@ export default function CatalogSidebar({
 
   function clearAll() {
     const query = sp.get('q')?.trim()
-    router.push(query ? `/catalogo?q=${encodeURIComponent(query)}` : '/catalogo')
+    const params = new URLSearchParams()
+    if (query) params.set('q', query)
+    if (sp.get('collection') === 'trending') params.set('collection', 'trending')
+    router.push(params.size ? `/catalogo?${params}` : '/catalogo')
   }
 
   const skiHasFilters =

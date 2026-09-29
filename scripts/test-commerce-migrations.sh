@@ -69,7 +69,8 @@ for migration in \
   202609090005_instagram_catalog_batches.sql \
   202609100001_instagram_catalog_tuesday_friday.sql \
   20260914233000_admin_products_contact_view_sort.sql \
-  202609170001_starken_consolidated_tariffs.sql
+  202609170001_starken_consolidated_tariffs.sql \
+  202609290001_trending_products.sql
 do
   if [[ "$migration" == "202609090003_instagram_three_editorial_blocks.sql" ]]; then
     psql -v ON_ERROR_STOP=1 -d "$test_database" \
@@ -82,6 +83,9 @@ do
       -f "$repository_root/supabase/tests/instagram_schedule_reflow_verify.sql"
   fi
 done
+
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/trending_products.sql"
 
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/admin_view_performance.sql"

@@ -60,6 +60,7 @@ describe('Meta catalog feed', () => {
       custom_label_0: 'esquis',
       custom_label_1: 'usado_como_nuevo',
       custom_label_2: 'Metropolitana',
+      custom_label_3: 'standard',
     })
   })
 
@@ -78,6 +79,39 @@ describe('Meta catalog feed', () => {
       description: 'Helly Hansen Pantalones. Pantalones. Condición: Nuevo (sellado).',
       condition: 'new',
     })
+  })
+
+  it('labels Trending members and explicitly clears membership on exit', () => {
+    expect(toMetaCatalogRow(product, true)?.custom_label_3).toBe('trending')
+    expect(toMetaCatalogRow(product, false)?.custom_label_3).toBe('standard')
+  })
+
+  it('builds a complete catalog with exactly the persisted Trending members', async () => {
+    const { buildMetaCatalogFeed } = await vi.importActual<typeof import('@/lib/meta-catalog')>('@/lib/meta-catalog')
+    const listings = Array.from({ length: 43 }, (_, i) => ({
+      ...product, id: `ae430621-0019-4a42-bd83-${String(i).padStart(12, '0')}`,
+    }))
+    const catalog = { select: vi.fn(), eq: vi.fn(), order: vi.fn(), limit: vi.fn(), range: vi.fn() }
+    for (const method of ['select', 'eq', 'order', 'limit'] as const) catalog[method].mockReturnValue(catalog)
+    catalog.range.mockResolvedValue({ data: listings, error: null })
+    const membership = { select: vi.fn(), order: vi.fn(), limit: vi.fn() }
+    membership.select.mockReturnValue(membership)
+    membership.order.mockReturnValue(membership)
+    membership.limit.mockResolvedValue({ data: listings.slice(0, 40).map(p => ({ product_id: p.id })), error: null })
+    const client = { from: (table: string) => table === 'products' ? catalog : membership }
+
+    const feed = await buildMetaCatalogFeed(client as never)
+    expect(feed.includedCount).toBe(43)
+    expect(feed.csv.match(/"trending"/g)).toHaveLength(40)
+    expect(feed.csv.match(/"standard"/g)).toHaveLength(3)
+
+    membership.limit.mockResolvedValue({ data: [], error: null })
+    const emptySelection = await buildMetaCatalogFeed(client as never)
+    expect(emptySelection.includedCount).toBe(43)
+    expect(emptySelection.csv.match(/"standard"/g)).toHaveLength(43)
+
+    membership.limit.mockResolvedValue({ data: null, error: { code: '42501' } })
+    await expect(buildMetaCatalogFeed(client as never)).rejects.toThrow('trending_query_failed')
   })
 
   it('excludes malformed products instead of emitting unusable catalog items', () => {

@@ -4,19 +4,26 @@ import { FormEvent, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export default function CatalogSearchForm({ initialQuery }: { initialQuery: string }) {
+export default function CatalogSearchForm({ initialQuery, collection }: { initialQuery: string; collection?: 'trending' }) {
   const router = useRouter()
   const [query, setQuery] = useState(initialQuery)
+
+  function searchHref(value: string) {
+    const params = new URLSearchParams()
+    if (collection) params.set('collection', collection)
+    if (value) params.set('q', value)
+    return `/catalogo${params.size ? `?${params}` : ''}`
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextQuery = query.replace(/\s+/g, ' ').trim()
-    router.push(nextQuery ? `/catalogo?q=${encodeURIComponent(nextQuery)}` : '/catalogo')
+    router.push(searchHref(nextQuery))
   }
 
   function clearSearch() {
     setQuery('')
-    router.push('/catalogo')
+    router.push(searchHref(''))
   }
 
   return (

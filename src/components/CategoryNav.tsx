@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 
 const CATEGORIES = [
   { key: 'all', label: 'Todo', href: '/catalogo' },
+  { key: 'trending', label: 'Trending', href: '/catalogo?collection=trending' },
   { key: 'racks', label: 'Racks', href: '/ski-rack' },
   { key: 'esquis', label: 'Esquís' },
   { key: 'snowboards', label: 'Snowboards' },
@@ -23,7 +24,7 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
   const activeType = pathname.startsWith('/ski-rack') || pathname === '/carrito'
     ? 'racks'
     : pathname === '/catalogo'
-      ? (searchParams.get('product_type') || null)
+      ? (searchParams.get('collection') === 'trending' ? 'trending' : searchParams.get('product_type') || null)
       : null
 
   return (

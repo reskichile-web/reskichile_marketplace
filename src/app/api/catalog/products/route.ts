@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
       limit,
     )
 
-    return NextResponse.json(page, { headers: CACHE_HEADERS })
+    return NextResponse.json(page, { headers: filters.collection === 'trending'
+      ? { 'Cache-Control': 'no-store' }
+      : CACHE_HEADERS })
   } catch {
     console.error('catalog_incremental_load_failed')
     return NextResponse.json(

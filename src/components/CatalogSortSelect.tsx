@@ -9,8 +9,9 @@ export default function CatalogSortSelect({ value }: { value: string }) {
 
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const params = new URLSearchParams(sp.toString())
-    if (e.target.value === 'relevance') params.delete('sort')
-    else if (e.target.value === 'recent' && !sp.get('q')) params.delete('sort')
+    if (e.target.value === 'relevance' && sp.get('q')) params.delete('sort')
+    else if (e.target.value === 'trending' && !sp.get('q')) params.delete('sort')
+    else if (e.target.value === 'recent' && !sp.get('q') && sp.get('collection') !== 'trending') params.delete('sort')
     else params.set('sort', e.target.value)
     router.push(`/catalogo${params.toString() ? '?' + params.toString() : ''}`)
   }
@@ -24,6 +25,7 @@ export default function CatalogSortSelect({ value }: { value: string }) {
         className="bg-transparent border-0 font-body font-medium text-gray-700 focus:outline-none cursor-pointer"
       >
         {sp.get('q') && <option value="relevance">Más relevantes</option>}
+        {sp.get('collection') === 'trending' && <option value="trending">Orden Trending</option>}
         <option value="recent">Más recientes</option>
         <option value="price_asc">Precio: menor a mayor</option>
         <option value="price_desc">Precio: mayor a menor</option>

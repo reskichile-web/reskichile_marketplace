@@ -12,6 +12,7 @@ import {
   type CatalogSearchMode,
 } from '@/lib/catalog'
 import { createPublicServerClient } from '@/lib/supabase/server'
+import { fetchTrendingProductIds } from '@/lib/trending'
 
 const CATALOG_CARD_SELECT = 'id, slug, product_type, brand, model, price, previous_price, condition, region, attributes, product_images(url, order)'
 const CATALOG_METADATA_SELECT = 'id, product_type, condition, region, comuna, brand, model, description, price, previous_price, attributes, created_at, catalog_bumped_at'
@@ -43,6 +44,20 @@ export const fetchCatalogMetadata = unstable_cache(
   ['catalog-filter-metadata-v2'],
   { revalidate: 30 },
 )
+
+// Read the same persisted membership as Meta, without the metadata cache's
+// delay after publication. Query only these 40 rows for filters and pagination.
+export async function fetchTrendingCatalogMetadata(supabase: SupabaseClient): Promise<CatalogMetadata[]> {
+  const ids = await fetchTrendingProductIds(supabase)
+  if (ids.length === 0) return []
+  const { data, error } = await supabase.from('products')
+    .select(CATALOG_METADATA_SELECT).eq('status', 'approved').in('id', ids)
+  if (error) throw new Error(`trending_metadata_failed:${error.code || 'database_error'}`)
+  const positions = new Map(ids.map((id, index) => [id, index + 1]))
+  return ((data ?? []) as CatalogMetadata[]).map(product => ({
+    ...product, trending_position: positions.get(product.id),
+  }))
+}
 
 async function fetchDirectCatalogPage(
   supabase: SupabaseClient,
@@ -155,6 +170,8 @@ export async function fetchCatalogProductPage(
     return fetchDirectCatalogPage(supabase, filters, offset, pageSize)
   }
 
-  const metadata = existingMetadata || await fetchCatalogMetadata()
+  const metadata = existingMetadata || await (filters.collection === 'trending'
+    ? fetchTrendingCatalogMetadata(supabase)
+    : fetchCatalogMetadata())
   return fetchMetadataCatalogPage(supabase, filters, offset, metadata, pageSize)
 }
