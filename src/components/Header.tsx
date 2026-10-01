@@ -134,7 +134,7 @@ export default function Header() {
 
       {/* Category nav — desktop only */}
       <div className="hidden md:block">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
+        <div className="w-full px-6 xl:px-8">
           <Suspense fallback={null}>
             <CategoryNav showSkiRacks={showSkiRacks} />
           </Suspense>

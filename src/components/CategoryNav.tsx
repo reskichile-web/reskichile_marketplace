@@ -28,7 +28,7 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
       : null
 
   return (
-    <nav className="flex h-14 items-center gap-2 overflow-x-auto" aria-label="Categorías de equipamiento">
+    <nav className="grid w-full grid-cols-6 items-center gap-1 py-1 lg:grid-flow-col lg:auto-cols-[minmax(max-content,1fr)] lg:grid-cols-none" aria-label="Categorías de equipamiento">
       {CATEGORIES.filter(category => showSkiRacks || category.key !== 'racks').map((category) => {
         const isActive = category.key === 'all'
           ? pathname === '/catalogo' && activeType === null
@@ -38,7 +38,7 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
           <Link
             key={category.key}
             href={category.href || `/catalogo?product_type=${category.key}`}
-            className={`group relative inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap px-5 first:ml-auto last:mr-auto font-nav text-base tracking-wide ${category.key === 'trending' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' || category.key === 'trending' ? 'overflow-visible' : 'overflow-hidden'}`}
+            className={`group relative inline-flex h-12 min-w-0 items-center justify-center whitespace-nowrap px-2 font-nav text-sm tracking-wide xl:px-3 xl:text-base ${category.key === 'trending' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' || category.key === 'trending' ? 'overflow-visible' : 'overflow-hidden'}`}
           >
             <span
               className={`absolute bottom-0 left-0 right-0 bg-brand-500 transition-all duration-300 ease-out group-hover:h-full ${isActive ? 'h-[3px]' : 'h-0'}`}
