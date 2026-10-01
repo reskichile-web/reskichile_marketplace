@@ -38,7 +38,7 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
           <Link
             key={category.key}
             href={category.href || `/catalogo?product_type=${category.key}`}
-            className={`group relative inline-flex h-12 min-w-0 items-center justify-center whitespace-nowrap px-1 font-nav text-xs tracking-wide lg:px-2 lg:text-sm xl:px-3 xl:text-base ${category.key === 'trending' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' || category.key === 'trending' ? 'overflow-visible' : 'overflow-hidden'}`}
+            className={`group relative inline-flex h-12 min-w-0 items-center justify-center whitespace-nowrap px-0.5 font-nav text-xs tracking-wide lg:px-2 lg:text-sm xl:px-3 xl:text-base ${category.key === 'trending' ? 'font-bold' : 'font-extralight'} ${category.key === 'racks' || category.key === 'trending' ? 'overflow-visible' : 'overflow-hidden'}`}
           >
             <span
               className={`absolute bottom-0 left-0 right-0 bg-brand-500 transition-all duration-300 ease-out group-hover:h-full ${isActive ? 'h-[3px]' : 'h-0'}`}
