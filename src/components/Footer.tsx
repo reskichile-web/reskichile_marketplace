@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import SellTagIcon from './SellTagIcon'
 import FeedbackWidget from './FeedbackWidget'
 import { Instagram } from 'lucide-react'
@@ -7,11 +6,7 @@ import CookiePreferencesButton from './CookiePreferencesButton'
 
 export default function Footer() {
   return (
-    <footer className="relative isolate mt-auto border-t border-gray-200 bg-white pb-24 text-gray-900 min-[821px]:pb-0">
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-        <Image src="/images/ski-rack-madera-common-1.jpg" alt="" fill sizes="100vw" className="object-cover object-center" />
-        <div className="absolute inset-0 bg-white/90" />
-      </div>
+    <footer className="mt-auto border-t border-gray-200 bg-white pb-24 text-gray-900 min-[821px]:pb-0">
       {/* Footer content */}
       <div className="text-gray-900">
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 min-[821px]:py-16">
