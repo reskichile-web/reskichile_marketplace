@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { buildImagePath } from '@/lib/storage-utils'
 import { buildProductSlug } from '@/lib/slug-utils'
 import { normalizeStoredPhone } from '@/lib/phone'
+import { sendEmail } from '@/lib/email/send'
+import { buildInternalNotice } from '@/lib/email/templates'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,6 +102,28 @@ export async function POST(request: NextRequest) {
         url: publicUrl,
         order: i,
       })
+    }
+
+    // Anonymous sellers have no review-email endpoint/session. Notify the team
+    // here, after persistence, and await delivery before the server request ends.
+    // A mail failure must not turn a successfully created listing into a retry.
+    try {
+      const title = [brand.trim(), model?.trim()].filter(Boolean).join(' ')
+      const email = buildInternalNotice(`Nueva publicación pendiente · ${title}`, [
+        { label: 'Producto', value: title },
+        { label: 'Precio', value: new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(price)) },
+        { label: 'Origen', value: 'Publicación sin cuenta' },
+        { label: 'Revisar publicación', value: 'https://www.reskichile.cl/admin/publicaciones' },
+      ])
+      const delivery = await sendEmail({
+        to: 'sebastian.derpsch@gmail.com',
+        bcc: 'reskichile@gmail.com',
+        ...email,
+        idempotencyKey: `publication-review/${product.id}`,
+      })
+      if (!delivery.ok) console.error('[publish-anon] review notification failed:', delivery.error)
+    } catch {
+      console.error('[publish-anon] review notification failed unexpectedly')
     }
 
     return NextResponse.json({ id: product.id })
