@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { SKI_RACK_PRODUCTS, SKI_RACK_TWO_PAIRS_IMAGE } from '@/lib/ski-rack-products'
+import { SKI_RACK_PRODUCTS, SKI_RACK_WHITE_WALL_IMAGE } from '@/lib/ski-rack-products'
 import { totalRackAvailability, variantAvailability } from '@/lib/rack-inventory'
 import { useRackInventory } from '@/lib/use-rack-inventory'
 
@@ -73,7 +73,7 @@ export default function SkiRackStory() {
                   className={`object-cover transition-all duration-500 group-hover:scale-[1.035] ${soldOut ? 'grayscale opacity-65' : ''} ${product.imageClassName} group-hover:opacity-0 group-focus-within:opacity-0`}
                   priority={index === 0}
                 />
-                <Image src={SKI_RACK_TWO_PAIRS_IMAGE.url} alt={SKI_RACK_TWO_PAIRS_IMAGE.alt} fill
+                <Image src={SKI_RACK_WHITE_WALL_IMAGE.url} alt={SKI_RACK_WHITE_WALL_IMAGE.alt} fill
                   sizes="(max-width: 767px) 50vw, 290px"
                   className="object-contain object-center opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100" />
                 {soldOut && (
