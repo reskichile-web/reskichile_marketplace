@@ -1,3 +1,4 @@
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { getInstagramCronSecret, getInstagramPublishingConfig } from '@/lib/instagram/publishing-config'
@@ -14,6 +15,12 @@ export async function GET(request: Request) {
     const actual = Buffer.from(request.headers.get('authorization') || '')
     const expected = Buffer.from(`Bearer ${getInstagramCronSecret()}`)
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return NextResponse.json({ error: 'No autorizado' }, { status: 401, headers })
+    if (!SEASON_AUTOMATIONS_ENABLED) {
+      return NextResponse.json(
+        { ok: true, state: 'disabled', reason: 'season_ended' },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
     // Catalog activation is separate from existing individual Stories. Preview
     // deployments must never consume the production queue or send real Stories.
     if (!isInstagramCatalogEnabled()) {

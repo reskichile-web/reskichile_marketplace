@@ -1,3 +1,4 @@
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { publishEligibleInstagramStories } from '@/lib/instagram/publish-stories'
@@ -27,6 +28,12 @@ export async function GET(request: Request) {
       )
     }
 
+    if (!SEASON_AUTOMATIONS_ENABLED) {
+      return NextResponse.json(
+        { ok: true, state: 'disabled', reason: 'season_ended' },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
     const config = getInstagramPublishingConfig()
     let storyCleanup = { queued: 0, removed: 0, failed: 0 }
     try {

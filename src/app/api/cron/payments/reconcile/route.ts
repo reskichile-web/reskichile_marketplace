@@ -1,3 +1,4 @@
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { getPaymentReconciliationConfig } from '@/lib/env/server'
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!SEASON_AUTOMATIONS_ENABLED) {
+      return NextResponse.json(
+        { ok: true, state: 'disabled', reason: 'season_ended' },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    }
     // Keep the worst-case provider time below the 60-second Hobby function
     // limit. An interrupted batch is safe: each attempt has a recoverable lease.
     const batchSize = Math.max(

@@ -128,6 +128,7 @@ export async function sendSaleReminderForProduct(
   })
 
   const delivery = await sendEmail({
+    category: 'sale-reminder',
     to: recipient,
     subject,
     html,

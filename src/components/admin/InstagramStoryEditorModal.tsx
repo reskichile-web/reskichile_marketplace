@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { useEffect, useState } from 'react'
 import {
   CalendarClock,
@@ -303,7 +304,7 @@ export default function InstagramStoryEditorModal({
                   type="button"
                   onClick={() => void publishNow()}
                   disabled={!publishingEnabled || Boolean(working)}
-                  title={!publishingEnabled ? 'INSTAGRAM_PUBLISHING_ENABLED está desactivado' : undefined}
+                  title={!publishingEnabled ? 'Publicación pausada por fin de temporada' : undefined}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-950 px-5 py-3.5 text-sm font-black text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <Send className="h-5 w-5" /> Subir ahora
@@ -311,7 +312,7 @@ export default function InstagramStoryEditorModal({
                 <button
                   type="button"
                   onClick={() => void addToNextSlot()}
-                  disabled={Boolean(working)}
+                  disabled={!SEASON_AUTOMATIONS_ENABLED || Boolean(working)}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3.5 text-sm font-black text-white transition hover:bg-brand-600 disabled:opacity-40"
                 >
                   <CalendarClock className="h-5 w-5" />
@@ -320,7 +321,7 @@ export default function InstagramStoryEditorModal({
                 <select
                   value=""
                   onChange={(event) => void addToSpecificSlot(event.target.value)}
-                  disabled={Boolean(working) || slots.length === 0}
+                  disabled={!SEASON_AUTOMATIONS_ENABLED || Boolean(working) || slots.length === 0}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm font-bold text-gray-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50 disabled:text-gray-300"
                   aria-label="Agregar a una fecha específica"
                 >

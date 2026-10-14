@@ -1,4 +1,5 @@
 import 'server-only'
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 
 export const INSTAGRAM_GRAPH_API_VERSION = 'v26.0'
 export const INSTAGRAM_PUBLISHING_QUOTA = 100
@@ -29,7 +30,7 @@ export function getInstagramCronSecret(): string {
 }
 
 export function getInstagramPublishingConfig(): InstagramPublishingConfig {
-  const enabled = process.env.INSTAGRAM_PUBLISHING_ENABLED === 'true'
+  const enabled = SEASON_AUTOMATIONS_ENABLED && process.env.INSTAGRAM_PUBLISHING_ENABLED === 'true'
   const accessToken = process.env.META_INSTAGRAM_ACCESS_TOKEN?.trim() || null
   const userId = process.env.META_INSTAGRAM_USER_ID?.trim() || null
 

@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 
 const CATEGORIES = [
-  { key: 'trending', label: 'Trending', href: '/catalogo?collection=trending' },
   { key: 'racks', label: 'Racks', href: '/ski-rack' },
   { key: 'esquis', label: 'Esquís' },
   { key: 'snowboards', label: 'Snowboards' },

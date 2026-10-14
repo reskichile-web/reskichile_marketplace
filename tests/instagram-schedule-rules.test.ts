@@ -40,16 +40,8 @@ describe('Instagram Story schedule rules', () => {
     }
     expect(transition).toContain("UPDATE public.instagram_catalog_schedule_rules SET local_time = '20:00'")
   })
-  it('has cron ticks for all slots and retries in summer and winter', () => {
-    const { crons } = JSON.parse(readFileSync('vercel.json', 'utf8')) as { crons: { path: string, schedule: string }[] }
-    expect(new Set(crons.map(c => c.path)).size).toBe(crons.length)
-    const ticks = new Set(crons.map(c => c.schedule))
-    for (const rule of INSTAGRAM_STORY_DAY_RULES) for (const slot of rule.slots) {
-      const [hour, minute] = slot.time.split(':').map(Number)
-      for (const offset of [3, 4]) for (const retry of [0, 15, 30, 45]) {
-        const total = (hour + offset) * 60 + minute + retry
-        expect(ticks.has(`${total % 60} ${Math.floor(total / 60) % 24} * * *`)).toBe(true)
-      }
-    }
+  it('keeps the historical schedule visible without running Instagram crons', () => {
+    const { crons } = JSON.parse(readFileSync('vercel.json', 'utf8'))
+    expect(crons.some((cron: { path: string }) => cron.path.includes('instagram'))).toBe(false)
   })
 })

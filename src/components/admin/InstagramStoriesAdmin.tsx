@@ -1,5 +1,6 @@
 'use client'
 
+import { SEASON_AUTOMATIONS_ENABLED, SEASON_PAUSED_MESSAGE } from '@/lib/season'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Instagram, Loader2, RefreshCw } from 'lucide-react'
 import InstagramStoryCalendarTable from './InstagramStoryCalendarTable'
@@ -64,6 +65,7 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
   }, [load])
 
   useEffect(() => {
+    if (!SEASON_AUTOMATIONS_ENABLED) return
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void load()
     }, 30_000)
@@ -169,8 +171,8 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
         </div>
 
         <div className="flex items-center gap-2 xl:justify-self-end">
-          <span className={`hidden rounded-full px-3 py-1.5 text-xs font-bold sm:inline-flex ${data?.publishingEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-            {data?.publishingEnabled ? 'Publicación activa' : 'Publicación desactivada'}
+          <span className={`hidden rounded-full px-3 py-1.5 text-xs font-bold sm:inline-flex ${data?.publishingEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+            {data?.publishingEnabled ? 'Publicación activa' : 'Cron apagado'}
           </span>
           <button
             type="button"
@@ -184,13 +186,15 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
         </div>
       </header>
 
+      {!SEASON_AUTOMATIONS_ENABLED && <p role="status" className="mt-5 rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-500">{SEASON_PAUSED_MESSAGE} El calendario y las historias se conservan.</p>}
+
       {error && (
         <div role="alert" className="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           {error}
         </div>
       )}
 
-      <div className="mt-7">
+      <div className={`mt-7 ${!SEASON_AUTOMATIONS_ENABLED && view === 'calendar' ? 'grayscale opacity-60' : ''}`}>
         {view === 'prepare' ? (
           <InstagramStoryProductList products={products} onOpen={setSelectedProductId} />
         ) : (
@@ -206,7 +210,7 @@ export default function InstagramStoriesAdmin({ initialData }: { initialData: In
             historyDays={visibleHistoryDays}
             maxHistoryDays={maxHistoryDays}
             loading={loading}
-            availableSlots={availableSlots}
+            availableSlots={SEASON_AUTOMATIONS_ENABLED ? availableSlots : []}
             occupiedSlotKeys={[...occupiedKeys]}
             onOpen={setSelectedProductId}
             onChanged={() => load()}

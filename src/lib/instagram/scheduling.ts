@@ -1,4 +1,5 @@
 import 'server-only'
+import { SEASON_AUTOMATIONS_ENABLED, SEASON_PAUSED_MESSAGE } from '@/lib/season'
 
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
@@ -29,6 +30,7 @@ export async function scheduleCaptureNext(
   captureId: string,
   source: 'automatic' | 'manual' = 'automatic',
 ): Promise<InstagramCaptureSchedule> {
+  if (!SEASON_AUTOMATIONS_ENABLED) throw new Error(SEASON_PAUSED_MESSAGE)
   const service = createServiceRoleClient()
   const { data, error } = await service.rpc('instagram_schedule_capture_next', {
     p_capture_id: captureId,
@@ -45,6 +47,7 @@ export async function moveCaptureSchedule(
   localDate: string,
   slot: number,
 ): Promise<InstagramCaptureSchedule> {
+  if (!SEASON_AUTOMATIONS_ENABLED) throw new Error(SEASON_PAUSED_MESSAGE)
   const service = createServiceRoleClient()
   const { data, error } = await service.rpc('instagram_move_capture_schedule', {
     p_capture_id: captureId,
@@ -69,6 +72,7 @@ export async function unscheduleCapture(captureId: string): Promise<void> {
 }
 
 export async function resetFailedCapturePublication(captureId: string): Promise<void> {
+  if (!SEASON_AUTOMATIONS_ENABLED) throw new Error(SEASON_PAUSED_MESSAGE)
   const service = createServiceRoleClient()
   const { error } = await service.rpc('instagram_reset_failed_story_publication', {
     p_capture_id: captureId,

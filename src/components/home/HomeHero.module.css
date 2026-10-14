@@ -158,120 +158,26 @@
   }
 }
 
-@media (max-width: 820px) {
-  .hero {
-    height: 700px;
-    background:
-      linear-gradient(to bottom, rgb(255 255 255 / 65%) 0%, rgb(255 255 255 / 65%) 60%, #ffffff 100%),
-      url('/images/hero-mobile.jpeg') center top / cover no-repeat;
-  }
-
-  .frame {
-    display: block;
-    width: calc(100% - 32px);
-  }
-
-  .content {
-    display: block;
-    width: calc(100% - 32px);
-    height: auto;
-    padding-top: 42px;
-    padding-bottom: 0;
-    margin: 0 auto;
-  }
-
-  .title {
-    max-width: 520px;
-    font-size: clamp(38px, 10.5vw, 52px);
-  }
-
-  .copy {
-    width: min(100%, 500px);
-    margin-top: 22px;
-    font-size: 17px;
-  }
-
-  .actions {
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 26px;
-  }
-
-  .button {
-    flex: 0 1 auto;
-    min-width: 0;
-    height: 50px;
-    padding: 0 clamp(10px, 3.2vw, 16px);
-    font-size: clamp(10px, 3vw, 12px);
-  }
-
-  .photo {
-    display: none;
-  }
-}
-
-@media (max-width: 460px) {
-  .hero {
-    height: 480px;
-    background:
-      linear-gradient(to bottom, transparent 0%, rgb(255 255 255 / 18%) 48%, rgb(255 255 255 / 72%) 78%, #ffffff 100%),
-      url('/images/hero-mobile.jpeg') center top / cover no-repeat;
-  }
-
-  .content {
-    width: 100%;
-    padding-top: 80px;
-  }
-
-  .title {
-    font-size: clamp(39px, 12vw, 50px);
-    line-height: 1.12;
-    transform: translateY(-16px);
-  }
-
-  .copy {
-    position: relative;
-    isolation: isolate;
-    margin-top: 22px;
-    font-size: 15px;
-  }
-
-  .copy::before {
-    position: absolute;
-    z-index: -1;
-    inset: -10px -14px;
-    border-radius: 999px;
-    background: rgb(255 255 255 / 58%);
-    filter: blur(14px);
-    content: '';
-    pointer-events: none;
-  }
-
-  .actions {
-    flex-direction: row;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 48px;
-  }
-
-  .button {
-    width: auto;
-    flex: 0 1 auto;
-    height: 48px;
-    gap: 8px;
-    padding: 0 clamp(9px, 3vw, 14px);
-  }
-
-  .button svg {
-    width: clamp(17px, 4.8vw, 20px);
-    height: clamp(17px, 4.8vw, 20px);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .button {
     transition: none;
   }
+}
+
+.slideControls { display: flex; align-items: center; gap: 10px; margin-top: 24px; }
+.dot, .activeDot { width: 26px; height: 6px; border: 0; border-radius: 4px; background: #d9dee5; cursor: pointer; }
+.activeDot { background: #2d83cc; }
+.pauseButton { border: 0; background: transparent; color: #667085; padding: 6px; font-size: 12px; cursor: pointer; }
+
+@media (max-width: 820px) {
+  .hero { height: auto; background: #fff; }
+  .frame { display: flex; flex-direction: column; gap: 24px; padding: 32px 0; }
+  .content { order: 0; padding: 0; width: 100%; margin: 0; }
+  .photo { display: block; order: 1; height: auto; aspect-ratio: 4 / 3; width: 100%; clip-path: inset(0 round 24px); }
+  .title { font-size: clamp(32px, 8.5vw, 48px); line-height: 1.1; transform: none; }
+  .rotatingLine { height: auto; overflow: visible; }
+  .copy { margin-top: 18px; }
+  .copy::before { display: none; }
+  .actions { justify-content: flex-start; margin-top: 22px; }
+  .button { font-size: 14px; padding: 0 20px; }
 }

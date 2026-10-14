@@ -1,3 +1,4 @@
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { getCommerceJobSecret } from '@/lib/env/server'
@@ -20,6 +21,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'No autorizado' },
         { status: 401, headers: { 'Cache-Control': 'no-store' } }
+      )
+    }
+    if (!SEASON_AUTOMATIONS_ENABLED) {
+      return NextResponse.json(
+        { ok: true, state: 'disabled', reason: 'season_ended' },
+        { headers: { 'Cache-Control': 'no-store' } },
       )
     }
     const summary = await processCommerceOutbox(10)

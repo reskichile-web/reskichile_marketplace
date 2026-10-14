@@ -1,3 +1,4 @@
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { NextResponse } from 'next/server'
 import {
   adminErrorResponse,
@@ -82,7 +83,7 @@ export async function POST(
       ? await readSmallJson(request)
       : {}
     const forceRegeneration = body.force === true
-    const shouldSchedule = body.schedule !== false
+    const shouldSchedule = SEASON_AUTOMATIONS_ENABLED && body.schedule !== false
     const { id } = await params
     if (!UUID_RE.test(id)) {
       return NextResponse.json(

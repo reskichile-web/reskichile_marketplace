@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// Exercise the active-season contract; shutdown has separate coverage.
+vi.mock('@/lib/season', () => ({ SEASON_AUTOMATIONS_ENABLED: true, SALE_REMINDERS_ENABLED: true }))
 import { readFileSync } from 'node:fs'
 const mocks = vi.hoisted(() => ({ worker: vi.fn() }))
 vi.mock('@/lib/instagram/catalog-worker', () => ({ runCatalogWorker: mocks.worker }))
@@ -52,21 +55,9 @@ describe('Catalog cron authorization and activation', () => {
   })
 })
 
-describe('Vercel catalog generation and publication coverage', () => {
-  const { crons } = JSON.parse(readFileSync('vercel.json', 'utf8')) as { crons: { path: string; schedule: string }[] }
-  const catalog = crons.filter(cron => cron.path.startsWith('/api/cron/instagram-catalog/'))
-  it('covers preparation one hour before and publication in both Chile offsets', () => {
-    const times = new Set(catalog.map(cron => cron.path.slice(-4)))
-    for (const offset of [3, 4]) for (const minute of [18 * 60 + 30, 19 * 60, 19 * 60 + 30, 20 * 60]) {
-      const utc = (minute + offset * 60) % 1440
-      expect(times.has(`${String(Math.floor(utc / 60)).padStart(2, '0')}${String(utc % 60).padStart(2, '0')}`)).toBe(true)
-    }
-    expect(times.has('0100')).toBe(true)
-  })
-  it('uses distinct daily paths and fewer than 100 total jobs', () => {
-    expect(catalog).toHaveLength(15)
-    expect(crons.length).toBeLessThanOrEqual(100)
-    expect(new Set(crons.map(c => c.path)).size).toBe(crons.length)
-    for (const cron of catalog) expect(cron.schedule).toMatch(/^\d+ \d+ \* \* \*$/)
+describe('Off-season catalog scheduling', () => {
+  it('removes every catalog cron from deployment', () => {
+    const { crons } = JSON.parse(readFileSync('vercel.json', 'utf8'))
+    expect(crons.some((cron: { path: string }) => cron.path.includes('instagram'))).toBe(false)
   })
 })

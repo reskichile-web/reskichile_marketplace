@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Exercise the active-season contract; shutdown has separate coverage.
+vi.mock('@/lib/season', () => ({ SEASON_AUTOMATIONS_ENABLED: true, SALE_REMINDERS_ENABLED: true }))
+
 const mocks = vi.hoisted(() => ({
   publish: vi.fn(),
   consume: vi.fn(),

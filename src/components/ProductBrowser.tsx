@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { ArrowUpDown, ChevronDown, SlidersHorizontal, X } from 'lucide-react'
 import SellTagIcon from '@/components/SellTagIcon'
 import { StaggerGrid, StaggerItem } from '@/components/StaggerGrid'
+import PinnedSkiRack from '@/components/home/PinnedSkiRack'
+import { getPriceDrop } from '@/lib/price-drop'
 import ProductCard from '@/components/ProductCard'
 import { PRODUCT_TYPES, CONDITIONS, REGIONS } from '@/lib/constants'
 import EmptyState from '@/components/illustrations/EmptyState'
@@ -19,12 +21,14 @@ interface Product {
   previous_price?: number | null
   condition: string
   region: string
+  catalog_bumped_at?: string | null
   product_images: { url: string; order: number }[]
 }
 
-type SortKey = 'recent' | 'price_asc' | 'price_desc' | 'name_asc'
+type SortKey = 'discounts' | 'recent' | 'price_asc' | 'price_desc' | 'name_asc'
 
 const SORT_LABELS: Record<SortKey, string> = {
+  discounts: 'Rebajas de temporada',
   recent: 'Más recientes',
   price_asc: 'Precio: menor a mayor',
   price_desc: 'Precio: mayor a menor',
@@ -34,6 +38,7 @@ const SORT_LABELS: Record<SortKey, string> = {
 interface Props {
   products: Product[]
   recentProductIds?: string[]
+  showSkiRack?: boolean
 }
 
 function FilterSection({
@@ -131,8 +136,8 @@ function MobileCheckItem({ label, checked, onChange }: { label: string; checked:
   )
 }
 
-export default function ProductBrowser({ products, recentProductIds = [] }: Props) {
-  const [sort, setSort] = useState<SortKey>('recent')
+export default function ProductBrowser({ products, recentProductIds = [], showSkiRack = true }: Props) {
+  const [sort, setSort] = useState<SortKey>('discounts')
   const [typeFilters, setTypeFilters] = useState<Set<string>>(new Set())
   const [conditionFilters, setConditionFilters] = useState<Set<string>>(new Set())
   const [brandFilters, setBrandFilters] = useState<Set<string>>(new Set())
@@ -162,13 +167,16 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
     if (brandFilters.size) result = result.filter(p => brandFilters.has(p.brand))
     if (regionFilters.size) result = result.filter(p => regionFilters.has(p.region))
 
-    if (sort === 'price_asc') result.sort((a, b) => a.price - b.price)
+    if (sort === 'recent') result.sort((a, b) => (b.catalog_bumped_at || '').localeCompare(a.catalog_bumped_at || ''))
+    else if (sort === 'discounts') result.sort((a, b) => Number(Boolean(getPriceDrop(b.price, b.previous_price))) - Number(Boolean(getPriceDrop(a.price, a.previous_price))))
+    else if (sort === 'price_asc') result.sort((a, b) => a.price - b.price)
     else if (sort === 'price_desc') result.sort((a, b) => b.price - a.price)
     else if (sort === 'name_asc') result.sort((a, b) => a.brand.localeCompare(b.brand, 'es'))
 
     return result
   }, [products, sort, typeFilters, conditionFilters, brandFilters, regionFilters])
 
+  const showPinnedRack = showSkiRack && typeFilters.size === 0 && brandFilters.size === 0 && conditionFilters.size === 0 && regionFilters.size === 0
   const hasFilters = typeFilters.size > 0 || conditionFilters.size > 0 || brandFilters.size > 0 || regionFilters.size > 0
   const activeFilterCount = typeFilters.size + conditionFilters.size + brandFilters.size + regionFilters.size
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -295,12 +303,12 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
   )
 
   return (
-    <section className="max-w-7xl mx-auto px-4">
+    <section id="productos" className="max-w-7xl mx-auto px-4">
       {/* Sticky sorting navbar */}
       <div data-testid="landing-product-toolbar" className="sticky top-0 z-30 bg-white">
         <div className="flex items-center gap-3 py-3 lg:hidden">
           <h2 className="font-body text-lg font-black">Productos</h2>
-          <span className="text-sm text-gray-400">{filtered.length}</span>
+          <span className="text-sm text-gray-400">{filtered.length + Number(showPinnedRack)}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3 border-y border-gray-200 py-3 lg:hidden">
@@ -329,6 +337,7 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
               onChange={e => setSort(e.target.value as SortKey)}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             >
+              <option value="discounts">Rebajas de temporada</option>
               <option value="recent">Más recientes</option>
               <option value="price_asc">Precio: menor a mayor</option>
               <option value="price_desc">Precio: mayor a menor</option>
@@ -340,7 +349,7 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
         <div className="hidden items-center justify-between gap-3 border-y border-gray-200 py-4 lg:flex">
           <div className="flex items-center gap-3">
             <h2 className="font-body text-xl font-black">Productos</h2>
-            <span className="text-sm text-gray-400">{filtered.length}</span>
+            <span className="text-sm text-gray-400">{filtered.length + Number(showPinnedRack)}</span>
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
@@ -356,6 +365,7 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
                 onChange={e => setSort(e.target.value as SortKey)}
                 className="h-9 min-w-40 cursor-pointer appearance-none border-0 bg-transparent py-0 pl-0 pr-8 font-body text-base font-medium text-gray-700 outline-none focus:ring-0"
               >
+                <option value="discounts">Rebajas de temporada</option>
                 <option value="recent">Más recientes</option>
                 <option value="price_asc">Menor precio</option>
                 <option value="price_desc">Mayor precio</option>
@@ -415,7 +425,7 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
 
         {/* Product grid */}
         <div className="flex-1 min-w-0">
-          {filtered.length === 0 ? (
+          {filtered.length === 0 && !showPinnedRack ? (
             <div>
               <EmptyState
                 title="No se encontraron productos"
@@ -431,8 +441,9 @@ export default function ProductBrowser({ products, recentProductIds = [] }: Prop
             </div>
           ) : (
             <StaggerGrid>
+              {showPinnedRack && <StaggerItem key="ski-rack-madera"><PinnedSkiRack /></StaggerItem>}
               {filtered.map((product) => {
-                const sorted = product.product_images?.sort(
+                const sorted = product.product_images?.slice().sort(
                   (a, b) => a.order - b.order
                 ) || []
                 const title = [product.brand, product.model].filter(Boolean).join(' ')

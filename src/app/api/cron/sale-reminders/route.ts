@@ -1,3 +1,4 @@
+import { SALE_REMINDERS_ENABLED } from '@/lib/season'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import {
@@ -19,10 +20,11 @@ interface RegularSaleReminderProduct extends SaleReminderProduct {
   sale_reminder_sent_at: string | null
 }
 
-// Daily "¿lo vendiste?" reminder for listings that crossed 15 days_published.
+// Daily availability check, with a 30-day interval since publication or last reset.
 // Triggered by Vercel Cron (vercel.json), authenticated with CRON_SECRET, and
-// repeated every ~15 days while the product stays live.
+// repeated every ~30 days while the product stays live.
 export async function GET(request: Request) {
+  if (!SALE_REMINDERS_ENABLED) return NextResponse.json({ ok: true, state: 'disabled' })
   const secret = process.env.CRON_SECRET
   const auth = request.headers.get('authorization')
   if (!secret || auth !== `Bearer ${secret}`) {
@@ -37,13 +39,13 @@ export async function GET(request: Request) {
 
   const reRemindCutoff = saleReminderCutoff()
 
-  // Approved, 15+ days live, and either never reminded or last reminder >15d ago.
+  // Wall-clock timing continues even while database aging jobs are paused.
   const { data: products, error } = await admin
     .from('products')
     .select('id, brand, model, price, slug, days_published, sale_reminder_sent_at, anon_contact, product_images(url, "order"), users:seller_id(name, email, notify_reminders_email)')
     .eq('status', 'approved')
-    .gte('days_published', SALE_REMINDER_INTERVAL_DAYS)
-    .or(`sale_reminder_sent_at.is.null,sale_reminder_sent_at.lt.${reRemindCutoff}`)
+    .or(`sale_reminder_sent_at.lt.${reRemindCutoff},and(sale_reminder_sent_at.is.null,created_at.lt.${reRemindCutoff})`)
+    .order('sale_reminder_sent_at', { ascending: true, nullsFirst: true })
     .limit(200)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

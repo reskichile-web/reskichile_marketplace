@@ -1,3 +1,4 @@
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { NextResponse } from 'next/server'
 import {
   adminErrorResponse,
@@ -194,7 +195,7 @@ export async function POST(
 
     let schedule = null
     let scheduleError: string | undefined
-    if (story.status === 'ready' && story.jpegPublicUrl) {
+    if (SEASON_AUTOMATIONS_ENABLED && story.status === 'ready' && story.jpegPublicUrl) {
       try {
         schedule = await scheduleCaptureNext(story.id, 'automatic')
       } catch {

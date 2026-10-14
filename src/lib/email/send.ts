@@ -1,3 +1,5 @@
+import { SEASON_AUTOMATIONS_ENABLED, SALE_REMINDERS_ENABLED } from '@/lib/season'
+
 // Single choke point for all app-sent email. Talks to the Resend REST API
 // directly via fetch (no SDK dependency). Every automated sender goes through
 // here so auth, error handling, and the from-address live in one place.
@@ -15,6 +17,7 @@ const DEFAULT_FROM = 'ReSkiChile <noreply@reskichile.cl>'
 
 export interface SendEmailInput {
   to: string
+  category?: 'sale-reminder'
   subject: string
   html: string
   text?: string
@@ -43,6 +46,9 @@ export interface SendEmailResult {
  * Automated notifications should treat a failed send as non-fatal.
  */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+  if (!SEASON_AUTOMATIONS_ENABLED && !(input.category === 'sale-reminder' && SALE_REMINDERS_ENABLED)) {
+    return { ok: false, error: 'Correos automáticos pausados por fin de temporada', retryable: false }
+  }
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     return { ok: false, error: 'RESEND_API_KEY no configurado' }

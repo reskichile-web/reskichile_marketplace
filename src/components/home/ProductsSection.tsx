@@ -1,4 +1,5 @@
 import { createPublicServerClient } from '@/lib/supabase/server'
+import { isSkiRackStorefrontEnabled } from '@/lib/ski-rack-visibility'
 import ProductBrowser from '@/components/ProductBrowser'
 import { getRecentlyPublishedProductIds } from '@/lib/recent-products'
 
@@ -19,11 +20,11 @@ export default async function ProductsSection() {
     clearTimeout(timeout)
   }
 
-  if (!products || products.length === 0) return null
+  products = products || []
 
   const recentProductIds = [...getRecentlyPublishedProductIds(products)]
 
-  return <ProductBrowser products={products} recentProductIds={recentProductIds} />
+  return <ProductBrowser products={products} recentProductIds={recentProductIds} showSkiRack={isSkiRackStorefrontEnabled()} />
 }
 
 async function loadProducts(

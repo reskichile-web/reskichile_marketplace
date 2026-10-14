@@ -1,3 +1,4 @@
+import { SEASON_AUTOMATIONS_ENABLED } from '@/lib/season'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import {
@@ -33,6 +34,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
+  if (!SEASON_AUTOMATIONS_ENABLED) {
+    return NextResponse.json(
+      { ok: true, state: 'disabled', reason: 'season_ended' },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
   if (!isApprovedReminderCampaignDay(new Date())) {
     return NextResponse.json({
       ok: true,
