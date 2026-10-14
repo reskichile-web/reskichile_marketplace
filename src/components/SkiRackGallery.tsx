@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, ZoomIn, X } from 'lucide-react'
 interface GalleryImage {
   url: string
   alt: string
+  fit?: 'contain' | 'cover'
 }
 
 function SkiRackZoom({
@@ -194,7 +195,7 @@ export default function SkiRackGallery({
           fill
           priority
           sizes="(max-width: 767px) 100vw, 416px"
-          className="object-cover"
+          className={selected.fit === 'contain' ? 'object-contain' : 'object-cover'}
         />
         <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm transition-colors group-hover:bg-black/60">
           <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
@@ -202,7 +203,7 @@ export default function SkiRackGallery({
         </span>
       </button>
 
-      <div className="mt-3 flex gap-3" aria-label={`Fotografías de ${title}`}>
+      <div className="mt-3 flex gap-3 overflow-x-auto pb-1" aria-label={`Fotografías de ${title}`}>
         {images.map((image, index) => {
           const active = index === current
           return (
@@ -210,7 +211,7 @@ export default function SkiRackGallery({
               key={image.url}
               type="button"
               onClick={() => setCurrent(index)}
-              className={`relative aspect-square w-[72px] overflow-hidden rounded-xl border-2 bg-gray-50 transition-colors md:w-[78px] ${
+              className={`relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-xl border-2 bg-gray-50 transition-colors md:w-[78px] ${
                 active ? 'border-brand-500' : 'border-transparent hover:border-gray-300'
               }`}
               aria-label={`Ver foto ${index + 1} de ${title}`}
@@ -221,7 +222,7 @@ export default function SkiRackGallery({
                 alt=""
                 fill
                 sizes="78px"
-                className="object-cover"
+                className={image.fit === 'contain' ? 'object-contain' : 'object-cover'}
               />
             </button>
           )

@@ -5,6 +5,7 @@ export type SkiRackSize = (typeof SKI_RACK_SIZES)[number]
 export interface SkiRackGalleryImage {
   url: string
   alt: string
+  fit?: 'contain' | 'cover'
 }
 
 export interface SkiRackProduct {
@@ -54,6 +55,17 @@ const MOUNTED_PURPLE_SKIS_IMAGE: SkiRackGalleryImage = {
   alt: 'Esquís Salomon morados instalados con Ski Rack sobre una pared de madera',
 }
 
+export const SKI_RACK_TWO_PAIRS_IMAGE: SkiRackGalleryImage = {
+  url: '/images/ski-rack-mounted-two-pairs.webp',
+  alt: 'Dos pares de esquís instalados en soportes murales Ski Rack junto a una planta',
+  fit: 'contain',
+}
+
+export const SKI_RACK_WHITE_WALL_IMAGE: SkiRackGalleryImage = {
+  url: '/images/ski-rack-mounted-white.webp',
+  alt: 'Esquís Salomon morados con soportes de madera, casco y mochila sobre una pared blanca',
+}
+
 export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
   {
     slug: 'madera',
@@ -88,6 +100,7 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
         alt: 'Comparación de las tres tallas de Ski Rack de madera',
       },
       MOUNTED_PURPLE_SKIS_IMAGE,
+      SKI_RACK_TWO_PAIRS_IMAGE,
     ],
   },
   {
@@ -112,7 +125,7 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
         alt: 'Ski Rack de filamento talla L sobre fondo claro',
       },
     },
-    gallery: [MOUNTED_PURPLE_SKIS_IMAGE],
+    gallery: [MOUNTED_PURPLE_SKIS_IMAGE, SKI_RACK_TWO_PAIRS_IMAGE],
   },
   {
     slug: 'prueba-webpay-50',

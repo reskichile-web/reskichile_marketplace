@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import TrackedLink from '@/components/TrackedLink'
+import { SKI_RACK_WHITE_WALL_IMAGE } from '@/lib/ski-rack-products'
 import { useReducedExperience } from '@/lib/use-reduced-experience'
 import styles from './HomeHero.module.css'
 
 const slides = [
   {
-    image: '/images/ski-rack-mounted-purple-square.jpg',
-    alt: 'Esquís instalados con soportes Ski Rack sobre una pared de madera',
+    image: SKI_RACK_WHITE_WALL_IMAGE.url,
+    alt: SKI_RACK_WHITE_WALL_IMAGE.alt,
     lead: 'Tu equipo merece',
     title: 'un buen soporte.',
     copy: 'Guarda tus esquís con estilo. Soportes de madera natural, hechos en Chile.',
@@ -32,17 +33,27 @@ const slides = [
 export default function HomeHero() {
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const reducedExperience = useReducedExperience()
 
   useEffect(() => {
-    if (reducedExperience || paused) return
+    const media = window.matchMedia('(max-width: 820px)')
+    const update = () => setIsMobile(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile || reducedExperience || paused) return
     const timer = window.setInterval(() => setActive(value => (value + 1) % slides.length), 6500)
     return () => window.clearInterval(timer)
-  }, [reducedExperience, paused])
+  }, [isMobile, reducedExperience, paused])
 
-  const slide = slides[active]
+  const slideIndex = isMobile ? 0 : active
+  const slide = slides[slideIndex]
   return (
-    <section className={styles.hero} aria-roledescription="carrusel" aria-label="Soportes y ofertas de fin de temporada"
+    <section className={styles.hero} aria-roledescription={isMobile ? undefined : 'carrusel'} aria-label="Soportes y ofertas de fin de temporada"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}>
       <svg className={styles.clipDefinitions} width="0" height="0" aria-hidden="true" focusable="false">
@@ -51,8 +62,8 @@ export default function HomeHero() {
         </clipPath></defs>
       </svg>
       <div className={styles.frame}>
-        <figure className={`${styles.photo} ${active === 0 ? styles.rackPhoto : ''}`}>
-          <Image src={slide.image} alt={slide.alt} fill priority={active === 0}
+        <figure className={`${styles.photo} ${slideIndex === 0 ? styles.rackPhoto : ''}`}>
+          <Image src={slide.image} alt={slide.alt} fill priority={slideIndex === 0}
             sizes="(max-width: 820px) calc(100vw - 32px), 50vw" />
         </figure>
         <div className={styles.content}>
@@ -61,7 +72,7 @@ export default function HomeHero() {
           </h1>
           <p className={styles.copy}>{slide.copy}</p>
           <div className={styles.actions}>
-            <TrackedLink href={slide.href} event={active === 0 ? 'hero_soportes' : 'hero_descuentos'}
+            <TrackedLink href={slide.href} event={slideIndex === 0 ? 'hero_soportes' : 'hero_descuentos'}
               className={`${styles.button} ${styles.primaryButton}`}>{slide.action}</TrackedLink>
           </div>
         </div>

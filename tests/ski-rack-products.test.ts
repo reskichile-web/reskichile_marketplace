@@ -28,6 +28,7 @@ describe('ski rack product images', () => {
 
     for (const size of SKI_RACK_SIZES) {
       const urls = getSkiRackGalleryForSize(product!, size).map(image => image.url)
+      expect(urls.at(-1)).toBe('/images/ski-rack-mounted-two-pairs.webp')
       expect(urls).toContain('/images/ski-rack-madera-common-1.jpg')
       expect(urls).toContain('/images/ski-rack-madera-common-2.jpg')
       expect(urls).not.toContain('/images/ski-rack-main.jpg')
@@ -46,6 +47,7 @@ describe('ski rack product images', () => {
       expect(gallery[0]).toEqual(getSkiRackSizeImage(product!, size))
       expect(gallery.slice(1).map(image => image.url)).toEqual([
         '/images/ski-rack-mounted-purple-square.jpg',
+        '/images/ski-rack-mounted-two-pairs.webp',
       ])
     }
   })
