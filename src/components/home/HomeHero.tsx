@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import TrackedLink from '@/components/TrackedLink'
-import { SKI_RACK_WHITE_WALL_IMAGE } from '@/lib/ski-rack-products'
 import { useReducedExperience } from '@/lib/use-reduced-experience'
 import styles from './HomeHero.module.css'
 
 const slides = [
   {
-    image: SKI_RACK_WHITE_WALL_IMAGE.url,
-    alt: SKI_RACK_WHITE_WALL_IMAGE.alt,
+    image: '/images/ski-rack-mounted-purple-square.jpg',
+    alt: 'Esquís Salomon morados instalados con Ski Rack sobre una pared de madera',
     lead: 'Tu equipo merece',
     title: 'un buen soporte.',
     copy: 'Guarda tus esquís con estilo. Soportes de madera natural, hechos en Chile.',

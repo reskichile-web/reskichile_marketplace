@@ -163,11 +163,10 @@
   }
 }
 
-.rackPhoto { background: #fff; clip-path: none; }
-.rackPhoto::after { display: none; }
 .rackPhoto img {
-  object-fit: contain;
-  object-position: center;
+  object-fit: cover;
+  object-position: center top;
+  transform: scaleX(-1);
 }
 
 .slideControls {
@@ -206,7 +205,7 @@
 @media (max-width: 820px) {
   .hero {
     height: auto;
-    background: #fff url('/images/ski-rack-mounted-white.webp') center bottom / auto clamp(300px, 96vw, 480px) no-repeat;
+    background: #fff url('/images/ski-rack-mounted-purple-square.jpg') center bottom / auto clamp(300px, 96vw, 480px) no-repeat;
   }
   .frame {
     display: block;
