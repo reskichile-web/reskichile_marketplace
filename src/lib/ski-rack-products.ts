@@ -1,3 +1,5 @@
+import { SKI_RACK_OFFER_PRICE_CLP, SKI_RACK_REGULAR_PRICE_CLP } from '@/lib/ski-rack-offer'
+
 export const SKI_RACK_SIZES = ['S', 'M', 'L'] as const
 
 export type SkiRackSize = (typeof SKI_RACK_SIZES)[number]
@@ -71,8 +73,8 @@ export const SKI_RACK_PRODUCTS: SkiRackProduct[] = [
     slug: 'madera',
     name: 'Ski Rack Madera',
     material: 'Madera natural',
-    priceClp: 15990,
-    previousPriceClp: 17990,
+    priceClp: SKI_RACK_OFFER_PRICE_CLP,
+    previousPriceClp: SKI_RACK_REGULAR_PRICE_CLP,
     image: '/images/reski-rack-product.png',
     imageAlt: 'Ski Rack de madera natural',
     imageClassName: 'brightness-[1.015]',

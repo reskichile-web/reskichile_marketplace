@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Send, Star, Wrench, X } from 'lucide-react'
-import { RiChat3Fill } from 'react-icons/ri'
+import { Heart, Send, Star, X } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 
 type Phase = 'comment' | 'rating'
 
@@ -13,11 +13,11 @@ interface FeedbackResponse {
 }
 
 interface FeedbackWidgetProps {
-  pagePath: string
-  expanded?: boolean
+  pagePath?: string
 }
 
-export default function FeedbackWidget({ pagePath, expanded = false }: FeedbackWidgetProps) {
+export default function FeedbackWidget({ pagePath }: FeedbackWidgetProps) {
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [phase, setPhase] = useState<Phase>('comment')
   const [message, setMessage] = useState('')
@@ -68,7 +68,7 @@ export default function FeedbackWidget({ pagePath, expanded = false }: FeedbackW
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed, pagePath }),
+        body: JSON.stringify({ message: trimmed, pagePath: pagePath ?? pathname }),
       })
       const data = await response.json() as FeedbackResponse
       if (!response.ok || !data.id || !data.ratingToken) {
@@ -109,44 +109,13 @@ export default function FeedbackWidget({ pagePath, expanded = false }: FeedbackW
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group fixed bottom-5 right-4 z-[70] flex max-w-[calc(100vw-2rem)] items-center text-left transition-transform hover:-translate-y-0.5 sm:bottom-6 sm:right-6"
+        className="inline-flex min-h-12 items-center justify-center gap-3 rounded-full border border-gray-300 px-7 py-3.5 text-sm font-semibold text-gray-800 transition-colors hover:border-brand-500 hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-500"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="feedback-dialog"
-        aria-label={expanded ? undefined : 'Danos tu opinión'}
       >
-        <span className={`mr-[-20px] min-w-0 overflow-hidden rounded-2xl border border-r-0 bg-white py-2 pl-3 pr-7 shadow-[0_7px_18px_rgba(38,116,191,0.13)] transition-[width,opacity,transform,border-color] duration-200 ${
-          expanded
-            ? 'w-[216px] border-brand-200 opacity-100 group-hover:border-brand-300'
-            : 'pointer-events-none w-0 -translate-x-2 border-transparent opacity-0 group-hover:w-[216px] group-hover:translate-x-0 group-hover:border-brand-200 group-hover:opacity-100 group-focus-visible:w-[216px] group-focus-visible:translate-x-0 group-focus-visible:border-brand-200 group-focus-visible:opacity-100'
-        }`}>
-          <span className="block w-[176px] whitespace-nowrap font-body text-[13px] font-normal tracking-[-0.025em] text-gray-500">
-            ¿Algo por mejorar/reparar?
-          </span>
-          <span className="mt-0.5 block w-[176px] whitespace-nowrap text-xs font-bold leading-tight text-brand-500">
-            Danos tu opinión
-          </span>
-        </span>
-        <span className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border-white bg-[radial-gradient(circle_at_34%_24%,#a9cbeb_0%,#4a93d3_48%,#2674bf_100%)] ring-2 ring-brand-200 transition-transform group-hover:scale-[1.03] ${
-          expanded
-            ? 'h-[82px] w-[82px] border-4 shadow-[0_9px_22px_rgba(38,116,191,0.28),inset_0_1px_0_rgba(255,255,255,0.55)]'
-            : 'h-14 w-14 border-[3px] shadow-[0_6px_16px_rgba(38,116,191,0.22),inset_0_1px_0_rgba(255,255,255,0.5)] sm:h-16 sm:w-16'
-        }`}>
-          <RiChat3Fill
-            className={expanded
-              ? 'h-14 w-14 translate-x-px -translate-y-px text-white'
-              : 'h-9 w-9 translate-x-px -translate-y-px text-white sm:h-10 sm:w-10'}
-            aria-hidden="true"
-          />
-          <Wrench
-            data-testid="feedback-wrench"
-            className={expanded
-              ? 'absolute h-6 w-6 translate-x-px -translate-y-px text-brand-500'
-              : 'absolute h-4 w-4 translate-x-px -translate-y-px text-brand-500 sm:h-[18px] sm:w-[18px]'}
-            strokeWidth={2.2}
-            aria-hidden="true"
-          />
-        </span>
+        <Heart className="h-5 w-5" fill="none" strokeWidth={1.6} aria-hidden="true" />
+        Deja tu comentario
       </button>
 
       {open && (
@@ -176,7 +145,7 @@ export default function FeedbackWidget({ pagePath, expanded = false }: FeedbackW
             {phase === 'comment' ? (
               <form onSubmit={event => { event.preventDefault(); void submitComment() }}>
                 <h2 id="feedback-title" className="max-w-xs pr-8 font-body text-2xl font-black leading-tight text-gray-950">
-                  Reporta algo o deja un comentario <span aria-hidden="true">❤️</span>
+                  Deja tu comentario <Heart className="inline h-6 w-6 align-middle" fill="none" strokeWidth={1.6} aria-hidden="true" />
                 </h2>
                 <label htmlFor="feedback-message" className="sr-only">Comentario</label>
                 <textarea

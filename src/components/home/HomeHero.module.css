@@ -163,9 +163,14 @@
   }
 }
 
+.rackPhoto {
+  width: 95%;
+  justify-self: end;
+  transform: translateY(-6px);
+}
 .rackPhoto img {
   object-fit: cover;
-  object-position: center top;
+  object-position: center 35%;
   transform: scaleX(-1);
 }
 
@@ -203,30 +208,5 @@
 .dot:focus-visible, .activeDot:focus-visible { outline: 1px solid #2d83cc; outline-offset: 0; }
 
 @media (max-width: 820px) {
-  .hero {
-    height: clamp(560px, calc(90svh - 60px), 700px);
-    background: #fff url('/images/ski-rack-mounted-purple-square.jpg') center / cover no-repeat;
-  }
-  .hero::before {
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-    background: linear-gradient(180deg, rgb(255 255 255 / 94%) 0%, rgb(255 255 255 / 86%) 32%, rgb(255 255 255 / 32%) 62%, rgb(255 255 255 / 8%) 100%);
-    content: '';
-    pointer-events: none;
-  }
-  .frame {
-    display: block;
-    width: calc(100% - 40px);
-    height: 100%;
-    padding: 28px 0 0;
-  }
-  .content { padding: 0; width: 100%; margin: 0; }
-  .photo { display: none; }
-  .title { font-size: clamp(34px, 8.8vw, 48px); line-height: 1.06; }
-  .rotatingLine { height: auto; overflow: visible; }
-  .copy { max-width: 520px; margin-top: 22px; font-size: 17px; }
-  .actions { justify-content: flex-start; margin-top: 26px; }
-  .button { font-size: 14px; padding: 0 24px; }
-  .slideControls { display: none; }
+  .hero { display: none; }
 }

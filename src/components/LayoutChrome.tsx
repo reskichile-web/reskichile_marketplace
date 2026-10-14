@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import FeedbackWidget from '@/components/FeedbackWidget'
+import MobileOfferBar from '@/components/MobileOfferBar'
 
 interface Props {
   header: React.ReactNode
@@ -25,9 +25,6 @@ export default function LayoutChrome({ header, footer, children }: Props) {
   const isCheckoutRoute = pathname === '/checkout'
   const isAutomatedPostRoute = pathname.startsWith('/ig-post')
   const hidesMarketplaceChrome = isAdminRoute || isCheckoutRoute || isAutomatedPostRoute
-  const expandsFeedbackWidget =
-    pathname === '/' ||
-    pathname === '/catalogo'
 
   // Lock html/body to the dynamic viewport on a fullscreen chat (mobile only),
   // otherwise body's min-h-screen (100vh) leaves a gap below the chat (which
@@ -89,9 +86,7 @@ export default function LayoutChrome({ header, footer, children }: Props) {
           {footer}
         </div>
       )}
-      {!hidesMarketplaceChrome && !isFullscreenChatRoute && (
-        <FeedbackWidget pagePath={pathname} expanded={expandsFeedbackWidget} />
-      )}
+      {(pathname === '/' || pathname === '/catalogo') && <MobileOfferBar />}
     </>
   )
 }

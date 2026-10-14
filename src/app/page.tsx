@@ -1,6 +1,7 @@
 export const revalidate = 60
 
 import { Suspense } from 'react'
+import MobileHomeStorefront from '@/components/home/MobileHomeStorefront'
 import HomeHero from '@/components/home/HomeHero'
 import ProductsSection from '@/components/home/ProductsSection'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,12 +32,13 @@ function ProductsSkeleton() {
 export default function HomePage() {
   return (
     <div className="relative">
-      <HomeHero />
-
-      {/* Products — streams in with skeleton fallback */}
-      <Suspense fallback={<ProductsSkeleton />}>
-        <ProductsSection />
-      </Suspense>
+      <MobileHomeStorefront />
+      <div className="hidden min-[821px]:block">
+        <HomeHero />
+        <Suspense fallback={<ProductsSkeleton />}>
+          <ProductsSection />
+        </Suspense>
+      </div>
     </div>
   )
 }
