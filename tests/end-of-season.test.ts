@@ -49,13 +49,14 @@ describe('End of season', () => {
     expect(workers.database).not.toHaveBeenCalled()
   })
 
-  it('blocks automatic mail at the provider boundary and allows availability reminders', async () => {
+  it('keeps operational mail and availability reminders active while Instagram is paused', async () => {
     vi.stubEnv('RESEND_API_KEY', 'test-only')
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'email-id' }), { status: 200 }))
     vi.stubGlobal('fetch', fetch)
-    expect((await sendEmail({ to: 'test@example.com', subject: 'Chat', html: 'message' })).ok).toBe(false)
-    expect(fetch).not.toHaveBeenCalled()
+    for (const subject of ['Compra confirmada', 'Producto publicado', 'Chat']) {
+      expect((await sendEmail({ to: 'test@example.com', subject, html: 'message' })).ok).toBe(true)
+    }
     expect((await sendEmail({ category: 'sale-reminder', to: 'test@example.com', subject: 'Disponible', html: 'reminder' })).ok).toBe(true)
-    expect(fetch).toHaveBeenCalledOnce()
+    expect(fetch).toHaveBeenCalledTimes(4)
   })
 })

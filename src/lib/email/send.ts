@@ -1,4 +1,4 @@
-import { SEASON_AUTOMATIONS_ENABLED, SALE_REMINDERS_ENABLED } from '@/lib/season'
+import { SALE_REMINDERS_ENABLED } from '@/lib/season'
 
 // Single choke point for all app-sent email. Talks to the Resend REST API
 // directly via fetch (no SDK dependency). Every automated sender goes through
@@ -46,8 +46,8 @@ export interface SendEmailResult {
  * Automated notifications should treat a failed send as non-fatal.
  */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  if (!SEASON_AUTOMATIONS_ENABLED && !(input.category === 'sale-reminder' && SALE_REMINDERS_ENABLED)) {
-    return { ok: false, error: 'Correos automáticos pausados por fin de temporada', retryable: false }
+  if (input.category === 'sale-reminder' && !SALE_REMINDERS_ENABLED) {
+    return { ok: false, error: 'Recordatorios de disponibilidad desactivados', retryable: false }
   }
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
