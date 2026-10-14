@@ -14,9 +14,8 @@ export default function PinnedSkiRack() {
   const price = stock?.priceClp ?? product.priceClp
   return (
     <Link href="/ski-rack/madera" className="group block">
-      <div className="relative aspect-[4/5] overflow-hidden bg-gray-50">
-        <Image src={product.image} alt={product.imageAlt} fill sizes="(max-width: 640px) 45vw, 25vw" className="object-cover" />
-        <span className="absolute left-3 top-3 rounded-sm bg-brand-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Destacado</span>
+      <div className="relative aspect-[4/5] overflow-hidden bg-white">
+        <Image src="/images/ski-rack-madera-white-catalog.webp" alt={product.imageAlt} fill sizes="(max-width: 640px) 45vw, 25vw" className="object-contain" />
         {soldOut && <span className="absolute bottom-3 left-3 rounded-sm bg-gray-900 px-2 py-1 text-xs font-bold text-white">Sin stock</span>}
       </div>
       <p className="mt-3 text-[10px] uppercase tracking-widest text-gray-400">Soportes de madera natural</p>

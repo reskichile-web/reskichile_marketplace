@@ -13,8 +13,8 @@ const slides = [
     lead: 'Tu equipo merece',
     title: 'un buen soporte.',
     copy: 'Guarda tus esquís con estilo. Soportes de madera natural, hechos en Chile.',
-    href: '/ski-rack/madera',
-    action: 'Comprar soportes de madera',
+    href: '/ski-rack',
+    action: 'Ver soportes',
     label: 'Soportes de madera',
   },
   {
@@ -51,7 +51,7 @@ export default function HomeHero() {
         </clipPath></defs>
       </svg>
       <div className={styles.frame}>
-        <figure className={styles.photo}>
+        <figure className={`${styles.photo} ${active === 0 ? styles.rackPhoto : ''}`}>
           <Image src={slide.image} alt={slide.alt} fill priority={active === 0}
             sizes="(max-width: 820px) calc(100vw - 32px), 50vw" />
         </figure>
@@ -64,14 +64,12 @@ export default function HomeHero() {
             <TrackedLink href={slide.href} event={active === 0 ? 'hero_soportes' : 'hero_descuentos'}
               className={`${styles.button} ${styles.primaryButton}`}>{slide.action}</TrackedLink>
           </div>
-          <div className={styles.slideControls} aria-label="Diapositivas">
-            {slides.map((item, index) => <button key={item.label} type="button"
-              aria-label={item.label} aria-pressed={active === index} onClick={() => setActive(index)}
-              className={active === index ? styles.activeDot : styles.dot} />)}
-            {!reducedExperience && <button type="button" className={styles.pauseButton} onClick={() => setPaused(value => !value)}
-              aria-label={paused ? 'Reanudar carrusel' : 'Pausar carrusel'}>{paused ? 'Reanudar' : 'Pausar'}</button>}
-          </div>
         </div>
+      </div>
+      <div className={styles.slideControls} aria-label="Diapositivas">
+        {slides.map((item, index) => <button key={item.label} type="button"
+          aria-label={item.label} aria-pressed={active === index} onClick={() => setActive(index)}
+          className={active === index ? styles.activeDot : styles.dot} />)}
       </div>
     </section>
   )
