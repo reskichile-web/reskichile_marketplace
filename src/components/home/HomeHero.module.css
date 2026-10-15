@@ -16,11 +16,11 @@
 .frame {
   position: relative;
   display: grid;
-  width: min(1280px, calc(100% - 64px));
+  width: min(1200px, calc(100% - 64px));
   height: 100%;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: clamp(24px, 3vw, 48px);
+  gap: clamp(12px, 1.4vw, 24px);
   margin: 0 auto;
 }
 
@@ -143,7 +143,7 @@
 @media (max-width: 980px) {
   .frame {
     width: calc(100% - 48px);
-    gap: 24px;
+    gap: 16px;
   }
 
   .copy {
@@ -165,7 +165,7 @@
 
 .rackPhoto {
   width: 95%;
-  justify-self: end;
+  justify-self: start;
   transform: translateY(-6px);
 }
 .rackPhoto img {

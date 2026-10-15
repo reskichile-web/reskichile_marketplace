@@ -45,7 +45,7 @@ export default function HomeHero() {
 
   useEffect(() => {
     if (isMobile || reducedExperience || paused) return
-    const timer = window.setInterval(() => setActive(value => (value + 1) % slides.length), 6500)
+    const timer = window.setInterval(() => setActive(value => (value + 1) % slides.length), 3500)
     return () => window.clearInterval(timer)
   }, [isMobile, reducedExperience, paused])
 
