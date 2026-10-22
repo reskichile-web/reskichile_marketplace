@@ -8,6 +8,7 @@ import CatalogSortSelect from '@/components/CatalogSortSelect'
 import CatalogProductGrid from '@/components/CatalogProductGrid'
 import CatalogSearchForm from '@/components/CatalogSearchForm'
 import ClaimListingsPrompt from '@/components/ClaimListingsPrompt'
+import MobileOfferBar from '@/components/MobileOfferBar'
 import EmptyState from '@/components/illustrations/EmptyState'
 import { PRODUCT_TYPES } from '@/lib/constants'
 import { computeSkiCounts } from '@/lib/ski-filters'
@@ -160,6 +161,7 @@ export default async function CatalogPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-[1600px] mx-auto px-5 md:px-10 pt-4 md:pt-6 pb-24">
+      <MobileOfferBar />
       <div className="pt-2 md:pt-4 mb-8 md:mb-10">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <h1 className="font-body text-4xl font-black tracking-tight text-brand-400 md:text-5xl">

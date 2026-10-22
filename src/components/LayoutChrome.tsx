@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import MobileOfferBar from '@/components/MobileOfferBar'
 
 interface Props {
   header: React.ReactNode
@@ -86,7 +85,6 @@ export default function LayoutChrome({ header, footer, children }: Props) {
           {footer}
         </div>
       )}
-      {(pathname === '/' || pathname === '/catalogo') && <MobileOfferBar />}
     </>
   )
 }

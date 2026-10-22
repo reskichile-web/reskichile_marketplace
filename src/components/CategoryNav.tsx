@@ -27,7 +27,7 @@ export default function CategoryNav({ showSkiRacks }: { showSkiRacks: boolean })
       : null
 
   return (
-    <nav className="mx-auto flex w-max items-center gap-1 py-1" aria-label="Categorías de equipamiento">
+    <nav className="mx-auto flex w-max items-center gap-1 py-1 lg:gap-3 xl:gap-5" aria-label="Categorías de equipamiento">
       {CATEGORIES.filter(category => showSkiRacks || category.key !== 'racks').map((category) => {
         const isActive = category.key === 'all'
           ? pathname === '/catalogo' && activeType === null
