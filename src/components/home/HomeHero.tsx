@@ -53,7 +53,6 @@ export default function HomeHero() {
   const slide = slides[slideIndex]
   return (
     <section className={styles.hero} aria-roledescription={isMobile ? undefined : 'carrusel'} aria-label="Soportes y ofertas de fin de temporada"
-      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}>
       <svg className={styles.clipDefinitions} width="0" height="0" aria-hidden="true" focusable="false">
         <defs><clipPath id="home-hero-photo-clip" clipPathUnits="objectBoundingBox">
