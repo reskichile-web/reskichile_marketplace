@@ -16,6 +16,7 @@ const slides = [
     href: '/ski-rack',
     action: 'Ver soportes',
     label: 'Soportes de madera',
+    duration: 8000,
   },
   {
     image: '/images/3.png',
@@ -26,6 +27,7 @@ const slides = [
     href: '/#productos',
     action: 'Ver descuentos',
     label: 'Descuentos de fin de temporada',
+    duration: 4500,
   },
 ]
 
@@ -45,35 +47,45 @@ export default function HomeHero() {
 
   useEffect(() => {
     if (isMobile || reducedExperience || paused) return
-    const timer = window.setInterval(() => setActive(value => (value + 1) % slides.length), 3500)
-    return () => window.clearInterval(timer)
-  }, [isMobile, reducedExperience, paused])
+    const timer = window.setTimeout(() => setActive(value => (value + 1) % slides.length), slides[active].duration)
+    return () => window.clearTimeout(timer)
+  }, [active, isMobile, reducedExperience, paused])
 
   const slideIndex = isMobile ? 0 : active
-  const slide = slides[slideIndex]
   return (
-    <section className={styles.hero} aria-roledescription={isMobile ? undefined : 'carrusel'} aria-label="Soportes y ofertas de fin de temporada"
-      onFocusCapture={() => setPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}>
+    <section className={`${styles.hero} ${reducedExperience ? styles.reducedExperience : ''}`} aria-roledescription={isMobile ? undefined : 'carrusel'} aria-label="Soportes y ofertas de fin de temporada"
+      onFocusCapture={event => { if (event.target.matches(':focus-visible')) setPaused(true) }}
+      onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}>
       <svg className={styles.clipDefinitions} width="0" height="0" aria-hidden="true" focusable="false">
         <defs><clipPath id="home-hero-photo-clip" clipPathUnits="objectBoundingBox">
           <path d="M .22 0 H .96 Q 1 0 1 .056 V .944 Q 1 1 .96 1 H .04 Q 0 1 .011 .94 L .165 .085 Q .176 0 .22 0 Z" />
         </clipPath></defs>
       </svg>
       <div className={styles.frame}>
-        <figure className={`${styles.photo} ${slideIndex === 0 ? styles.rackPhoto : ''}`}>
-          <Image src={slide.image} alt={slide.alt} fill priority={slideIndex === 0}
-            sizes="(max-width: 820px) calc(100vw - 32px), 50vw" />
-        </figure>
-        <div className={styles.content}>
-          <h1 id="home-hero-title" className={styles.title}>
-            <span>{slide.lead}</span>{' '}<span className={styles.rotatingLine}>{slide.title}</span>
-          </h1>
-          <p className={styles.copy}>{slide.copy}</p>
-          <div className={styles.actions}>
-            <TrackedLink href={slide.href} event={slideIndex === 0 ? 'hero_soportes' : 'hero_descuentos'}
-              className={`${styles.button} ${styles.primaryButton}`}>{slide.action}</TrackedLink>
-          </div>
-        </div>
+        {slides.map((slide, index) => {
+          const isActive = slideIndex === index
+          return (
+            <div key={slide.label} className={`${styles.slide} ${isActive ? styles.activeSlide : ''}`}
+              aria-hidden={!isActive}>
+              <figure className={`${styles.photo} ${index === 0 ? styles.rackPhoto : ''}`}>
+                <Image src={slide.image} alt={slide.alt} fill priority={index === 0} loading="eager"
+                  sizes="(max-width: 820px) calc(100vw - 32px), 50vw" />
+              </figure>
+              <div className={styles.content}>
+                <h1 id={isActive ? 'home-hero-title' : undefined} className={styles.title}>
+                  <span className={styles.lineWindow}><span className={styles.titleLead}>{slide.lead}</span></span>{' '}
+                  <span className={styles.lineWindow}><span className={styles.rotatingLine}>{slide.title}</span></span>
+                </h1>
+                <p className={styles.copy}>{slide.copy}</p>
+                <div className={styles.actions}>
+                  <TrackedLink href={slide.href} event={index === 0 ? 'hero_soportes' : 'hero_descuentos'}
+                    tabIndex={isActive ? 0 : -1}
+                    className={`${styles.button} ${styles.primaryButton}`}>{slide.action}</TrackedLink>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
       <div className={styles.slideControls} aria-label="Diapositivas">
         {slides.map((item, index) => <button key={item.label} type="button"
