@@ -3,6 +3,7 @@ export const revalidate = 60
 import { Suspense } from 'react'
 import MobileHomeStorefront from '@/components/home/MobileHomeStorefront'
 import HomeHero from '@/components/home/HomeHero'
+import HomeFooterIntro from '@/components/HomeFooterIntro'
 import ProductsSection from '@/components/home/ProductsSection'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProductGridSkeleton } from '@/components/skeletons/ProductCardSkeleton'
@@ -39,6 +40,7 @@ export default function HomePage() {
           <ProductsSection />
         </Suspense>
       </div>
+      <HomeFooterIntro />
     </div>
   )
 }

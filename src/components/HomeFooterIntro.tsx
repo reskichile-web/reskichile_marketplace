@@ -1,15 +1,9 @@
-'use client'
-
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { Instagram } from 'lucide-react'
 
 export default function HomeFooterIntro() {
-  const pathname = usePathname()
-  if (pathname !== '/') return null
-
   return (
-    <div className="mb-6 border-b border-gray-200 pb-6 text-center min-[821px]:hidden">
+    <section aria-label="Encuentra y publica tu equipo" className="border-t border-gray-200 px-4 py-6 text-center min-[821px]:hidden">
       <p className="text-lg font-light leading-8 text-gray-700 md:text-xl">
         Encuentra <strong className="font-bold text-brand-500">tu próximo equipo.</strong><br />
         <strong className="font-bold text-gray-950">Publica gratis</strong> con nosotros.
@@ -26,6 +20,6 @@ export default function HomeFooterIntro() {
         <span className="text-sm font-semibold">@reskichile</span>
       </a>
       <p className="mt-4 text-sm font-light italic text-gray-500">El <strong className="font-medium">snowmarket</strong> de Chile.</p>
-    </div>
+    </section>
   )
 }

@@ -2,7 +2,6 @@ import Link from 'next/link'
 import SellTagIcon from './SellTagIcon'
 import FeedbackWidget from './FeedbackWidget'
 import CookiePreferencesButton from './CookiePreferencesButton'
-import HomeFooterIntro from './HomeFooterIntro'
 
 export default function Footer() {
   return (
@@ -10,7 +9,6 @@ export default function Footer() {
       {/* Footer content */}
       <div className="text-gray-900">
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 min-[821px]:py-16">
-          <HomeFooterIntro />
           <div className="hidden grid-cols-4 gap-8 min-[821px]:grid">
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
