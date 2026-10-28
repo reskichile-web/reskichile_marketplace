@@ -89,13 +89,17 @@ function fulfillmentStep(status: string): 1 | 2 | 3 {
 function OrderTimeline({
   status,
   pickup,
+  manual = false,
 }: {
   status: string
   pickup: boolean
+  manual?: boolean
 }) {
   const currentStep = fulfillmentStep(status)
   const delivered = status === 'delivered'
-  const steps = pickup
+  const steps = manual
+    ? ['Confirmada', 'Preparación', delivered ? 'Entregado' : 'Entrega personal']
+    : pickup
     ? ['Confirmada', 'Preparación', delivered ? 'Retirado' : 'Lista para retirar']
     : ['Confirmada', 'Preparación', delivered ? 'Entregado' : 'En camino']
 
@@ -140,8 +144,10 @@ function OrderTimeline({
 }
 
 function CompactPaymentResult({ order }: { order: GuestOrderResult }) {
-  const copy = statusCopy(order.paymentStatus)
-  const active = ['pending', 'processing', 'reconciliation_required'].includes(
+  const copy = order.paymentReviewRequired
+    ? { title: 'Tu pago necesita revisión', description: 'Todavía no pudimos confirmar el resultado. Contáctanos con tu número de pedido antes de volver a pagar.', tone: 'text-amber-700' }
+    : statusCopy(order.paymentStatus)
+  const active = !order.paymentReviewRequired && ['pending', 'processing', 'reconciliation_required'].includes(
     order.paymentStatus
   )
   const terminal = ['rejected', 'aborted', 'expired'].includes(order.paymentStatus)
@@ -182,6 +188,10 @@ function CompactPaymentResult({ order }: { order: GuestOrderResult }) {
           <CopyOrderNumberButton orderNumber={order.orderNumber} />
         </div>
 
+        {order.paymentStatus === 'reconciliation_required' && (
+          <a href={`mailto:reskichile@gmail.com?subject=${encodeURIComponent('Revisión de pago ' + order.orderNumber)}`} className="mt-6 inline-block font-semibold text-brand-600 underline">Contactar a ReSkiChile</a>
+        )}
+
         {(terminal || refunded) && (
           <Link
             href={refunded ? '/catalogo' : '/carrito'}
@@ -202,11 +212,14 @@ export default function CheckoutResultCard({
   order: GuestOrderResult
   allowPurchaseTracking?: boolean
 }) {
-  if (order.paymentStatus !== 'authorized') {
+  const manualPending = order.delivery.method === 'manual' && order.paymentMethod === 'manual_pending' && order.paymentStatus === 'pending'
+  if (order.paymentStatus !== 'authorized' && !manualPending) {
     return <CompactPaymentResult order={order} />
   }
 
-  const copy = statusCopy(order.paymentStatus)
+  const copy = manualPending
+    ? { ...statusCopy('pending'), title: 'Entrega personal coordinada' }
+    : statusCopy(order.paymentStatus)
   const homeAddress = order.delivery.formattedAddress ||
     [order.delivery.street, order.delivery.number].filter(Boolean).join(' ')
   const destination = [order.delivery.commune, order.delivery.region]
@@ -223,7 +236,10 @@ export default function CheckoutResultCard({
       ].filter(Boolean)
     : [homeAddress, order.delivery.extra, order.delivery.formattedAddress ? '' : destination].filter(Boolean)
   const pickup = order.delivery.method === 'pickup'
-  const confirmationMessage = pickup
+  const manual = order.delivery.method === 'manual'
+  const confirmationMessage = manual
+    ? (manualPending ? 'Tu pago está pendiente. Coordinaremos contigo la entrega personal, sin costo de despacho.' : 'Coordinaremos contigo la entrega personal, sin costo de despacho.')
+    : pickup
     ? 'Te contactaremos por correo para coordinar el horario y el punto exacto de retiro.'
     : 'Te avisaremos por correo cuando preparemos tu pedido y cuando vaya en camino.'
   const backHref = order.containsRackItems ? '/ski-rack' : '/catalogo'
@@ -231,7 +247,7 @@ export default function CheckoutResultCard({
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
       <section className="border border-gray-200 bg-white">
-        {order.containsRackItems && (
+        {order.containsRackItems && order.paymentStatus === 'authorized' && (
           <>
             <ClearSkiRackCart />
             {allowPurchaseTracking && (
@@ -252,7 +268,7 @@ export default function CheckoutResultCard({
         <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
           <div className="p-6 sm:p-8 lg:p-10">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-500">
-              Pago confirmado
+              {manualPending ? 'Pago pendiente' : 'Pago confirmado'}
             </p>
             <h1 className={'mt-3 max-w-xl font-body text-3xl font-black sm:text-4xl ' + copy.tone}>
               {copy.title}
@@ -280,9 +296,10 @@ export default function CheckoutResultCard({
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400">
-                    {pickup ? 'Punto de retiro' : 'Dirección de entrega'}
+                    {manual ? 'Entrega personal' : pickup ? 'Punto de retiro' : 'Dirección de entrega'}
                   </dt>
                   <dd className="mt-1.5 font-semibold leading-6 text-gray-900">
+                    {manual && <p>{order.delivery.note || 'Entrega personal coordinada con ReSkiChile.'}</p>}
                     {deliveryAddressLines.map((line, index) => <span key={`${line}-${index}`} className="block">{line}</span>)}
                   </dd>
                 </div>
@@ -296,16 +313,17 @@ export default function CheckoutResultCard({
 
           <aside className="border-t border-gray-200 bg-gray-50 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
             <h2 className="font-body text-lg font-black text-gray-900">Estado de tu pedido</h2>
-            <OrderTimeline
+            {!manualPending && <OrderTimeline
               status={order.fulfillmentStatus}
               pickup={pickup}
-            />
+              manual={manual}
+            />}
 
             <div className="relative mt-10 border border-dashed border-gray-300 bg-white px-5 py-6 font-mono text-sm shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:px-7 sm:py-8">
               <span aria-hidden="true" className="absolute -left-2 top-8 h-4 w-4 rounded-full border-r border-gray-300 bg-gray-50" />
               <span aria-hidden="true" className="absolute -right-2 top-8 h-4 w-4 rounded-full border-l border-gray-300 bg-gray-50" />
               <p className="text-center text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500">
-                Comprobante de compra
+                {manualPending ? 'Comprobante de pedido · Pago pendiente' : 'Comprobante de compra'}
               </p>
               <div className="mt-5 border-y border-dashed border-gray-200 py-4">
                 <div className="flex items-start justify-between gap-4">
@@ -339,7 +357,7 @@ export default function CheckoutResultCard({
                   </div>
                 )}
                 <div className="flex justify-between text-gray-600">
-                  <span>{pickup ? 'Retiro' : 'Despacho'}</span>
+                  <span>{manual ? 'Entrega personal' : pickup ? 'Retiro' : 'Despacho'}</span>
                   <span>{order.shippingClp === 0 ? 'Gratis' : money.format(order.shippingClp)}</span>
                 </div>
               </div>

@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import AdminInfiniteScroll from '@/components/admin/AdminInfiniteScroll'
+import OrderRecoveryActions from '@/components/admin/OrderRecoveryActions'
 
 interface OrderItem {
   id: string
@@ -48,7 +49,9 @@ interface Order {
   buyer_email: string
   buyer_name: string
   buyer_phone: string
-  delivery_method: 'home' | 'pickup'
+  delivery_method: 'home' | 'pickup' | 'manual'
+  payment_method?: string
+  manual_payment_reference?: string | null
   shipping_snapshot: Record<string, string | null>
   order_status: string
   payment_status: string
@@ -304,10 +307,13 @@ function nextFulfillment(order: Order): FulfillmentAction[] {
     return [{ value: 'cancelled', label: 'Cancelar pedido', compactLabel: 'Cancelar' }]
   }
 
+  if (!['authorized', 'partially_refunded'].includes(order.payment_status)) return []
+
   if (order.fulfillment_status === 'pending') {
     return [{ value: 'preparing', label: 'Comenzar preparación', compactLabel: 'Preparar' }]
   }
   if (order.fulfillment_status === 'preparing') {
+    if (order.delivery_method === 'manual') return [{ value: 'delivered', label: 'Marcar entregado personalmente', compactLabel: 'Entregar' }]
     return order.delivery_method === 'pickup'
       ? [{ value: 'ready_for_pickup', label: 'Listo para retiro', compactLabel: 'Listo' }]
       : [{ value: 'shipped', label: 'Marcar enviado', compactLabel: 'Enviar' }]
@@ -322,10 +328,12 @@ function OrderDetails({
   order,
   refundsEnabled,
   onRefund,
+  onUpdated,
 }: {
   order: Order
   refundsEnabled: boolean
   onRefund: (order: Order) => void
+  onUpdated: () => Promise<void>
 }) {
   const mapUrl = order.delivery_method === 'home'
     ? googleMapsUrl(order.shipping_snapshot)
@@ -333,6 +341,7 @@ function OrderDetails({
 
   return (
     <>
+      <OrderRecoveryActions order={order} onUpdated={onUpdated} />
       <div className="mb-3 flex justify-end sm:mb-4">
         <a
           href={`/api/admin/orders/${order.public_id}/view`}
@@ -407,7 +416,7 @@ function OrderDetails({
             <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Entrega</h3>
           </div>
           <div className="mt-3 text-sm leading-6">
-            <p className="font-bold text-gray-900">{order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
+            <p className="font-bold text-gray-900">{order.delivery_method === 'manual' ? 'Entrega personal · Sin despacho' : order.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio'}</p>
             {mapUrl ? (
               <a
                 href={mapUrl}
@@ -426,6 +435,7 @@ function OrderDetails({
               </a>
             ) : (
               <>
+                {order.shipping_snapshot.delivery_note && <p className="mt-1 text-gray-600">{order.shipping_snapshot.delivery_note}</p>}
                 {order.shipping_snapshot.street && <p className="mt-1 text-gray-600">{order.shipping_snapshot.street} {order.shipping_snapshot.number}</p>}
                 {order.shipping_snapshot.pickup_point_id && <p className="mt-1 text-gray-600">{pickupPointLabel(order.shipping_snapshot.pickup_point_id)}</p>}
                 {order.shipping_snapshot.extra && <p className="text-gray-600">{order.shipping_snapshot.extra}</p>}
@@ -450,6 +460,10 @@ function OrderDetails({
             <ReceiptText className="h-4 w-4 text-emerald-600" aria-hidden="true" />
             <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">Totales</h3>
           </div>
+          {order.payment_method && order.payment_method !== 'webpay' && (
+            <p className="mt-3 text-xs text-gray-600">{order.payment_method === 'bank_transfer' ? 'Pagado por transferencia' : order.payment_method === 'cash' ? 'Pagado en efectivo' : 'Pago manual pendiente'}</p>
+          )}
+          {order.manual_payment_reference && <p className="mt-1 break-words text-xs text-gray-500">{order.manual_payment_reference}</p>}
           <dl className="mt-3 space-y-2.5 text-sm">
             <div className="flex justify-between gap-3 text-gray-600"><dt>Subtotal</dt><dd>{money.format(order.subtotal_clp)}</dd></div>
             {order.discount_clp > 0 && <div className="flex justify-between gap-3 text-emerald-700"><dt>Descuento</dt><dd>-{money.format(order.discount_clp)}</dd></div>}
@@ -676,7 +690,7 @@ export default function AdminOrdersPage() {
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 md:px-8">
       <div className="flex items-start justify-between gap-3 sm:items-end sm:gap-4">
         <div className="min-w-0">
-          <h1 className="font-body text-xl font-black text-gray-900 sm:text-2xl">Pedidos Webpay</h1>
+          <h1 className="font-body text-xl font-black text-gray-900 sm:text-2xl">Pedidos</h1>
           <p className="mt-1 text-sm text-gray-500">
             Pago, preparación, despacho y reembolsos auditados{totalCount > 0 ? ` · ${totalCount} pedidos` : ''}.
           </p>
@@ -758,7 +772,7 @@ export default function AdminOrdersPage() {
 
                   {expanded && (
                     <div id={detailId} className="border-t border-gray-200 bg-slate-50 p-3 sm:p-4">
-                      <OrderDetails order={order} refundsEnabled={refundsEnabled} onRefund={openRefund} />
+                      <OrderDetails order={order} refundsEnabled={refundsEnabled} onRefund={openRefund} onUpdated={() => load(0)} />
                     </div>
                   )}
                 </article>
@@ -863,7 +877,7 @@ export default function AdminOrdersPage() {
                       {expanded && (
                         <tr>
                         <td id={detailId} colSpan={8} className="border-t border-gray-200 bg-slate-50 px-5 py-5">
-                          <OrderDetails order={order} refundsEnabled={refundsEnabled} onRefund={openRefund} />
+                          <OrderDetails order={order} refundsEnabled={refundsEnabled} onRefund={openRefund} onUpdated={() => load(0)} />
                         </td>
                         </tr>
                       )}

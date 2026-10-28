@@ -9,6 +9,7 @@ import {
   type PaymentEnvironment,
 } from '@/lib/env/server'
 import type { WebpayReturn } from './return-parser'
+import { initializedPaymentExpired, type RecoveryContext } from './recovery-policy'
 import {
   commitWebpayTransaction,
   getWebpayTransactionStatus,
@@ -44,6 +45,8 @@ interface ClaimedPayment extends PaymentAttemptCore {
   action: PaymentAction
   token: string | null
   webpay_return_kind: 'aborted' | 'timeout' | 'special' | null
+  created_at: string
+  commit_started_at: string | null
 }
 
 interface FinalizedPayment {
@@ -82,13 +85,15 @@ function outcomeFromCommit(result: WebpayTransactionResult): PaymentOutcome {
 
 export function outcomeFromStatus(
   result: WebpayTransactionResult,
-  fallback: 'aborted' | 'expired' | 'uncertain'
+  fallback: 'aborted' | 'expired' | 'uncertain',
+  context?: RecoveryContext,
 ): PaymentOutcome {
   if (confirmedAuthorization(result)) return 'authorized'
 
   if (result.status === 'INITIALIZED') {
     if (fallback === 'aborted') return 'aborted'
     if (fallback === 'expired') return 'expired'
+    if (initializedPaymentExpired(context)) return 'expired'
     return 'reconciliation_required'
   }
 
@@ -105,6 +110,7 @@ export function fallbackForWebpayReturnKind(
 ): 'aborted' | 'expired' | 'uncertain' {
   if (returnKind === 'aborted') return 'aborted'
   if (returnKind === 'timeout') return 'expired'
+  if (returnKind === 'special') return 'uncertain'
   return fallback
 }
 
@@ -307,7 +313,8 @@ async function processClaimedStatus(
     attempt,
     outcomeFromStatus(
       result,
-      fallbackForWebpayReturnKind(attempt.webpay_return_kind, fallback)
+      fallbackForWebpayReturnKind(attempt.webpay_return_kind, fallback),
+      attempt,
     ),
     correlationId,
     result
@@ -367,7 +374,7 @@ async function processNormalReturn(
     if (status) {
       return finalizeOrSchedule(
         attempt,
-        outcomeFromStatus(status, 'uncertain'),
+        outcomeFromStatus(status, 'uncertain', attempt),
         correlationId,
         status
       )
@@ -430,15 +437,10 @@ async function processNonNormalReturn(
     return { publicId: claimed.public_id, state: claimed.state }
   }
 
-  if (returned.kind === 'special') {
-    await markForReconciliation(claimed.id, correlationId, 'special_return')
-    return { publicId: claimed.public_id, state: 'reconciliation_required' }
-  }
-
   return processClaimedStatus(
     claimed,
     correlationId,
-    returned.kind === 'aborted' ? 'aborted' : 'expired'
+    'uncertain'
   )
 }
 
@@ -451,6 +453,22 @@ export async function processWebpayReturn(
     return processNormalReturn(returned.token, correlationId)
   }
   return processNonNormalReturn(returned, correlationId)
+}
+
+export async function reviewOrderPayment(
+  publicId: string,
+  adminUserId: string,
+): Promise<PaymentReturnResult | null> {
+  const correlationId = randomUUID()
+  const { data, error } = await createServiceRoleClient().rpc(
+    'commerce_admin_resume_webpay_reconciliation',
+    { p_order_public_id: publicId, p_admin_user_id: adminUserId, p_correlation_id: correlationId },
+  )
+  if (error) throw new Error('payment review claim failed')
+  if (!data) return null
+  const attempt = data as unknown as ClaimedPayment
+  if (attempt.action !== 'status') return { publicId, state: attempt.state }
+  return processClaimedStatus(attempt, correlationId, 'uncertain')
 }
 
 export async function reconcilePendingWebpayPayments(
@@ -467,10 +485,11 @@ export async function reconcilePendingWebpayPayments(
     failed: 0,
   }
 
-  const { data: expired } = await supabase.rpc(
+  const { data: expired, error: expiryError } = await supabase.rpc(
     'commerce_expire_checkout_reservations',
     { p_limit: Math.max(1, Math.min(limit * 5, 500)) }
   )
+  if (expiryError) throw new Error('checkout reservation expiry failed')
   summary.expiredReservations = Number(expired || 0)
 
   const { data: rows, error } = await supabase
@@ -478,6 +497,9 @@ export async function reconcilePendingWebpayPayments(
     .select('id')
     .eq('environment', config.environment)
     .in('state', ['processing', 'reconciliation_required'])
+    .is('reconciliation_paused_at', null)
+    .lte('next_reconcile_at', new Date().toISOString())
+    .or('processing_lease_until.is.null,processing_lease_until.lte.' + new Date().toISOString())
     .order('next_reconcile_at', { ascending: true, nullsFirst: true })
     .limit(Math.max(1, Math.min(limit, 100)))
 

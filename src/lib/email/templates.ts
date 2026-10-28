@@ -555,6 +555,16 @@ function orderSummaryText(order: OrderConfirmationBase): string {
   return `${items}${discount}\nEnvío: ${formatCLP(order.shippingClp)}\nTotal: ${formatCLP(order.totalClp)}`
 }
 
+export function buildManualOrderConfirmationEmail(order: OrderConfirmationBase): BuiltEmail {
+  const subject = `Compra confirmada para entrega personal · ${order.orderNumber}`
+  const message = 'Recibimos tu pago. Coordinaremos contigo la entrega personal de tu pedido, sin costo de despacho.'
+  return {
+    subject,
+    html: layout(`<p>${greeting(order.buyerName)}</p><p>${message}</p>${orderSummaryHtml(order)}${ctaOutline(orderResultUrl(order), 'Ver estado de la orden')}${contactBlock()}`),
+    text: `Hola ${order.buyerName},\n\n${message}\n\n${orderSummaryText(order)}\n\nVer estado: ${orderResultUrl(order)}\n\nReSkiChile`,
+  }
+}
+
 export function buildHomeOrderConfirmationEmail(
   order: HomeOrderConfirmationEmail
 ): BuiltEmail {

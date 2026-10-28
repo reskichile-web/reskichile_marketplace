@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       .from('orders')
       .select(`
         public_id, order_number, buyer_email, buyer_name, buyer_phone,
-        delivery_method, shipping_snapshot, order_status, payment_status,
+        delivery_method, shipping_snapshot, order_status, payment_status, payment_method, manual_payment_reference,
         fulfillment_status, subtotal_clp, discount_clp, shipping_clp,
         total_clp, shipping_carrier, tracking_number, tracking_url,
         shipped_at, ready_for_pickup_at, paid_at, created_at, updated_at,

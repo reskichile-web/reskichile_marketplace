@@ -54,6 +54,29 @@ const order: GuestOrderResult = {
 }
 
 describe('checkout result', () => {
+  it('shows personal delivery and the correct total without claiming an unpaid order is paid', () => {
+    const html = renderToStaticMarkup(<CheckoutResultCard order={{ ...order,
+      delivery: { ...order.delivery, method: 'manual', note: 'Entrega personal coordinada.' },
+      paymentMethod: 'manual_pending', paymentStatus: 'pending', paidAt: null,
+      shippingClp: 0, subtotalClp: 7990, totalClp: 7990,
+    }} />)
+    expect(html).toContain('Entrega personal coordinada')
+    expect(html).toContain('Pago pendiente')
+    expect(html).toContain('$7.990')
+    expect(html).not.toContain('Pago confirmado')
+    expect(html).not.toContain('data-meta-purchase')
+    expect(html).not.toContain('aria-label="Estado del pedido"')
+  })
+
+  it('offers contact and stops automatic polling for a manually reviewed payment', () => {
+    const html = renderToStaticMarkup(<CheckoutResultCard order={{ ...order,
+      paymentStatus: 'reconciliation_required', paymentReviewRequired: true,
+    }} />)
+    expect(html).toContain('Tu pago necesita revisión')
+    expect(html).toContain('Contactar a ReSkiChile')
+    expect(html).not.toContain('se actualizará automáticamente')
+    expect(html).not.toContain('Volver al carrito')
+  })
   it('shows the confirmed order status, timeline and protected delivery details', () => {
     const html = renderToStaticMarkup(<CheckoutResultCard order={order} />)
 

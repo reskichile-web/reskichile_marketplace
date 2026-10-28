@@ -19,7 +19,8 @@ export interface GuestOrderResult {
     phone: string
   }
   delivery: {
-    method: 'home' | 'pickup'
+    method: 'home' | 'pickup' | 'manual'
+    note?: string | null
     region: string
     commune: string
     street: string | null
@@ -30,6 +31,8 @@ export interface GuestOrderResult {
   }
   orderStatus: string
   paymentStatus: string
+  paymentMethod?: string
+  paymentReviewRequired?: boolean
   fulfillmentStatus: string
   subtotalClp: number
   discountClp: number
@@ -68,7 +71,7 @@ export async function getGuestOrder(
   const { data: order, error } = await supabase
     .from('orders')
     .select(
-      'id, public_id, order_number, buyer_email, buyer_name, buyer_phone, delivery_method, shipping_snapshot, order_status, payment_status, fulfillment_status, subtotal_clp, discount_clp, shipping_clp, total_clp, guest_access_hash, created_at, paid_at'
+      'id, public_id, order_number, buyer_email, buyer_name, buyer_phone, delivery_method, shipping_snapshot, order_status, payment_status, payment_method, fulfillment_status, subtotal_clp, discount_clp, shipping_clp, total_clp, guest_access_hash, created_at, paid_at'
     )
     .eq('public_id', publicId)
     .maybeSingle()
@@ -103,7 +106,10 @@ export async function getGuestOrder(
     !Array.isArray(order.shipping_snapshot)
     ? order.shipping_snapshot as Record<string, unknown>
     : {}
-  const deliveryMethod = order.delivery_method === 'pickup' ? 'pickup' : 'home'
+  const deliveryMethod = order.delivery_method === 'manual' ? 'manual' : order.delivery_method === 'pickup' ? 'pickup' : 'home'
+  const { data: review } = order.payment_status === 'reconciliation_required'
+    ? await supabase.from('payment_attempts').select('reconciliation_paused_at').eq('order_id', order.id).not('reconciliation_paused_at', 'is', null).limit(1)
+    : { data: [] }
 
   return {
     publicId: String(order.public_id),
@@ -115,6 +121,7 @@ export async function getGuestOrder(
     },
     delivery: {
       method: deliveryMethod,
+      note: snapshotString(shippingSnapshot, 'delivery_note'),
       region: snapshotString(shippingSnapshot, 'region') || '',
       commune: snapshotString(shippingSnapshot, 'commune') || '',
       street: snapshotString(shippingSnapshot, 'street'),
@@ -125,6 +132,8 @@ export async function getGuestOrder(
     },
     orderStatus: String(order.order_status),
     paymentStatus: String(order.payment_status),
+    paymentMethod: String(order.payment_method),
+    paymentReviewRequired: Boolean(review?.length),
     fulfillmentStatus: String(order.fulfillment_status),
     subtotalClp: Number(order.subtotal_clp),
     discountClp: Number(order.discount_clp),

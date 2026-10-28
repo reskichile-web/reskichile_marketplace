@@ -7,6 +7,7 @@ import { getPaymentCallbackConfig } from '@/lib/env/server'
 import { deriveOrderEmailAccessToken } from '@/lib/commerce/checkout-service'
 import {
   buildHomeOrderConfirmationEmail,
+  buildManualOrderConfirmationEmail,
   buildInternalNotice,
   buildPickupOrderConfirmationEmail,
   buildPickupReadyEmail,
@@ -31,7 +32,7 @@ interface OutboxRow {
   order_number: string
   buyer_email: string
   buyer_name: string
-  delivery_method: 'home' | 'pickup'
+  delivery_method: 'home' | 'pickup' | 'manual'
   destination_region: string | null
   destination_commune: string | null
   subtotal_clp: number
@@ -107,7 +108,9 @@ function buildOutboxEmail(
     }
     return {
       to: row.buyer_email,
-      email: row.delivery_method === 'pickup'
+      email: row.delivery_method === 'manual'
+        ? buildManualOrderConfirmationEmail(common)
+        : row.delivery_method === 'pickup'
         ? buildPickupOrderConfirmationEmail({
             ...common,
             pickupLabel: details?.pickupLabel || 'Punto de retiro ReSkiChile',
@@ -179,7 +182,7 @@ function buildOutboxEmail(
         ...commonRows,
         { label: 'Comprador', value: `${row.buyer_name} · ${row.buyer_email}` },
         { label: 'Productos', value: itemSummary || 'Sin detalle' },
-        { label: 'Entrega', value: row.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio' },
+        { label: 'Entrega', value: row.delivery_method === 'manual' ? 'Entrega personal sin despacho' : row.delivery_method === 'pickup' ? 'Punto de retiro' : 'Domicilio' },
         { label: 'Destino', value: [row.destination_commune, row.destination_region].filter(Boolean).join(', ') },
       ]),
     }
