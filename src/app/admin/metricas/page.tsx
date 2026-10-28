@@ -526,7 +526,7 @@ function RackMetricsCard({ data, periodLabel }: { data: RackMetricsData | null; 
                     </div>
                     <p className="mt-2 text-[10px] leading-4 text-gray-500">
                       {order.items.map(item => `${item.quantity}× ${item.name}`).join(' · ')}<br />
-                      Despacho {rackMoney.format(order.shippingClp)} · {order.deliveryMethod === 'pickup' ? 'retiro' : 'envío'} · {timeAgo(order.paidAt)}
+                      Despacho {rackMoney.format(order.shippingClp)} · {order.deliveryMethod === 'manual' ? 'entrega personal' : order.deliveryMethod === 'pickup' ? 'retiro' : 'envío'} · {timeAgo(order.paidAt)}
                       {order.paymentStatus === 'refunded' ? ' · reembolsada' : ''}
                     </p>
                   </Link>
