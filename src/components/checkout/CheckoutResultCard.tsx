@@ -180,7 +180,7 @@ function CompactPaymentResult({ order }: { order: GuestOrderResult }) {
         <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
           {copy.description}
         </p>
-        <PaymentStatusRefresh active={active} />
+        <PaymentStatusRefresh key={order.paymentReviewRequired ? 'manual' : 'automatic'} active={active} />
 
         <div className="mt-7 flex items-center justify-center gap-x-1 text-[10px] font-bold uppercase tracking-[0.16em]">
           <span className="text-gray-400">Orden</span>

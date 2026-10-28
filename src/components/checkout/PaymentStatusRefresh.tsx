@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -9,12 +9,16 @@ interface Props {
 
 export default function PaymentStatusRefresh({ active }: Props) {
   const router = useRouter()
+  const [automaticFinished, setAutomaticFinished] = useState(false)
 
   useEffect(() => {
     if (!active) return
 
     const refresh = window.setInterval(() => router.refresh(), 5000)
-    const stop = window.setTimeout(() => window.clearInterval(refresh), 120000)
+    const stop = window.setTimeout(() => {
+      window.clearInterval(refresh)
+      setAutomaticFinished(true)
+    }, 120000)
     return () => {
       window.clearInterval(refresh)
       window.clearTimeout(stop)
@@ -24,8 +28,15 @@ export default function PaymentStatusRefresh({ active }: Props) {
   if (!active) return null
 
   return (
-    <p className="mt-3 text-xs text-gray-500" aria-live="polite">
-      Esta pantalla se actualizará automáticamente mientras verificamos el pago.
-    </p>
+    <div className="mt-3 text-xs text-gray-500" aria-live="polite">
+      <p>{automaticFinished
+        ? 'La verificación continúa. Puedes actualizar el estado o contactarnos con tu número de pedido.'
+        : 'Consultaremos el estado automáticamente durante los próximos dos minutos.'}</p>
+      {automaticFinished && (
+        <button type="button" onClick={() => router.refresh()} className="mt-3 font-semibold text-brand-600 underline">
+          Actualizar estado
+        </button>
+      )}
+    </div>
   )
 }
