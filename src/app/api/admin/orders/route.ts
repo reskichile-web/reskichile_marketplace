@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     await requireAdmin()
     const service = createServiceRoleClient()
     const { offset, limit } = parseAdminPageParams(new URL(request.url).searchParams)
-    const { data, count, error } = await service
+    const [orderResult, totalsResult] = await Promise.all([service
       .from('orders')
       .select(`
         public_id, order_number, buyer_email, buyer_name, buyer_phone,
@@ -38,8 +38,13 @@ export async function GET(request: Request) {
         refunds(id, amount_clp, state, reason, provider_type, response_code, created_at)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+      .range(offset, offset + limit - 1),
+      service.rpc('commerce_admin_order_totals'),
+    ])
+    const { data, count, error } = orderResult
     if (error) throw new Error('orders query failed')
+    const totals = totalsResult.data?.[0]
+    if (totalsResult.error || !totals) throw new Error('order totals query failed')
 
     let refundsEnabled = false
     try {
@@ -72,6 +77,10 @@ export async function GET(request: Request) {
       {
         orders,
         refundsEnabled,
+        totals: {
+          paidOrderCount: Number(totals.paid_order_count),
+          collectedClp: Number(totals.collected_clp),
+        },
         ...adminPageMeta(count || 0, offset, orders.length),
       },
       { headers: { 'Cache-Control': 'no-store, private' } }

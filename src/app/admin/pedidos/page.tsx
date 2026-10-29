@@ -553,6 +553,7 @@ export default function AdminOrdersPage() {
   const [hasMore, setHasMore] = useState(false)
   const [nextOffset, setNextOffset] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [totals, setTotals] = useState<{ paidOrderCount: number; collectedClp: number } | null>(null)
   const [expandedOrderId, setExpandedOrderId] = useState('')
   const [refundOrder, setRefundOrder] = useState<Order | null>(null)
   const [refundAmount, setRefundAmount] = useState('')
@@ -590,6 +591,7 @@ export default function AdminOrdersPage() {
       setHasMore(Boolean(data.hasMore))
       setNextOffset(Number(data.nextOffset || 0))
       setTotalCount(Number(data.totalCount || 0))
+      setTotals(data.totals || null)
     } catch (loadError) {
       if (loadError instanceof DOMException && loadError.name === 'AbortError') return
       setError(loadError instanceof Error ? loadError.message : 'No pudimos cargar los pedidos')
@@ -899,6 +901,20 @@ export default function AdminOrdersPage() {
           onLoadMore={loadMore}
           label="Cargando más pedidos"
         />
+      )}
+
+      {!loading && totals && (
+        <section aria-label="Total cobrado de pedidos" className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 sm:px-5">
+          <div>
+            <p className="text-sm font-bold text-gray-900">Total cobrado</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {totals.paidOrderCount} {totals.paidOrderCount === 1 ? 'pedido pagado' : 'pedidos pagados'} · descontando devoluciones
+            </p>
+          </div>
+          <p className="whitespace-nowrap font-body text-xl font-black text-gray-950 sm:text-2xl">
+            {money.format(totals.collectedClp)}
+          </p>
+        </section>
       )}
 
       {shippingOrder && (

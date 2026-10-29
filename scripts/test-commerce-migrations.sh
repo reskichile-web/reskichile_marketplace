@@ -73,7 +73,8 @@ for migration in \
   202609290001_trending_products.sql \
   202609290002_trending_safe_refresh.sql \
   202610280001_webpay_bounded_recovery.sql \
-  202610280002_manual_delivery.sql
+  202610280002_manual_delivery.sql \
+  202610290001_admin_order_totals.sql
 do
   if [[ "$migration" == "202609090003_instagram_three_editorial_blocks.sql" ]]; then
     psql -v ON_ERROR_STOP=1 -d "$test_database" \
@@ -124,3 +125,5 @@ psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/instagram_catalog_rotation.sql"
 psql -v ON_ERROR_STOP=1 -d "$test_database" \
   -f "$repository_root/supabase/tests/payment_recovery_manual_delivery.sql"
+psql -v ON_ERROR_STOP=1 -d "$test_database" \
+  -f "$repository_root/supabase/tests/admin_order_totals.sql"
